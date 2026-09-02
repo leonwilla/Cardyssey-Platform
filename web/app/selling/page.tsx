@@ -318,7 +318,7 @@ export default function SellingPage() {
               (item) => (
                 <option
                   key={item.id}
-                  value={item.id}
+                  value={item.id ?? ""}
                 >
                   {item.name}
                   {" · "}

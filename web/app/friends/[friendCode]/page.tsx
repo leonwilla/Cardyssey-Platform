@@ -147,8 +147,7 @@ export default function FriendProfilePage() {
       }
 
       const loadedProfile =
-        await profileResponse.json()
-          as Profile;
+        (await profileResponse.json()) as Profile;
 
       setProfile(
         loadedProfile

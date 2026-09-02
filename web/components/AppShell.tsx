@@ -7,6 +7,8 @@ const nav = [
   ["/scan", "Scannen", "⌗"],
   ["/sets", "Sets", "▦"],
   ["/shop", "Shop", "◇"],
+  ["/marketplace", "Marktplatz", "◈"],
+  ["/offers", "Angebote", "◎"],
   ["/friends", "Freunde", "♢"],
   ["/account", "Account", "○"],
 ] as const;
