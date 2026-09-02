@@ -1,0 +1,219 @@
+[
+  {
+    "key": "b7da331b-cf67-4681-b87f-0c6e4ff9e3ea",
+    "cardId": "me05-116",
+    "languageCode": "de",
+    "name": "Mega-Darkrai-ex",
+    "setId": "me05",
+    "setName": "Dunkelnacht",
+    "localId": "116",
+    "imageBase": "https:\/\/assets.tcgdex.net\/de\/me\/me05\/116",
+    "imageLanguage": "de",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 183.50415059999997,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 183.50415059999997
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "dc0e8bad-7b1b-40e7-bdd2-3d2b546dc85d",
+    "cardId": "me05-120",
+    "languageCode": "de",
+    "name": "Mega-Darkrai-ex",
+    "setId": "me05",
+    "setName": "Dunkelnacht",
+    "localId": "120",
+    "imageBase": "https:\/\/assets.tcgdex.net\/de\/me\/me05\/120",
+    "imageLanguage": "de",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 143.4009926,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 143.4009926
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "d905c8ca-e953-4041-b0ae-b6c483fc9df4",
+    "cardId": "me04-116",
+    "languageCode": "de",
+    "name": "Mega-Quajutsu-ex",
+    "setId": "me04",
+    "setName": "Wachsendes Chaos",
+    "localId": "116",
+    "imageBase": "https:\/\/assets.tcgdex.net\/de\/me\/me04\/116",
+    "imageLanguage": "de",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 158.2571946,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 158.2571946
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "5a08d20f-a224-4eae-b36d-2af5220b7433",
+    "cardId": "me04-117",
+    "languageCode": "de",
+    "name": "Mega-Floette-ex",
+    "setId": "me04",
+    "setName": "Wachsendes Chaos",
+    "localId": "117",
+    "imageBase": "https:\/\/assets.tcgdex.net\/de\/me\/me04\/117",
+    "imageLanguage": "de",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 26.2516818,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 26.2516818
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "dfeadfc2-c421-42e0-8b0b-5ec3f0d6d317",
+    "cardId": "base1-2",
+    "languageCode": "de",
+    "name": "Turtok",
+    "setId": "base1",
+    "setName": "Grundset",
+    "localId": "2",
+    "imageBase": "https:\/\/assets.tcgdex.net\/en\/base\/base1\/2",
+    "imageLanguage": "en",
+    "variant": "HOLO",
+    "variantSpec": {
+      "id": "mtltux8qtgdu4exu903oasum21juxbvx6lx",
+      "type": "Holo",
+      "foil": null,
+      "size": "Standard",
+      "subtype": "schattenlos",
+      "stamps": [
+        "1. Auflage"
+      ]
+    },
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 914.17,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 914.17
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "72f97e62-1c32-41e2-9176-06ddba05746f",
+    "cardId": "me05-090",
+    "languageCode": "de",
+    "name": "Lahmus",
+    "setId": "me05",
+    "setName": "Dunkelnacht",
+    "localId": "090",
+    "imageBase": "https:\/\/assets.tcgdex.net\/de\/me\/me05\/090",
+    "imageLanguage": "de",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 10.519565,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 10.519565
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "fdc47657-9574-48dc-a4d9-e429d3ae046a",
+    "cardId": "ecard3-2",
+    "languageCode": "de",
+    "name": "Simsala",
+    "setId": "ecard3",
+    "setName": "Skyridge",
+    "localId": "2",
+    "imageBase": "https:\/\/assets.tcgdex.net\/en\/ecard\/ecard3\/2",
+    "imageLanguage": "en",
+    "variant": "NORMAL",
+    "variantSpec": {
+      "id": "endfynwn4n10gzq",
+      "type": "Normal",
+      "foil": null,
+      "size": "Standard",
+      "subtype": null,
+      "stamps": []
+    },
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 105.50479639999999,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 105.50479639999999
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "cb725be3-539c-4681-8e74-d524692f63ff",
+    "cardId": "neo1-2",
+    "languageCode": "de",
+    "name": "Azumarill",
+    "setId": "neo1",
+    "setName": "Neo Genesis",
+    "localId": "2",
+    "imageBase": "https:\/\/assets.tcgdex.net\/en\/neo\/neo1\/2",
+    "imageLanguage": "en",
+    "variant": "HOLO",
+    "variantSpec": {
+      "id": "3a83wf50ts0izj268xwv3crwi",
+      "type": "Holo",
+      "foil": null,
+      "size": "Standard",
+      "subtype": null,
+      "stamps": [
+        "1. Auflage"
+      ]
+    },
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 82.5592636,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 82.5592636
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  },
+  {
+    "key": "d0516d53-3ea2-4e65-83af-883a52e0165c",
+    "cardId": "neo1-4",
+    "languageCode": "de",
+    "name": "Impergator",
+    "setId": "neo1",
+    "setName": "Neo Genesis",
+    "localId": "4",
+    "imageBase": "https:\/\/assets.tcgdex.net\/en\/neo\/neo1\/4",
+    "imageLanguage": "en",
+    "variant": "HOLO",
+    "condition": "NEAR_MINT",
+    "quantity": 1,
+    "unitEur": 19.88,
+    "unitUsd": null,
+    "marketUnitEur": {
+      "TCG": 19.88
+    },
+    "marketUpdatedAtMs": {},
+    "marketSampleCount": {}
+  }
+]

@@ -1,0 +1,68 @@
+services:
+
+  db:
+    image: postgres:17-alpine
+    container_name: cardyssey-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - cardyssey_postgres:/var/lib/postgresql/data
+
+    networks:
+      - cardyssey-internal
+
+    mem_limit: 1g
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  api:
+    build:
+      context: ./api
+
+    container_name: cardyssey-api
+    restart: unless-stopped
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      PORT: 8080
+
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+
+    ports:
+      - "127.0.0.1:8081:8080"
+
+    networks:
+      - cardyssey-internal
+
+    mem_limit: 1g
+
+
+networks:
+  cardyssey-internal:
+    name: cardyssey-internal
+
+
+volumes:
+  cardyssey_postgres:
+    name: cardyssey-postgres

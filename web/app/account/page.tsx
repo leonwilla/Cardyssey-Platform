@@ -1,0 +1,298 @@
+"use client";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  AppShell,
+} from "@/components/AppShell";
+
+import {
+  PrivacySettingsPanel,
+} from "@/components/PrivacySettingsPanel";
+
+import {
+  ShowcaseSettingsPanel,
+} from "@/components/ShowcaseSettingsPanel";
+
+import type {
+  User,
+} from "@/lib/types";
+
+export default function AccountPage() {
+  const router = useRouter();
+
+  const [user, setUser] =
+    useState<User | null>(null);
+
+  const [displayName, setDisplayName] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [message, setMessage] =
+    useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(
+      "/api/auth/me",
+      { cache: "no-store" }
+    )
+      .then(async (response) => {
+        if (response.status === 401) {
+          router.replace("/login");
+          return null;
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            "Account konnte nicht geladen werden."
+          );
+        }
+
+        return response.json();
+      })
+      .then((data: User | null) => {
+        if (!data) return;
+
+        setUser(data);
+        setDisplayName(
+          data.displayName ?? ""
+        );
+      })
+      .finally(
+        () => setLoading(false)
+      );
+  }, [router]);
+
+  async function saveProfile() {
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/auth/me",
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              displayName,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Profil konnte nicht gespeichert werden."
+        );
+      }
+
+      const updated =
+        await response.json() as User;
+
+      setUser(updated);
+      setDisplayName(
+        updated.displayName ?? ""
+      );
+
+      setMessage(
+        "Profil gespeichert."
+      );
+
+    } catch (e) {
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "Speichern fehlgeschlagen."
+      );
+
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function copyFriendCode() {
+    if (!user) return;
+
+    await navigator.clipboard.writeText(
+      user.friendCode
+    );
+
+    setMessage(
+      "Cardyssey-ID kopiert."
+    );
+  }
+
+  async function logout() {
+    await fetch(
+      "/api/auth/logout",
+      { method: "POST" }
+    );
+
+    router.replace("/login");
+    router.refresh();
+  }
+
+  return (
+    <AppShell
+      active="/account"
+      user={user}
+    >
+      <section className="pageIntro">
+        <div>
+          <span className="eyebrowText">
+            Account
+          </span>
+
+          <h1>
+            Dein Cardyssey Account
+          </h1>
+
+          <p>
+            Zentrale Identität für Web,
+            Android und später den Shop.
+          </p>
+        </div>
+      </section>
+
+      {loading ? (
+        <div className="statusPanel">
+          Account wird geladen …
+        </div>
+      ) : user && (
+        <>
+          <section className="accountCard">
+            <div className="avatar large">
+              {(user.displayName ||
+                user.email)
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <div>
+              <h2>
+                {user.displayName ||
+                  "Cardyssey Collector"}
+              </h2>
+
+              <p className="muted">
+                {user.email}
+              </p>
+            </div>
+          </section>
+
+          <section className="friendCodePanel">
+            <div>
+              <span className="eyebrowText">
+                Deine Cardyssey-ID
+              </span>
+
+              <strong>
+                {user.friendCode}
+              </strong>
+
+              <p>
+                Über diese ID können dich
+                später andere Sammler finden.
+              </p>
+            </div>
+
+            <button
+              className="ghostButton"
+              onClick={copyFriendCode}
+            >
+              ID kopieren
+            </button>
+          </section>
+
+          <section
+            className="sectionBlock"
+            style={{
+              maxWidth: "650px",
+            }}
+          >
+            <span className="eyebrowText">
+              Profil
+            </span>
+
+            <h2>
+              Persönliche Daten
+            </h2>
+
+            <label className="editorField">
+              <span>Anzeigename</span>
+
+              <input
+                value={displayName}
+                maxLength={100}
+                placeholder="Dein Name"
+                onChange={
+                  (event) =>
+                    setDisplayName(
+                      event.target.value
+                    )
+                }
+              />
+            </label>
+
+            <label className="editorField">
+              <span>E-Mail</span>
+
+              <input
+                value={user.email}
+                disabled
+              />
+            </label>
+
+            {message && (
+              <div className="statusPanel">
+                {message}
+              </div>
+            )}
+
+            <div
+              className="editorActions"
+              style={{
+                marginTop: "20px",
+              }}
+            >
+              <button
+                className="ghostButton"
+                onClick={logout}
+              >
+                Abmelden
+              </button>
+
+              <button
+                className="primaryButton"
+                onClick={saveProfile}
+                disabled={saving}
+              >
+                {saving
+                  ? "Speichert …"
+                  : "Profil speichern"}
+              </button>
+            </div>
+          </section>
+          <ShowcaseSettingsPanel />
+
+          <PrivacySettingsPanel />
+        </>
+      )}
+    </AppShell>
+  );
+}

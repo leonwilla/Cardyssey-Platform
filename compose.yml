@@ -1,0 +1,67 @@
+services:
+  db:
+    image: mariadb:11.4
+    container_name: cardshop-db
+    restart: unless-stopped
+
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+    networks:
+      - cardshop-internal
+
+    mem_limit: 768m
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "healthcheck.sh",
+          "--connect",
+          "--innodb_initialized"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    container_name: cardshop-wordpress
+    restart: unless-stopped
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${MARIADB_DATABASE}
+      WORDPRESS_DB_USER: ${MARIADB_USER}
+      WORDPRESS_DB_PASSWORD: ${MARIADB_PASSWORD}
+
+    volumes:
+      - wordpress_data:/var/www/html
+
+    ports:
+      - "127.0.0.1:8080:80"
+
+    networks:
+      - cardshop-internal
+
+    mem_limit: 768m
+
+networks:
+  cardshop-internal:
+    name: cardshop-internal
+
+volumes:
+  mariadb_data:
+    name: cardshop-mariadb
+  wordpress_data:
+    name: cardshop-wordpress

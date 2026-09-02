@@ -1,0 +1,40 @@
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Node / Next
+web/node_modules/
+web/.next/
+web/out/
+
+# Gradle / JVM
+**/.gradle/
+**/build/
+
+# Generated API clients
+generated/
+web/lib/generated/cardyssey/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Backups / temporary files
+*.bak
+*.bak-*
+*.tmp
+*.swp
+*~
+
+# Logs
+*.log
+
+# Historical exports / backups
+*.tar.gz
+web-v1-backup/
