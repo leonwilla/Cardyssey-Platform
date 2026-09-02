@@ -1067,6 +1067,128 @@ schemas = {
             ]
         ),
 
+    "CreateMarketplaceOfferRequest":
+        obj(
+            {
+                "listingId":
+                    string(),
+
+                "quantity":
+                    integer(
+                        default=1,
+                        minimum=1
+                    ),
+
+                "priceEur":
+                    number(),
+
+                "message":
+                    string(nullable=True)
+            },
+            [
+                "listingId",
+                "priceEur"
+            ]
+        ),
+
+    "MarketplaceOfferResponse":
+        obj(
+            {
+                "id":
+                    string(),
+
+                "listingId":
+                    string(),
+
+                "buyerFriendCode":
+                    string(),
+
+                "buyerDisplayName":
+                    string(nullable=True),
+
+                "sellerFriendCode":
+                    string(),
+
+                "sellerDisplayName":
+                    string(nullable=True),
+
+                "cardId":
+                    string(),
+
+                "languageCode":
+                    string(),
+
+                "name":
+                    string(),
+
+                "setName":
+                    string(nullable=True),
+
+                "localId":
+                    string(nullable=True),
+
+                "imageBase":
+                    string(nullable=True),
+
+                "variant":
+                    string(),
+
+                "condition":
+                    string(),
+
+                "quantity":
+                    integer(minimum=1),
+
+                "offerPriceEur":
+                    number(),
+
+                "listingPriceEur":
+                    number(nullable=True),
+
+                "message":
+                    string(nullable=True),
+
+                "status":
+                    string(
+                        enum=[
+                            "PENDING",
+                            "ACCEPTED",
+                            "REJECTED",
+                            "WITHDRAWN"
+                        ]
+                    ),
+
+                "createdAt":
+                    string(),
+
+                "updatedAt":
+                    string()
+            },
+            [
+                "id",
+                "listingId",
+                "buyerFriendCode",
+                "buyerDisplayName",
+                "sellerFriendCode",
+                "sellerDisplayName",
+                "cardId",
+                "languageCode",
+                "name",
+                "setName",
+                "localId",
+                "imageBase",
+                "variant",
+                "condition",
+                "quantity",
+                "offerPriceEur",
+                "listingPriceEur",
+                "message",
+                "status",
+                "createdAt",
+                "updatedAt"
+            ]
+        ),
+
     "CatalogCardSearchResult":
         obj(
             {
@@ -1830,6 +1952,91 @@ paths = {
             )
     },
 
+    "/api/v1/offers/incoming": {
+        "get":
+            operation(
+                "Offers",
+                "getIncomingOffers",
+                "Eingehende Angebote laden",
+                arr(
+                    "MarketplaceOfferResponse"
+                )
+            )
+    },
+
+    "/api/v1/offers/outgoing": {
+        "get":
+            operation(
+                "Offers",
+                "getOutgoingOffers",
+                "Ausgehende Angebote laden",
+                arr(
+                    "MarketplaceOfferResponse"
+                )
+            )
+    },
+
+    "/api/v1/offers": {
+        "post":
+            operation(
+                "Offers",
+                "createOffer",
+                "Angebot senden",
+                ref(
+                    "MarketplaceOfferResponse"
+                ),
+                success_status="201",
+                request_body=
+                    body(
+                        "CreateMarketplaceOfferRequest"
+                    )
+            )
+    },
+
+    "/api/v1/offers/{id}/accept": {
+        "post":
+            operation(
+                "Offers",
+                "acceptOffer",
+                "Angebot annehmen",
+                ref(
+                    "MarketplaceOfferResponse"
+                ),
+                parameters=[
+                    path_param("id")
+                ]
+            )
+    },
+
+    "/api/v1/offers/{id}/reject": {
+        "post":
+            operation(
+                "Offers",
+                "rejectOffer",
+                "Angebot ablehnen",
+                ref(
+                    "MarketplaceOfferResponse"
+                ),
+                parameters=[
+                    path_param("id")
+                ]
+            )
+    },
+
+    "/api/v1/offers/{id}": {
+        "delete":
+            operation(
+                "Offers",
+                "withdrawOffer",
+                "Angebot zurückziehen",
+                success_status="204",
+                parameters=[
+                    path_param("id")
+                ],
+                no_content=True
+            )
+    },
+
     "/api/v1/cards/search": {
         "get":
             operation(
@@ -1983,6 +2190,7 @@ document = {
         {"name": "Wishlist"},
         {"name": "Selling"},
         {"name": "Marketplace"},
+        {"name": "Offers"},
         {"name": "Catalog"}
     ],
 

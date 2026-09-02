@@ -86,6 +86,9 @@ fun Application.module() {
     val sellingRepository =
         SellingRepository(database)
 
+    val marketplaceOfferRepository =
+        MarketplaceOfferRepository(database)
+
     val catalogCache =
         CatalogCacheRepository(
             database
@@ -287,6 +290,10 @@ fun Application.module() {
 
         marketplaceRoutes(
             sellingRepository
+        )
+
+        marketplaceOfferRoutes(
+            marketplaceOfferRepository
         )
 
         cardCatalogRoutes(

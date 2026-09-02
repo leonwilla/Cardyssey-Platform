@@ -197,7 +197,7 @@ fun Route.marketplaceOfferRoutes(
                         )
 
                 val id =
-                    offerId()
+                    call.offerId()
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
                             mapOf(
@@ -232,7 +232,7 @@ fun Route.marketplaceOfferRoutes(
                         )
 
                 val id =
-                    offerId()
+                    call.offerId()
                         ?: return@post call.respond(
                             HttpStatusCode.BadRequest,
                             mapOf(
@@ -267,7 +267,7 @@ fun Route.marketplaceOfferRoutes(
                         )
 
                 val id =
-                    offerId()
+                    call.offerId()
                         ?: return@delete call.respond(
                             HttpStatusCode.BadRequest,
                             mapOf(
