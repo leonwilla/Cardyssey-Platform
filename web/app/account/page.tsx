@@ -40,6 +40,9 @@ export default function AccountPage() {
   const [saving, setSaving] =
     useState(false);
 
+  const [avatarSaving, setAvatarSaving] =
+    useState(false);
+
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -125,6 +128,114 @@ export default function AccountPage() {
     }
   }
 
+  async function uploadAvatar(
+    file: File | null
+  ) {
+    if (!file) return;
+
+    if (
+      ![
+        "image/jpeg",
+        "image/png",
+      ].includes(file.type)
+    ) {
+      setMessage(
+        "Bitte JPG oder PNG auswählen."
+      );
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage(
+        "Das Profilbild darf maximal 5 MB groß sein."
+      );
+      return;
+    }
+
+    setAvatarSaving(true);
+    setMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/auth/avatar",
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type":
+                "application/octet-stream",
+            },
+            body: file,
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Profilbild konnte nicht hochgeladen werden."
+        );
+      }
+
+      const updated =
+        await response.json() as User;
+
+      setUser(updated);
+
+      setMessage(
+        "Profilbild gespeichert."
+      );
+
+    } catch (e) {
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "Upload fehlgeschlagen."
+      );
+
+    } finally {
+      setAvatarSaving(false);
+    }
+  }
+
+  async function deleteAvatar() {
+    setAvatarSaving(true);
+    setMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          "/api/auth/avatar",
+          {
+            method: "DELETE",
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Profilbild konnte nicht gelöscht werden."
+        );
+      }
+
+      const updated =
+        await response.json() as User;
+
+      setUser(updated);
+
+      setMessage(
+        "Profilbild entfernt."
+      );
+
+    } catch (e) {
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "Löschen fehlgeschlagen."
+      );
+
+    } finally {
+      setAvatarSaving(false);
+    }
+  }
+
   async function copyFriendCode() {
     if (!user) return;
 
@@ -177,10 +288,24 @@ export default function AccountPage() {
         <>
           <section className="accountCard">
             <div className="avatar large">
-              {(user.displayName ||
-                user.email)
-                .charAt(0)
-                .toUpperCase()}
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt="Profilbild"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "inherit",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                (user.displayName ||
+                  user.email)
+                  .charAt(0)
+                  .toUpperCase()
+              )}
             </div>
 
             <div>
@@ -260,6 +385,49 @@ export default function AccountPage() {
             <h2>
               Persönliche Daten
             </h2>
+
+            <div className="editorField">
+              <span>Profilbild</span>
+
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                disabled={avatarSaving}
+                onChange={
+                  (event) => {
+                    const file =
+                      event.target.files?.[0]
+                        ?? null;
+
+                    uploadAvatar(file);
+
+                    event.currentTarget.value =
+                      "";
+                  }
+                }
+              />
+
+              {user.avatarUrl && (
+                <button
+                  type="button"
+                  className="ghostButton"
+                  style={{
+                    marginTop: "10px",
+                    alignSelf: "flex-start",
+                  }}
+                  disabled={avatarSaving}
+                  onClick={deleteAvatar}
+                >
+                  Profilbild entfernen
+                </button>
+              )}
+
+              {avatarSaving && (
+                <span className="muted">
+                  Profilbild wird verarbeitet …
+                </span>
+              )}
+            </div>
 
             <label className="editorField">
               <span>Anzeigename</span>

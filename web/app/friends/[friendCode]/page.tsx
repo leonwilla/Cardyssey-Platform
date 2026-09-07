@@ -59,6 +59,7 @@ type ShowcaseItem = {
 type Profile = {
   friendCode: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
   isFriend: boolean;
   canSeeShowcase: boolean;
   canSeeCollection: boolean;
@@ -251,10 +252,24 @@ export default function FriendProfilePage() {
         <>
           <section className="friendProfileHero">
             <div className="avatar large">
-              {(profile.displayName ||
-                "C")
-                .charAt(0)
-                .toUpperCase()}
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt="Profilbild"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    borderRadius: "inherit",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                (profile.displayName ||
+                  "C")
+                  .charAt(0)
+                  .toUpperCase()
+              )}
             </div>
 
             <div>
