@@ -287,25 +287,47 @@ export default function AccountPage() {
       ) : user && (
         <>
           <section className="accountCard">
-            <div className="avatar large">
-              {user.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt="Profilbild"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "inherit",
-                    display: "block",
-                  }}
+            <div className="profileAvatarWrap">
+              <label
+                className="profileAvatarButton"
+                title="Profilbild ändern"
+              >
+                <div className="avatar large">
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt="Profilbild"
+                    />
+                  ) : (
+                    (user.displayName ||
+                      user.email)
+                      .charAt(0)
+                      .toUpperCase()
+                  )}
+                </div>
+
+                <span className="profileAvatarEdit">
+                  Ändern
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  disabled={avatarSaving}
+                  onChange={
+                    (event) => {
+                      const file =
+                        event.target.files?.[0]
+                          ?? null;
+
+                      uploadAvatar(file);
+
+                      event.currentTarget.value =
+                        "";
+                    }
+                  }
                 />
-              ) : (
-                (user.displayName ||
-                  user.email)
-                  .charAt(0)
-                  .toUpperCase()
-              )}
+              </label>
             </div>
 
             <div>
@@ -317,6 +339,17 @@ export default function AccountPage() {
               <p className="muted">
                 {user.email}
               </p>
+
+              {user.avatarUrl && (
+                <button
+                  type="button"
+                  className="profileAvatarRemove"
+                  disabled={avatarSaving}
+                  onClick={deleteAvatar}
+                >
+                  Profilbild entfernen
+                </button>
+              )}
             </div>
           </section>
 
@@ -385,49 +418,6 @@ export default function AccountPage() {
             <h2>
               Persönliche Daten
             </h2>
-
-            <div className="editorField">
-              <span>Profilbild</span>
-
-              <input
-                type="file"
-                accept="image/jpeg,image/png"
-                disabled={avatarSaving}
-                onChange={
-                  (event) => {
-                    const file =
-                      event.target.files?.[0]
-                        ?? null;
-
-                    uploadAvatar(file);
-
-                    event.currentTarget.value =
-                      "";
-                  }
-                }
-              />
-
-              {user.avatarUrl && (
-                <button
-                  type="button"
-                  className="ghostButton"
-                  style={{
-                    marginTop: "10px",
-                    alignSelf: "flex-start",
-                  }}
-                  disabled={avatarSaving}
-                  onClick={deleteAvatar}
-                >
-                  Profilbild entfernen
-                </button>
-              )}
-
-              {avatarSaving && (
-                <span className="muted">
-                  Profilbild wird verarbeitet …
-                </span>
-              )}
-            </div>
 
             <label className="editorField">
               <span>Anzeigename</span>

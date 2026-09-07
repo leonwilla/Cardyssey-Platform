@@ -84,6 +84,9 @@ export default function FriendProfilePage() {
   const [profile, setProfile] =
     useState<Profile | null>(null);
 
+  const [avatarOpen, setAvatarOpen] =
+    useState(false);
+
   const [showcase, setShowcase] =
     useState<ShowcaseItem[]>([]);
 
@@ -251,26 +254,34 @@ export default function FriendProfilePage() {
       ) : profile ? (
         <>
           <section className="friendProfileHero">
-            <div className="avatar large">
-              {profile.avatarUrl ? (
-                <img
-                  src={profile.avatarUrl}
-                  alt="Profilbild"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "inherit",
-                    display: "block",
-                  }}
-                />
-              ) : (
-                (profile.displayName ||
+            {profile.avatarUrl ? (
+              <button
+                type="button"
+                className="friendAvatarButton"
+                onClick={() =>
+                  setAvatarOpen(true)
+                }
+                title="Profilbild vergrößern"
+              >
+                <div className="avatar large">
+                  <img
+                    src={profile.avatarUrl}
+                    alt="Profilbild"
+                  />
+                </div>
+
+                <span className="friendAvatarZoom">
+                  Ansehen
+                </span>
+              </button>
+            ) : (
+              <div className="avatar large">
+                {(profile.displayName ||
                   "C")
                   .charAt(0)
-                  .toUpperCase()
-              )}
-            </div>
+                  .toUpperCase()}
+              </div>
+            )}
 
             <div>
               <span className="eyebrowText">
@@ -296,6 +307,43 @@ export default function FriendProfilePage() {
               </button>
             )}
           </section>
+
+          {avatarOpen &&
+            profile.avatarUrl && (
+              <div
+                className="profileImageBackdrop"
+                onClick={() =>
+                  setAvatarOpen(false)
+                }
+              >
+                <div
+                  className="profileImageViewer"
+                  onClick={(event) =>
+                    event.stopPropagation()
+                  }
+                >
+                  <button
+                    type="button"
+                    className="profileImageClose"
+                    onClick={() =>
+                      setAvatarOpen(false)
+                    }
+                    aria-label="Profilbild schließen"
+                  >
+                    ×
+                  </button>
+
+                  <img
+                    src={profile.avatarUrl}
+                    alt={
+                      profile.displayName
+                        ? `Profilbild von ${profile.displayName}`
+                        : "Profilbild"
+                    }
+                  />
+                </div>
+              </div>
+            )}
 
           {profile.canSeeShowcase && (
             <section className="friendShowcase">
