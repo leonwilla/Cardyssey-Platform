@@ -20,6 +20,10 @@ RUN useradd \
     --create-home \
     cardyssey
 
+
+RUN mkdir -p /data/avatars \
+    && chown -R cardyssey:cardyssey /data
+
 COPY --from=build \
     /app/build/install/cardyssey-api \
     /app

@@ -259,6 +259,10 @@ fun Application.module() {
             tokenService
         )
 
+        avatarRoutes(
+            authRepository
+        )
+
         collectionRoutes(
             collectionRepository
         )

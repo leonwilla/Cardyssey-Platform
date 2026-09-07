@@ -49,8 +49,14 @@ services:
 
       JWT_SECRET: ${JWT_SECRET}
 
+      AVATAR_DIR: /data/avatars
+      PUBLIC_API_URL: https://api.cardyssey.de
+
     ports:
       - "127.0.0.1:8081:8080"
+
+    volumes:
+      - cardyssey_avatars:/data/avatars
 
     networks:
       - cardyssey-internal
@@ -66,3 +72,6 @@ networks:
 volumes:
   cardyssey_postgres:
     name: cardyssey-postgres
+
+  cardyssey_avatars:
+    name: cardyssey-avatars

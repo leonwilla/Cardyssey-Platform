@@ -235,7 +235,12 @@ fun Route.authRoutes(
                 UserResponse(
                     id = user.id.toString(),
                     email = user.email,
-                    displayName = user.displayName
+                    displayName =
+                    user.displayName,
+                avatarUrl =
+                    avatarUrlFor(
+                        user.avatarPath
+                    )
                 )
             )
         }
@@ -270,7 +275,11 @@ fun Route.authRoutes(
                     email =
                         user.email,
                     displayName =
-                        user.displayName
+                    user.displayName,
+                avatarUrl =
+                    avatarUrlFor(
+                        user.avatarPath
+                    )
                 )
             )
         }
@@ -318,7 +327,11 @@ private fun issueAuth(
                 email =
                     user.email,
                 displayName =
-                    user.displayName
+                    user.displayName,
+                avatarUrl =
+                    avatarUrlFor(
+                        user.avatarPath
+                    )
             )
     )
 }

@@ -94,6 +94,44 @@ class FriendshipRepository(
         }
     }
 
+    fun avatarPath(
+        userId: UUID
+    ): String? {
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT avatar_path
+                FROM users
+                WHERE id = ?
+                  AND disabled_at IS NULL
+                LIMIT 1
+                """.trimIndent()
+            ).use { statement ->
+
+                statement.setObject(
+                    1,
+                    userId
+                )
+
+                statement.executeQuery().use {
+                        result ->
+
+                    return if (
+                        result.next()
+                    ) {
+                        result.getString(
+                            "avatar_path"
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
+    }
+
+
     fun createRequest(
         requesterId: UUID,
         friendCode: String

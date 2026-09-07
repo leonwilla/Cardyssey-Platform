@@ -66,6 +66,7 @@ data class UserResponse(
     val id: String,
     val email: String,
     val displayName: String?,
+    val avatarUrl: String? = null,
     val friendCode: String =
         friendCodeFor(id)
 )
@@ -82,7 +83,8 @@ data class AuthResponse(
 data class UserRecord(
     val id: UUID,
     val email: String,
-    val displayName: String?
+    val displayName: String?,
+    val avatarPath: String?
 )
 
 object PasswordHasher {
@@ -237,7 +239,8 @@ class AuthRepository(
             UserRecord(
                 id = id,
                 email = email,
-                displayName = displayName
+                displayName = displayName,
+                avatarPath = null
             )
         } catch (exception: SQLException) {
             if (exception.sqlState == "23505") {
@@ -259,6 +262,7 @@ class AuthRepository(
                     id,
                     email,
                     display_name,
+                    avatar_path,
                     password_hash
                 FROM users
                 WHERE LOWER(email) = LOWER(?)
@@ -284,6 +288,10 @@ class AuthRepository(
                             displayName =
                                 result.getString(
                                     "display_name"
+                                ),
+                            avatarPath =
+                                result.getString(
+                                    "avatar_path"
                                 )
                         ),
                         result.getString(
@@ -305,7 +313,8 @@ class AuthRepository(
                 SELECT
                     id,
                     email,
-                    display_name
+                    display_name,
+                    avatar_path
                 FROM users
                 WHERE id = ?
                   AND disabled_at IS NULL
@@ -329,6 +338,10 @@ class AuthRepository(
                         displayName =
                             result.getString(
                                 "display_name"
+                            ),
+                        avatarPath =
+                            result.getString(
+                                "avatar_path"
                             )
                     )
                 }
@@ -373,6 +386,45 @@ class AuthRepository(
 
         return findById(id)
     }
+
+    fun updateAvatarPath(
+        id: UUID,
+        avatarPath: String?
+    ): UserRecord? {
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                UPDATE users
+                SET
+                    avatar_path = ?,
+                    updated_at = NOW()
+                WHERE id = ?
+                  AND disabled_at IS NULL
+                """.trimIndent()
+            ).use { statement ->
+
+                statement.setString(
+                    1,
+                    avatarPath
+                )
+
+                statement.setObject(
+                    2,
+                    id
+                )
+
+                if (
+                    statement.executeUpdate() == 0
+                ) {
+                    return null
+                }
+            }
+        }
+
+        return findById(id)
+    }
+
 
     fun storeRefreshToken(
         userId: UUID,
@@ -434,7 +486,8 @@ class AuthRepository(
                         SELECT
                             u.id,
                             u.email,
-                            u.display_name
+                            u.display_name,
+                            u.avatar_path
                         FROM refresh_tokens rt
                         JOIN users u
                           ON u.id = rt.user_id
@@ -473,6 +526,10 @@ class AuthRepository(
                                         displayName =
                                             result.getString(
                                                 "display_name"
+                                            ),
+                                        avatarPath =
+                                            result.getString(
+                                                "avatar_path"
                                             )
                                     )
                                 }

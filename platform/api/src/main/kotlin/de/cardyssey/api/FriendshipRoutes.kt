@@ -129,6 +129,12 @@ fun Route.friendshipRoutes(
                             targetUser.friendCode,
                         displayName =
                             targetUser.displayName,
+                        avatarUrl =
+                            avatarUrlFor(
+                                repository.avatarPath(
+                                    targetId
+                                )
+                            ),
                         isFriend =
                             isFriend,
                         canSeeShowcase =
@@ -740,6 +746,7 @@ data class FriendCollectionResponse(
 data class FriendProfileResponse(
     val friendCode: String,
     val displayName: String?,
+    val avatarUrl: String?,
     val isFriend: Boolean,
     val canSeeShowcase: Boolean,
     val canSeeCollection: Boolean,

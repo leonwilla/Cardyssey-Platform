@@ -104,6 +104,20 @@ def array_body(name):
         }
     }
 
+
+def binary_body():
+    return {
+        "required": True,
+        "content": {
+            "application/octet-stream": {
+                "schema": {
+                    "type": "string",
+                    "format": "binary"
+                }
+            }
+        }
+    }
+
 def response(schema=None, description="OK"):
     result = {
         "description": description
@@ -299,13 +313,18 @@ schemas = {
                 "email": string(),
                 "displayName":
                     string(nullable=True),
+
+                "avatarUrl":
+                    string(nullable=True),
+
                 "friendCode":
                     string()
             },
             [
                 "id",
                 "email",
-                "displayName"
+                "displayName",
+                "avatarUrl"
             ]
         ),
 
@@ -626,6 +645,9 @@ schemas = {
                 "displayName":
                     string(nullable=True),
 
+                "avatarUrl":
+                    string(nullable=True),
+
                 "isFriend":
                     boolean(),
 
@@ -650,6 +672,7 @@ schemas = {
             [
                 "friendCode",
                 "displayName",
+                "avatarUrl",
                 "isFriend",
                 "canSeeShowcase",
                 "canSeeCollection",
@@ -1530,6 +1553,26 @@ paths = {
                 ref("UserResponse"),
                 request_body=
                     body("UpdateMeRequest")
+            )
+    },
+
+    "/api/v1/me/avatar": {
+        "put":
+            operation(
+                "Account",
+                "updateMyAvatar",
+                "Profilbild hochladen",
+                ref("UserResponse"),
+                request_body=
+                    binary_body()
+            ),
+
+        "delete":
+            operation(
+                "Account",
+                "deleteMyAvatar",
+                "Profilbild löschen",
+                ref("UserResponse")
             )
     },
 
