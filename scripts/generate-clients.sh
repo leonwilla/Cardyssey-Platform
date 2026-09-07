@@ -70,3 +70,46 @@ find \
   "$ROOT/generated/android-client" \
   -type f \
   | wc -l
+
+
+echo
+echo "=== PUBLISH ANDROID CLIENT ==="
+
+python3 - "$ROOT" <<'PYZIP'
+from pathlib import Path
+import sys
+import zipfile
+
+root = Path(sys.argv[1])
+
+source = (
+    root
+    / "generated/android-client/src/main/kotlin"
+)
+
+target = (
+    root
+    / "web/public/contracts/cardyssey-android-client.zip"
+)
+
+target.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+with zipfile.ZipFile(
+    target,
+    "w",
+    compression=zipfile.ZIP_DEFLATED
+) as archive:
+
+    for file in source.rglob("*.kt"):
+        archive.write(
+            file,
+            file.relative_to(source)
+        )
+
+print(
+    f"Android Client veröffentlicht: {target}"
+)
+PYZIP
