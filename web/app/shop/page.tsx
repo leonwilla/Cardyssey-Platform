@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 
 export default function ShopPage() {
-  const shopUrl = process.env.NEXT_PUBLIC_SHOP_URL || "http://localhost:8080";
+  const shopUrl = "https://shop.cardyssey.de";
   return (
     <AppShell active="/shop">
       <section className="pageIntro"><div><span className="eyebrowText">Shop</span><h1>Cards & Collectibles</h1><p>WooCommerce bleibt das Backend. Dieses Frontend wird später Produkte und Warenkorb direkt über die Shop-API laden.</p></div></section>

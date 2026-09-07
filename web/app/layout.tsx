@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Cardyssey",
-  description: "TCG collection, scanner, sets and market"
+  description: "Cardyssey – deine Plattform für TCG-Sammlung, Sets, Wishlist, Freunde und Marketplace"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

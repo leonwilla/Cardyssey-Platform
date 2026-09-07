@@ -81,7 +81,7 @@ export async function setAuthCookies(
       httpOnly: true,
       sameSite: "lax",
       secure,
-      path: "/api",
+      path: "/",
       maxAge:
         payload.refreshTokenExpiresInSeconds,
     }
@@ -108,7 +108,7 @@ export async function clearAuthCookies() {
     {
       httpOnly: true,
       sameSite: "lax",
-      path: "/api",
+      path: "/",
       maxAge: 0,
     }
   );

@@ -38,3 +38,6 @@ Thumbs.db
 # Historical exports / backups
 *.tar.gz
 web-v1-backup/
+.last-android-apk-sha
+web/public/downloads/*.apk
+logs/

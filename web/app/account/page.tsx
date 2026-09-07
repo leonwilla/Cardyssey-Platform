@@ -226,6 +226,34 @@ export default function AccountPage() {
             }}
           >
             <span className="eyebrowText">
+              Android App
+            </span>
+
+            <h2>
+              Cardyssey für Android
+            </h2>
+
+            <p className="muted">
+              Lade hier immer die aktuellste
+              Demo-Version der App herunter.
+            </p>
+
+            <a
+              className="primaryButton inline"
+              href="/downloads/cardyssey-latest.apk"
+              download
+            >
+              Android App herunterladen
+            </a>
+          </section>
+
+          <section
+            className="sectionBlock"
+            style={{
+              maxWidth: "650px",
+            }}
+          >
+            <span className="eyebrowText">
               Profil
             </span>
 
