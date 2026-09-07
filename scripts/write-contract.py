@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 
 OUT = Path("contracts/cardyssey.openapi.json")
+PUBLIC_OUT = Path("web/public/contracts/cardyssey.openapi.json")
 
 def ref(name):
     return {"$ref": f"#/components/schemas/{name}"}
@@ -2263,7 +2264,7 @@ OUT.parent.mkdir(
     exist_ok=True
 )
 
-OUT.write_text(
+payload = (
     json.dumps(
         document,
         indent=2,
@@ -2272,8 +2273,21 @@ OUT.write_text(
     + "\n"
 )
 
+OUT.write_text(payload)
+
+PUBLIC_OUT.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+PUBLIC_OUT.write_text(payload)
+
 print(
     f"OpenAPI geschrieben: {OUT}"
+)
+
+print(
+    f"OpenAPI öffentlich: {PUBLIC_OUT}"
 )
 
 print(
