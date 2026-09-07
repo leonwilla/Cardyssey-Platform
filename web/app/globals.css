@@ -2232,3 +2232,19 @@
   line-height:1;
   cursor:pointer;
 }
+
+
+.androidReleaseMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 10px 0 14px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--muted, #94a3b8);
+}
+
+.androidReleaseMeta strong {
+  color: inherit;
+  font-weight: 800;
+}

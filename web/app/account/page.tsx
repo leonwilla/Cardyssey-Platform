@@ -25,6 +25,15 @@ import type {
   User,
 } from "@/lib/types";
 
+import {
+  ANDROID_APK_DOWNLOAD_URL,
+  formatAndroidReleaseDate,
+} from "@/lib/android-release";
+
+import type {
+  AndroidReleaseInfo,
+} from "@/lib/android-release";
+
 export default function AccountPage() {
   const router = useRouter();
 
@@ -45,6 +54,14 @@ export default function AccountPage() {
 
   const [message, setMessage] =
     useState<string | null>(null);
+
+  const [
+    androidRelease,
+    setAndroidRelease,
+  ] =
+    useState<AndroidReleaseInfo | null>(
+      null
+    );
 
   useEffect(() => {
     fetch(
@@ -77,6 +94,37 @@ export default function AccountPage() {
         () => setLoading(false)
       );
   }, [router]);
+
+  useEffect(() => {
+    fetch(
+      "/api/android/latest",
+      {
+        cache: "no-store",
+      }
+    )
+      .then((response) => {
+        if (!response.ok) {
+          return null;
+        }
+
+        return response.json();
+      })
+      .then(
+        (
+          data:
+            AndroidReleaseInfo | null
+        ) => {
+          if (data) {
+            setAndroidRelease(data);
+          }
+        }
+      )
+      .catch(() => {
+        // Download bleibt auch ohne
+        // Versionsanzeige verfügbar.
+      });
+  }, []);
+
 
   async function saveProfile() {
     setSaving(true);
@@ -396,10 +444,39 @@ export default function AccountPage() {
               Demo-Version der App herunter.
             </p>
 
+            {androidRelease ? (
+              <div className="androidReleaseMeta">
+                <strong>
+                  {androidRelease.versionName}
+                </strong>
+
+                <span>
+                  Build {androidRelease.buildNumber}
+                  {" · "}
+                  bereitgestellt{" "}
+                  {formatAndroidReleaseDate(
+                    androidRelease.builtAt
+                  )}
+                </span>
+
+                <span>
+                  Commit{" "}
+                  {androidRelease.commit.slice(
+                    0,
+                    7
+                  )}
+                </span>
+              </div>
+            ) : (
+              <p className="androidReleaseMeta">
+                Aktuelle Versionsinformationen
+                werden geladen …
+              </p>
+            )}
+
             <a
               className="primaryButton inline"
-              href="/downloads/cardyssey-latest.apk"
-              download
+              href={ANDROID_APK_DOWNLOAD_URL}
             >
               Android App herunterladen
             </a>

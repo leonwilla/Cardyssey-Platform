@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import {
+  ANDROID_APK_DOWNLOAD_URL,
+  formatAndroidReleaseDate,
+  getLatestAndroidRelease,
+} from "@/lib/android-release";
 
 const features = [
   {
@@ -34,7 +39,9 @@ const features = [
   }
 ];
 
-export default function Home() {
+export default async function Home() {
+  const androidRelease =
+    await getLatestAndroidRelease();
   return (
     <div className="landingPage">
       <header className="landingHeader">
@@ -88,12 +95,23 @@ export default function Home() {
               </Link>
 
               <a
-                href="/downloads/cardyssey-latest.apk"
+                href={ANDROID_APK_DOWNLOAD_URL}
                 className="landingSecondaryButton"
               >
                 Android herunterladen
               </a>
             </div>
+
+            {androidRelease && (
+              <p className="androidReleaseMeta">
+                Android {androidRelease.versionName}
+                {" · "}Build {androidRelease.buildNumber}
+                {" · "}
+                {formatAndroidReleaseDate(
+                  androidRelease.builtAt
+                )}
+              </p>
+            )}
 
             <div className="landingTrust">
               <span><b>✓</b> Exakte Kartenvarianten</span>
@@ -203,12 +221,19 @@ export default function Home() {
               </Link>
 
               <a
-                href="/downloads/cardyssey-latest.apk"
+                href={ANDROID_APK_DOWNLOAD_URL}
                 className="landingSecondaryButton"
               >
                 Android APK
               </a>
             </div>
+
+            {androidRelease && (
+              <p className="androidReleaseMeta">
+                Aktuelle APK: {androidRelease.versionName}
+                {" · "}Build {androidRelease.buildNumber}
+              </p>
+            )}
           </div>
 
           <div className="landingPlatformMock">
