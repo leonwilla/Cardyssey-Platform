@@ -87,13 +87,14 @@ private class TcgDexCentralPricingProvider :
 }
 
 class CardPricingService(
-    private val catalog: CardCatalogService,
+    private val catalog: CardCatalogService
+) {
     private val providers:
         List<CentralPricingProvider> =
         listOf(
             TcgDexCentralPricingProvider()
         )
-) {
+
     suspend fun quote(
         cardId: String,
         language: String,
