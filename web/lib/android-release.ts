@@ -27,11 +27,17 @@ export function formatAndroidReleaseDate(
   return new Intl.DateTimeFormat(
     "de-DE",
     {
-      dateStyle: "medium",
-      timeStyle: "short",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
       timeZone: "Europe/Berlin",
     }
-  ).format(date);
+  )
+    .format(date)
+    .replace(", ", " · ") + " Uhr";
 }
 
 export async function getLatestAndroidRelease():
