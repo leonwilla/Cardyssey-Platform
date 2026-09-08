@@ -1,0 +1,175 @@
+name: Centralize External Pricing V2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/centralize-external-pricing-v2.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: centralize-external-pricing-v2
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply central pricing migration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          ext = Path('platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt')
+          text = ext.read_text()
+          text = text.replace('internal class EbaySoldPricingService(', 'class EbaySoldPricingService(', 1)
+          ext.write_text(text)
+
+          pricing = Path('platform/api/src/main/kotlin/de/cardyssey/api/CardPricing.kt')
+          text = pricing.read_text()
+          text = text.replace('private data class CentralProviderQuote(', 'internal data class CentralProviderQuote(', 1)
+          text = text.replace('private interface CentralPricingProvider {', 'internal interface CentralPricingProvider {', 1)
+          old = '''class CardPricingService(
+              private val catalog: CardCatalogService
+          ) {
+              private val providers:
+                  List<CentralPricingProvider> =
+                  listOf(
+                      TcgDexCentralPricingProvider()
+                  )
+          '''
+          new = '''class CardPricingService(
+              private val catalog: CardCatalogService,
+              justTcgApiKey: String? = null
+          ) {
+              private val providers:
+                  List<CentralPricingProvider> =
+                  buildList {
+                      add(TcgDexCentralPricingProvider())
+                      justTcgApiKey
+                          ?.trim()
+                          ?.takeIf(String::isNotBlank)
+                          ?.let {
+                              add(JustTcgCentralPricingProvider(it))
+                          }
+                  }
+          '''
+          if old in text:
+              text = text.replace(old, new, 1)
+          pricing.write_text(text)
+
+          app = Path('platform/api/src/main/kotlin/de/cardyssey/api/Application.kt')
+          text = app.read_text()
+          old = '''    val cardPricing =
+                  CardPricingService(
+                      cardCatalog
+                  )
+          '''
+          new = '''    val cardPricing =
+                  CardPricingService(
+                      catalog = cardCatalog,
+                      justTcgApiKey =
+                          System.getenv("JUSTTCG_API_KEY")
+                  )
+
+              val ebayPricing =
+                  EbaySoldPricingService(
+                      catalog = cardCatalog,
+                      apiKey =
+                          System.getenv("SOLDCOMPS_API_KEY")
+                              ?.trim()
+                              .orEmpty()
+                  )
+          '''
+          if old in text:
+              text = text.replace(old, new, 1)
+          old_call = '''        pricingRoutes(
+                      catalog = cardCatalog,
+                      pricing = cardPricing
+                  )
+          '''
+          new_call = '''        pricingRoutes(
+                      catalog = cardCatalog,
+                      pricing = cardPricing,
+                      ebayPricing = ebayPricing
+                  )
+          '''
+          if old_call in text:
+              text = text.replace(old_call, new_call, 1)
+          app.write_text(text)
+
+          compose = Path('platform/compose.yml')
+          text = compose.read_text()
+          if 'JUSTTCG_API_KEY:' not in text:
+              anchor = '      JWT_SECRET: ${JWT_SECRET}\n'
+              if anchor not in text:
+                  raise SystemExit('compose env anchor not found')
+              text = text.replace(
+                  anchor,
+                  anchor + '\n      JUSTTCG_API_KEY: ${JUSTTCG_API_KEY:-}\n      SOLDCOMPS_API_KEY: ${SOLDCOMPS_API_KEY:-}\n',
+                  1
+              )
+          compose.write_text(text)
+
+          contract_path = Path('contracts/cardyssey.openapi.json')
+          contract = json.loads(contract_path.read_text())
+          op = contract['paths']['/api/v1/pricing/cards/{id}']['get']
+          params = op.setdefault('parameters', [])
+          if not any(p.get('name') == 'market' for p in params):
+              params.append({
+                  'name': 'market',
+                  'in': 'query',
+                  'required': False,
+                  'schema': {'type': 'string', 'enum': ['TCG', 'EBAY'], 'default': 'TCG'}
+              })
+          props = contract['components']['schemas']['CardPriceQuoteResponse']['properties']
+          props['market']['enum'] = ['TCG', 'EBAY']
+          source = props['source']
+          if 'anyOf' in source:
+              for part in source['anyOf']:
+                  if part.get('type') == 'string':
+                      part['enum'] = ['TCGDEX', 'JUSTTCG', 'SOLDCOMPS']
+          else:
+              source['enum'] = ['TCGDEX', 'JUSTTCG', 'SOLDCOMPS']
+          contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
+          PY
+
+      - name: Generate clients
+        run: bash scripts/generate-clients.sh
+
+      - name: Build backend
+        run: docker build -t cardyssey-api-ci platform/api
+
+      - name: Build web
+        working-directory: web
+        env:
+          CARDYSSEY_API_URL: http://127.0.0.1:8081
+          NEXT_PUBLIC_SHOP_URL: https://shop.cardyssey.de
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt \
+                  platform/api/src/main/kotlin/de/cardyssey/api/CardPricing.kt \
+                  platform/api/src/main/kotlin/de/cardyssey/api/Application.kt \
+                  platform/compose.yml \
+                  contracts/cardyssey.openapi.json \
+                  web/public/contracts/cardyssey.openapi.json \
+                  web/public/contracts/cardyssey-android-client.zip
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "refactor: centralize external pricing on Tiny"
+            git push
+          fi
