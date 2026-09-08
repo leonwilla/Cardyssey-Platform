@@ -50,6 +50,8 @@ import com.squareup.moshi.JsonClass
  * @param marketUnitEur 
  * @param marketUpdatedAtMs 
  * @param marketSampleCount 
+ * @param valuedUnitEur 
+ * @param positionValueEur 
  */
 
 
@@ -110,7 +112,13 @@ data class CollectionItemDto (
     val marketUpdatedAtMs: kotlin.collections.Map<kotlin.String, kotlin.Long>? = null,
 
     @Json(name = "marketSampleCount")
-    val marketSampleCount: kotlin.collections.Map<kotlin.String, kotlin.Int>? = null
+    val marketSampleCount: kotlin.collections.Map<kotlin.String, kotlin.Int>? = null,
+
+    @Json(name = "valuedUnitEur")
+    val valuedUnitEur: kotlin.collections.Map<kotlin.String, kotlin.Double>? = null,
+
+    @Json(name = "positionValueEur")
+    val positionValueEur: kotlin.collections.Map<kotlin.String, kotlin.Double>? = null
 
 ) {
 

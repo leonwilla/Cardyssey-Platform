@@ -4,6 +4,7 @@ build.gradle
 docs/AccountApi.md
 docs/AuthApi.md
 docs/AuthResponse.md
+docs/CardPriceQuoteResponse.md
 docs/CardRecognitionRequest.md
 docs/CardRecognitionResponse.md
 docs/CatalogApi.md
@@ -36,6 +37,7 @@ docs/MarketplaceApi.md
 docs/MarketplaceListingResponse.md
 docs/MarketplaceOfferResponse.md
 docs/OffersApi.md
+docs/PricingApi.md
 docs/PrivacyApi.md
 docs/PrivacySettings.md
 docs/RefreshRequest.md
@@ -65,6 +67,7 @@ src/main/kotlin/de/cardyssey/generated/apis/CollectionApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/FriendsApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/MarketplaceApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/OffersApi.kt
+src/main/kotlin/de/cardyssey/generated/apis/PricingApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/PrivacyApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/SellingApi.kt
 src/main/kotlin/de/cardyssey/generated/apis/ShowcaseApi.kt
@@ -88,6 +91,7 @@ src/main/kotlin/de/cardyssey/generated/infrastructure/Serializer.kt
 src/main/kotlin/de/cardyssey/generated/infrastructure/URIAdapter.kt
 src/main/kotlin/de/cardyssey/generated/infrastructure/UUIDAdapter.kt
 src/main/kotlin/de/cardyssey/generated/models/AuthResponse.kt
+src/main/kotlin/de/cardyssey/generated/models/CardPriceQuoteResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/CardRecognitionRequest.kt
 src/main/kotlin/de/cardyssey/generated/models/CardRecognitionResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/CatalogCardDetails.kt
@@ -134,12 +138,14 @@ src/test/kotlin/de/cardyssey/generated/apis/CollectionApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/FriendsApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/MarketplaceApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/OffersApiTest.kt
+src/test/kotlin/de/cardyssey/generated/apis/PricingApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/PrivacyApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/SellingApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/ShowcaseApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/SystemApiTest.kt
 src/test/kotlin/de/cardyssey/generated/apis/WishlistApiTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AuthResponseTest.kt
+src/test/kotlin/de/cardyssey/generated/models/CardPriceQuoteResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/CardRecognitionRequestTest.kt
 src/test/kotlin/de/cardyssey/generated/models/CardRecognitionResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/CatalogCardDetailsTest.kt

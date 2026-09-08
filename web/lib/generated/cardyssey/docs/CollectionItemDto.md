@@ -25,6 +25,8 @@ Name | Type
 `marketUnitEur` | { [key: string]: number; }
 `marketUpdatedAtMs` | { [key: string]: number; }
 `marketSampleCount` | { [key: string]: number; }
+`valuedUnitEur` | { [key: string]: number; }
+`positionValueEur` | { [key: string]: number; }
 
 ## Example
 
@@ -52,6 +54,8 @@ const example = {
   "marketUnitEur": null,
   "marketUpdatedAtMs": null,
   "marketSampleCount": null,
+  "valuedUnitEur": null,
+  "positionValueEur": null,
 } satisfies CollectionItemDto
 
 console.log(example)

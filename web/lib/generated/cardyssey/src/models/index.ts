@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AuthResponse';
+export * from './CardPriceQuoteResponse';
 export * from './CardRecognitionRequest';
 export * from './CardRecognitionResponse';
 export * from './CatalogCardDetails';

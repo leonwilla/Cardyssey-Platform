@@ -2259,6 +2259,76 @@ document = {
 }
 
 
+# CENTRAL_PRICING_CONTRACT_V1
+# Keep server-valued collection fields and the central Pricing API in the
+# authoritative generator source so regeneration cannot silently drop them.
+collection_properties = document["components"]["schemas"]["CollectionItemDto"]["properties"]
+collection_properties["valuedUnitEur"] = map_of(number())
+collection_properties["positionValueEur"] = map_of(number())
+
+pricing_conditions = ["MINT", "NEAR_MINT", "EXCELLENT", "GOOD", "PLAYED"]
+pricing_markets = ["TCG", "EBAY"]
+pricing_sources = ["TCGDEX", "JUSTTCG", "SOLDCOMPS"]
+
+document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
+    {
+        "cardId": string(),
+        "languageCode": string(),
+        "variantId": string(nullable=True),
+        "variantType": string(nullable=True),
+        "condition": string(enum=pricing_conditions),
+        "market": string(enum=pricing_markets),
+        "source": string(nullable=True, enum=pricing_sources),
+        "baseEur": number(nullable=True),
+        "conditionFactor": number(),
+        "eur": number(nullable=True),
+        "exactLanguageMatch": boolean(),
+        "exactVariantMatch": boolean(),
+        "sampleCount": integer(nullable=True, minimum=0),
+        "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64")
+    },
+    [
+        "cardId",
+        "languageCode",
+        "condition",
+        "market",
+        "conditionFactor",
+        "exactLanguageMatch",
+        "exactVariantMatch"
+    ]
+)
+
+if not any(tag.get("name") == "Pricing" for tag in document["tags"]):
+    document["tags"].append({"name": "Pricing"})
+
+document["paths"]["/api/v1/pricing/cards/{id}"] = {
+    "get": operation(
+        "Pricing",
+        "getCardPriceQuote",
+        "Zentralen Marktpreis für eine exakte Kartenvariante laden",
+        ref("CardPriceQuoteResponse"),
+        parameters=[
+            path_param("id"),
+            query_param("language", default="de"),
+            query_param("variantId"),
+            query_param(
+                "variant",
+                schema=string(enum=["NORMAL", "REVERSE", "HOLO", "FIRST_EDITION"])
+            ),
+            query_param(
+                "condition",
+                default="NEAR_MINT",
+                schema=string(enum=pricing_conditions)
+            ),
+            query_param(
+                "market",
+                default="TCG",
+                schema=string(enum=pricing_markets)
+            )
+        ]
+    )
+}
+
 OUT.parent.mkdir(
     parents=True,
     exist_ok=True

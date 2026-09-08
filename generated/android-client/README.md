@@ -82,6 +82,7 @@ All URIs are relative to *http://127.0.0.1:8081*
 | *OffersApi* | [**getOutgoingOffers**](docs/OffersApi.md#getoutgoingoffers) | **GET** /api/v1/offers/outgoing | Ausgehende Angebote laden |
 | *OffersApi* | [**rejectOffer**](docs/OffersApi.md#rejectoffer) | **POST** /api/v1/offers/{id}/reject | Angebot ablehnen |
 | *OffersApi* | [**withdrawOffer**](docs/OffersApi.md#withdrawoffer) | **DELETE** /api/v1/offers/{id} | Angebot zurückziehen |
+| *PricingApi* | [**getCardPriceQuote**](docs/PricingApi.md#getcardpricequote) | **GET** /api/v1/pricing/cards/{id} | Zentralen Marktpreis für eine exakte Kartenvariante laden |
 | *PrivacyApi* | [**getPrivacy**](docs/PrivacyApi.md#getprivacy) | **GET** /api/v1/me/privacy | Privatsphäre laden |
 | *PrivacyApi* | [**updatePrivacy**](docs/PrivacyApi.md#updateprivacy) | **PUT** /api/v1/me/privacy | Privatsphäre speichern |
 | *SellingApi* | [**createSaleListing**](docs/SellingApi.md#createsalelisting) | **POST** /api/v1/selling | Verkaufsangebot anlegen |
@@ -100,6 +101,7 @@ All URIs are relative to *http://127.0.0.1:8081*
 ## Documentation for Models
 
  - [de.cardyssey.generated.models.AuthResponse](docs/AuthResponse.md)
+ - [de.cardyssey.generated.models.CardPriceQuoteResponse](docs/CardPriceQuoteResponse.md)
  - [de.cardyssey.generated.models.CardRecognitionRequest](docs/CardRecognitionRequest.md)
  - [de.cardyssey.generated.models.CardRecognitionResponse](docs/CardRecognitionResponse.md)
  - [de.cardyssey.generated.models.CatalogCardDetails](docs/CatalogCardDetails.md)

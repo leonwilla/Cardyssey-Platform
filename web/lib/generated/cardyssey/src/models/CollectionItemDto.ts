@@ -141,6 +141,18 @@ export interface CollectionItemDto {
      * @memberof CollectionItemDto
      */
     marketSampleCount?: { [key: string]: number; };
+    /**
+     * 
+     * @type {{ [key: string]: number; }}
+     * @memberof CollectionItemDto
+     */
+    valuedUnitEur?: { [key: string]: number; };
+    /**
+     * 
+     * @type {{ [key: string]: number; }}
+     * @memberof CollectionItemDto
+     */
+    positionValueEur?: { [key: string]: number; };
 }
 
 /**
@@ -186,6 +198,8 @@ export function CollectionItemDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'marketUnitEur': json['marketUnitEur'] == null ? undefined : json['marketUnitEur'],
         'marketUpdatedAtMs': json['marketUpdatedAtMs'] == null ? undefined : json['marketUpdatedAtMs'],
         'marketSampleCount': json['marketSampleCount'] == null ? undefined : json['marketSampleCount'],
+        'valuedUnitEur': json['valuedUnitEur'] == null ? undefined : json['valuedUnitEur'],
+        'positionValueEur': json['positionValueEur'] == null ? undefined : json['positionValueEur'],
     };
 }
 
@@ -219,6 +233,8 @@ export function CollectionItemDtoToJSONTyped(value?: CollectionItemDto | null, i
         'marketUnitEur': value['marketUnitEur'],
         'marketUpdatedAtMs': value['marketUpdatedAtMs'],
         'marketSampleCount': value['marketSampleCount'],
+        'valuedUnitEur': value['valuedUnitEur'],
+        'positionValueEur': value['positionValueEur'],
     };
 }
 

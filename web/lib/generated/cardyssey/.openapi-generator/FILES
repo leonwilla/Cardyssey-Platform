@@ -5,6 +5,7 @@ README.md
 docs/AccountApi.md
 docs/AuthApi.md
 docs/AuthResponse.md
+docs/CardPriceQuoteResponse.md
 docs/CardRecognitionRequest.md
 docs/CardRecognitionResponse.md
 docs/CatalogApi.md
@@ -37,6 +38,7 @@ docs/MarketplaceApi.md
 docs/MarketplaceListingResponse.md
 docs/MarketplaceOfferResponse.md
 docs/OffersApi.md
+docs/PricingApi.md
 docs/PrivacyApi.md
 docs/PrivacySettings.md
 docs/RefreshRequest.md
@@ -62,6 +64,7 @@ src/apis/CollectionApi.ts
 src/apis/FriendsApi.ts
 src/apis/MarketplaceApi.ts
 src/apis/OffersApi.ts
+src/apis/PricingApi.ts
 src/apis/PrivacyApi.ts
 src/apis/SellingApi.ts
 src/apis/ShowcaseApi.ts
@@ -70,6 +73,7 @@ src/apis/WishlistApi.ts
 src/apis/index.ts
 src/index.ts
 src/models/AuthResponse.ts
+src/models/CardPriceQuoteResponse.ts
 src/models/CardRecognitionRequest.ts
 src/models/CardRecognitionResponse.ts
 src/models/CatalogCardDetails.ts

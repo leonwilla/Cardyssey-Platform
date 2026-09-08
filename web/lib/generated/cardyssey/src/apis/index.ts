@@ -7,6 +7,7 @@ export * from './CollectionApi';
 export * from './FriendsApi';
 export * from './MarketplaceApi';
 export * from './OffersApi';
+export * from './PricingApi';
 export * from './PrivacyApi';
 export * from './SellingApi';
 export * from './ShowcaseApi';

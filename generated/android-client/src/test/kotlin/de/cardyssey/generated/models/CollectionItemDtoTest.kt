@@ -148,5 +148,17 @@ class CollectionItemDtoTest : ShouldSpec() {
             //modelInstance.marketSampleCount shouldBe ("TODO")
         }
 
+        // to test the property `valuedUnitEur`
+        should("test valuedUnitEur") {
+            // uncomment below to test the property
+            //modelInstance.valuedUnitEur shouldBe ("TODO")
+        }
+
+        // to test the property `positionValueEur`
+        should("test positionValueEur") {
+            // uncomment below to test the property
+            //modelInstance.positionValueEur shouldBe ("TODO")
+        }
+
     }
 }

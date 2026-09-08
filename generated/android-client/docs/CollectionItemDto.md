@@ -23,6 +23,8 @@
 | **marketUnitEur** | **kotlin.collections.Map&lt;kotlin.String, kotlin.Double&gt;** |  |  [optional] |
 | **marketUpdatedAtMs** | **kotlin.collections.Map&lt;kotlin.String, kotlin.Long&gt;** |  |  [optional] |
 | **marketSampleCount** | **kotlin.collections.Map&lt;kotlin.String, kotlin.Int&gt;** |  |  [optional] |
+| **valuedUnitEur** | **kotlin.collections.Map&lt;kotlin.String, kotlin.Double&gt;** |  |  [optional] |
+| **positionValueEur** | **kotlin.collections.Map&lt;kotlin.String, kotlin.Double&gt;** |  |  [optional] |
 
 
 
