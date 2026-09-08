@@ -51,6 +51,9 @@
     },
     {
       "name": "Catalog"
+    },
+    {
+      "name": "Pricing"
     }
   ],
   "paths": {
@@ -3979,6 +3982,126 @@
           }
         ]
       }
+    },
+    "/api/v1/pricing/cards/{id}": {
+      "get": {
+        "tags": [
+          "Pricing"
+        ],
+        "operationId": "getCardPriceQuote",
+        "summary": "Zentralen Marktpreis für eine exakte Kartenvariante laden",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "de"
+            }
+          },
+          {
+            "name": "variantId",
+            "in": "query",
+            "required": false,
+            "description": "Bevorzugte exakte Varianten-ID aus dem zentralen Katalog.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "variant",
+            "in": "query",
+            "required": false,
+            "description": "Legacy-Variante. Wird nur verwendet, wenn sie genau eine physische Variante ergibt.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NORMAL",
+                "REVERSE",
+                "HOLO",
+                "FIRST_EDITION"
+              ]
+            }
+          },
+          {
+            "name": "condition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "NEAR_MINT",
+              "enum": [
+                "MINT",
+                "NEAR_MINT",
+                "EXCELLENT",
+                "GOOD",
+                "PLAYED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPriceQuoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Karte nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5407,6 +5530,77 @@
           "detectedQuery",
           "candidates"
         ]
+      },
+      "CardPriceQuoteResponse": {
+        "type": "object",
+        "required": [
+          "cardId",
+          "languageCode",
+          "condition",
+          "market",
+          "conditionFactor",
+          "exactLanguageMatch",
+          "exactVariantMatch"
+        ],
+        "properties": {
+          "cardId": {
+            "type": "string"
+          },
+          "languageCode": {
+            "type": "string"
+          },
+          "variantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "variantType": {
+            "type": "string",
+            "nullable": true
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "MINT",
+              "NEAR_MINT",
+              "EXCELLENT",
+              "GOOD",
+              "PLAYED"
+            ]
+          },
+          "market": {
+            "type": "string",
+            "enum": [
+              "TCG"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "TCGDEX"
+            ]
+          },
+          "baseEur": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "conditionFactor": {
+            "type": "number",
+            "format": "double"
+          },
+          "eur": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "exactLanguageMatch": {
+            "type": "boolean"
+          },
+          "exactVariantMatch": {
+            "type": "boolean"
+          }
+        }
       }
     }
   }
