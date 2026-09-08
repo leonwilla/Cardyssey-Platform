@@ -2,6 +2,7 @@
 
 BASE_WEB_URL="${BASE_WEB_URL:-https://cardyssey.de}"
 BASE_API_URL="${BASE_API_URL:-https://api.cardyssey.de}"
+API_PREFIX="${API_PREFIX:-/api/v1}"
 
 check() {
   label="$1"
@@ -18,7 +19,7 @@ check() {
 check "Web homepage" "$BASE_WEB_URL/"
 check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
 check "Android release metadata" "$BASE_WEB_URL/api/android/latest"
-check "API health" "$BASE_API_URL/health"
+check "API health" "$BASE_API_URL$API_PREFIX/health"
 
 if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
   auth_check() {
@@ -26,7 +27,7 @@ if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
     path="$2"
     code="$(curl -sS -o /tmp/cardyssey-smoke-auth-body -w '%{http_code}' \
       -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
-      "$BASE_API_URL$path" || true)"
+      "$BASE_API_URL$API_PREFIX$path" || true)"
     if [ "$code" != "200" ]; then
       echo "FAIL: $label -> HTTP $code"
       cat /tmp/cardyssey-smoke-auth-body 2>/dev/null || true
