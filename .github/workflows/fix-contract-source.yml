@@ -1,0 +1,130 @@
+name: Repair Pricing Contract Source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-contract-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch authoritative contract source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('scripts/write-contract.py')
+          text = p.read_text()
+          marker = 'OUT.parent.mkdir('
+          sentinel = '# CENTRAL_PRICING_CONTRACT_V1'
+          if sentinel not in text:
+              block = '''# CENTRAL_PRICING_CONTRACT_V1
+# Keep server-valued collection fields and the central Pricing API in the
+# authoritative generator source so regeneration cannot silently drop them.
+collection_properties = document["components"]["schemas"]["CollectionItemDto"]["properties"]
+collection_properties["valuedUnitEur"] = map_of(number())
+collection_properties["positionValueEur"] = map_of(number())
+
+pricing_conditions = ["MINT", "NEAR_MINT", "EXCELLENT", "GOOD", "PLAYED"]
+pricing_markets = ["TCG", "EBAY"]
+pricing_sources = ["TCGDEX", "JUSTTCG", "SOLDCOMPS"]
+
+document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
+    {
+        "cardId": string(),
+        "languageCode": string(),
+        "variantId": string(nullable=True),
+        "variantType": string(nullable=True),
+        "condition": string(enum=pricing_conditions),
+        "market": string(enum=pricing_markets),
+        "source": string(nullable=True, enum=pricing_sources),
+        "baseEur": number(nullable=True),
+        "conditionFactor": number(),
+        "eur": number(nullable=True),
+        "exactLanguageMatch": boolean(),
+        "exactVariantMatch": boolean(),
+        "sampleCount": integer(nullable=True, minimum=0),
+        "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64")
+    },
+    [
+        "cardId",
+        "languageCode",
+        "condition",
+        "market",
+        "conditionFactor",
+        "exactLanguageMatch",
+        "exactVariantMatch"
+    ]
+)
+
+if not any(tag.get("name") == "Pricing" for tag in document["tags"]):
+    document["tags"].append({"name": "Pricing"})
+
+document["paths"]["/api/v1/pricing/cards/{id}"] = {
+    "get": operation(
+        "Pricing",
+        "getCardPriceQuote",
+        "Zentralen Marktpreis für eine exakte Kartenvariante laden",
+        ref("CardPriceQuoteResponse"),
+        parameters=[
+            path_param("id"),
+            query_param("language", default="de"),
+            query_param("variantId"),
+            query_param(
+                "variant",
+                schema=string(enum=["NORMAL", "REVERSE", "HOLO", "FIRST_EDITION"])
+            ),
+            query_param(
+                "condition",
+                default="NEAR_MINT",
+                schema=string(enum=pricing_conditions)
+            ),
+            query_param(
+                "market",
+                default="TCG",
+                schema=string(enum=pricing_markets)
+            )
+        ]
+    )
+}
+
+'''
+              if marker not in text:
+                  raise SystemExit('write-contract output marker not found')
+              text = text.replace(marker, block + marker, 1)
+              p.write_text(text)
+          PY
+
+      - name: Regenerate contract and clients
+        run: |
+          python3 scripts/write-contract.py
+          bash scripts/generate-clients.sh
+
+      - name: Verify generated parity
+        run: |
+          grep -q '"valuedUnitEur"' contracts/cardyssey.openapi.json
+          grep -q '"positionValueEur"' contracts/cardyssey.openapi.json
+          grep -q '"/api/v1/pricing/cards/{id}"' contracts/cardyssey.openapi.json
+          grep -q '"CardPriceQuoteResponse"' contracts/cardyssey.openapi.json
+          test -f web/lib/generated/cardyssey/src/apis/PricingApi.ts
+          test -f generated/android-client/src/main/kotlin/de/cardyssey/generated/apis/PricingApi.kt
+          grep -q 'valuedUnitEur' web/lib/generated/cardyssey/src/models/CollectionItemDto.ts
+          grep -q 'valuedUnitEur' generated/android-client/src/main/kotlin/de/cardyssey/generated/models/CollectionItemDto.kt
+          git diff --check
+
+      - name: Commit repaired source and generated outputs
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add scripts/write-contract.py contracts/cardyssey.openapi.json web/public/contracts/cardyssey.openapi.json web/public/contracts/cardyssey-android-client.zip web/lib/generated/cardyssey generated/android-client
+          git rm .github/workflows/fix-contract-source.yml
+          git commit -m "fix: keep central pricing in generated contract"
+          git push origin HEAD:main
