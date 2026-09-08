@@ -472,17 +472,51 @@ export function AddCardDialog({
     setError(null);
 
     try {
+      const priceParams =
+        new URLSearchParams({
+          language:
+            selected.languageCode,
+          variantId:
+            selectedVariant.id,
+          condition,
+        });
+
+      let centralBaseEur:
+        number | null = null;
+
+      const priceResponse =
+        await fetch(
+          `/api/pricing/cards/${encodeURIComponent(selected.id)}?${priceParams.toString()}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      if (priceResponse.ok) {
+        const quote =
+          await priceResponse.json() as {
+            baseEur?: number | null;
+            exactLanguageMatch?: boolean;
+            exactVariantMatch?: boolean;
+          };
+
+        if (
+          quote.exactLanguageMatch === true &&
+          quote.exactVariantMatch === true &&
+          typeof quote.baseEur === "number" &&
+          Number.isFinite(quote.baseEur) &&
+          quote.baseEur > 0
+        ) {
+          centralBaseEur =
+            quote.baseEur;
+        }
+      }
+
       const marketUnitEur:
         Record<string, number> =
-          {};
-
-      if (
-        typeof selectedVariant.tcgDexEur ===
-        "number"
-      ) {
-        marketUnitEur.TCG =
-          selectedVariant.tcgDexEur;
-      }
+          centralBaseEur == null
+            ? {}
+            : { TCG: centralBaseEur };
 
       const item = {
         key:
@@ -544,8 +578,7 @@ export function AddCardDialog({
         quantity,
 
         unitEur:
-          selectedVariant.tcgDexEur ??
-          null,
+          centralBaseEur,
 
         unitUsd:
           null,
