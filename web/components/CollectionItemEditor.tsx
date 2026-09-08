@@ -92,16 +92,13 @@ export function CollectionItemEditor({
   const unitValue =
     singleValueEur(
       currentItem,
-      market,
-      condition
+      market
     );
 
   const positionValue =
     positionValueEur(
       currentItem,
-      market,
-      quantity,
-      condition
+      market
     );
 
   const formatEur = (
