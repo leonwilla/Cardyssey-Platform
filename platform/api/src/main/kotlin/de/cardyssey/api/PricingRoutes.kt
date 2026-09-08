@@ -10,7 +10,8 @@ import io.ktor.server.routing.route
 
 fun Route.pricingRoutes(
     catalog: CardCatalogService,
-    pricing: CardPricingService
+    pricing: CardPricingService,
+    ebayPricing: EbaySoldPricingService
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/pricing") {
@@ -73,14 +74,39 @@ fun Route.pricingRoutes(
                         ?.uppercase()
                         ?.takeIf(String::isNotBlank)
 
-                val quote =
-                    pricing.quote(
-                        cardId = cardId,
-                        language = language,
-                        variantId = requestedVariantId,
-                        legacyVariant = requestedLegacyVariant,
-                        condition = condition
+                val market =
+                    call.request
+                        .queryParameters["market"]
+                        ?.trim()
+                        ?.uppercase()
+                        ?: "TCG"
+
+                if (market != "TCG" && market != "EBAY") {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "invalid_market")
                     )
+                    return@get
+                }
+
+                val quote =
+                    if (market == "EBAY") {
+                        ebayPricing.quote(
+                            cardId = cardId,
+                            language = language,
+                            variantId = requestedVariantId,
+                            legacyVariant = requestedLegacyVariant,
+                            condition = condition
+                        )
+                    } else {
+                        pricing.quote(
+                            cardId = cardId,
+                            language = language,
+                            variantId = requestedVariantId,
+                            legacyVariant = requestedLegacyVariant,
+                            condition = condition
+                        )
+                    }
 
                 if (quote == null) {
                     call.respond(
