@@ -98,7 +98,9 @@ fun Route.collectionRoutes(
 }
 
 private fun withCentralValuation(item: CollectionItemDto): CollectionItemDto {
-    val conditionFactor = PricingCondition.parse(item.condition)?.factor ?: 1.0
+    val condition = PricingCondition.parse(item.condition)
+        ?: return item.copy(valuedUnitEur = emptyMap(), positionValueEur = emptyMap())
+    val conditionFactor = condition.factor
     val bases = buildMap {
         putAll(item.marketUnitEur)
         if ("TCG" !in this && item.unitEur != null) put("TCG", item.unitEur)
@@ -118,5 +120,5 @@ private fun CollectionItemDto.isValidCollectionItem(): Boolean =
         languageCode.length <= 20 &&
         name.isNotBlank() &&
         variant.isNotBlank() &&
-        condition.isNotBlank() &&
+        PricingCondition.parse(condition) != null &&
         quantity in 1..100_000

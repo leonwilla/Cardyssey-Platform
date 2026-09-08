@@ -4403,6 +4403,20 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          "valuedUnitEur": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "positionValueEur": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "format": "double"
+            }
           }
         },
         "required": [
