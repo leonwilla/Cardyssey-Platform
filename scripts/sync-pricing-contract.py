@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Idempotent one-time synchronization for the central pricing contract.
+
 import json
 from pathlib import Path
 
