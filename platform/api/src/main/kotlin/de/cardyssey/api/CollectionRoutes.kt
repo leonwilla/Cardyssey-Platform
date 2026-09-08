@@ -15,239 +15,103 @@ import io.ktor.server.routing.route
 fun Route.collectionRoutes(
     repository: CollectionRepository
 ) {
-
     authenticate("auth-jwt") {
-
         route("/api/v1/collection") {
-
             get {
-                val userId =
-                    call.authenticatedUserId()
-
+                val userId = call.authenticatedUserId()
                 if (userId == null) {
-                    call.respond(
-                        HttpStatusCode.Unauthorized
-                    )
+                    call.respond(HttpStatusCode.Unauthorized)
                     return@get
                 }
-
-                call.respond(
-                    repository.list(userId)
-                )
+                call.respond(repository.list(userId).map(::withCentralValuation))
             }
-
 
             post {
-                val userId =
-                    call.authenticatedUserId()
-
+                val userId = call.authenticatedUserId()
                 if (userId == null) {
-                    call.respond(
-                        HttpStatusCode.Unauthorized
-                    )
+                    call.respond(HttpStatusCode.Unauthorized)
                     return@post
                 }
-
-                val item =
-                    call.receive<CollectionItemDto>()
-
+                val item = call.receive<CollectionItemDto>()
                 if (!item.isValidCollectionItem()) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf(
-                            "error" to
-                                "invalid_collection_item"
-                        )
-                    )
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_collection_item"))
                     return@post
                 }
-
-                repository.importCollection(
-                    userId,
-                    listOf(item)
-                )
-
-                call.respond(
-                    HttpStatusCode.Created,
-                    mapOf(
-                        "status" to "created",
-                        "key" to item.key
-                    )
-                )
+                repository.importCollection(userId, listOf(item))
+                call.respond(HttpStatusCode.Created, mapOf("status" to "created", "key" to item.key))
             }
-
 
             put("/{key}") {
-                val userId =
-                    call.authenticatedUserId()
-
+                val userId = call.authenticatedUserId()
                 if (userId == null) {
-                    call.respond(
-                        HttpStatusCode.Unauthorized
-                    )
+                    call.respond(HttpStatusCode.Unauthorized)
                     return@put
                 }
-
-                val key =
-                    call.parameters["key"]
-                        ?.trim()
-
-                if (
-                    key.isNullOrBlank() ||
-                    key.length > 100
-                ) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf(
-                            "error" to
-                                "invalid_key"
-                        )
-                    )
+                val key = call.parameters["key"]?.trim()
+                if (key.isNullOrBlank() || key.length > 100) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_key"))
                     return@put
                 }
-
-                val received =
-                    call.receive<CollectionItemDto>()
-
-                val item =
-                    received.copy(
-                        key = key
-                    )
-
+                val item = call.receive<CollectionItemDto>().copy(key = key)
                 if (!item.isValidCollectionItem()) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf(
-                            "error" to
-                                "invalid_collection_item"
-                        )
-                    )
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_collection_item"))
                     return@put
                 }
-
-                repository.importCollection(
-                    userId,
-                    listOf(item)
-                )
-
-                call.respond(
-                    mapOf(
-                        "status" to "updated",
-                        "key" to key
-                    )
-                )
+                repository.importCollection(userId, listOf(item))
+                call.respond(mapOf("status" to "updated", "key" to key))
             }
-
 
             delete("/{key}") {
-                val userId =
-                    call.authenticatedUserId()
-
+                val userId = call.authenticatedUserId()
                 if (userId == null) {
-                    call.respond(
-                        HttpStatusCode.Unauthorized
-                    )
+                    call.respond(HttpStatusCode.Unauthorized)
                     return@delete
                 }
-
-                val key =
-                    call.parameters["key"]
-                        ?.trim()
-
-                if (
-                    key.isNullOrBlank() ||
-                    key.length > 100
-                ) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf(
-                            "error" to
-                                "invalid_key"
-                        )
-                    )
+                val key = call.parameters["key"]?.trim()
+                if (key.isNullOrBlank() || key.length > 100) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_key"))
                     return@delete
                 }
-
-                val deleted =
-                    repository.deleteByClientKey(
-                        userId,
-                        key
-                    )
-
-                if (!deleted) {
-                    call.respond(
-                        HttpStatusCode.NotFound,
-                        mapOf(
-                            "error" to
-                                "collection_item_not_found"
-                        )
-                    )
+                if (!repository.deleteByClientKey(userId, key)) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "collection_item_not_found"))
                     return@delete
                 }
-
-                call.respond(
-                    HttpStatusCode.NoContent
-                )
+                call.respond(HttpStatusCode.NoContent)
             }
 
-
             post("/import") {
-                val userId =
-                    call.authenticatedUserId()
-
+                val userId = call.authenticatedUserId()
                 if (userId == null) {
-                    call.respond(
-                        HttpStatusCode.Unauthorized
-                    )
+                    call.respond(HttpStatusCode.Unauthorized)
                     return@post
                 }
-
-                val items =
-                    call.receive<
-                        List<CollectionItemDto>
-                    >()
-
-                if (
-                    items.size > 10_000 ||
-                    items.any {
-                        !it.isValidCollectionItem()
-                    }
-                ) {
-                    call.respond(
-                        HttpStatusCode.BadRequest,
-                        mapOf(
-                            "error" to
-                                "invalid_collection_import"
-                        )
-                    )
+                val items = call.receive<List<CollectionItemDto>>()
+                if (items.size > 10_000 || items.any { !it.isValidCollectionItem() }) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_collection_import"))
                     return@post
                 }
-
-                val imported =
-                    repository.importCollection(
-                        userId,
-                        items
-                    )
-
-                call.respond(
-                    CollectionImportResponse(
-                        imported = imported,
-                        total =
-                            repository
-                                .list(userId)
-                                .size
-                    )
-                )
+                val imported = repository.importCollection(userId, items)
+                call.respond(CollectionImportResponse(imported, repository.list(userId).size))
             }
         }
     }
 }
 
+private fun withCentralValuation(item: CollectionItemDto): CollectionItemDto {
+    val conditionFactor = PricingCondition.parse(item.condition)?.factor ?: 1.0
+    val bases = buildMap {
+        putAll(item.marketUnitEur)
+        if ("TCG" !in this && item.unitEur != null) put("TCG", item.unitEur)
+    }
+    val valued = bases.mapValues { (_, base) -> base * conditionFactor }
+    return item.copy(
+        valuedUnitEur = valued,
+        positionValueEur = valued.mapValues { (_, unit) -> unit * item.quantity }
+    )
+}
 
-private fun CollectionItemDto.isValidCollectionItem():
-    Boolean {
-
-    return key.isNotBlank() &&
+private fun CollectionItemDto.isValidCollectionItem(): Boolean =
+    key.isNotBlank() &&
         key.length <= 100 &&
         cardId.isNotBlank() &&
         languageCode.isNotBlank() &&
@@ -256,4 +120,3 @@ private fun CollectionItemDto.isValidCollectionItem():
         variant.isNotBlank() &&
         condition.isNotBlank() &&
         quantity in 1..100_000
-}
