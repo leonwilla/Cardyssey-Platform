@@ -404,7 +404,7 @@ class CardCatalogService(
                     ?: cardId,
 
             languageCode =
-                language,
+                sourceLanguage,
 
             imageBase =
                 imageBase,
