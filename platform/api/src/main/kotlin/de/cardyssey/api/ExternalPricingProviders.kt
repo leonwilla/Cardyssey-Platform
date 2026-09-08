@@ -137,6 +137,11 @@ class EbaySoldPricingService(
     private val catalog: CardCatalogService,
     private val apiKey: String
 ) {
+    private data class SoldSummary(
+        val baseEur: Double,
+        val sampleCount: Int,
+        val updatedAtMs: Long
+    )
     private val json = Json { ignoreUnknownKeys = true }
     private val http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -155,11 +160,13 @@ class EbaySoldPricingService(
         val selected = selectVariant(details, variantId, legacyVariant)
         val exactVariantMatch = selected != null
 
-        val baseEur = if (
-            apiKey.isNotBlank() && exactLanguageMatch && selected != null
-        ) {
-            soldMedian(details, selected)
-        } else null
+        val sold = if (
+        apiKey.isNotBlank() && exactLanguageMatch && selected != null
+    ) {
+        soldSummary(details, selected)
+    } else null
+
+    val baseEur = sold?.baseEur
 
         return CardPriceQuoteResponse(
             cardId = details.id,
@@ -173,7 +180,9 @@ class EbaySoldPricingService(
             conditionFactor = condition.factor,
             eur = baseEur?.times(condition.factor),
             exactLanguageMatch = exactLanguageMatch,
-            exactVariantMatch = exactVariantMatch
+            exactVariantMatch = exactVariantMatch,
+            sampleCount = sold?.sampleCount,
+            updatedAtMs = sold?.updatedAtMs
         )
     }
 
@@ -192,10 +201,10 @@ class EbaySoldPricingService(
         return details.variants.singleOrNull()
     }
 
-    private suspend fun soldMedian(
+    private suspend fun soldSummary(
         card: CatalogCardDetails,
         variant: CatalogVariant
-    ): Double? {
+    ): SoldSummary? {
         val printedNumber = if (card.officialCount > 0 && card.localId.isNotBlank()) {
             "${card.localId}/${card.officialCount}"
         } else card.localId
@@ -231,7 +240,15 @@ class EbaySoldPricingService(
             prices.drop(trim).dropLast(trim)
         } else prices
 
-        return median(trimmed).takeIf { it.isFinite() && it > 0.0 }
+        val baseEur = median(trimmed)
+        .takeIf { it.isFinite() && it > 0.0 }
+        ?: return null
+
+    return SoldSummary(
+        baseEur = baseEur,
+        sampleCount = trimmed.size,
+        updatedAtMs = System.currentTimeMillis()
+    )
     }
 
     private fun listingMatches(

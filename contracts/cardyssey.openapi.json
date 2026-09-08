@@ -5615,6 +5615,18 @@
           },
           "exactVariantMatch": {
             "type": "boolean"
+          },
+          "sampleCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true,
+            "minimum": 0
+          },
+          "updatedAtMs": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "minimum": 0
           }
         }
       }

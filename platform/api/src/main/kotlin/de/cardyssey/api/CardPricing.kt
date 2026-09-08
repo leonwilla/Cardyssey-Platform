@@ -28,7 +28,9 @@ data class CardPriceQuoteResponse(
     val conditionFactor: Double,
     val eur: Double?,
     val exactLanguageMatch: Boolean,
-    val exactVariantMatch: Boolean
+    val exactVariantMatch: Boolean,
+    val sampleCount: Int? = null,
+    val updatedAtMs: Long? = null
 )
 
 enum class PricingCondition(
