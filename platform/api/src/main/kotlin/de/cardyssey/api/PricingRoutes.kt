@@ -7,36 +7,10 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class CardPriceQuoteResponse(
-    val cardId: String,
-    val languageCode: String,
-    val variantId: String?,
-    val variantType: String?,
-    val condition: String,
-    val market: String,
-    val source: String?,
-    val baseEur: Double?,
-    val conditionFactor: Double,
-    val eur: Double?,
-    val exactLanguageMatch: Boolean,
-    val exactVariantMatch: Boolean
-)
-
-private enum class PricingCondition(
-    val factor: Double
-) {
-    MINT(1.00),
-    NEAR_MINT(0.92),
-    EXCELLENT(0.80),
-    GOOD(0.65),
-    PLAYED(0.45)
-}
 
 fun Route.pricingRoutes(
-    catalog: CardCatalogService
+    catalog: CardCatalogService,
+    pricing: CardPricingService
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/pricing") {
@@ -69,17 +43,22 @@ fun Route.pricingRoutes(
                     return@get
                 }
 
-                val condition =
+                val rawCondition =
                     call.request
                         .queryParameters["condition"]
-                        ?.trim()
-                        ?.uppercase()
-                        ?.let {
-                            runCatching {
-                                PricingCondition.valueOf(it)
-                            }.getOrNull()
-                        }
-                        ?: PricingCondition.NEAR_MINT
+
+                val condition =
+                    PricingCondition.parse(
+                        rawCondition
+                    )
+
+                if (condition == null) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "invalid_condition")
+                    )
+                    return@get
+                }
 
                 val requestedVariantId =
                     call.request
@@ -94,13 +73,16 @@ fun Route.pricingRoutes(
                         ?.uppercase()
                         ?.takeIf(String::isNotBlank)
 
-                val details =
-                    catalog.details(
+                val quote =
+                    pricing.quote(
                         cardId = cardId,
-                        language = language
+                        language = language,
+                        variantId = requestedVariantId,
+                        legacyVariant = requestedLegacyVariant,
+                        condition = condition
                     )
 
-                if (details == null) {
+                if (quote == null) {
                     call.respond(
                         HttpStatusCode.NotFound,
                         mapOf("error" to "card_not_found")
@@ -108,70 +90,7 @@ fun Route.pricingRoutes(
                     return@get
                 }
 
-                val selected =
-                    when {
-                        requestedVariantId != null ->
-                            details.variants
-                                .firstOrNull {
-                                    it.id == requestedVariantId
-                                }
-
-                        requestedLegacyVariant != null -> {
-                            val candidates =
-                                details.variants.filter {
-                                    it.legacyVariant ==
-                                        requestedLegacyVariant
-                                }
-
-                            candidates
-                                .singleOrNull()
-                        }
-
-                        details.variants.size == 1 ->
-                            details.variants.first()
-
-                        else ->
-                            null
-                    }
-
-                val exactVariantMatch =
-                    selected != null
-
-                val baseEur =
-                    selected
-                        ?.tcgDexEur
-                        ?.takeIf {
-                            it.isFinite() &&
-                                it > 0.0
-                        }
-
-                val conditioned =
-                    baseEur?.times(
-                        condition.factor
-                    )
-
-                call.respond(
-                    CardPriceQuoteResponse(
-                        cardId = details.id,
-                        languageCode = details.languageCode,
-                        variantId = selected?.id,
-                        variantType = selected?.type,
-                        condition = condition.name,
-                        market = "TCG",
-                        source =
-                            if (baseEur != null) {
-                                "TCGDEX"
-                            } else {
-                                null
-                            },
-                        baseEur = baseEur,
-                        conditionFactor = condition.factor,
-                        eur = conditioned,
-                        exactLanguageMatch =
-                            details.languageCode == language,
-                        exactVariantMatch = exactVariantMatch
-                    )
-                )
+                call.respond(quote)
             }
         }
     }
