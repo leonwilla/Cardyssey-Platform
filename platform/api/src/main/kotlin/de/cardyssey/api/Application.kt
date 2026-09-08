@@ -100,6 +100,11 @@ fun Application.module() {
             catalogCache
         )
 
+    val cardPricing =
+        CardPricingService(
+            cardCatalog
+        )
+
     install(CallLogging)
 
     install(ContentNegotiation) {
@@ -314,7 +319,8 @@ fun Application.module() {
         )
 
         pricingRoutes(
-            cardCatalog
+            catalog = cardCatalog,
+            pricing = cardPricing
         )
     }
 }
