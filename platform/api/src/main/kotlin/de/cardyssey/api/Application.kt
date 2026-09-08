@@ -312,6 +312,10 @@ fun Application.module() {
         setCatalogRoutes(
             cardCatalog
         )
+
+        pricingRoutes(
+            cardCatalog
+        )
     }
 }
 
