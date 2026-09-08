@@ -1,5 +1,7 @@
 package de.cardyssey.api
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -7,7 +9,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -177,44 +178,46 @@ private class TcgDexCentralPricingProvider :
         )
     }
 
-    private fun fetchCard(
+    private suspend fun fetchCard(
         language: String,
         cardId: String
     ): JsonObject? =
-        runCatching {
-            val request =
-                HttpRequest
-                    .newBuilder(
-                        URI.create(
-                            "$BASE/$language/cards/$cardId"
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request =
+                    HttpRequest
+                        .newBuilder(
+                            URI.create(
+                                "$BASE/$language/cards/$cardId"
+                            )
                         )
-                    )
-                    .timeout(
-                        Duration.ofSeconds(15)
-                    )
-                    .header(
-                        "Accept",
-                        "application/json"
-                    )
-                    .GET()
-                    .build()
+                        .timeout(
+                            Duration.ofSeconds(15)
+                        )
+                        .header(
+                            "Accept",
+                            "application/json"
+                        )
+                        .GET()
+                        .build()
 
-            val response =
-                http.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString()
-                )
+                val response =
+                    http.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                    )
 
-            if (
-                response.statusCode() !in 200..299
-            ) {
-                return@runCatching null
-            }
+                if (
+                    response.statusCode() !in 200..299
+                ) {
+                    return@runCatching null
+                }
 
-            json.parseToJsonElement(
-                response.body()
-            ).jsonObject
-        }.getOrNull()
+                json.parseToJsonElement(
+                    response.body()
+                ).jsonObject
+            }.getOrNull()
+        }
 
     private fun parseExactPrice(
         element: kotlinx.serialization.json.JsonElement
