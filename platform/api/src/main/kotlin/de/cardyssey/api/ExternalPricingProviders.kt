@@ -16,6 +16,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.roundToLong
 
 internal class JustTcgCentralPricingProvider(
@@ -222,33 +223,115 @@ class EbaySoldPricingService(
         val root = getJson(url) ?: return null
         val items = root["items"] as? JsonArray ?: return null
 
-        val prices = items.mapNotNull { it as? JsonObject }
-            .filter { listingMatches(it, card, variant, printedNumber) }
-            .mapNotNull { item ->
-                val currency = item.string("soldCurrency")?.uppercase(Locale.ROOT)
-                if (currency != "EUR") return@mapNotNull null
-                item.double("totalPrice") ?: item.double("soldPrice")
-            }
-            .filter { it.isFinite() && it > 0.0 }
-            .sorted()
+        val unique = linkedMapOf<String, Double>()
 
-        if (prices.size < 3) return null
+        items.mapNotNull { it as? JsonObject }.forEach { item ->
+            if (!listingMatches(item, card, variant, printedNumber)) return@forEach
 
-        // Robuste Mitte: bei genügend Samples die äußeren 10 % abschneiden.
-        val trimmed = if (prices.size >= 10) {
-            val trim = (prices.size * 0.10).roundToLong().toInt().coerceAtLeast(1)
-            prices.drop(trim).dropLast(trim)
-        } else prices
+            if (
+                item.bool("bestOfferAccepted") == true ||
+                item.bool("invalid") == true ||
+                item.bool("isInvalid") == true
+            ) return@forEach
 
-        val baseEur = median(trimmed)
-        .takeIf { it.isFinite() && it > 0.0 }
-        ?: return null
+            val currency = item.string("soldCurrency")?.uppercase(Locale.ROOT)
+            if (currency != "EUR") return@forEach
 
-    return SoldSummary(
-        baseEur = baseEur,
-        sampleCount = trimmed.size,
-        updatedAtMs = System.currentTimeMillis()
-    )
+            val rawPrice =
+                item.double("totalPrice")
+                    ?: item.double("soldPrice")
+                    ?: return@forEach
+
+            if (!rawPrice.isFinite() || rawPrice <= 0.0) return@forEach
+
+            val basePrice =
+                normalizeSoldCondition(item, rawPrice)
+                    ?: return@forEach
+
+            if (!basePrice.isFinite() || basePrice <= 0.0) return@forEach
+
+            val stableId =
+                item.string("itemId")
+                    ?: item.string("listingId")
+                    ?: item.string("id")
+                    ?: item.string("url")
+                    ?: listOf(
+                        normalizeText(item.string("title").orEmpty()),
+                        rawPrice.toString(),
+                        item.string("endTime").orEmpty(),
+                        item.string("soldDate").orEmpty()
+                    ).joinToString("|")
+
+            unique.putIfAbsent(stableId, basePrice)
+        }
+
+        if (unique.size < 3) return null
+
+        val filtered = rejectOutliers(unique.values.toList())
+        if (filtered.size < 3) return null
+
+        val baseEur = median(filtered)
+            .takeIf { it.isFinite() && it > 0.0 }
+            ?: return null
+
+        return SoldSummary(
+            baseEur = baseEur,
+            sampleCount = filtered.size,
+            updatedAtMs = System.currentTimeMillis()
+        )
+    }
+
+    private fun normalizeSoldCondition(
+        item: JsonObject,
+        rawPrice: Double
+    ): Double? {
+        val conditionText = normalizeText(
+            listOf(
+                item.string("condition").orEmpty(),
+                item.string("itemCondition").orEmpty(),
+                item.string("conditionName").orEmpty(),
+                item.string("title").orEmpty()
+            ).joinToString(" ")
+        )
+
+        val condition = when {
+            "near mint" in conditionText ||
+                Regex("""\bnm\b""").containsMatchIn(conditionText) ->
+                PricingCondition.NEAR_MINT
+
+            "mint" in conditionText ->
+                PricingCondition.MINT
+
+            "excellent" in conditionText ||
+                Regex("""\bex\b""").containsMatchIn(conditionText) ->
+                PricingCondition.EXCELLENT
+
+            "played" in conditionText ->
+                PricingCondition.PLAYED
+
+            "good" in conditionText ->
+                PricingCondition.GOOD
+
+            else -> null
+        } ?: return null
+
+        return rawPrice / condition.factor
+    }
+
+    private fun rejectOutliers(values: List<Double>): List<Double> {
+        if (values.size < 5) return values
+
+        val center = median(values)
+        val deviations = values.map { abs(it - center) }
+        val mad = median(deviations)
+
+        if (!mad.isFinite() || mad <= 0.0) return values
+
+        val filtered = values.filter {
+            abs(it - center) / mad <= 3.5
+        }
+
+        return if (filtered.size >= 3) filtered else values
     }
 
     private fun listingMatches(
@@ -316,6 +399,15 @@ class EbaySoldPricingService(
 
 private fun JsonObject.string(key: String): String? =
     (this[key] as? JsonPrimitive)?.content?.trim()?.takeIf(String::isNotBlank)
+
+private fun JsonObject.bool(key: String): Boolean? =
+    (this[key] as? JsonPrimitive)?.content?.trim()?.lowercase(Locale.ROOT)?.let {
+        when (it) {
+            "true" -> true
+            "false" -> false
+            else -> null
+        }
+    }
 
 private fun JsonObject.double(key: String): Double? =
     (this[key] as? JsonPrimitive)?.doubleOrNull
