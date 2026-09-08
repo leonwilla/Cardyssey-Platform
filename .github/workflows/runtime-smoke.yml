@@ -1,6 +1,12 @@
 name: Runtime Smoke
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/runtime-smoke.sh"
+      - ".github/workflows/runtime-smoke.yml"
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
