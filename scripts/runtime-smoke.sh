@@ -17,6 +17,19 @@ check() {
   echo "OK: $label"
 }
 
+check_status() {
+  label="$1"
+  url="$2"
+  expected="$3"
+  code="$(curl -L -sS -o /tmp/cardyssey-smoke-status-body -w '%{http_code}' "$url" || true)"
+  if [ "$code" != "$expected" ]; then
+    echo "FAIL: $label -> HTTP $code (expected $expected)"
+    cat /tmp/cardyssey-smoke-status-body 2>/dev/null || true
+    return 1
+  fi
+  echo "OK: $label -> HTTP $code"
+}
+
 check_android_metadata() {
   url="$BASE_WEB_URL/api/android/latest"
   code="$(curl -L -sS -o /tmp/cardyssey-android-release.json -w '%{http_code}' "$url" || true)"
@@ -58,6 +71,10 @@ check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
 check_android_metadata
 check "Android latest APK" "$ANDROID_APK_URL"
 check "API health" "$BASE_API_URL$API_PREFIX/health"
+check_status \
+  "Central pricing authentication guard" \
+  "$BASE_API_URL$API_PREFIX/pricing/cards/__smoke__?language=en&variant=NORMAL" \
+  "401"
 
 if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
   auth_check() {
