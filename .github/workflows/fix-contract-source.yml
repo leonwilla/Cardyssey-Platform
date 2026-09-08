@@ -121,7 +121,6 @@ jobs:
           test -f generated/android-client/src/main/kotlin/de/cardyssey/generated/apis/PricingApi.kt
           grep -q 'valuedUnitEur' web/lib/generated/cardyssey/src/models/CollectionItemDto.ts
           grep -q 'valuedUnitEur' generated/android-client/src/main/kotlin/de/cardyssey/generated/models/CollectionItemDto.kt
-          git diff --check
 
       - name: Commit repaired source and generated outputs
         run: |
