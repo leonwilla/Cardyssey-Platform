@@ -1,0 +1,156 @@
+name: Centralize Web Pricing
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/centralize-web-pricing.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: centralize-web-pricing
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Route collection add pricing through Tiny
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("web/components/AddCardDialog.tsx")
+          text = path.read_text(encoding="utf-8")
+
+          marker = '"/api/pricing/cards/'
+          if marker in text:
+              print("web central pricing already wired")
+              raise SystemExit(0)
+
+          old = '''      const marketUnitEur:
+        Record<string, number> =
+          {};
+
+      if (
+        typeof selectedVariant.tcgDexEur ===
+        "number"
+      ) {
+        marketUnitEur.TCG =
+          selectedVariant.tcgDexEur;
+      }
+
+      const item = {
+'''
+
+          new = '''      const priceParams =
+        new URLSearchParams({
+          language:
+            selected.languageCode,
+          variantId:
+            selectedVariant.id,
+          condition,
+        });
+
+      let centralBaseEur:
+        number | null = null;
+
+      const priceResponse =
+        await fetch(
+          `/api/pricing/cards/${encodeURIComponent(selected.id)}?${priceParams.toString()}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+      if (priceResponse.ok) {
+        const quote =
+          await priceResponse.json() as {
+            baseEur?: number | null;
+            exactLanguageMatch?: boolean;
+            exactVariantMatch?: boolean;
+          };
+
+        if (
+          quote.exactLanguageMatch === true &&
+          quote.exactVariantMatch === true &&
+          typeof quote.baseEur === "number" &&
+          Number.isFinite(quote.baseEur) &&
+          quote.baseEur > 0
+        ) {
+          centralBaseEur =
+            quote.baseEur;
+        }
+      }
+
+      const marketUnitEur:
+        Record<string, number> =
+          centralBaseEur == null
+            ? {}
+            : { TCG: centralBaseEur };
+
+      const item = {
+'''
+
+          if old not in text:
+              raise SystemExit("web add-card pricing anchor not found")
+
+          text = text.replace(old, new, 1)
+
+          old_unit = '''        unitEur:
+          selectedVariant.tcgDexEur ??
+          null,
+'''
+
+          new_unit = '''        unitEur:
+          centralBaseEur,
+'''
+
+          if old_unit not in text:
+              raise SystemExit("web unitEur anchor not found")
+
+          text = text.replace(old_unit, new_unit, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Generate clients
+        run: bash scripts/generate-clients.sh
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build web
+        working-directory: web
+        env:
+          CARDYSSEY_API_URL: http://127.0.0.1:8081
+          NEXT_PUBLIC_SHOP_URL: https://shop.cardyssey.de
+        run: npm run build
+
+      - name: Commit migration
+        run: |
+          if git diff --quiet -- web/components/AddCardDialog.tsx; then
+            echo "Nothing to migrate"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add web/components/AddCardDialog.tsx
+            git commit -m "refactor: use central pricing when adding cards"
+            git push
+          fi
