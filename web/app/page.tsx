@@ -104,10 +104,7 @@ export default async function Home() {
 
             {androidRelease && (
               <p className="androidReleaseMeta">
-                Android {androidRelease.versionName}
-                {" · "}Build {androidRelease.buildNumber}
-                {" · "}
-                {formatAndroidReleaseDate(
+                Aktualisiert: {formatAndroidReleaseDate(
                   androidRelease.builtAt
                 )}
               </p>
@@ -230,8 +227,9 @@ export default async function Home() {
 
             {androidRelease && (
               <p className="androidReleaseMeta">
-                Aktuelle APK: {androidRelease.versionName}
-                {" · "}Build {androidRelease.buildNumber}
+                Aktualisiert: {formatAndroidReleaseDate(
+                  androidRelease.builtAt
+                )}
               </p>
             )}
           </div>
