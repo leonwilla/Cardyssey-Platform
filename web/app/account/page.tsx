@@ -445,28 +445,11 @@ export default function AccountPage() {
             </p>
 
             {androidRelease ? (
-              <div className="androidReleaseMeta">
-                <strong>
-                  {androidRelease.versionName}
-                </strong>
-
-                <span>
-                  Build {androidRelease.buildNumber}
-                  {" · "}
-                  bereitgestellt{" "}
-                  {formatAndroidReleaseDate(
-                    androidRelease.builtAt
-                  )}
-                </span>
-
-                <span>
-                  Commit{" "}
-                  {androidRelease.commit.slice(
-                    0,
-                    7
-                  )}
-                </span>
-              </div>
+              <p className="androidReleaseMeta">
+                Aktualisiert: {formatAndroidReleaseDate(
+                  androidRelease.builtAt
+                )}
+              </p>
             ) : (
               <p className="androidReleaseMeta">
                 Aktuelle Versionsinformationen
