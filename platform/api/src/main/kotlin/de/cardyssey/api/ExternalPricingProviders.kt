@@ -133,7 +133,7 @@ internal class JustTcgCentralPricingProvider(
     }
 }
 
-internal class EbaySoldPricingService(
+class EbaySoldPricingService(
     private val catalog: CardCatalogService,
     private val apiKey: String
 ) {

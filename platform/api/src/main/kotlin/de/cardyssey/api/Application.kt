@@ -102,7 +102,18 @@ fun Application.module() {
 
     val cardPricing =
         CardPricingService(
-            cardCatalog
+            catalog = cardCatalog,
+            justTcgApiKey =
+                System.getenv("JUSTTCG_API_KEY")
+        )
+
+    val ebayPricing =
+        EbaySoldPricingService(
+            catalog = cardCatalog,
+            apiKey =
+                System.getenv("SOLDCOMPS_API_KEY")
+                    ?.trim()
+                    .orEmpty()
         )
 
     install(CallLogging)
@@ -320,7 +331,8 @@ fun Application.module() {
 
         pricingRoutes(
             catalog = cardCatalog,
-            pricing = cardPricing
+            pricing = cardPricing,
+            ebayPricing = ebayPricing
         )
     }
 }

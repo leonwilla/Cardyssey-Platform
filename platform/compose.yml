@@ -49,6 +49,9 @@ services:
 
       JWT_SECRET: ${JWT_SECRET}
 
+      JUSTTCG_API_KEY: ${JUSTTCG_API_KEY:-}
+      SOLDCOMPS_API_KEY: ${SOLDCOMPS_API_KEY:-}
+
       AVATAR_DIR: /data/avatars
       PUBLIC_API_URL: https://api.cardyssey.de
 

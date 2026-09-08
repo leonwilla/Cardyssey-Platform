@@ -58,12 +58,12 @@ enum class PricingCondition(
     }
 }
 
-private data class CentralProviderQuote(
+internal data class CentralProviderQuote(
     val source: String,
     val baseEur: Double
 )
 
-private interface CentralPricingProvider {
+internal interface CentralPricingProvider {
     suspend fun quote(
         card: CatalogCardDetails,
         variant: CatalogVariant
@@ -390,13 +390,20 @@ private class TcgDexCentralPricingProvider :
 }
 
 class CardPricingService(
-    private val catalog: CardCatalogService
+    private val catalog: CardCatalogService,
+    justTcgApiKey: String? = null
 ) {
     private val providers:
         List<CentralPricingProvider> =
-        listOf(
-            TcgDexCentralPricingProvider()
-        )
+        buildList {
+            add(TcgDexCentralPricingProvider())
+            justTcgApiKey
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let {
+                    add(JustTcgCentralPricingProvider(it))
+                }
+        }
 
     suspend fun quote(
         cardId: String,

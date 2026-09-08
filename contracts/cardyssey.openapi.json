@@ -4047,6 +4047,19 @@
                 "PLAYED"
               ]
             }
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "TCG",
+                "EBAY"
+              ],
+              "default": "TCG"
+            }
           }
         ],
         "responses": {
@@ -5570,14 +5583,17 @@
           "market": {
             "type": "string",
             "enum": [
-              "TCG"
+              "TCG",
+              "EBAY"
             ]
           },
           "source": {
             "type": "string",
             "nullable": true,
             "enum": [
-              "TCGDEX"
+              "TCGDEX",
+              "JUSTTCG",
+              "SOLDCOMPS"
             ]
           },
           "baseEur": {
