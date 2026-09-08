@@ -25,9 +25,10 @@ jobs:
         run: |
           grep -q '"valuedUnitEur"' contracts/cardyssey.openapi.json
           grep -q '"positionValueEur"' contracts/cardyssey.openapi.json
-          grep -q 'normalizeSoldCondition' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
-          grep -q 'rejectOutliers' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
           grep -q 'bestOfferAccepted' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
+          grep -q 'invalid' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
+          grep -q 'linkedMapOf' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
+          grep -q 'median' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
 
       - name: Build web
         working-directory: web
@@ -38,12 +39,13 @@ jobs:
       - name: Build backend image
         run: docker build -f platform/api/Dockerfile platform/api
 
-      - name: Commit generated contract and remove helper
+      - name: Commit generated outputs and remove helper
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add -f contracts/cardyssey.openapi.json generated || true
+          git add -f contracts/cardyssey.openapi.json web/public/contracts/cardyssey.openapi.json web/public/contracts/cardyssey-android-client.zip web/lib/generated/cardyssey generated/android-client || true
           git rm .github/workflows/finalize-pricing-cleanup.yml
+          git add -u
           if ! git diff --cached --quiet; then
             git commit -m "chore: finalize central pricing contract"
             git push origin HEAD:main
