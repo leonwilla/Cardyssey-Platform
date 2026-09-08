@@ -27,6 +27,8 @@ export type PortfolioItem = {
   marketUnitEur: Record<string, number>;
   marketUpdatedAtMs?: Record<string, number>;
   marketSampleCount?: Record<string, number>;
+  valuedUnitEur?: Record<string, number>;
+  positionValueEur?: Record<string, number>;
 };
 
 export type User = {
