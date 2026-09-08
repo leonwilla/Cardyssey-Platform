@@ -126,7 +126,8 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add scripts/write-contract.py contracts/cardyssey.openapi.json web/public/contracts/cardyssey.openapi.json web/public/contracts/cardyssey-android-client.zip web/lib/generated/cardyssey generated/android-client
+          git add scripts/write-contract.py contracts/cardyssey.openapi.json web/public/contracts/cardyssey.openapi.json web/public/contracts/cardyssey-android-client.zip
+          git add -f web/lib/generated/cardyssey generated/android-client
           git rm .github/workflows/fix-contract-source.yml
           git commit -m "fix: keep central pricing in generated contract"
           git push origin HEAD:main
