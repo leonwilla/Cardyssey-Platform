@@ -45,8 +45,54 @@ enum class PricingCondition(
     }
 }
 
+private data class CentralProviderQuote(
+    val source: String,
+    val baseEur: Double
+)
+
+private interface CentralPricingProvider {
+    suspend fun quote(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): CentralProviderQuote?
+}
+
+/**
+ * Erster zentraler Provider.
+ *
+ * Weitere Quellen wie JustTCG oder SoldComps werden künftig hier
+ * serverseitig als zusätzliche Provider ergänzt. Web und Android
+ * müssen dafür nicht geändert werden.
+ */
+private class TcgDexCentralPricingProvider :
+    CentralPricingProvider {
+
+    override suspend fun quote(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): CentralProviderQuote? {
+        val baseEur =
+            variant.tcgDexEur
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+                ?: return null
+
+        return CentralProviderQuote(
+            source = "TCGDEX",
+            baseEur = baseEur
+        )
+    }
+}
+
 class CardPricingService(
-    private val catalog: CardCatalogService
+    private val catalog: CardCatalogService,
+    private val providers:
+        List<CentralPricingProvider> =
+        listOf(
+            TcgDexCentralPricingProvider()
+        )
 ) {
     suspend fun quote(
         cardId: String,
@@ -98,13 +144,20 @@ class CardPricingService(
                     null
             }
 
-        val baseEur =
-            selected
-                ?.tcgDexEur
-                ?.takeIf {
-                    it.isFinite() &&
-                        it > 0.0
+        val providerQuote =
+            selected?.let { variant ->
+                providers.firstNotNullOfOrNull {
+                    provider ->
+
+                    provider.quote(
+                        card = details,
+                        variant = variant
+                    )
                 }
+            }
+
+        val baseEur =
+            providerQuote?.baseEur
 
         return CardPriceQuoteResponse(
             cardId = details.id,
@@ -113,12 +166,7 @@ class CardPricingService(
             variantType = selected?.type,
             condition = condition.name,
             market = "TCG",
-            source =
-                if (baseEur != null) {
-                    "TCGDEX"
-                } else {
-                    null
-                },
+            source = providerQuote?.source,
             baseEur = baseEur,
             conditionFactor = condition.factor,
             eur =
