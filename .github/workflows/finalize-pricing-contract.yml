@@ -74,7 +74,7 @@ jobs:
           rm .github/workflows/finalize-pricing-contract.yml
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add contracts/cardyssey.openapi.json platform/api/src/main/kotlin/de/cardyssey/api/CollectionRoutes.kt web/lib/generated/cardyssey web/public/contracts/cardyssey-android-client.zip .github/workflows/finalize-pricing-contract.yml
+          git add contracts/cardyssey.openapi.json platform/api/src/main/kotlin/de/cardyssey/api/CollectionRoutes.kt web/public/contracts/cardyssey-android-client.zip .github/workflows/finalize-pricing-contract.yml
           if ! git diff --cached --quiet; then
             git commit -m 'fix: finalize central collection valuation contract'
             git push origin main
