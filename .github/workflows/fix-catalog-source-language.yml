@@ -1,0 +1,60 @@
+name: Fix Catalog Source Language
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/fix-catalog-source-language.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-catalog-source-language
+  cancel-in-progress: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Report actual catalog source language
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("platform/api/src/main/kotlin/de/cardyssey/api/CardCatalog.kt")
+          text = path.read_text(encoding="utf-8")
+
+          old = '''            languageCode =
+                language,
+'''
+          new = '''            languageCode =
+                sourceLanguage,
+'''
+
+          if old not in text:
+              raise SystemExit("expected CardCatalog languageCode block not found")
+
+          path.write_text(
+              text.replace(old, new, 1),
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Build backend
+        run: docker build ./platform/api
+
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add platform/api/src/main/kotlin/de/cardyssey/api/CardCatalog.kt
+          git commit -m "fix: report actual catalog source language"
+          git push
