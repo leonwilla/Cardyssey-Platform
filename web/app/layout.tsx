@@ -2,8 +2,22 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://cardyssey.de"),
   title: "Cardyssey",
-  description: "Cardyssey – Sammeln, Scannen, Tauschen und Handeln."
+  description: "Cardyssey – Sammeln, Scannen, Tauschen und Handeln.",
+  openGraph: {
+    title: "Cardyssey",
+    description: "Deine TCG-Plattform für Sammlung, Scanner, Wishlist, Marketplace und Community.",
+    url: "https://cardyssey.de",
+    siteName: "Cardyssey",
+    locale: "de_DE",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cardyssey",
+    description: "Deine TCG-Plattform für Sammlung, Scanner, Wishlist, Marketplace und Community.",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
