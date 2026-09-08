@@ -1,0 +1,291 @@
+name: Finalize Central Pricing Cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/finalize-pricing-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Finalize contract source and server pricing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Keep the contract generator as the source of truth, then regenerate both
+          # the source contract and the publicly served contract.
+          p = Path('scripts/write-contract.py')
+          text = p.read_text()
+          old = '''                "marketSampleCount":
+                    map_of(
+                        integer()
+                    )
+'''
+          new = '''                "marketSampleCount":
+                    map_of(
+                        integer()
+                    ),
+
+                "valuedUnitEur":
+                    map_of(
+                        number()
+                    ),
+
+                "positionValueEur":
+                    map_of(
+                        number()
+                    )
+'''
+          if '"valuedUnitEur"' not in text:
+              if old not in text:
+                  raise SystemExit('CollectionItemDto insertion point not found')
+              text = text.replace(old, new, 1)
+              p.write_text(text)
+
+          # Friend collection totals must use the single central PricingCondition factors
+          # instead of duplicating the factor table in SQL.
+          p = Path('platform/api/src/main/kotlin/de/cardyssey/api/FriendCollectionRepository.kt')
+          text = p.read_text()
+          start = text.index('    private fun calculateValue(')
+          end = text.rfind('\n}')
+          replacement = '''    private fun calculateValue(
+        userId: UUID
+    ): Double? {
+        var total = 0.0
+        var hasValue = false
+
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT
+                    COALESCE(mp.value_eur, c.unit_eur) AS base_eur,
+                    c.quantity,
+                    c.condition
+                FROM collection_items c
+                LEFT JOIN market_prices mp
+                  ON mp.collection_item_id = c.id
+                 AND mp.market = 'TCG'
+                WHERE c.user_id = ?
+                  AND c.deleted_at IS NULL
+                """.trimIndent()
+            ).use { statement ->
+                statement.setObject(1, userId)
+                statement.executeQuery().use { result ->
+                    while (result.next()) {
+                        val base = result.getDouble("base_eur")
+                        if (result.wasNull() || !base.isFinite() || base <= 0.0) continue
+
+                        val condition = PricingCondition.parse(result.getString("condition"))
+                            ?: continue
+                        val quantity = result.getInt("quantity").coerceAtLeast(0)
+                        total += base * condition.factor * quantity
+                        hasValue = true
+                    }
+                }
+            }
+        }
+
+        return total.takeIf { hasValue && it.isFinite() }
+    }
+'''
+          text = text[:start] + replacement + text[end:]
+          p.write_text(text)
+
+          # Harden SoldComps matching: reject invalid/best-offer results, deduplicate,
+          # normalize explicit sold conditions back to central base price, enforce
+          # variant stamps, and use MAD-based outlier filtering.
+          p = Path('platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt')
+          text = p.read_text()
+          start = text.index('    private suspend fun soldSummary(')
+          end = text.index('    private fun languageMatches(', start)
+          replacement = '''    private suspend fun soldSummary(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): SoldSummary? {
+        val printedNumber = if (card.officialCount > 0 && card.localId.isNotBlank()) {
+            "${card.localId}/${card.officialCount}"
+        } else card.localId
+
+        val query = listOf(card.name, printedNumber)
+            .filter(String::isNotBlank)
+            .joinToString(" ")
+
+        val url = "https://api.sold-comps.com/v1/scrape" +
+            "?keyword=${encode(query)}" +
+            "&ebaySite=ebay.de&page=1&count=200" +
+            "&sortOrder=endedRecently&sold=true" +
+            "&includeCompleteListing=true&exactMatch=true"
+
+        val root = getJson(url) ?: return null
+        val items = root["items"] as? JsonArray ?: return null
+        val unique = linkedMapOf<String, Double>()
+
+        items.mapNotNull { it as? JsonObject }.forEach { item ->
+            if (!listingMatches(item, card, variant, printedNumber)) return@forEach
+            if (item.bool("bestOfferAccepted") == true ||
+                item.bool("invalid") == true ||
+                item.bool("isInvalid") == true
+            ) return@forEach
+
+            val currency = item.string("soldCurrency")?.uppercase(Locale.ROOT)
+            if (currency != "EUR") return@forEach
+            val rawPrice = item.double("totalPrice") ?: item.double("soldPrice") ?: return@forEach
+            if (!rawPrice.isFinite() || rawPrice <= 0.0) return@forEach
+
+            val basePrice = normalizeSoldCondition(item, rawPrice) ?: return@forEach
+            if (!basePrice.isFinite() || basePrice <= 0.0) return@forEach
+
+            val stableId = item.string("itemId")
+                ?: item.string("ebayItemId")
+                ?: item.string("id")
+                ?: "${normalizeText(item.string("title").orEmpty())}|${"%.2f".format(Locale.ROOT, rawPrice)}"
+            unique.putIfAbsent(stableId, basePrice)
+        }
+
+        val prices = unique.values.sorted()
+        if (prices.size < 3) return null
+
+        val filtered = rejectOutliers(prices)
+        if (filtered.size < 3) return null
+        val baseEur = median(filtered).takeIf { it.isFinite() && it > 0.0 } ?: return null
+
+        return SoldSummary(
+            baseEur = baseEur,
+            sampleCount = filtered.size,
+            updatedAtMs = System.currentTimeMillis()
+        )
+    }
+
+    private fun listingMatches(
+        item: JsonObject,
+        card: CatalogCardDetails,
+        variant: CatalogVariant,
+        printedNumber: String
+    ): Boolean {
+        val title = normalizeText(item.string("title").orEmpty())
+        if (title.isBlank()) return false
+
+        val cardName = normalizeText(card.name)
+        if (cardName.isNotBlank() && cardName !in title) return false
+
+        val numberTokens = listOf(
+            normalizeText(printedNumber),
+            normalizeText(card.localId)
+        ).filter(String::isNotBlank)
+        if (numberTokens.none { it in title }) return false
+        if (!languageMatches(title, card.languageCode)) return false
+
+        val reverse = "reverse" in title
+        val holo = "holo" in title || "foil" in title
+        val legacyMatches = when (variant.legacyVariant.uppercase(Locale.ROOT)) {
+            "REVERSE" -> reverse
+            "HOLO" -> holo && !reverse
+            "NORMAL" -> !reverse && !holo
+            else -> false
+        }
+        if (!legacyMatches) return false
+
+        val requiredStamps = variant.stamps
+            .map(::normalizeText)
+            .filter { it.length >= 2 }
+        if (requiredStamps.any { it !in title }) return false
+
+        return true
+    }
+
+    private fun normalizeSoldCondition(item: JsonObject, soldEur: Double): Double? {
+        val conditionText = normalizeText(
+            listOfNotNull(
+                item.string("condition"),
+                item.string("itemCondition"),
+                item.string("title")
+            ).joinToString(" ")
+        )
+
+        val condition = when {
+            "near mint" in conditionText || Regex("(^| )nm( |$)").containsMatchIn(conditionText) -> PricingCondition.NEAR_MINT
+            "mint" in conditionText -> PricingCondition.MINT
+            "excellent" in conditionText || Regex("(^| )ex( |$)").containsMatchIn(conditionText) -> PricingCondition.EXCELLENT
+            "played" in conditionText || "heavily played" in conditionText -> PricingCondition.PLAYED
+            Regex("(^| )good( |$)").containsMatchIn(conditionText) -> PricingCondition.GOOD
+            else -> null
+        } ?: return null
+
+        return soldEur / condition.factor
+    }
+
+    private fun rejectOutliers(values: List<Double>): List<Double> {
+        if (values.size < 5) return values
+        val center = median(values)
+        val deviations = values.map { kotlin.math.abs(it - center) }
+        val mad = median(deviations)
+        if (mad <= 0.0 || !mad.isFinite()) return values
+        val limit = 3.5 * 1.4826 * mad
+        return values.filter { kotlin.math.abs(it - center) <= limit }
+    }
+
+'''
+          text = text[:start] + replacement + text[end:]
+          if 'private fun JsonObject.bool' not in text:
+              marker = '''private fun JsonObject.double(key: String): Double? =
+    (this[key] as? JsonPrimitive)?.doubleOrNull
+'''
+              add = marker + '''\nprivate fun JsonObject.bool(key: String): Boolean? =
+    (this[key] as? JsonPrimitive)?.content?.trim()?.lowercase(Locale.ROOT)?.let {
+        when (it) {
+            "true", "1", "yes" -> true
+            "false", "0", "no" -> false
+            else -> null
+        }
+    }
+'''
+              if marker not in text:
+                  raise SystemExit('JsonObject.double marker not found')
+              text = text.replace(marker, add, 1)
+          p.write_text(text)
+          PY
+
+          python3 scripts/write-contract.py
+          bash scripts/generate-clients.sh
+
+      - name: Verify centralization invariants
+        run: |
+          grep -q 'valuedUnitEur' contracts/cardyssey.openapi.json
+          grep -q 'positionValueEur' contracts/cardyssey.openapi.json
+          grep -q 'valuedUnitEur' web/public/contracts/cardyssey.openapi.json
+          grep -q 'positionValueEur' web/public/contracts/cardyssey.openapi.json
+          grep -q 'valuedUnitEur' generated/android-client/src/main/kotlin/de/cardyssey/generated/models/CollectionItemDto.kt
+          ! grep -q "WHEN 'NEAR_MINT' THEN 0.92" platform/api/src/main/kotlin/de/cardyssey/api/FriendCollectionRepository.kt
+          grep -q 'PricingCondition.parse' platform/api/src/main/kotlin/de/cardyssey/api/FriendCollectionRepository.kt
+          grep -q 'rejectOutliers' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
+          grep -q 'bestOfferAccepted' platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt
+
+      - name: Build web
+        working-directory: web
+        env:
+          CARDYSSEY_API_URL: http://127.0.0.1:8081
+          NEXT_PUBLIC_SHOP_URL: https://shop.cardyssey.de
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build backend image
+        run: docker build -t cardyssey-api-check platform/api
+
+      - name: Commit cleanup and remove helper
+        run: |
+          rm .github/workflows/finalize-pricing-cleanup.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add scripts/write-contract.py contracts/cardyssey.openapi.json web/public/contracts/cardyssey.openapi.json web/public/contracts/cardyssey-android-client.zip platform/api/src/main/kotlin/de/cardyssey/api/FriendCollectionRepository.kt platform/api/src/main/kotlin/de/cardyssey/api/ExternalPricingProviders.kt .github/workflows/finalize-pricing-cleanup.yml
+          git commit -m 'fix: finish central pricing and valuation cleanup'
+          git push origin main
