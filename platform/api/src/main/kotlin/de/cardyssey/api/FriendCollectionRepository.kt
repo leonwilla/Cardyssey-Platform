@@ -134,22 +134,12 @@ class FriendCollectionRepository(
             connection.prepareStatement(
                 """
                 SELECT
-                    SUM(
-                        COALESCE(
-                            mp.value_eur,
-                            c.unit_eur
-                        )
-                        * c.quantity
-                        *
-                        CASE c.condition
-                            WHEN 'MINT' THEN 1.00
-                            WHEN 'NEAR_MINT' THEN 0.92
-                            WHEN 'EXCELLENT' THEN 0.80
-                            WHEN 'GOOD' THEN 0.65
-                            WHEN 'PLAYED' THEN 0.45
-                            ELSE 1.00
-                        END
-                    ) AS total_value
+                    COALESCE(
+                        mp.value_eur,
+                        c.unit_eur
+                    ) AS base_eur,
+                    c.quantity,
+                    c.condition
                 FROM collection_items c
                 LEFT JOIN market_prices mp
                   ON mp.collection_item_id = c.id
@@ -165,23 +155,27 @@ class FriendCollectionRepository(
                 )
 
                 statement.executeQuery().use { result ->
+                    var total = 0.0
+                    var hasValue = false
 
-                    if (!result.next()) {
-                        return null
+                    while (result.next()) {
+                        val baseEur = result.getDouble("base_eur")
+                        if (result.wasNull()) {
+                            continue
+                        }
+
+                        val condition = PricingCondition.parse(
+                            result.getString("condition")
+                        ) ?: continue
+
+                        total +=
+                            baseEur *
+                                result.getInt("quantity") *
+                                condition.factor
+                        hasValue = true
                     }
 
-                    val value =
-                        result.getDouble(
-                            "total_value"
-                        )
-
-                    return if (
-                        result.wasNull()
-                    ) {
-                        null
-                    } else {
-                        value
-                    }
+                    return if (hasValue) total else null
                 }
             }
         }
