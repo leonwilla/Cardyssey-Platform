@@ -37,83 +37,87 @@ jobs:
               print("web central pricing already wired")
               raise SystemExit(0)
 
-          old = '''      const marketUnitEur:
-        Record<string, number> =
-          {};
+          old = "\n".join([
+              "      const marketUnitEur:",
+              "        Record<string, number> =",
+              "          {};",
+              "",
+              "      if (",
+              "        typeof selectedVariant.tcgDexEur ===",
+              "        \"number\"",
+              "      ) {",
+              "        marketUnitEur.TCG =",
+              "          selectedVariant.tcgDexEur;",
+              "      }",
+              "",
+              "      const item = {",
+          ]) + "\n"
 
-      if (
-        typeof selectedVariant.tcgDexEur ===
-        "number"
-      ) {
-        marketUnitEur.TCG =
-          selectedVariant.tcgDexEur;
-      }
-
-      const item = {
-'''
-
-          new = '''      const priceParams =
-        new URLSearchParams({
-          language:
-            selected.languageCode,
-          variantId:
-            selectedVariant.id,
-          condition,
-        });
-
-      let centralBaseEur:
-        number | null = null;
-
-      const priceResponse =
-        await fetch(
-          `/api/pricing/cards/${encodeURIComponent(selected.id)}?${priceParams.toString()}`,
-          {
-            cache: "no-store",
-          }
-        );
-
-      if (priceResponse.ok) {
-        const quote =
-          await priceResponse.json() as {
-            baseEur?: number | null;
-            exactLanguageMatch?: boolean;
-            exactVariantMatch?: boolean;
-          };
-
-        if (
-          quote.exactLanguageMatch === true &&
-          quote.exactVariantMatch === true &&
-          typeof quote.baseEur === "number" &&
-          Number.isFinite(quote.baseEur) &&
-          quote.baseEur > 0
-        ) {
-          centralBaseEur =
-            quote.baseEur;
-        }
-      }
-
-      const marketUnitEur:
-        Record<string, number> =
-          centralBaseEur == null
-            ? {}
-            : { TCG: centralBaseEur };
-
-      const item = {
-'''
+          new = "\n".join([
+              "      const priceParams =",
+              "        new URLSearchParams({",
+              "          language:",
+              "            selected.languageCode,",
+              "          variantId:",
+              "            selectedVariant.id,",
+              "          condition,",
+              "        });",
+              "",
+              "      let centralBaseEur:",
+              "        number | null = null;",
+              "",
+              "      const priceResponse =",
+              "        await fetch(",
+              "          `/api/pricing/cards/${encodeURIComponent(selected.id)}?${priceParams.toString()}`,",
+              "          {",
+              "            cache: \"no-store\",",
+              "          }",
+              "        );",
+              "",
+              "      if (priceResponse.ok) {",
+              "        const quote =",
+              "          await priceResponse.json() as {",
+              "            baseEur?: number | null;",
+              "            exactLanguageMatch?: boolean;",
+              "            exactVariantMatch?: boolean;",
+              "          };",
+              "",
+              "        if (",
+              "          quote.exactLanguageMatch === true &&",
+              "          quote.exactVariantMatch === true &&",
+              "          typeof quote.baseEur === \"number\" &&",
+              "          Number.isFinite(quote.baseEur) &&",
+              "          quote.baseEur > 0",
+              "        ) {",
+              "          centralBaseEur =",
+              "            quote.baseEur;",
+              "        }",
+              "      }",
+              "",
+              "      const marketUnitEur:",
+              "        Record<string, number> =",
+              "          centralBaseEur == null",
+              "            ? {}",
+              "            : { TCG: centralBaseEur };",
+              "",
+              "      const item = {",
+          ]) + "\n"
 
           if old not in text:
               raise SystemExit("web add-card pricing anchor not found")
 
           text = text.replace(old, new, 1)
 
-          old_unit = '''        unitEur:
-          selectedVariant.tcgDexEur ??
-          null,
-'''
+          old_unit = "\n".join([
+              "        unitEur:",
+              "          selectedVariant.tcgDexEur ??",
+              "          null,",
+          ]) + "\n"
 
-          new_unit = '''        unitEur:
-          centralBaseEur,
-'''
+          new_unit = "\n".join([
+              "        unitEur:",
+              "          centralBaseEur,",
+          ]) + "\n"
 
           if old_unit not in text:
               raise SystemExit("web unitEur anchor not found")
