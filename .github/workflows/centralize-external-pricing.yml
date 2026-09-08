@@ -1,0 +1,221 @@
+name: Centralize External Pricing
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/centralize-external-pricing.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: centralize-external-pricing
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch backend and contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          pricing = Path('platform/api/src/main/kotlin/de/cardyssey/api/CardPricing.kt')
+          text = pricing.read_text()
+          text = text.replace('private data class CentralProviderQuote(', 'internal data class CentralProviderQuote(', 1)
+          text = text.replace('private interface CentralPricingProvider {', 'internal interface CentralPricingProvider {', 1)
+          old = '''class CardPricingService(
+              private val catalog: CardCatalogService
+          ) {
+              private val providers:
+                  List<CentralPricingProvider> =
+                  listOf(
+                      TcgDexCentralPricingProvider()
+                  )
+          '''
+          new = '''class CardPricingService(
+              private val catalog: CardCatalogService,
+              justTcgApiKey: String? = null
+          ) {
+              private val providers:
+                  List<CentralPricingProvider> =
+                  buildList {
+                      add(TcgDexCentralPricingProvider())
+                      justTcgApiKey
+                          ?.trim()
+                          ?.takeIf(String::isNotBlank)
+                          ?.let {
+                              add(JustTcgCentralPricingProvider(it))
+                          }
+                  }
+          '''
+          if old not in text:
+              raise SystemExit('CardPricingService anchor not found')
+          pricing.write_text(text.replace(old, new, 1))
+
+          app = Path('platform/api/src/main/kotlin/de/cardyssey/api/Application.kt')
+          text = app.read_text()
+          old = '''    val cardPricing =
+                  CardPricingService(
+                      cardCatalog
+                  )
+          '''
+          new = '''    val cardPricing =
+                  CardPricingService(
+                      catalog = cardCatalog,
+                      justTcgApiKey =
+                          System.getenv("JUSTTCG_API_KEY")
+                  )
+
+              val ebayPricing =
+                  EbaySoldPricingService(
+                      catalog = cardCatalog,
+                      apiKey =
+                          System.getenv("SOLDCOMPS_API_KEY")
+                              ?.trim()
+                              .orEmpty()
+                  )
+          '''
+          if old not in text:
+              raise SystemExit('Application pricing anchor not found')
+          text = text.replace(old, new, 1)
+          old = '''        pricingRoutes(
+                      catalog = cardCatalog,
+                      pricing = cardPricing
+                  )
+          '''
+          new = '''        pricingRoutes(
+                      catalog = cardCatalog,
+                      pricing = cardPricing,
+                      ebayPricing = ebayPricing
+                  )
+          '''
+          if old not in text:
+              raise SystemExit('pricingRoutes call anchor not found')
+          app.write_text(text.replace(old, new, 1))
+
+          routes = Path('platform/api/src/main/kotlin/de/cardyssey/api/PricingRoutes.kt')
+          text = routes.read_text()
+          text = text.replace(
+              '    pricing: CardPricingService\n) {',
+              '    pricing: CardPricingService,\n    ebayPricing: EbaySoldPricingService\n) {',
+              1
+          )
+          old = '''                val quote =
+                      pricing.quote(
+                          cardId = cardId,
+                          language = language,
+                          variantId = requestedVariantId,
+                          legacyVariant = requestedLegacyVariant,
+                          condition = condition
+                      )
+          '''
+          new = '''                val market =
+                      call.request
+                          .queryParameters["market"]
+                          ?.trim()
+                          ?.uppercase()
+                          ?: "TCG"
+
+                  if (market != "TCG" && market != "EBAY") {
+                      call.respond(
+                          HttpStatusCode.BadRequest,
+                          mapOf("error" to "invalid_market")
+                      )
+                      return@get
+                  }
+
+                  val quote =
+                      if (market == "EBAY") {
+                          ebayPricing.quote(
+                              cardId = cardId,
+                              language = language,
+                              variantId = requestedVariantId,
+                              legacyVariant = requestedLegacyVariant,
+                              condition = condition
+                          )
+                      } else {
+                          pricing.quote(
+                              cardId = cardId,
+                              language = language,
+                              variantId = requestedVariantId,
+                              legacyVariant = requestedLegacyVariant,
+                              condition = condition
+                          )
+                      }
+          '''
+          if old not in text:
+              raise SystemExit('PricingRoutes quote anchor not found')
+          routes.write_text(text.replace(old, new, 1))
+
+          compose = Path('platform/compose.yml')
+          text = compose.read_text()
+          anchor = '      JWT_SECRET: ${JWT_SECRET}\n'
+          addition = '''      JWT_SECRET: ${JWT_SECRET}
+
+              JUSTTCG_API_KEY: ${JUSTTCG_API_KEY:-}
+              SOLDCOMPS_API_KEY: ${SOLDCOMPS_API_KEY:-}
+          '''
+          if 'JUSTTCG_API_KEY:' not in text:
+              if anchor not in text:
+                  raise SystemExit('compose env anchor not found')
+              text = text.replace(anchor, addition, 1)
+          compose.write_text(text)
+
+          contract_path = Path('contracts/cardyssey.openapi.json')
+          contract = json.loads(contract_path.read_text())
+          op = contract['paths']['/api/v1/pricing/cards/{id}']['get']
+          params = op.setdefault('parameters', [])
+          if not any(p.get('name') == 'market' for p in params):
+              params.append({
+                  'name': 'market',
+                  'in': 'query',
+                  'required': False,
+                  'schema': {'type': 'string', 'enum': ['TCG', 'EBAY'], 'default': 'TCG'}
+              })
+          schema = contract['components']['schemas']['CardPriceQuoteResponse']
+          props = schema['properties']
+          props['market']['enum'] = ['TCG', 'EBAY']
+          props['source']['enum'] = ['TCGDEX', 'JUSTTCG', 'SOLDCOMPS']
+          contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
+          PY
+
+      - name: Generate clients
+        run: bash scripts/generate-clients.sh
+
+      - name: Build backend
+        run: docker build -t cardyssey-api-ci platform/api
+
+      - name: Build web
+        working-directory: web
+        env:
+          CARDYSSEY_API_URL: http://127.0.0.1:8081
+          NEXT_PUBLIC_SHOP_URL: https://shop.cardyssey.de
+        run: |
+          npm ci
+          npm run build
+
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add platform/api/src/main/kotlin/de/cardyssey/api/CardPricing.kt \
+                  platform/api/src/main/kotlin/de/cardyssey/api/Application.kt \
+                  platform/api/src/main/kotlin/de/cardyssey/api/PricingRoutes.kt \
+                  platform/compose.yml \
+                  contracts/cardyssey.openapi.json \
+                  web/public/contracts/cardyssey.openapi.json \
+                  web/public/contracts/cardyssey-android-client.zip
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+          else
+            git commit -m "refactor: centralize JustTCG and SoldComps pricing"
+            git push
+          fi
