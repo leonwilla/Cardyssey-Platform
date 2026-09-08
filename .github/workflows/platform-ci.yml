@@ -8,6 +8,7 @@ on:
       - "web/**"
       - "platform/api/**"
       - "contracts/**"
+      - "scripts/write-contract.py"
       - "scripts/generate-clients.sh"
       - ".github/workflows/platform-ci.yml"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "web/**"
       - "platform/api/**"
       - "contracts/**"
+      - "scripts/write-contract.py"
       - "scripts/generate-clients.sh"
       - ".github/workflows/platform-ci.yml"
 
