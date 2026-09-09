@@ -1,22 +1,32 @@
+"use client";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import {
   BrandMark,
 } from "@/components/BrandMark";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    error?: string;
-  }>;
-}) {
-  const params = await searchParams;
+export default function LoginPage() {
+  const [error, setError] =
+    useState<string | null>(null);
 
-  const error =
-    params.error
-      ? params.error === "invalid_credentials"
-        ? "E-Mail oder Passwort ist falsch."
-        : "Anmeldung fehlgeschlagen."
-      : null;
+  useEffect(() => {
+    const code =
+      new URLSearchParams(
+        window.location.search
+      ).get("error");
+
+    setError(
+      code
+        ? code === "invalid_credentials"
+          ? "E-Mail oder Passwort ist falsch."
+          : "Anmeldung fehlgeschlagen."
+        : null
+    );
+  }, []);
 
   return (
     <main className="authPage">
