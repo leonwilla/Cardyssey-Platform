@@ -14,6 +14,9 @@ GENERATOR="openapitools/openapi-generator-cli:v7.24.0"
 UID_NOW="$(id -u)"
 GID_NOW="$(id -g)"
 
+python3 \
+  "$ROOT/scripts/enrich-admin-contract.py"
+
 rm -rf \
   "$ROOT/web/lib/generated/cardyssey" \
   "$ROOT/generated/android-client"
