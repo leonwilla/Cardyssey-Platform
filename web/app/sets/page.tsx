@@ -12,6 +12,7 @@ import type {
   PortfolioItem,
   User,
 } from "@/lib/types";
+import styles from "./sets.module.css";
 
 type CatalogSet = {
   id: string;
@@ -26,20 +27,76 @@ type SetProgress = CatalogSet & {
   ownedCount: number;
 };
 
-function imageUrl(
-  value?: string | null
+type ProgressFilter =
+  | "all"
+  | "started"
+  | "unstarted"
+  | "complete";
+
+type SetSort =
+  | "owned-first"
+  | "progress-desc"
+  | "progress-asc"
+  | "name-asc"
+  | "name-desc";
+
+function totalCards(set: CatalogSet) {
+  return Math.max(
+    set.officialCount || 0,
+    set.totalCount || 0
+  );
+}
+
+function progressRatio(set: SetProgress) {
+  const total = totalCards(set);
+
+  if (total <= 0) return 0;
+
+  return Math.min(
+    1,
+    set.ownedCount / total
+  );
+}
+
+function imageCandidates(
+  value?: string | null,
+  symbol = false
 ) {
-  if (!value) return null;
+  if (!value) return [] as string[];
+
+  const clean = value.replace(/\/$/, "");
 
   if (
     /\.(png|jpe?g|webp|svg)(\?.*)?$/i.test(
-      value
+      clean
     )
   ) {
-    return value;
+    return [clean];
   }
 
-  return `${value.replace(/\/$/, "")}.webp`;
+  return symbol
+    ? [
+        `${clean}.webp`,
+        `${clean}.png`,
+        `${clean}.jpg`,
+      ]
+    : [
+        `${clean}.png`,
+        `${clean}.webp`,
+        `${clean}.jpg`,
+      ];
+}
+
+function setImageCandidates(set: CatalogSet) {
+  return [
+    ...new Set([
+      ...imageCandidates(set.logo),
+      ...imageCandidates(
+        set.symbol,
+        true
+      ),
+    ]),
+  ];
 }
 
 function initials(name: string) {
@@ -50,6 +107,48 @@ function initials(name: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+}
+
+function SetArtwork({
+  set,
+}: {
+  set: CatalogSet;
+}) {
+  const candidates = useMemo(
+    () => setImageCandidates(set),
+    [set.logo, set.symbol]
+  );
+
+  const [candidateIndex, setCandidateIndex] =
+    useState(0);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [set.id, candidates]);
+
+  const src =
+    candidates[candidateIndex];
+
+  return (
+    <div className="setCatalogVisual">
+      <span className="setCatalogFallback">
+        {initials(set.name)}
+      </span>
+
+      {src && (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() =>
+            setCandidateIndex(
+              (current) => current + 1
+            )
+          }
+        />
+      )}
+    </div>
+  );
 }
 
 export default function SetsPage() {
@@ -72,6 +171,12 @@ export default function SetsPage() {
 
   const [query, setQuery] =
     useState("");
+
+  const [progressFilter, setProgressFilter] =
+    useState<ProgressFilter>("all");
+
+  const [sort, setSort] =
+    useState<SetSort>("owned-first");
 
   useEffect(() => {
     let cancelled = false;
@@ -140,115 +245,218 @@ export default function SetsPage() {
     };
   }, [router]);
 
-  const sets = useMemo<
-    SetProgress[]
-  >(() => {
-    const ownedBySet =
-      new Map<
-        string,
-        Set<string>
-      >();
+  const sets = useMemo<SetProgress[]>(
+    () => {
+      const ownedBySet =
+        new Map<
+          string,
+          Set<string>
+        >();
 
-    const collectionNames =
-      new Map<string, string>();
+      const collectionNames =
+        new Map<string, string>();
 
-    for (const item of items) {
-      if (!item.setId) continue;
+      for (const item of items) {
+        if (!item.setId) continue;
+
+        if (
+          !ownedBySet.has(item.setId)
+        ) {
+          ownedBySet.set(
+            item.setId,
+            new Set()
+          );
+        }
+
+        ownedBySet
+          .get(item.setId)!
+          .add(item.cardId);
+
+        if (item.setName) {
+          collectionNames.set(
+            item.setId,
+            item.setName
+          );
+        }
+      }
+
+      const result =
+        new Map<
+          string,
+          SetProgress
+        >();
+
+      for (const set of catalog) {
+        result.set(set.id, {
+          ...set,
+          ownedCount:
+            ownedBySet.get(set.id)
+              ?.size ?? 0,
+        });
+      }
+
+      for (
+        const [
+          setId,
+          owned,
+        ] of ownedBySet
+      ) {
+        if (result.has(setId)) {
+          continue;
+        }
+
+        result.set(setId, {
+          id: setId,
+          name:
+            collectionNames.get(setId) ??
+            setId,
+          logo: null,
+          symbol: null,
+          officialCount: 0,
+          totalCount: 0,
+          ownedCount: owned.size,
+        });
+      }
+
+      return [...result.values()];
+    },
+    [catalog, items]
+  );
+
+  const counts = useMemo(() => {
+    let started = 0;
+    let complete = 0;
+
+    for (const set of sets) {
+      const total = totalCards(set);
+
+      if (set.ownedCount > 0) {
+        started += 1;
+      }
 
       if (
-        !ownedBySet.has(item.setId)
+        total > 0 &&
+        set.ownedCount >= total
       ) {
-        ownedBySet.set(
-          item.setId,
-          new Set()
-        );
-      }
-
-      ownedBySet
-        .get(item.setId)!
-        .add(item.cardId);
-
-      if (item.setName) {
-        collectionNames.set(
-          item.setId,
-          item.setName
-        );
+        complete += 1;
       }
     }
 
-    const result =
-      new Map<
-        string,
-        SetProgress
-      >();
+    return {
+      all: sets.length,
+      started,
+      unstarted:
+        sets.length - started,
+      complete,
+    };
+  }, [sets]);
 
-    for (const set of catalog) {
-      result.set(set.id, {
-        ...set,
-        ownedCount:
-          ownedBySet.get(set.id)
-            ?.size ?? 0,
-      });
-    }
+  const visibleSets = useMemo(() => {
+    const needle =
+      query
+        .trim()
+        .toLocaleLowerCase("de");
 
-    /*
-     * Falls ein Set in der Sammlung
-     * existiert, vom Katalog aber
-     * temporär nicht geliefert wird,
-     * verlieren wir es nicht.
-     */
-    for (
-      const [
-        setId,
-        owned,
-      ] of ownedBySet
-    ) {
-      if (result.has(setId)) {
-        continue;
+    const filtered = sets.filter(
+      (set) => {
+        const total = totalCards(set);
+        const isComplete =
+          total > 0 &&
+          set.ownedCount >= total;
+
+        const matchesQuery =
+          !needle ||
+          `${set.name} ${set.id}`
+            .toLocaleLowerCase("de")
+            .includes(needle);
+
+        if (!matchesQuery) {
+          return false;
+        }
+
+        switch (progressFilter) {
+          case "started":
+            return (
+              set.ownedCount > 0 &&
+              !isComplete
+            );
+
+          case "unstarted":
+            return set.ownedCount === 0;
+
+          case "complete":
+            return isComplete;
+
+          default:
+            return true;
+        }
       }
-
-      result.set(setId, {
-        id: setId,
-        name:
-          collectionNames.get(setId) ??
-          setId,
-        logo: null,
-        symbol: null,
-        officialCount: 0,
-        totalCount: 0,
-        ownedCount: owned.size,
-      });
-    }
-
-    return [...result.values()].sort(
-      (a, b) =>
-        a.name.localeCompare(
-          b.name,
-          "de"
-        )
     );
-  }, [catalog, items]);
 
-  const visibleSets =
-    useMemo(() => {
-      const needle =
-        query
-          .trim()
-          .toLocaleLowerCase("de");
-
-      if (!needle) return sets;
-
-      return sets.filter((set) =>
-        `${set.name} ${set.id}`
-          .toLocaleLowerCase("de")
-          .includes(needle)
+    const byName = (
+      a: SetProgress,
+      b: SetProgress
+    ) =>
+      a.name.localeCompare(
+        b.name,
+        "de"
       );
-    }, [query, sets]);
 
-  const collectedSets =
-    sets.filter(
-      (set) => set.ownedCount > 0
-    ).length;
+    return [...filtered].sort(
+      (a, b) => {
+        switch (sort) {
+          case "progress-desc": {
+            const diff =
+              progressRatio(b) -
+              progressRatio(a);
+
+            return diff || byName(a, b);
+          }
+
+          case "progress-asc": {
+            const diff =
+              progressRatio(a) -
+              progressRatio(b);
+
+            return diff || byName(a, b);
+          }
+
+          case "name-desc":
+            return -byName(a, b);
+
+          case "name-asc":
+            return byName(a, b);
+
+          default: {
+            const aStarted =
+              a.ownedCount > 0 ? 1 : 0;
+            const bStarted =
+              b.ownedCount > 0 ? 1 : 0;
+
+            if (aStarted !== bStarted) {
+              return bStarted - aStarted;
+            }
+
+            const progressDiff =
+              progressRatio(b) -
+              progressRatio(a);
+
+            return (
+              progressDiff ||
+              b.ownedCount -
+                a.ownedCount ||
+              byName(a, b)
+            );
+          }
+        }
+      }
+    );
+  }, [
+    query,
+    progressFilter,
+    sets,
+    sort,
+  ]);
 
   return (
     <AppShell
@@ -286,7 +494,7 @@ export default function SetsPage() {
 
             <div>
               <strong>
-                {collectedSets}
+                {counts.started}
               </strong>
               <span>begonnen</span>
             </div>
@@ -294,25 +502,94 @@ export default function SetsPage() {
         )}
       </section>
 
-      <div className="setCatalogControls">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) =>
-            setQuery(
-              event.target.value
-            )
-          }
-          placeholder="Set suchen …"
-          aria-label="Set suchen"
-        />
+      <section className={styles.filterPanel}>
+        <div className={styles.searchRow}>
+          <input
+            className={styles.searchInput}
+            type="search"
+            value={query}
+            onChange={(event) =>
+              setQuery(
+                event.target.value
+              )
+            }
+            placeholder="Set suchen …"
+            aria-label="Set suchen"
+          />
 
-        {!loading && (
-          <span>
-            {visibleSets.length} Treffer
-          </span>
-        )}
-      </div>
+          <label className={styles.sortWrap}>
+            <span>Sortieren</span>
+            <select
+              value={sort}
+              onChange={(event) =>
+                setSort(
+                  event.target.value as SetSort
+                )
+              }
+            >
+              <option value="owned-first">
+                Begonnene zuerst
+              </option>
+              <option value="progress-desc">
+                Fortschritt: hoch → niedrig
+              </option>
+              <option value="progress-asc">
+                Fortschritt: niedrig → hoch
+              </option>
+              <option value="name-asc">
+                Name: A → Z
+              </option>
+              <option value="name-desc">
+                Name: Z → A
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div className={styles.chips}>
+          {(
+            [
+              [
+                "all",
+                `Alle ${counts.all}`,
+              ],
+              [
+                "started",
+                `Begonnen ${counts.started}`,
+              ],
+              [
+                "unstarted",
+                `Nicht begonnen ${counts.unstarted}`,
+              ],
+              [
+                "complete",
+                `Vollständig ${counts.complete}`,
+              ],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                progressFilter === value
+                  ? styles.chipActive
+                  : styles.chip
+              }
+              onClick={() =>
+                setProgressFilter(value)
+              }
+            >
+              {label}
+            </button>
+          ))}
+
+          {!loading && (
+            <span className={styles.results}>
+              {visibleSets.length} Treffer
+            </span>
+          )}
+        </div>
+      </section>
 
       {catalogError && (
         <div className="statusPanel">
@@ -336,9 +613,7 @@ export default function SetsPage() {
         <div className="setCatalogGrid">
           {visibleSets.map((set) => {
             const total =
-              set.officialCount > 0
-                ? set.officialCount
-                : set.totalCount;
+              totalCards(set);
 
             const percent =
               total > 0
@@ -350,12 +625,6 @@ export default function SetsPage() {
                     ) * 100
                   )
                 : 0;
-
-            const image =
-              imageUrl(
-                set.logo ||
-                  set.symbol
-              );
 
             return (
               <article
@@ -369,25 +638,7 @@ export default function SetsPage() {
                   )
                 }
               >
-                <div className="setCatalogVisual">
-                  <span className="setCatalogFallback">
-                    {initials(set.name)}
-                  </span>
-
-                  {image && (
-                    <img
-                      src={image}
-                      alt=""
-                      loading="lazy"
-                      onError={(
-                        event
-                      ) => {
-                        event.currentTarget.style.display =
-                          "none";
-                      }}
-                    />
-                  )}
-                </div>
+                <SetArtwork set={set} />
 
                 <div className="setCatalogBody">
                   <span className="eyebrowText">
@@ -428,7 +679,6 @@ export default function SetsPage() {
                     <span>
                       Set öffnen
                     </span>
-
                     <strong>›</strong>
                   </div>
                 </div>
