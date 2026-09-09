@@ -158,6 +158,25 @@ class CardCatalogService(
             CacheEntry<Map<String, String>>
         >()
 
+    /*
+     * Set-Katalog und Setdetails werden zentral auf dem
+     * Cardyssey-Server gecacht.
+     *
+     * Web und Android müssen dadurch nicht bei jedem Öffnen
+     * erneut auf TCGdex warten.
+     */
+    private val setSummaryCache =
+        ConcurrentHashMap<
+            String,
+            CacheEntry<List<CatalogSetSummary>>
+        >()
+
+    private val setDetailsCache =
+        ConcurrentHashMap<
+            String,
+            CacheEntry<CatalogSetDetails>
+        >()
+
     fun validLanguage(
         language: String
     ): Boolean =
@@ -438,49 +457,197 @@ class CardCatalogService(
         language: String
     ): List<CatalogSetSummary> {
 
-        val rawSets =
-            runCatching {
-                fetchArray(
-                    "$BASE/$language/sets"
+        val now =
+            System.currentTimeMillis()
+
+        setSummaryCache[
+            language
+        ]
+            ?.takeIf {
+                it.expiresAtMs > now
+            }
+            ?.let {
+                return it.value
+            }
+
+        fun parse(
+            rawSets: JsonArray
+        ): List<CatalogSetSummary> =
+            rawSets.mapNotNull { element ->
+
+                val raw =
+                    element.asObject()
+                        ?: return@mapNotNull null
+
+                val id =
+                    raw.string("id")
+                        ?: return@mapNotNull null
+
+                val name =
+                    raw.string("name")
+                        ?: return@mapNotNull null
+
+                val count =
+                    raw["cardCount"]
+                        ?.asObject()
+
+                CatalogSetSummary(
+                    id = id,
+                    name = name,
+                    logo =
+                        raw.string("logo"),
+                    symbol =
+                        raw.string("symbol"),
+                    officialCount =
+                        count?.int(
+                            "official"
+                        ) ?: 0,
+                    totalCount =
+                        count?.int(
+                            "total"
+                        ) ?: 0
                 )
-            }.getOrNull().orEmpty()
+            }
 
-        return rawSets.mapNotNull { element ->
-            val raw =
-                element.asObject()
-                    ?: return@mapNotNull null
+        val local =
+            runCatching {
+                parse(
+                    fetchArray(
+                        "$BASE/$language/sets"
+                    )
+                )
+            }
+                .getOrDefault(
+                    emptyList()
+                )
 
-            val id =
-                raw.string("id")
-                    ?: return@mapNotNull null
+        /*
+         * Bei nicht-englischen Katalogen liefert
+         * TCGdex teilweise Name/Kartenanzahl, aber
+         * kein Logo oder Symbol.
+         *
+         * Englisch dient nur als Asset-/Count-Fallback.
+         * Der lokale Name bleibt bevorzugt.
+         */
+        val english =
+            if (
+                language != "en" &&
+                (
+                    local.isEmpty() ||
+                    local.any {
+                        it.logo.isNullOrBlank() ||
+                            it.symbol.isNullOrBlank() ||
+                            it.officialCount <= 0
+                    }
+                )
+            ) {
+                runCatching {
+                    parse(
+                        fetchArray(
+                            "$BASE/en/sets"
+                        )
+                    )
+                }
+                    .getOrDefault(
+                        emptyList()
+                    )
+            } else {
+                emptyList()
+            }
 
-            val name =
-                raw.string("name")
-                    ?: return@mapNotNull null
+        val englishById =
+            english.associateBy {
+                it.id
+            }
 
-            val count =
-                raw["cardCount"]
-                    ?.asObject()
+        val base =
+            if (
+                local.isEmpty() &&
+                language != "en"
+            ) {
+                english
+            } else {
+                local
+            }
 
-            CatalogSetSummary(
-                id = id,
-                name = name,
-                logo = raw.string("logo"),
-                symbol = raw.string("symbol"),
-                officialCount =
-                    count?.int("official") ?: 0,
-                totalCount =
-                    count?.int("total") ?: 0
-            )
+        val result =
+            base.map { set ->
+
+                val fallback =
+                    englishById[
+                        set.id
+                    ]
+
+                set.copy(
+                    logo =
+                        set.logo
+                            ?.takeIf(
+                                String::isNotBlank
+                            )
+                            ?: fallback
+                                ?.logo,
+                    symbol =
+                        set.symbol
+                            ?.takeIf(
+                                String::isNotBlank
+                            )
+                            ?: fallback
+                                ?.symbol,
+                    officialCount =
+                        set.officialCount
+                            .takeIf {
+                                it > 0
+                            }
+                            ?: fallback
+                                ?.officialCount
+                            ?: 0,
+                    totalCount =
+                        set.totalCount
+                            .takeIf {
+                                it > 0
+                            }
+                            ?: fallback
+                                ?.totalCount
+                            ?: 0
+                )
+            }
+
+        if (result.isNotEmpty()) {
+            setSummaryCache[
+                language
+            ] =
+                CacheEntry(
+                    result,
+                    now + CACHE_MS
+                )
         }
+
+        return result
     }
+
 
     suspend fun setDetails(
         setId: String,
         language: String
     ): CatalogSetDetails? {
 
-        val raw =
+        val now =
+            System.currentTimeMillis()
+
+        val cacheKey =
+            "$language:$setId"
+
+        setDetailsCache[
+            cacheKey
+        ]
+            ?.takeIf {
+                it.expiresAtMs > now
+            }
+            ?.let {
+                return it.value
+            }
+
+        val requested =
             runCatching {
                 fetchObject(
                     "$BASE/$language/sets/$setId"
@@ -492,14 +659,38 @@ class CardCatalogService(
                     )
                 }
                 .getOrNull()
+
+        /*
+         * Englische Setdetails liefern bei vielen
+         * lokalisierten Sets vollständigeres Artwork.
+         *
+         * Nur Bilder/fehlende Metadaten werden davon
+         * übernommen. Lokalisierter Name/Text bleibt.
+         */
+        val english =
+            if (
+                language != "en"
+            ) {
+                runCatching {
+                    fetchObject(
+                        "$BASE/en/sets/$setId"
+                    )
+                }
+                    .getOrNull()
+            } else {
+                null
+            }
+
+        val source =
+            requested
+                ?: english
                 ?: return null
 
-        val count =
-            raw["cardCount"]
-                ?.asObject()
-
-        val cards =
-            raw["cards"]
+        fun cardsFrom(
+            raw: JsonObject?
+        ): List<CatalogSetCard> =
+            raw
+                ?.get("cards")
                 ?.asArray()
                 .orEmpty()
                 .mapNotNull { element ->
@@ -513,35 +704,136 @@ class CardCatalogService(
                             card.string("id")
                                 ?: return@mapNotNull null,
                         localId =
-                            card.string("localId")
+                            card.string(
+                                "localId"
+                            )
                                 ?: "",
                         name =
                             card.string("name")
                                 ?: return@mapNotNull null,
                         imageBase =
-                            card.string("image")
+                            card.string(
+                                "image"
+                            )
                     )
                 }
 
-        return CatalogSetDetails(
-            id =
-                raw.string("id")
-                    ?: setId,
-            name =
-                raw.string("name")
-                    ?: setId,
-            logo =
-                raw.string("logo"),
-            symbol =
-                raw.string("symbol"),
-            officialCount =
-                count?.int("official") ?: 0,
-            totalCount =
-                count?.int("total") ?: cards.size,
-            cards =
-                cards
-        )
+        val sourceCards =
+            cardsFrom(
+                source
+            )
+
+        val englishCards =
+            cardsFrom(
+                english
+            )
+
+        val englishById =
+            englishCards.associateBy {
+                it.id
+            }
+
+        val englishByNumber =
+            englishCards
+                .filter {
+                    it.localId.isNotBlank()
+                }
+                .associateBy {
+                    it.localId
+                }
+
+        val cards =
+            sourceCards.map { card ->
+
+                if (
+                    !card.imageBase
+                        .isNullOrBlank()
+                ) {
+                    card
+                } else {
+
+                    val fallback =
+                        englishById[
+                            card.id
+                        ]
+                            ?: englishByNumber[
+                                card.localId
+                            ]
+
+                    card.copy(
+                        imageBase =
+                            fallback
+                                ?.imageBase
+                    )
+                }
+            }
+
+        val sourceCount =
+            source["cardCount"]
+                ?.asObject()
+
+        val englishCount =
+            english
+                ?.get("cardCount")
+                ?.asObject()
+
+        val result =
+            CatalogSetDetails(
+                id =
+                    source.string("id")
+                        ?: setId,
+                name =
+                    source.string("name")
+                        ?: english
+                            ?.string("name")
+                        ?: setId,
+                logo =
+                    source.string("logo")
+                        ?.takeIf(
+                            String::isNotBlank
+                        )
+                        ?: english
+                            ?.string("logo"),
+                symbol =
+                    source.string("symbol")
+                        ?.takeIf(
+                            String::isNotBlank
+                        )
+                        ?: english
+                            ?.string("symbol"),
+                officialCount =
+                    sourceCount
+                        ?.int("official")
+                        ?.takeIf {
+                            it > 0
+                        }
+                        ?: englishCount
+                            ?.int("official")
+                        ?: 0,
+                totalCount =
+                    sourceCount
+                        ?.int("total")
+                        ?.takeIf {
+                            it > 0
+                        }
+                        ?: englishCount
+                            ?.int("total")
+                        ?: cards.size,
+                cards =
+                    cards
+            )
+
+        setDetailsCache[
+            cacheKey
+        ] =
+            CacheEntry(
+                result,
+                now + CACHE_MS
+            )
+
+        return result
     }
+
 
     private suspend fun loadCards(
         language: String
