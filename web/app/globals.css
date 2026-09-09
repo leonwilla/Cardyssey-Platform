@@ -2482,3 +2482,274 @@
     height:19px;
   }
 }
+
+/* CARDYSSEY SET CATALOG POLISH 2026-09-09 */
+
+.setCatalogIntro{
+  align-items:flex-end;
+}
+
+.setCatalogSummary{
+  display:flex;
+  gap:10px;
+}
+
+.setCatalogSummary > div{
+  min-width:100px;
+  padding:12px 16px;
+  border:1px solid rgba(38,58,85,.75);
+  border-radius:14px;
+  background:rgba(11,21,36,.78);
+  display:flex;
+  flex-direction:column;
+}
+
+.setCatalogSummary strong{
+  font-size:22px;
+  color:var(--text);
+}
+
+.setCatalogSummary span{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.setCatalogControls{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:8px 0 20px;
+}
+
+.setCatalogControls input{
+  width:min(420px,100%);
+  height:44px;
+  padding:0 14px;
+  border:1px solid rgba(38,58,85,.82);
+  border-radius:12px;
+  outline:none;
+  color:var(--text);
+  background:rgba(9,17,30,.9);
+  font:inherit;
+}
+
+.setCatalogControls input:focus{
+  border-color:rgba(85,221,246,.55);
+  box-shadow:
+    0 0 0 3px
+    rgba(85,221,246,.08);
+}
+
+.setCatalogControls > span{
+  color:var(--muted);
+  font-size:12px;
+}
+
+.setCatalogGrid{
+  display:grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0,1fr)
+    );
+  gap:14px;
+}
+
+.setCatalogTile{
+  min-width:0;
+  min-height:170px;
+  display:grid;
+  grid-template-columns:
+    118px minmax(0,1fr);
+  overflow:hidden;
+  border:1px solid rgba(38,58,85,.82);
+  border-radius:17px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(15,28,47,.96),
+      rgba(9,18,31,.96)
+    );
+  cursor:pointer;
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.setCatalogTile:hover{
+  transform:translateY(-2px);
+  border-color:rgba(85,221,246,.4);
+  box-shadow:
+    0 14px 34px
+    rgba(0,0,0,.16);
+}
+
+.setCatalogVisual{
+  position:relative;
+  min-height:170px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  padding:16px;
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(85,221,246,.12),
+      transparent 60%
+    ),
+    rgba(7,14,25,.72);
+  border-right:
+    1px solid
+    rgba(38,58,85,.55);
+}
+
+.setCatalogFallback{
+  display:grid;
+  place-items:center;
+  width:64px;
+  height:64px;
+  border-radius:18px;
+  color:rgba(255,255,255,.3);
+  background:
+    rgba(255,255,255,.035);
+  border:
+    1px solid
+    rgba(255,255,255,.05);
+  font-size:17px;
+  font-weight:900;
+}
+
+.setCatalogVisual img{
+  position:absolute;
+  inset:15px;
+  width:calc(100% - 30px);
+  height:calc(100% - 30px);
+  object-fit:contain;
+}
+
+.setCatalogBody{
+  min-width:0;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+}
+
+.setCatalogBody h3{
+  margin:5px 0 14px;
+  font-size:18px;
+  line-height:1.15;
+}
+
+.setCatalogStats{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:auto;
+}
+
+.setCatalogStats strong{
+  color:#6fffc3;
+  font-size:13px;
+}
+
+.setCatalogStats span{
+  color:var(--muted);
+  font-size:11px;
+}
+
+.setProgress{
+  width:100%;
+  height:5px;
+  margin-top:9px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.06);
+}
+
+.setProgress span{
+  display:block;
+  height:100%;
+  min-width:0;
+  border-radius:inherit;
+  background:
+    linear-gradient(
+      90deg,
+      var(--cyan),
+      #6fffc3
+    );
+}
+
+.setCatalogFoot{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-top:15px;
+  color:var(--secondary);
+  font-size:11px;
+}
+
+.setCatalogFoot strong{
+  color:var(--cyan);
+  font-size:18px;
+}
+
+@media(max-width:1250px){
+  .setCatalogGrid{
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0,1fr)
+      );
+  }
+}
+
+@media(max-width:760px){
+  .setCatalogIntro{
+    align-items:flex-start;
+  }
+
+  .setCatalogSummary{
+    width:100%;
+  }
+
+  .setCatalogSummary > div{
+    flex:1;
+  }
+
+  .setCatalogControls{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .setCatalogControls input{
+    width:100%;
+  }
+
+  .setCatalogGrid{
+    grid-template-columns:1fr;
+  }
+
+  .setCatalogTile{
+    grid-template-columns:
+      92px minmax(0,1fr);
+    min-height:142px;
+  }
+
+  .setCatalogVisual{
+    min-height:142px;
+    padding:10px;
+  }
+
+  .setCatalogVisual img{
+    inset:10px;
+    width:calc(100% - 20px);
+    height:calc(100% - 20px);
+  }
+
+  .setCatalogBody{
+    padding:14px;
+  }
+}
