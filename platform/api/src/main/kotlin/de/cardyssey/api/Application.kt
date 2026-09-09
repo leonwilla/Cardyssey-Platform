@@ -63,6 +63,12 @@ fun Application.module() {
     val authRepository =
         AuthRepository(database)
 
+    val roleRepository =
+        RoleRepository(database)
+
+    val adminRepository =
+        AdminRepository(database)
+
     val collectionRepository =
         CollectionRepository(database)
 
@@ -100,20 +106,28 @@ fun Application.module() {
             catalogCache
         )
 
+    val justTcgApiKey =
+        System.getenv("JUSTTCG_API_KEY")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+
+    val soldCompsApiKey =
+        System.getenv("SOLDCOMPS_API_KEY")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+
     val cardPricing =
         CardPricingService(
             catalog = cardCatalog,
             justTcgApiKey =
-                System.getenv("JUSTTCG_API_KEY")
+                justTcgApiKey
         )
 
     val ebayPricing =
         EbaySoldPricingService(
             catalog = cardCatalog,
             apiKey =
-                System.getenv("SOLDCOMPS_API_KEY")
-                    ?.trim()
-                    .orEmpty()
+                soldCompsApiKey.orEmpty()
         )
 
     install(CallLogging)
@@ -277,6 +291,15 @@ fun Application.module() {
 
         avatarRoutes(
             authRepository
+        )
+
+        adminRoutes(
+            roles = roleRepository,
+            admin = adminRepository,
+            justTcgConfigured =
+                justTcgApiKey != null,
+            soldCompsConfigured =
+                soldCompsApiKey != null
         )
 
         collectionRoutes(
