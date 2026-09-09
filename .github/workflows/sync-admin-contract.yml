@@ -1,0 +1,60 @@
+name: Sync Admin Contract Artifacts
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-admin-contract.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate contract and clients
+        run: |
+          python3 scripts/write-contract.py
+          bash scripts/generate-clients.sh
+
+      - name: Verify admin contract
+        run: |
+          grep -q '"/api/v1/admin/access"' contracts/cardyssey.openapi.json
+          grep -q '"AdminAccessResponse"' contracts/cardyssey.openapi.json
+          grep -q '"FounderSystemResponse"' contracts/cardyssey.openapi.json
+
+      - name: Export generated Android admin sources to log
+        run: |
+          find generated/android-client/src/main/kotlin -type f \
+            \( -name 'AdminApi.kt' \
+            -o -name 'AdminAccessResponse.kt' \
+            -o -name 'AdminOverviewResponse.kt' \
+            -o -name 'AdminUserSummaryResponse.kt' \
+            -o -name 'AdminUserDetailResponse.kt' \
+            -o -name 'AdminCollectionItemResponse.kt' \
+            -o -name 'AdminWishlistItemResponse.kt' \
+            -o -name 'AdminListingResponse.kt' \
+            -o -name 'FounderSystemResponse.kt' \) \
+            -print0 | while IFS= read -r -d '' f; do
+              echo "CARDYSSSEY_GENERATED_BEGIN:$f"
+              base64 -w0 "$f"
+              echo
+              echo "CARDYSSSEY_GENERATED_END:$f"
+            done
+
+      - name: Commit published artifacts and remove helper
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add contracts/cardyssey.openapi.json
+          git add web/public/contracts/cardyssey.openapi.json
+          git add -f web/public/contracts/cardyssey-android-client.zip
+          git rm .github/workflows/sync-admin-contract.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: publish admin contract artifacts"
+            git push origin HEAD:main
+          fi
