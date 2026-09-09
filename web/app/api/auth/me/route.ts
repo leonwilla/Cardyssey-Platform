@@ -3,6 +3,10 @@ import {
   readBackendJson,
 } from "@/lib/server/cardyssey-api";
 
+import {
+  withAdminAccess,
+} from "@/lib/server/admin-access";
+
 export async function GET() {
   const response =
     await authenticatedBackendFetch(
@@ -10,7 +14,10 @@ export async function GET() {
     );
 
   const data =
-    await readBackendJson(response);
+    await withAdminAccess(
+      await readBackendJson(response),
+      response.status
+    );
 
   return Response.json(
     data,
@@ -38,7 +45,10 @@ export async function PUT(
     );
 
   const data =
-    await readBackendJson(response);
+    await withAdminAccess(
+      await readBackendJson(response),
+      response.status
+    );
 
   return Response.json(
     data,

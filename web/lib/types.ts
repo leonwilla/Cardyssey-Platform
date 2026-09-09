@@ -31,10 +31,18 @@ export type PortfolioItem = {
   positionValueEur?: Record<string, number>;
 };
 
+export type UserRole =
+  | "USER"
+  | "ADMIN"
+  | "FOUNDER";
+
 export type User = {
   id: string;
   email: string;
   displayName?: string | null;
   avatarUrl?: string | null;
   friendCode: string;
+  role?: UserRole;
+  canAdmin?: boolean;
+  canFounder?: boolean;
 };
