@@ -55,6 +55,14 @@ export default function AccountPage() {
   const [message, setMessage] =
     useState<string | null>(null);
 
+  const [accountTab, setAccountTab] =
+    useState<
+      "profile" |
+      "showcase" |
+      "privacy" |
+      "app"
+    >("profile");
+
   const [
     androidRelease,
     setAndroidRelease,
@@ -309,7 +317,9 @@ export default function AccountPage() {
   return (
     <AppShell
       active="/account"
-      user={user}
+      user={
+        loading ? undefined : user
+      }
     >
       <section className="pageIntro">
         <div>
@@ -334,6 +344,7 @@ export default function AccountPage() {
         </div>
       ) : user && (
         <>
+          <div className="accountSummaryGrid">
           <section className="accountCard">
             <div className="profileAvatarWrap">
               <label
@@ -424,7 +435,70 @@ export default function AccountPage() {
               ID kopieren
             </button>
           </section>
+          </div>
 
+          <section
+            className="accountTabs"
+            aria-label="Account Bereiche"
+          >
+            <button
+              type="button"
+              className={
+                accountTab === "profile"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setAccountTab("profile")
+              }
+            >
+              Profil
+            </button>
+
+            <button
+              type="button"
+              className={
+                accountTab === "showcase"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setAccountTab("showcase")
+              }
+            >
+              Showcase
+            </button>
+
+            <button
+              type="button"
+              className={
+                accountTab === "privacy"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setAccountTab("privacy")
+              }
+            >
+              Privatsphäre
+            </button>
+
+            <button
+              type="button"
+              className={
+                accountTab === "app"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setAccountTab("app")
+              }
+            >
+              Android App
+            </button>
+          </section>
+
+          {accountTab === "app" && (
           <section
             className="sectionBlock"
             style={{
@@ -464,7 +538,9 @@ export default function AccountPage() {
               Android App herunterladen
             </a>
           </section>
+          )}
 
+          {accountTab === "profile" && (
           <section
             className="sectionBlock"
             style={{
@@ -534,9 +610,18 @@ export default function AccountPage() {
               </button>
             </div>
           </section>
-          <ShowcaseSettingsPanel />
+          )}
+          {accountTab === "showcase" && (
+            <div className="accountTabPanel">
+              <ShowcaseSettingsPanel />
+            </div>
+          )}
 
-          <PrivacySettingsPanel />
+          {accountTab === "privacy" && (
+            <div className="accountTabPanel">
+              <PrivacySettingsPanel />
+            </div>
+          )}
         </>
       )}
     </AppShell>
