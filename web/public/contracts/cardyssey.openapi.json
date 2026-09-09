@@ -4123,6 +4123,334 @@
           }
         ]
       }
+    },
+    "/api/v1/admin/access": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminAccess",
+        "summary": "Eigene Admin-/Founder-Berechtigung laden",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/overview": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminOverview",
+        "summary": "Control-Center-Übersicht laden",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOverviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminUsers",
+        "summary": "Nutzer für das Control Center laden",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminUser",
+        "summary": "Read-only Nutzerdetails laden",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/system": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getFounderSystem",
+        "summary": "Founder-Systemstatus laden",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FounderSystemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5650,6 +5978,353 @@
           "conditionFactor",
           "exactLanguageMatch",
           "exactVariantMatch"
+        ]
+      },
+      "AdminAccessResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "ADMIN",
+              "FOUNDER"
+            ]
+          },
+          "canAdmin": {
+            "type": "boolean"
+          },
+          "canFounder": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "role",
+          "canAdmin",
+          "canFounder"
+        ]
+      },
+      "AdminOverviewResponse": {
+        "type": "object",
+        "properties": {
+          "registeredUsers": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activeUsers": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collectionItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collectionCards": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "wishlistItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activeListings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingOffers": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "registeredUsers",
+          "activeUsers",
+          "collectionItems",
+          "collectionCards",
+          "wishlistItems",
+          "activeListings",
+          "pendingOffers"
+        ]
+      },
+      "AdminUserSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "friendCode": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "ADMIN",
+              "FOUNDER"
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "collectionItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collectionCards": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "wishlistItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "activeListings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingOffers": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "friendCode",
+          "role",
+          "disabled",
+          "createdAt",
+          "collectionItems",
+          "collectionCards",
+          "wishlistItems",
+          "activeListings",
+          "pendingOffers"
+        ]
+      },
+      "AdminCollectionItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cardId": {
+            "type": "string"
+          },
+          "languageCode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "setName": {
+            "type": "string",
+            "nullable": true
+          },
+          "localId": {
+            "type": "string",
+            "nullable": true
+          },
+          "variant": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "valuedUnitEur": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "positionValueEur": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "cardId",
+          "languageCode",
+          "name",
+          "setName",
+          "localId",
+          "variant",
+          "condition",
+          "quantity",
+          "valuedUnitEur",
+          "positionValueEur"
+        ]
+      },
+      "AdminWishlistItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "cardId": {
+            "type": "string"
+          },
+          "languageCode": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "setName": {
+            "type": "string",
+            "nullable": true
+          },
+          "localId": {
+            "type": "string",
+            "nullable": true
+          },
+          "variantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "cardId",
+          "languageCode",
+          "name",
+          "setName",
+          "localId",
+          "variantId",
+          "createdAt"
+        ]
+      },
+      "AdminListingResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "collectionItemId": {
+            "type": "string"
+          },
+          "cardId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priceEur": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "negotiable": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "collectionItemId",
+          "cardId",
+          "name",
+          "quantity",
+          "priceEur",
+          "negotiable",
+          "status",
+          "createdAt"
+        ]
+      },
+      "AdminUserDetailResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AdminUserSummaryResponse"
+          },
+          "collection": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCollectionItemResponse"
+            }
+          },
+          "wishlist": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminWishlistItemResponse"
+            }
+          },
+          "listings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminListingResponse"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "collection",
+          "wishlist",
+          "listings"
+        ]
+      },
+      "FounderSystemResponse": {
+        "type": "object",
+        "properties": {
+          "database": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "justTcgConfigured": {
+            "type": "boolean"
+          },
+          "soldCompsConfigured": {
+            "type": "boolean"
+          },
+          "registeredUsers": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "collectionItems": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "database",
+          "service",
+          "version",
+          "justTcgConfigured",
+          "soldCompsConfigured",
+          "registeredUsers",
+          "collectionItems"
         ]
       }
     }
