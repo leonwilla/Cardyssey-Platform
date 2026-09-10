@@ -29,7 +29,10 @@ data class HealthResponse(
     val status: String,
     val database: String,
     val service: String,
-    val version: String
+    val version: String,
+    val justTcgConfigured: Boolean,
+    val soldCompsConfigured: Boolean,
+    val soldCompsEbaySessionConfigured: Boolean
 )
 
 fun main() {
@@ -292,7 +295,16 @@ fun Application.module() {
                         "cardyssey-api",
 
                     version =
-                        "0.2.0"
+                        "0.2.1",
+
+                    justTcgConfigured =
+                        justTcgApiKey != null,
+
+                    soldCompsConfigured =
+                        soldCompsApiKey != null,
+
+                    soldCompsEbaySessionConfigured =
+                        soldCompsEbayCookies.isNotBlank()
                 )
             )
         }
