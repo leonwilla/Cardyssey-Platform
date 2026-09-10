@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -u
+set -euo pipefail
 
 BASE_WEB_URL="${BASE_WEB_URL:-https://cardyssey.de}"
 BASE_API_URL="${BASE_API_URL:-https://api.cardyssey.de}"
