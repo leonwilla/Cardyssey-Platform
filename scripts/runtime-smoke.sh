@@ -34,6 +34,38 @@ check_status() {
   echo "OK: $label -> HTTP $code"
 }
 
+check_api_health() {
+  url="$BASE_API_URL$API_PREFIX/health"
+  code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-api-health.json -w '%{http_code}' "$url" || true)"
+  if [ "$code" != "200" ]; then
+    echo "FAIL: API health -> HTTP $code"
+    cat /tmp/cardyssey-api-health.json 2>/dev/null || true
+    return 1
+  fi
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+data = json.loads(Path('/tmp/cardyssey-api-health.json').read_text())
+if data.get('status') != 'ok':
+    raise SystemExit(f"FAIL: API health status={data.get('status')!r}")
+if data.get('database') != 'connected':
+    raise SystemExit(f"FAIL: API database={data.get('database')!r}")
+if 'soldCompsConfigured' not in data:
+    raise SystemExit('FAIL: production backend has not picked up the eBay pricing readiness health contract')
+if data.get('soldCompsConfigured') is not True:
+    raise SystemExit('FAIL: production backend has no SOLDCOMPS_API_KEY configured')
+
+session = data.get('soldCompsEbaySessionConfigured')
+print(
+    'OK: API health -> '
+    f"version {data.get('version', 'unknown')}, SoldComps configured, "
+    f"eBay session={'configured' if session else 'not configured'}"
+)
+PY
+}
+
 check_android_metadata() {
   url="$BASE_WEB_URL/api/android/latest"
   code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-android-release.json -w '%{http_code}' "$url" || true)"
@@ -74,7 +106,7 @@ check "Web homepage" "$BASE_WEB_URL/"
 check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
 check_android_metadata
 check "Android latest APK" "$ANDROID_APK_URL"
-check "API health" "$BASE_API_URL$API_PREFIX/health"
+check_api_health
 check_status \
   "Central pricing authentication guard" \
   "$BASE_API_URL$API_PREFIX/pricing/cards/__smoke__?language=en&variant=NORMAL" \
