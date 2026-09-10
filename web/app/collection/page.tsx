@@ -409,15 +409,6 @@ export default function CollectionPage() {
         .filter(Boolean)
     ).size;
 
-  const hasEbay =
-    items.some(
-      (item) =>
-        typeof item
-          .marketUnitEur
-          ?.EBAY ===
-        "number"
-    );
-
   return (
     <AppShell
       active="/collection"
@@ -498,7 +489,6 @@ export default function CollectionPage() {
                   <button
                     onClick={
                       () =>
-                        hasEbay &&
                         setMarket(
                           "EBAY"
                         )
@@ -508,9 +498,6 @@ export default function CollectionPage() {
                       "EBAY"
                         ? "selected"
                         : ""
-                    }
-                    disabled={
-                      !hasEbay
                     }
                   >
                     eBay
