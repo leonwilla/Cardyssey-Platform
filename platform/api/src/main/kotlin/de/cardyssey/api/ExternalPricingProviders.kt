@@ -142,7 +142,8 @@ internal class JustTcgCentralPricingProvider(
 
 class EbaySoldPricingService(
     private val catalog: CardCatalogService,
-    private val apiKey: String
+    private val apiKey: String,
+    private val ebayCookies: String = ""
 ) {
     private data class SoldSummary(
         val baseEur: Double,
@@ -234,13 +235,6 @@ class EbaySoldPricingService(
             .filter(String::isNotBlank)
             .joinToString(" ")
 
-        /*
-         * exactMatch=false ist absichtlich gesetzt.
-         * SoldComps/eBay kann bei exactMatch=true legitime Titel ausfiltern,
-         * sobald zwischen Kartenname und Nummer weitere Wörter stehen.
-         * Die eigentliche strenge Identitätsprüfung machen wir anschließend
-         * selbst über Name + Nummer + Sprache + Variantensignale.
-         */
         val url = "https://api.sold-comps.com/v1/scrape" +
             "?keyword=${encode(query)}" +
             "&ebaySite=ebay.de&page=1&count=200" +
@@ -294,7 +288,8 @@ class EbaySoldPricingService(
 
         println(
             "eBay pricing: card=${card.id} language=${card.languageCode} " +
-                "variant=${variant.id} providerItems=${items.size} matched=${unique.size}"
+                "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
+                "ebaySession=${if (ebayCookies.isBlank()) "none" else "configured"}"
         )
 
         if (unique.isEmpty()) return null
@@ -474,15 +469,17 @@ class EbaySoldPricingService(
     private suspend fun getSoldCompsJson(url: String): JsonObject? =
         withContext(Dispatchers.IO) {
             runCatching {
-                val request = HttpRequest.newBuilder(URI.create(url))
+                val builder = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(25))
                     .header("Accept", "application/json")
                     .header("Authorization", "Bearer $apiKey")
-                    .GET()
-                    .build()
+
+                if (ebayCookies.isNotBlank()) {
+                    builder.header("X-eBay-Cookies", ebayCookies)
+                }
 
                 val response = http.send(
-                    request,
+                    builder.GET().build(),
                     HttpResponse.BodyHandlers.ofString()
                 )
 
