@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.roundToLong
 
 internal class JustTcgCentralPricingProvider(
     private val apiKey: String
@@ -55,8 +54,15 @@ internal class JustTcgCentralPricingProvider(
 
                 val name = normalizeText(raw.string("name").orEmpty())
                 val setName = normalizeText(raw.string("set_name").orEmpty())
-                val nameMatches = name == expectedName || name.contains(expectedName) || expectedName.contains(name)
-                val setMatches = expectedSet.isBlank() || setName == expectedSet || setName.contains(expectedSet) || expectedSet.contains(setName)
+                val nameMatches =
+                    name == expectedName ||
+                        name.contains(expectedName) ||
+                        expectedName.contains(name)
+                val setMatches =
+                    expectedSet.isBlank() ||
+                        setName == expectedSet ||
+                        setName.contains(expectedSet) ||
+                        expectedSet.contains(setName)
                 if (!nameMatches || !setMatches) return@mapNotNull null
                 raw
             }
@@ -65,10 +71,14 @@ internal class JustTcgCentralPricingProvider(
         val variants = candidate["variants"] as? JsonArray ?: return null
         val usdValues = variants.mapNotNull { it as? JsonObject }
             .filter {
-                normalizeText(it.string("language").orEmpty()) == normalizeText(market.second)
+                normalizeText(it.string("language").orEmpty()) ==
+                    normalizeText(market.second)
             }
             .filter { printingMatches(it.string("printing"), variant.legacyVariant) }
-            .filter { normalizeText(it.string("condition").orEmpty()).contains("near mint") }
+            .filter {
+                normalizeText(it.string("condition").orEmpty())
+                    .contains("near mint")
+            }
             .mapNotNull { it.double("price") }
             .filter { it.isFinite() && it > 0.0 }
 
@@ -76,9 +86,6 @@ internal class JustTcgCentralPricingProvider(
         val usd = median(usdValues)
         val eur = usdToEur(usd) ?: return null
 
-        // JustTCG liefert condition-spezifische Werte. Für den zentralen Basiswert
-        // normalisieren wir Near Mint zurück auf 100 %, weil Cardyssey den
-        // Zustandsfaktor erst danach einheitlich anwendet.
         val baseEur = eur / PricingCondition.NEAR_MINT.factor
 
         return baseEur.takeIf { it.isFinite() && it > 0.0 }?.let {
@@ -143,6 +150,7 @@ class EbaySoldPricingService(
         val sampleCount: Int,
         val updatedAtMs: Long
     )
+
     private val json = Json { ignoreUnknownKeys = true }
     private val http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -161,13 +169,16 @@ class EbaySoldPricingService(
         val selected = selectVariant(details, variantId, legacyVariant)
         val exactVariantMatch = selected != null
 
-        val sold = if (
-        apiKey.isNotBlank() && exactLanguageMatch && selected != null
-    ) {
-        soldSummary(details, selected)
-    } else null
+        val sold = if (apiKey.isNotBlank() && exactLanguageMatch && selected != null) {
+            soldSummary(details, selected)
+        } else {
+            if (apiKey.isBlank()) {
+                println("eBay pricing unavailable: SOLDCOMPS_API_KEY is not configured")
+            }
+            null
+        }
 
-    val baseEur = sold?.baseEur
+        val baseEur = sold?.baseEur
 
         return CardPriceQuoteResponse(
             cardId = details.id,
@@ -195,10 +206,18 @@ class EbaySoldPricingService(
         if (!variantId.isNullOrBlank()) {
             return details.variants.firstOrNull { it.id == variantId.trim() }
         }
-        val legacy = legacyVariant?.trim()?.uppercase(Locale.ROOT)?.takeIf(String::isNotBlank)
+
+        val legacy = legacyVariant
+            ?.trim()
+            ?.uppercase(Locale.ROOT)
+            ?.takeIf(String::isNotBlank)
+
         if (legacy != null) {
-            return details.variants.filter { it.legacyVariant == legacy }.singleOrNull()
+            return details.variants
+                .filter { it.legacyVariant == legacy }
+                .singleOrNull()
         }
+
         return details.variants.singleOrNull()
     }
 
@@ -208,19 +227,28 @@ class EbaySoldPricingService(
     ): SoldSummary? {
         val printedNumber = if (card.officialCount > 0 && card.localId.isNotBlank()) {
             "${card.localId}/${card.officialCount}"
-        } else card.localId
+        } else {
+            card.localId
+        }
 
         val query = listOf(card.name, printedNumber)
             .filter(String::isNotBlank)
             .joinToString(" ")
 
+        /*
+         * exactMatch=false ist absichtlich gesetzt.
+         * SoldComps/eBay kann bei exactMatch=true legitime Titel ausfiltern,
+         * sobald zwischen Kartenname und Nummer weitere Wörter stehen.
+         * Die eigentliche strenge Identitätsprüfung machen wir anschließend
+         * selbst über Name + Nummer + Sprache + Variantensignale.
+         */
         val url = "https://api.sold-comps.com/v1/scrape" +
             "?keyword=${encode(query)}" +
             "&ebaySite=ebay.de&page=1&count=200" +
             "&sortOrder=endedRecently&sold=true" +
-            "&includeCompleteListing=true&exactMatch=true"
+            "&includeCompleteListing=true&exactMatch=false"
 
-        val root = getJson(url) ?: return null
+        val root = getSoldCompsJson(url) ?: return null
         val items = root["items"] as? JsonArray ?: return null
 
         val unique = linkedMapOf<String, Double>()
@@ -232,43 +260,55 @@ class EbaySoldPricingService(
                 item.bool("bestOfferAccepted") == true ||
                 item.bool("invalid") == true ||
                 item.bool("isInvalid") == true
-            ) return@forEach
+            ) {
+                return@forEach
+            }
 
-            val currency = item.string("soldCurrency")?.uppercase(Locale.ROOT)
+            val currency = item.string("soldCurrency")
+                ?.uppercase(Locale.ROOT)
             if (currency != "EUR") return@forEach
 
-            val rawPrice =
-                item.double("totalPrice")
-                    ?: item.double("soldPrice")
-                    ?: return@forEach
+            /* soldPrice ist der echte Verkaufspreis; totalPrice nur Legacy-Fallback. */
+            val rawPrice = item.double("soldPrice")
+                ?: item.double("totalPrice")
+                ?: return@forEach
 
             if (!rawPrice.isFinite() || rawPrice <= 0.0) return@forEach
 
-            val basePrice =
-                normalizeSoldCondition(item, rawPrice)
-                    ?: return@forEach
+            val basePrice = normalizeSoldCondition(item, rawPrice)
+                ?: return@forEach
 
             if (!basePrice.isFinite() || basePrice <= 0.0) return@forEach
 
-            val stableId =
-                item.string("itemId")
-                    ?: item.string("listingId")
-                    ?: item.string("id")
-                    ?: item.string("url")
-                    ?: listOf(
-                        normalizeText(item.string("title").orEmpty()),
-                        rawPrice.toString(),
-                        item.string("endTime").orEmpty(),
-                        item.string("soldDate").orEmpty()
-                    ).joinToString("|")
+            val stableId = item.string("itemId")
+                ?: item.string("listingId")
+                ?: item.string("id")
+                ?: item.string("url")
+                ?: listOf(
+                    normalizeText(item.string("title").orEmpty()),
+                    rawPrice.toString(),
+                    item.string("endedAt").orEmpty(),
+                    item.string("soldDate").orEmpty()
+                ).joinToString("|")
 
             unique.putIfAbsent(stableId, basePrice)
         }
 
-        if (unique.size < 3) return null
+        println(
+            "eBay pricing: card=${card.id} language=${card.languageCode} " +
+                "variant=${variant.id} providerItems=${items.size} matched=${unique.size}"
+        )
+
+        /*
+         * Neue Sets haben oft erst 1-2 belastbare Verkäufe.
+         * Einen existierenden exakten Sale komplett als 'kein Marktwert'
+         * zu verwerfen war der Hauptfehler. sampleCount bleibt erhalten,
+         * damit die UI die Datenbasis transparent anzeigen kann.
+         */
+        if (unique.isEmpty()) return null
 
         val filtered = rejectOutliers(unique.values.toList())
-        if (filtered.size < 3) return null
+        if (filtered.isEmpty()) return null
 
         val baseEur = median(filtered)
             .takeIf { it.isFinite() && it > 0.0 }
@@ -296,6 +336,8 @@ class EbaySoldPricingService(
 
         val condition = when {
             "near mint" in conditionText ||
+                "boosterfrisch" in conditionText ||
+                "pack fresh" in conditionText ||
                 Regex("""\bnm\b""").containsMatchIn(conditionText) ->
                 PricingCondition.NEAR_MINT
 
@@ -303,13 +345,16 @@ class EbaySoldPricingService(
                 PricingCondition.MINT
 
             "excellent" in conditionText ||
+                "sehr gut" in conditionText ||
                 Regex("""\bex\b""").containsMatchIn(conditionText) ->
                 PricingCondition.EXCELLENT
 
-            "played" in conditionText ->
+            "played" in conditionText ||
+                "gespielt" in conditionText ->
                 PricingCondition.PLAYED
 
-            "good" in conditionText ->
+            "good" in conditionText ||
+                Regex("""\bgut\b""").containsMatchIn(conditionText) ->
                 PricingCondition.GOOD
 
             else -> null
@@ -331,7 +376,7 @@ class EbaySoldPricingService(
             abs(it - center) / mad <= 3.5
         }
 
-        return if (filtered.size >= 3) filtered else values
+        return if (filtered.isNotEmpty()) filtered else values
     }
 
     private fun listingMatches(
@@ -343,6 +388,8 @@ class EbaySoldPricingService(
         val title = normalizeText(item.string("title").orEmpty())
         if (title.isBlank()) return false
 
+        if (looksLikeBundleOrGraded(title)) return false
+
         val cardName = normalizeText(card.name)
         if (cardName.isNotBlank() && cardName !in title) return false
 
@@ -350,19 +397,67 @@ class EbaySoldPricingService(
             normalizeText(printedNumber),
             normalizeText(card.localId)
         ).filter(String::isNotBlank)
-        if (numberTokens.none { it in title }) return false
 
+        if (numberTokens.none { it in title }) return false
         if (!languageMatches(title, card.languageCode)) return false
 
-        val reverse = "reverse" in title
-        val holo = "holo" in title || "foil" in title
-        return when (variant.legacyVariant.uppercase(Locale.ROOT)) {
+        return variantMatches(title, card, variant)
+    }
+
+    private fun looksLikeBundleOrGraded(title: String): Boolean {
+        val padded = " $title "
+        val blocked = listOf(
+            " psa ",
+            " bgs ",
+            " cgc ",
+            " graded ",
+            " gegradet ",
+            " konvolut ",
+            " sammlung ",
+            " komplettes set ",
+            " complete set ",
+            " lot "
+        )
+        return blocked.any { it in padded }
+    }
+
+    private fun variantMatches(
+        title: String,
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): Boolean {
+        val padded = " $title "
+        val reverse = " reverse " in padded || " reverse holo " in padded
+        val nonHolo = " non holo " in padded || " nonholo " in padded
+        val holo =
+            " holo " in padded ||
+                " foil " in padded ||
+                " holographic " in padded
+
+        val legacy = variant.legacyVariant.uppercase(Locale.ROOT)
+
+        /*
+         * Hat die Karte laut Katalog nur eine einzige Druckvariante,
+         * reicht Name + Kartennummer. Bei Full Arts / Illustration Rares
+         * schreiben Verkäufer 'Holo' häufig gar nicht in den Titel.
+         */
+        if (card.variants.size == 1) {
+            return when (legacy) {
+                "REVERSE" -> reverse || normalizeText(variant.type).contains("reverse")
+                else -> !reverse && !nonHolo.orFalseForHolo(legacy, holo)
+            }
+        }
+
+        return when (legacy) {
             "REVERSE" -> reverse
-            "HOLO" -> holo && !reverse
+            "HOLO" -> holo && !reverse && !nonHolo
             "NORMAL" -> !reverse && !holo
             else -> false
         }
     }
+
+    private fun Boolean.orFalseForHolo(legacy: String, holo: Boolean): Boolean =
+        this && legacy == "HOLO" && holo
 
     private fun languageMatches(title: String, language: String): Boolean {
         val explicit = mapOf(
@@ -374,40 +469,69 @@ class EbaySoldPricingService(
             "pt" to listOf("portugiesisch", "portuguese"),
             "ja" to listOf("japanisch", "japanese")
         )
-        val wanted = explicit[language] ?: return true
-        val foreignMarkers = explicit.filterKeys { it != language }.values.flatten()
-        if (foreignMarkers.any { it in title }) return false
-        // Deutsch/Japanisch und andere lokalisierte Karten brauchen eine explizite
-        // Sprachangabe. Englisch darf ohne Sprachmarker vorkommen.
-        return language == "en" || wanted.any { it in title }
+
+        val foreignMarkers = explicit
+            .filterKeys { it != language }
+            .values
+            .flatten()
+
+        /*
+         * Auf ebay.de fehlt bei deutschen Einzelkarten sehr oft das Wort
+         * 'Deutsch'. Da Name + Nummer bereits exakt geprüft werden, ist ein
+         * fehlender Sprachmarker kein Ausschlussgrund. Explizite Fremdsprachen
+         * werden weiterhin verworfen.
+         */
+        return foreignMarkers.none { it in title }
     }
 
-    private suspend fun getJson(url: String): JsonObject? = withContext(Dispatchers.IO) {
-        runCatching {
-            val request = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(20))
-                .header("Accept", "application/json")
-                .header("X-API-Key", apiKey)
-                .GET()
-                .build()
-            val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() !in 200..299) return@runCatching null
-            json.parseToJsonElement(response.body()).jsonObject
-        }.getOrNull()
-    }
+    private suspend fun getSoldCompsJson(url: String): JsonObject? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(25))
+                    .header("Accept", "application/json")
+                    .header("X-API-Key", apiKey)
+                    .GET()
+                    .build()
+
+                val response = http.send(
+                    request,
+                    HttpResponse.BodyHandlers.ofString()
+                )
+
+                if (response.statusCode() !in 200..299) {
+                    println(
+                        "SoldComps request failed: HTTP ${response.statusCode()} " +
+                            response.body().take(300)
+                    )
+                    return@runCatching null
+                }
+
+                json.parseToJsonElement(response.body()).jsonObject
+            }.onFailure {
+                println("SoldComps request failed: ${it.message}")
+            }.getOrNull()
+        }
 }
 
 private fun JsonObject.string(key: String): String? =
-    (this[key] as? JsonPrimitive)?.content?.trim()?.takeIf(String::isNotBlank)
+    (this[key] as? JsonPrimitive)
+        ?.content
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
 
 private fun JsonObject.bool(key: String): Boolean? =
-    (this[key] as? JsonPrimitive)?.content?.trim()?.lowercase(Locale.ROOT)?.let {
-        when (it) {
-            "true" -> true
-            "false" -> false
-            else -> null
+    (this[key] as? JsonPrimitive)
+        ?.content
+        ?.trim()
+        ?.lowercase(Locale.ROOT)
+        ?.let {
+            when (it) {
+                "true" -> true
+                "false" -> false
+                else -> null
+            }
         }
-    }
 
 private fun JsonObject.double(key: String): Double? =
     (this[key] as? JsonPrimitive)?.doubleOrNull
@@ -421,7 +545,9 @@ private fun normalizeText(raw: String): String =
         .replace("\\s+".toRegex(), " ")
 
 private fun normalizeNumber(raw: String): String =
-    raw.trim().lowercase(Locale.ROOT).replace("^0+(?=\\d)".toRegex(), "")
+    raw.trim()
+        .lowercase(Locale.ROOT)
+        .replace("^0+(?=\\d)".toRegex(), "")
 
 private fun encode(raw: String): String =
     URLEncoder.encode(raw, StandardCharsets.UTF_8)
@@ -431,5 +557,7 @@ private fun median(values: List<Double>): Double {
     val middle = sorted.size / 2
     return if (sorted.size % 2 == 0) {
         (sorted[middle - 1] + sorted[middle]) / 2.0
-    } else sorted[middle]
+    } else {
+        sorted[middle]
+    }
 }
