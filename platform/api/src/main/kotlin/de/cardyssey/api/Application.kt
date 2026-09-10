@@ -116,6 +116,17 @@ fun Application.module() {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
+    /*
+     * SoldComps kann optional eine echte ebay.de-Session weiterreichen.
+     * Das ist besonders wichtig, solange eBay Sold-Listings für anonyme
+     * Sessions einschränkt. Der Cookie-Wert bleibt ausschließlich als
+     * Server-Secret in der Umgebung und wird niemals an Clients ausgegeben.
+     */
+    val soldCompsEbayCookies =
+        System.getenv("SOLDCOMPS_EBAY_COOKIES")
+            ?.trim()
+            .orEmpty()
+
     val cardPricing =
         CardPricingService(
             catalog = cardCatalog,
@@ -127,7 +138,9 @@ fun Application.module() {
         EbaySoldPricingService(
             catalog = cardCatalog,
             apiKey =
-                soldCompsApiKey.orEmpty()
+                soldCompsApiKey.orEmpty(),
+            ebayCookies =
+                soldCompsEbayCookies
         )
 
     install(CallLogging)
