@@ -85,7 +85,6 @@ internal class JustTcgCentralPricingProvider(
         if (usdValues.isEmpty()) return null
         val usd = median(usdValues)
         val eur = usdToEur(usd) ?: return null
-
         val baseEur = eur / PricingCondition.NEAR_MINT.factor
 
         return baseEur.takeIf { it.isFinite() && it > 0.0 }?.let {
@@ -440,11 +439,21 @@ class EbaySoldPricingService(
          * Hat die Karte laut Katalog nur eine einzige Druckvariante,
          * reicht Name + Kartennummer. Bei Full Arts / Illustration Rares
          * schreiben Verkäufer 'Holo' häufig gar nicht in den Titel.
+         * Explizit widersprechende Variantensignale werden trotzdem verworfen.
          */
         if (card.variants.size == 1) {
             return when (legacy) {
-                "REVERSE" -> reverse || normalizeText(variant.type).contains("reverse")
-                else -> !reverse && !nonHolo.orFalseForHolo(legacy, holo)
+                "REVERSE" ->
+                    reverse || normalizeText(variant.type).contains("reverse")
+
+                "HOLO" ->
+                    !reverse && !nonHolo
+
+                "NORMAL" ->
+                    !reverse && !holo
+
+                else ->
+                    true
             }
         }
 
@@ -455,9 +464,6 @@ class EbaySoldPricingService(
             else -> false
         }
     }
-
-    private fun Boolean.orFalseForHolo(legacy: String, holo: Boolean): Boolean =
-        this && legacy == "HOLO" && holo
 
     private fun languageMatches(title: String, language: String): Boolean {
         val explicit = mapOf(
