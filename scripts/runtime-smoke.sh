@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 
+set -u
+
 BASE_WEB_URL="${BASE_WEB_URL:-https://cardyssey.de}"
 BASE_API_URL="${BASE_API_URL:-https://api.cardyssey.de}"
 API_PREFIX="${API_PREFIX:-/api/v1}"
 ANDROID_APK_URL="${ANDROID_APK_URL:-https://github.com/leonwilla/Cardyssey-Downloads/releases/latest/download/cardyssey-latest.apk}"
+EBAY_SMOKE_CARD_ID="${CARDYSSEY_EBAY_SMOKE_CARD_ID:-me05-088}"
+EBAY_SMOKE_LANGUAGE="${CARDYSSEY_EBAY_SMOKE_LANGUAGE:-de}"
 
 check() {
   label="$1"
   url="$2"
-  code="$(curl -L -sS -o /tmp/cardyssey-smoke-body -w '%{http_code}' "$url" || true)"
+  code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-smoke-body -w '%{http_code}' "$url" || true)"
   if [ "$code" != "200" ]; then
     echo "FAIL: $label -> HTTP $code"
     cat /tmp/cardyssey-smoke-body 2>/dev/null || true
@@ -21,7 +25,7 @@ check_status() {
   label="$1"
   url="$2"
   expected="$3"
-  code="$(curl -L -sS -o /tmp/cardyssey-smoke-status-body -w '%{http_code}' "$url" || true)"
+  code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-smoke-status-body -w '%{http_code}' "$url" || true)"
   if [ "$code" != "$expected" ]; then
     echo "FAIL: $label -> HTTP $code (expected $expected)"
     cat /tmp/cardyssey-smoke-status-body 2>/dev/null || true
@@ -32,7 +36,7 @@ check_status() {
 
 check_android_metadata() {
   url="$BASE_WEB_URL/api/android/latest"
-  code="$(curl -L -sS -o /tmp/cardyssey-android-release.json -w '%{http_code}' "$url" || true)"
+  code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-android-release.json -w '%{http_code}' "$url" || true)"
   if [ "$code" != "200" ]; then
     echo "FAIL: Android release metadata -> HTTP $code"
     cat /tmp/cardyssey-android-release.json 2>/dev/null || true
@@ -80,7 +84,7 @@ if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
   auth_check() {
     label="$1"
     path="$2"
-    code="$(curl -sS -o /tmp/cardyssey-smoke-auth-body -w '%{http_code}' \
+    code="$(curl -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-smoke-auth-body -w '%{http_code}' \
       -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
       "$BASE_API_URL$API_PREFIX$path" || true)"
     if [ "$code" != "200" ]; then
@@ -91,12 +95,49 @@ if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
     echo "OK: $label"
   }
 
-  auth_check "Authenticated profile" "/auth/me"
+  ebay_price_check() {
+    url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID?language=$EBAY_SMOKE_LANGUAGE&condition=NEAR_MINT&market=EBAY"
+    code="$(curl -sS --connect-timeout 12 --max-time 60 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
+      -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
+      "$url" || true)"
+
+    if [ "$code" != "200" ]; then
+      echo "FAIL: eBay production pricing probe -> HTTP $code"
+      cat /tmp/cardyssey-smoke-ebay.json 2>/dev/null || true
+      return 1
+    fi
+
+    python3 - <<'PY'
+import json
+from pathlib import Path
+
+path = Path('/tmp/cardyssey-smoke-ebay.json')
+data = json.loads(path.read_text())
+market = data.get('market')
+source = data.get('source')
+base = data.get('baseEur')
+samples = data.get('sampleCount')
+
+if market != 'EBAY':
+    raise SystemExit(f'FAIL: eBay pricing probe returned market={market!r}')
+if source != 'SOLDCOMPS':
+    raise SystemExit(f'FAIL: eBay pricing probe has no SoldComps quote (source={source!r})')
+if not isinstance(base, (int, float)) or base <= 0:
+    raise SystemExit(f'FAIL: eBay pricing probe has invalid baseEur={base!r}')
+if not isinstance(samples, int) or samples < 1:
+    raise SystemExit(f'FAIL: eBay pricing probe has invalid sampleCount={samples!r}')
+
+print(f'OK: eBay production pricing -> {base:.2f} EUR from {samples} sold comp(s)')
+PY
+  }
+
+  auth_check "Authenticated profile" "/me"
   auth_check "Collection read" "/collection"
   auth_check "Wishlist read" "/wishlist"
   auth_check "Marketplace read" "/marketplace"
   auth_check "Incoming offers read" "/offers/incoming"
   auth_check "Outgoing offers read" "/offers/outgoing"
+  ebay_price_check
 else
-  echo "INFO: E2E_ACCESS_TOKEN not set; authenticated read-only checks skipped."
+  echo "INFO: E2E_ACCESS_TOKEN not set; authenticated read-only and eBay pricing checks skipped."
 fi
