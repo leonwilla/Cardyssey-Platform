@@ -9,14 +9,18 @@ on:
       - ".github/workflows/runtime-smoke.yml"
   workflow_dispatch:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "17 * * * *"
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    env:
+      E2E_ACCESS_TOKEN: ${{ secrets.E2E_ACCESS_TOKEN }}
+      CARDYSSEY_EBAY_SMOKE_CARD_ID: me05-088
+      CARDYSSEY_EBAY_SMOKE_LANGUAGE: de
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Public production smoke checks
+      - name: Production smoke checks
         run: bash scripts/runtime-smoke.sh
