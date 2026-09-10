@@ -267,7 +267,6 @@ class EbaySoldPricingService(
                 ?.uppercase(Locale.ROOT)
             if (currency != "EUR") return@forEach
 
-            /* soldPrice ist der echte Verkaufspreis; totalPrice nur Legacy-Fallback. */
             val rawPrice = item.double("soldPrice")
                 ?: item.double("totalPrice")
                 ?: return@forEach
@@ -298,12 +297,6 @@ class EbaySoldPricingService(
                 "variant=${variant.id} providerItems=${items.size} matched=${unique.size}"
         )
 
-        /*
-         * Neue Sets haben oft erst 1-2 belastbare Verkäufe.
-         * Einen existierenden exakten Sale komplett als 'kein Marktwert'
-         * zu verwerfen war der Hauptfehler. sampleCount bleibt erhalten,
-         * damit die UI die Datenbasis transparent anzeigen kann.
-         */
         if (unique.isEmpty()) return null
 
         val filtered = rejectOutliers(unique.values.toList())
@@ -435,12 +428,6 @@ class EbaySoldPricingService(
 
         val legacy = variant.legacyVariant.uppercase(Locale.ROOT)
 
-        /*
-         * Hat die Karte laut Katalog nur eine einzige Druckvariante,
-         * reicht Name + Kartennummer. Bei Full Arts / Illustration Rares
-         * schreiben Verkäufer 'Holo' häufig gar nicht in den Titel.
-         * Explizit widersprechende Variantensignale werden trotzdem verworfen.
-         */
         if (card.variants.size == 1) {
             return when (legacy) {
                 "REVERSE" ->
@@ -481,12 +468,6 @@ class EbaySoldPricingService(
             .values
             .flatten()
 
-        /*
-         * Auf ebay.de fehlt bei deutschen Einzelkarten sehr oft das Wort
-         * 'Deutsch'. Da Name + Nummer bereits exakt geprüft werden, ist ein
-         * fehlender Sprachmarker kein Ausschlussgrund. Explizite Fremdsprachen
-         * werden weiterhin verworfen.
-         */
         return foreignMarkers.none { it in title }
     }
 
@@ -496,7 +477,7 @@ class EbaySoldPricingService(
                 val request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(25))
                     .header("Accept", "application/json")
-                    .header("X-API-Key", apiKey)
+                    .header("Authorization", "Bearer $apiKey")
                     .GET()
                     .build()
 
