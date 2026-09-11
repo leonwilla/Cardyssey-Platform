@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -109,6 +110,119 @@ class EbayPriceCacheRepository(
             }
         }
     }
+
+    fun canRefresh(
+        cardId: String,
+        languageCode: String,
+        variantId: String
+    ): Boolean =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT next_attempt_at <= NOW() AS allowed
+                FROM ebay_price_refresh_state
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND variant_id = ?
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, cardId)
+                statement.setString(2, languageCode)
+                statement.setString(3, variantId)
+
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        result.getBoolean("allowed")
+                    } else {
+                        true
+                    }
+                }
+            }
+        }
+
+    fun recordRefreshSuccess(
+        cardId: String,
+        languageCode: String,
+        variantId: String
+    ) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                DELETE FROM ebay_price_refresh_state
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND variant_id = ?
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, cardId)
+                statement.setString(2, languageCode)
+                statement.setString(3, variantId)
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    fun recordRefreshFailure(
+        cardId: String,
+        languageCode: String,
+        variantId: String
+    ) {
+        dataSource.connection.use { connection ->
+            val currentFailures = connection.prepareStatement(
+                """
+                SELECT failure_count
+                FROM ebay_price_refresh_state
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND variant_id = ?
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, cardId)
+                statement.setString(2, languageCode)
+                statement.setString(3, variantId)
+                statement.executeQuery().use { result ->
+                    if (result.next()) result.getInt("failure_count") else 0
+                }
+            }
+
+            val failureCount = currentFailures + 1
+            val backoffMinutes = when (failureCount) {
+                1 -> 15L
+                2 -> 60L
+                3 -> 6L * 60L
+                else -> 24L * 60L
+            }
+            val nextAttemptAt = OffsetDateTime
+                .now(ZoneOffset.UTC)
+                .plusMinutes(backoffMinutes)
+
+            connection.prepareStatement(
+                """
+                INSERT INTO ebay_price_refresh_state (
+                    card_id,
+                    language_code,
+                    variant_id,
+                    failure_count,
+                    next_attempt_at,
+                    last_failure_at
+                )
+                VALUES (?, ?, ?, ?, ?, NOW())
+                ON CONFLICT (card_id, language_code, variant_id)
+                DO UPDATE SET
+                    failure_count = EXCLUDED.failure_count,
+                    next_attempt_at = EXCLUDED.next_attempt_at,
+                    last_failure_at = NOW()
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, cardId)
+                statement.setString(2, languageCode)
+                statement.setString(3, variantId)
+                statement.setInt(4, failureCount)
+                statement.setObject(5, nextAttemptAt)
+                statement.executeUpdate()
+            }
+        }
+    }
 }
 
 interface EbayQuoteProvider {
@@ -162,13 +276,15 @@ class CachedEbayPricingService(
 
         if (!exactLanguageMatch || selected == null) {
             return providers.firstNotNullOfOrNull { provider ->
-                provider.quote(
-                    cardId = cardId,
-                    language = language,
-                    variantId = variantId,
-                    legacyVariant = legacyVariant,
-                    condition = condition
-                )
+                runCatching {
+                    provider.quote(
+                        cardId = cardId,
+                        language = language,
+                        variantId = variantId,
+                        legacyVariant = legacyVariant,
+                        condition = condition
+                    )
+                }.getOrNull()
             } ?: emptyQuote(details, selected, exactLanguageMatch, condition)
         }
 
@@ -189,20 +305,31 @@ class CachedEbayPricingService(
                     return@withLock latestCached.toResponse(details, selected, condition)
                 }
 
+                if (!cache.canRefresh(details.id, details.languageCode, selected.id)) {
+                    println("eBay pricing refresh backoff active: $key")
+                    return@withLock latestCached?.toResponse(details, selected, condition)
+                        ?: emptyQuote(details, selected, true, condition)
+                }
+
                 val live = providers.firstNotNullOfOrNull { provider ->
-                    provider.quote(
-                        cardId = cardId,
-                        language = language,
-                        variantId = selected.id,
-                        legacyVariant = null,
-                        condition = condition
-                    )?.takeIf { it.baseEur != null }
+                    runCatching {
+                        provider.quote(
+                            cardId = cardId,
+                            language = language,
+                            variantId = selected.id,
+                            legacyVariant = null,
+                            condition = condition
+                        )
+                    }.getOrNull()?.takeIf { it.baseEur != null }
                 }
 
                 if (live != null) {
                     live.toCacheRecord(condition)?.let(cache::write)
+                    cache.recordRefreshSuccess(details.id, details.languageCode, selected.id)
                     return@withLock live
                 }
+
+                cache.recordRefreshFailure(details.id, details.languageCode, selected.id)
 
                 if (latestCached != null) {
                     println(
