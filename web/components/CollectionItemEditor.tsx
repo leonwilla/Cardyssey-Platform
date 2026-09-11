@@ -528,22 +528,35 @@ export function CollectionItemEditor({
 
         {selectedMarket === "EBAY" &&
           pricingQuote && (
-            <p
-              style={{
-                margin: "10px 0 0",
-                color: "var(--secondary)",
-                fontSize: 12,
-              }}
-            >
-              {pricingQuote.source ?? "eBay"}
-              {pricingQuote.sampleCount != null
-                ? ` · ${pricingQuote.sampleCount} Verkäufe`
-                : ""}
-              {pricingQuote.rangeLowEur != null &&
-              pricingQuote.rangeHighEur != null
-                ? ` · ${formatEur(pricingQuote.rangeLowEur)} – ${formatEur(pricingQuote.rangeHighEur)}`
-                : ""}
-            </p>
+            <>
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  color: "var(--secondary)",
+                  fontSize: 12,
+                }}
+              >
+                {pricingQuote.source ?? "eBay"}
+                {pricingQuote.sampleCount != null
+                  ? ` · ${pricingQuote.sampleCount} Verkäufe`
+                  : ""}
+                {pricingQuote.rangeLowEur != null &&
+                pricingQuote.rangeHighEur != null
+                  ? ` · ${formatEur(pricingQuote.rangeLowEur)} – ${formatEur(pricingQuote.rangeHighEur)}`
+                  : ""}
+              </p>
+
+              <p
+                style={{
+                  margin: "5px 0 0",
+                  color: "var(--secondary)",
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                }}
+              >
+                Marktfenster: bevorzugt letzte 30 Tage · bei weniger als 10 sauberen Verkäufen automatisch 60 bzw. 90 Tage · maximal 30 Verkäufe.
+              </p>
+            </>
           )}
 
         {selectedMarket === "EBAY" && (
@@ -567,7 +580,7 @@ export function CollectionItemEditor({
                 fontSize: 12,
               }}
             >
-              Die letzten 10 Verkäufe, die in die Berechnung eingeflossen sind.
+              Die letzten 10 der Verkäufe, die in die Berechnung eingeflossen sind.
             </p>
 
             {pricingLoading && (
