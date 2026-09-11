@@ -32,7 +32,8 @@ data class HealthResponse(
     val version: String,
     val justTcgConfigured: Boolean,
     val soldCompsConfigured: Boolean,
-    val soldCompsEbaySessionConfigured: Boolean
+    val soldCompsEbaySessionConfigured: Boolean,
+    val ebayPriceCacheTtlHours: Long
 )
 
 fun main() {
@@ -104,6 +105,11 @@ fun Application.module() {
             database
         )
 
+    val ebayPriceCache =
+        EbayPriceCacheRepository(
+            database
+        )
+
     val cardCatalog =
         CardCatalogService(
             catalogCache
@@ -130,6 +136,17 @@ fun Application.module() {
             ?.trim()
             .orEmpty()
 
+    /*
+     * Der eBay-Marktwert wird global pro Karte/Sprache/Variante geteilt.
+     * Dadurch löst nicht jede Collection und nicht jeder Nutzer erneut einen
+     * Provider-Request aus. Standard: sieben Tage bis zum nächsten Refresh.
+     */
+    val ebayPriceCacheTtlHours =
+        System.getenv("EBAY_PRICE_CACHE_TTL_HOURS")
+            ?.toLongOrNull()
+            ?.takeIf { it > 0L }
+            ?: 168L
+
     val cardPricing =
         CardPricingService(
             catalog = cardCatalog,
@@ -137,13 +154,26 @@ fun Application.module() {
                 justTcgApiKey
         )
 
-    val ebayPricing =
+    val soldCompsEbayPricing =
         EbaySoldPricingService(
             catalog = cardCatalog,
             apiKey =
                 soldCompsApiKey.orEmpty(),
             ebayCookies =
                 soldCompsEbayCookies
+        )
+
+    val ebayPricing =
+        CachedEbayPricingService(
+            catalog = cardCatalog,
+            cache = ebayPriceCache,
+            providers = listOf(
+                SoldCompsEbayQuoteProvider(
+                    soldCompsEbayPricing
+                )
+            ),
+            cacheTtlMs =
+                ebayPriceCacheTtlHours * 60L * 60L * 1000L
         )
 
     install(CallLogging)
@@ -295,7 +325,7 @@ fun Application.module() {
                         "cardyssey-api",
 
                     version =
-                        "0.2.2",
+                        "0.2.3",
 
                     justTcgConfigured =
                         justTcgApiKey != null,
@@ -304,7 +334,10 @@ fun Application.module() {
                         soldCompsApiKey != null,
 
                     soldCompsEbaySessionConfigured =
-                        soldCompsEbayCookies.isNotBlank()
+                        soldCompsEbayCookies.isNotBlank(),
+
+                    ebayPriceCacheTtlHours =
+                        ebayPriceCacheTtlHours
                 )
             )
         }
