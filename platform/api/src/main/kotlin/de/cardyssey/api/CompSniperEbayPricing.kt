@@ -48,10 +48,11 @@ class CompSniperEbayQuoteProvider(
     )
 
     private data class VariantTraits(
+        val typeKey: String,
+        val subtypeKey: String?,
+        val foilKey: String?,
+        val sizeKey: String?,
         val firstEdition: Boolean,
-        val shadowless: Boolean,
-        val unlimited: Boolean,
-        val copyright19992000: Boolean,
         val specialStamps: Set<String>
     )
 
@@ -143,17 +144,22 @@ class CompSniperEbayQuoteProvider(
         )
 
         /*
-         * Provider-Suche bewusst breit halten. Die exakte physische Variante
-         * wird lokal anhand der TCGdex-Variantenmerkmale validiert. So verlieren
-         * wir seltene Listings nicht nur deshalb, weil ein Verkäufer z. B.
-         * "1. Auflage" statt "1st Edition" schreibt.
+         * Name + exakte Nummer + Sprache bleiben die stabile Basis.
+         * Nur eindeutige physische Merkmale werden zusätzlich in die Provider-
+         * Suche aufgenommen. Die vollständige Validierung passiert trotzdem
+         * lokal, weil eBay-Verkäufer dieselbe Eigenschaft unterschiedlich
+         * benennen können.
          */
-        val query = listOf(
-            card.name,
-            printedNumber,
-            searchLanguageToken(card.languageCode)
-        )
+        val query = (
+            listOf(
+                card.name,
+                printedNumber,
+                searchLanguageToken(card.languageCode)
+            ) +
+                variantSearchTokens(card, variant)
+            )
             .filter(String::isNotBlank)
+            .distinct()
             .joinToString(" ")
 
         val url = "https://api.compsniper.com/v1/scrape" +
@@ -277,7 +283,9 @@ class CompSniperEbayQuoteProvider(
 
         println(
             "eBay pricing: provider=COMPSNIPER card=${card.id} language=${card.languageCode} " +
-                "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
+                "variant=${variant.id} type=${variant.type} subtype=${variant.subtype} " +
+                "foil=${variant.foil} size=${variant.size} stamps=${variant.stamps.joinToString("+")} " +
+                "providerItems=${items.size} matched=${unique.size} " +
                 "windowDays=$selectedWindowDays kept=${filtered.size} mean=$mean " +
                 "range=$low..$high recent=${recentSales.size}"
         )
@@ -436,137 +444,328 @@ class CompSniperEbayQuoteProvider(
     }
 
     /*
-     * Physische Varianten werden als Fingerprint geprüft, nicht nur als
-     * "Holo/Reverse/Normal". Das ist besonders bei Vintage entscheidend:
-     * Shadowless, Unlimited und 1st Edition können bei derselben Kartennummer
-     * preislich um ein Vielfaches auseinanderliegen.
+     * Exakter physischer Fingerprint aus TCGdex:
+     * type + subtype + foil + stamps + size.
      *
-     * Regel: lieber keinen eBay-Wert als Verkäufe einer anderen physischen
-     * Variante in den Mittelwert zu mischen.
+     * Der alte Legacy-Basistyp reicht dafür nicht. Metal, Lenticular,
+     * Master-Ball/Poké-Ball-Foils, Jumbo und Promo-/Turnier-Stamps werden hier
+     * genauso berücksichtigt wie 1st Edition/Shadowless/Unlimited.
+     *
+     * Regel: Fehlt bei einer unterscheidbaren Sondervariante die nötige
+     * Titel-Evidenz, wird der Verkauf verworfen. Ein fehlender Preis ist besser
+     * als ein Preis einer anderen physischen Karte.
      */
     private fun variantMatches(
         title: String,
         card: CatalogCardDetails,
         variant: CatalogVariant
     ): Boolean {
-        val padded = " $title "
-        val reverse =
-            " reverse " in padded ||
-                " reverse holo " in padded ||
-                " reverse foil " in padded
-        val nonHolo =
-            " non holo " in padded ||
-                " nonholo " in padded ||
-                " non foil " in padded
-        val holo =
-            " holo " in padded ||
-                " holofoil " in padded ||
-                " foil " in padded ||
-                " holographic " in padded
-
-        val legacy = variant.legacyVariant.uppercase(Locale.ROOT)
-        val legacyFamilies = card.variants
-            .map { it.legacyVariant.uppercase(Locale.ROOT) }
-            .toSet()
-        val hasCompetingFoilFamily = legacyFamilies.size > 1
-
-        val baseMatches = when (legacy) {
-            "REVERSE" ->
-                if (hasCompetingFoilFamily) reverse else !nonHolo
-
-            "HOLO" ->
-                !reverse && !nonHolo && (!hasCompetingFoilFamily || holo)
-
-            "NORMAL" ->
-                !reverse && !holo
-
-            /* Legacy-1st-Edition hat keinen eigenen Foil-Marker. */
-            "FIRST_EDITION" ->
-                !reverse && !nonHolo
-
-            else ->
-                false
-        }
-
-        if (!baseMatches) return false
-
         val target = variantTraits(variant)
-        val firstEditionInTitle = containsAnyPhrase(title, FIRST_EDITION_MARKERS)
-        val shadowlessInTitle = containsAnyPhrase(title, SHADOWLESS_MARKERS)
-        val unlimitedInTitle = containsAnyPhrase(title, UNLIMITED_MARKERS)
-        val copyrightInTitle = containsAnyPhrase(title, COPYRIGHT_1999_2000_MARKERS)
 
-        /* 1st Edition ist niemals mit Unlimited austauschbar. */
+        if (!typeMatches(title, card, target)) return false
+        if (!sizeMatches(title, target)) return false
+
+        val firstEditionInTitle =
+            containsAnyPhrase(title, FIRST_EDITION_MARKERS)
+
         if (target.firstEdition) {
             if (!firstEditionInTitle) return false
         } else if (firstEditionInTitle) {
             return false
         }
 
-        /*
-         * Bei Base-Set-artigen Varianten kann "1st Edition" Shadowless bereits
-         * eindeutig implizieren. Das wird aus den vorhandenen Varianten
-         * abgeleitet statt hart auf ein bestimmtes Set zu codieren.
-         */
-        if (target.shadowless) {
-            val sameLegacyFirstEditions = card.variants
-                .filter {
-                    it.legacyVariant.equals(
-                        variant.legacyVariant,
-                        ignoreCase = true
-                    ) && variantTraits(it).firstEdition
-                }
-            val firstEditionImpliesShadowless =
-                target.firstEdition &&
-                    sameLegacyFirstEditions.isNotEmpty() &&
-                    sameLegacyFirstEditions.all { variantTraits(it).shadowless }
+        if (!subtypeMatches(title, card, variant, target)) return false
+        if (!foilMatches(title, card, variant, target)) return false
+        if (!stampMatches(title, card, variant, target)) return false
 
-            if (!shadowlessInTitle && !firstEditionImpliesShadowless) return false
+        return true
+    }
+
+    private fun typeMatches(
+        title: String,
+        card: CatalogCardDetails,
+        target: VariantTraits
+    ): Boolean {
+        val allTypes = card.variants
+            .map { variantTraits(it).typeKey }
+            .filter(String::isNotBlank)
+            .toSet()
+        val hasCompetingType =
+            allTypes.any { it != target.typeKey }
+
+        val reverse = containsAnyPhrase(
+            title,
+            aliasesForType("reverse")
+        )
+        val nonHolo = containsAnyPhrase(
+            title,
+            NON_HOLO_MARKERS
+        )
+        val holo = !nonHolo && containsAnyPhrase(
+            title,
+            aliasesForType("holo")
+        )
+        val metal = containsAnyPhrase(
+            title,
+            aliasesForType("metal")
+        )
+        val lenticular = containsAnyPhrase(
+            title,
+            aliasesForType("lenticular")
+        )
+
+        return when (target.typeKey) {
+            "normal" ->
+                !reverse && !holo && !metal && !lenticular
+
+            "holo" ->
+                !reverse && !nonHolo && !metal && !lenticular &&
+                    (!hasCompetingType || holo)
+
+            "reverse" ->
+                !nonHolo && !metal && !lenticular &&
+                    (!hasCompetingType || reverse)
+
+            "metal" ->
+                metal && !lenticular
+
+            "lenticular" ->
+                lenticular && !metal
+
+            else -> {
+                val ownAliases = aliasesForType(target.typeKey)
+                val competingMentioned = allTypes
+                    .filter { it != target.typeKey }
+                    .any { type ->
+                        containsAnyPhrase(
+                            title,
+                            aliasesForType(type)
+                        )
+                    }
+
+                !competingMentioned &&
+                    (!hasCompetingType || containsAnyPhrase(title, ownAliases))
+            }
+        }
+    }
+
+    private fun sizeMatches(
+        title: String,
+        target: VariantTraits
+    ): Boolean {
+        val jumboInTitle =
+            containsAnyPhrase(title, JUMBO_MARKERS)
+
+        return if (target.sizeKey == "jumbo") {
+            jumboInTitle
+        } else {
+            !jumboInTitle
+        }
+    }
+
+    private fun subtypeMatches(
+        title: String,
+        card: CatalogCardDetails,
+        variant: CatalogVariant,
+        target: VariantTraits
+    ): Boolean {
+        val subtype = target.subtypeKey
+        val shadowlessInTitle =
+            containsAnyPhrase(title, aliasesForSubtype("shadowless"))
+        val unlimitedInTitle =
+            containsAnyPhrase(title, aliasesForSubtype("unlimited"))
+        val targetShadowlessFamily =
+            subtype == "shadowless" ||
+                subtype == "shadowless red cheek"
+
+        if (targetShadowlessFamily) {
+            val firstEditionImpliesPlainShadowless =
+                subtype == "shadowless" &&
+                    target.firstEdition &&
+                    card.variants
+                        .filter {
+                            it.id != variant.id &&
+                                variantTraits(it).typeKey == target.typeKey &&
+                                variantTraits(it).firstEdition
+                        }
+                        .let { siblings ->
+                            siblings.isEmpty() ||
+                                siblings.all {
+                                    variantTraits(it).subtypeKey == "shadowless"
+                                }
+                        }
+
+            if (
+                !shadowlessInTitle &&
+                !firstEditionImpliesPlainShadowless
+            ) {
+                return false
+            }
         } else if (shadowlessInTitle) {
             return false
         }
 
-        if (!target.unlimited && unlimitedInTitle) return false
-
-        if (target.copyright19992000) {
-            if (!copyrightInTitle) return false
-        } else if (copyrightInTitle) {
+        if (subtype == "unlimited") {
+            if (shadowlessInTitle) return false
+            /* "Unlimited" wird von Verkäufern oft weggelassen. */
+        } else if (unlimitedInTitle) {
             return false
         }
 
-        /*
-         * Weitere TCGdex-Stamps werden generisch gegeneinander abgegrenzt.
-         * Nur wenn innerhalb derselben Grundvariante tatsächlich konkurrierende
-         * Stamps existieren, verlangen wir den Marker im Listing-Titel.
-         */
-        val related = card.variants.filter {
-            it.legacyVariant.equals(
-                variant.legacyVariant,
-                ignoreCase = true
-            )
-        }
-        val targetStamps = target.specialStamps
-        val competingStamps = related
-            .flatMap { variantTraits(it).specialStamps }
+        val related = card.variants
+            .filter { other ->
+                if (other.id == variant.id) return@filter false
+                val traits = variantTraits(other)
+                traits.typeKey == target.typeKey &&
+                    traits.sizeKey == target.sizeKey &&
+                    traits.foilKey == target.foilKey &&
+                    traits.specialStamps == target.specialStamps
+            }
+
+        val competingSubtypes = related
+            .mapNotNull { variantTraits(it).subtypeKey }
+            .filter { it != subtype }
             .toSet()
 
-        for (stamp in targetStamps) {
-            val needsExplicitMarker = related.any {
-                stamp !in variantTraits(it).specialStamps
+        if (
+            subtype != null &&
+            subtype !in setOf("shadowless", "unlimited")
+        ) {
+            val needsExplicitMarker =
+                subtype in ALWAYS_EXPLICIT_SUBTYPES ||
+                    related.any {
+                        variantTraits(it).subtypeKey != subtype
+                    }
+
+            if (
+                needsExplicitMarker &&
+                !containsAnyPhrase(
+                    title,
+                    aliasesForSubtype(subtype)
+                )
+            ) {
+                return false
             }
-            if (needsExplicitMarker && !containsPhrase(title, stamp)) return false
         }
 
-        for (stamp in competingStamps - targetStamps) {
-            if (containsPhrase(title, stamp)) return false
+        for (competitor in competingSubtypes) {
+            if (
+                containsAnyPhrase(
+                    title,
+                    aliasesForSubtype(competitor)
+                )
+            ) {
+                return false
+            }
         }
 
         return true
     }
 
-    private fun variantTraits(variant: CatalogVariant): VariantTraits {
-        val subtype = normalizeCompSniperText(variant.subtype.orEmpty())
-        val compactSubtype = subtype.replace(" ", "")
+    private fun foilMatches(
+        title: String,
+        card: CatalogCardDetails,
+        variant: CatalogVariant,
+        target: VariantTraits
+    ): Boolean {
+        val related = card.variants
+            .filter { other ->
+                if (other.id == variant.id) return@filter false
+                val traits = variantTraits(other)
+                traits.typeKey == target.typeKey &&
+                    traits.subtypeKey == target.subtypeKey &&
+                    traits.sizeKey == target.sizeKey &&
+                    traits.specialStamps == target.specialStamps
+            }
+
+        val competingFoils = related
+            .map { variantTraits(it).foilKey }
+            .filter { it != target.foilKey }
+            .toSet()
+
+        if (
+            target.foilKey != null &&
+            competingFoils.isNotEmpty() &&
+            !containsAnyPhrase(
+                title,
+                aliasesForFoil(target.foilKey)
+            )
+        ) {
+            return false
+        }
+
+        for (competitor in competingFoils.filterNotNull()) {
+            if (
+                containsAnyPhrase(
+                    title,
+                    aliasesForFoil(competitor)
+                )
+            ) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private fun stampMatches(
+        title: String,
+        card: CatalogCardDetails,
+        variant: CatalogVariant,
+        target: VariantTraits
+    ): Boolean {
+        /*
+         * Ein Stamp ist Teil der physischen Karte, nicht nur Dekoration im
+         * UI. Für eine gestempelte Zielvariante verlangen wir deshalb explizite
+         * Titel-Evidenz. First Edition wurde oben separat behandelt.
+         */
+        for (stamp in target.specialStamps) {
+            if (
+                !containsAnyPhrase(
+                    title,
+                    aliasesForStamp(stamp)
+                )
+            ) {
+                return false
+            }
+        }
+
+        val competingStamps = card.variants
+            .asSequence()
+            .filter { it.id != variant.id }
+            .flatMap { variantTraits(it).specialStamps.asSequence() }
+            .filter { it !in target.specialStamps }
+            .toSet()
+
+        for (competitor in competingStamps) {
+            if (
+                containsAnyPhrase(
+                    title,
+                    aliasesForStamp(competitor)
+                )
+            ) {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    private fun variantTraits(
+        variant: CatalogVariant
+    ): VariantTraits {
+        val typeKey =
+            normalizeCompSniperText(variant.type)
+                .ifBlank { "normal" }
+        val subtypeKey = variant.subtype
+            ?.let(::normalizeCompSniperText)
+            ?.takeIf(String::isNotBlank)
+        val foilKey = variant.foil
+            ?.let(::normalizeCompSniperText)
+            ?.takeIf(String::isNotBlank)
+        val sizeKey = variant.size
+            ?.let(::normalizeCompSniperText)
+            ?.takeIf(String::isNotBlank)
         val normalizedStamps = variant.stamps
             .map(::normalizeCompSniperText)
             .filter(String::isNotBlank)
@@ -577,23 +776,138 @@ class CompSniperEbayQuoteProvider(
                 normalizedStamps.any(::isFirstEditionMarker)
 
         return VariantTraits(
+            typeKey = typeKey,
+            subtypeKey = subtypeKey,
+            foilKey = foilKey,
+            sizeKey = sizeKey,
             firstEdition = firstEdition,
-            shadowless =
-                subtype == "shadowless" ||
-                    subtype == "schattenlos",
-            unlimited =
-                subtype == "unlimited" ||
-                    subtype == "unbegrenzt",
-            copyright19992000 =
-                compactSubtype in setOf(
-                    "copyright19992000",
-                    "19992000"
-                ),
             specialStamps = normalizedStamps
                 .filterNot(::isFirstEditionMarker)
                 .toSet()
         )
     }
+
+    private fun variantSearchTokens(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): List<String> {
+        val target = variantTraits(variant)
+        val result = mutableListOf<String>()
+
+        if (target.firstEdition) {
+            result += "1st Edition"
+        }
+
+        when (target.subtypeKey) {
+            "shadowless" -> result += "Shadowless"
+            "shadowless red cheek" -> result += "Shadowless Red Cheek"
+        }
+
+        if (target.sizeKey == "jumbo") {
+            result += "Jumbo"
+        }
+
+        when (target.typeKey) {
+            "metal" -> result += "Metal"
+            "lenticular" -> result += "Lenticular"
+        }
+
+        val targetFoil = target.foilKey
+        if (targetFoil != null) {
+            val differsByFoil = card.variants.any { other ->
+                if (other.id == variant.id) return@any false
+                val traits = variantTraits(other)
+                traits.typeKey == target.typeKey &&
+                    traits.subtypeKey == target.subtypeKey &&
+                    traits.sizeKey == target.sizeKey &&
+                    traits.specialStamps == target.specialStamps &&
+                    traits.foilKey != targetFoil
+            }
+
+            if (differsByFoil) {
+                result += searchTokenForFoil(targetFoil)
+            }
+        }
+
+        target.specialStamps
+            .sorted()
+            .take(1)
+            .forEach {
+                result += searchTokenForStamp(it)
+            }
+
+        return result
+            .filter(String::isNotBlank)
+            .distinct()
+            .take(MAX_PROVIDER_VARIANT_TOKENS)
+    }
+
+    private fun aliasesForType(
+        key: String
+    ): Set<String> =
+        TYPE_ALIASES[key]
+            ?: genericAliases(key)
+
+    private fun aliasesForSubtype(
+        key: String
+    ): Set<String> =
+        SUBTYPE_ALIASES[key]
+            ?: genericAliases(key)
+
+    private fun aliasesForFoil(
+        key: String
+    ): Set<String> =
+        FOIL_ALIASES[key]
+            ?: genericAliases(key)
+
+    private fun aliasesForStamp(
+        key: String
+    ): Set<String> =
+        STAMP_ALIASES[key]
+            ?: genericAliases(key)
+
+    private fun genericAliases(
+        key: String
+    ): Set<String> =
+        setOf(
+            key,
+            key.replace(" ", "")
+        ).filter(String::isNotBlank).toSet()
+
+    private fun searchTokenForFoil(
+        key: String
+    ): String =
+        when (key) {
+            "pokeball" -> "Pokeball"
+            "greatball" -> "Great Ball"
+            "ultraball" -> "Ultra Ball"
+            "masterball" -> "Master Ball"
+            "cracked ice" -> "Cracked Ice"
+            "team rocket" -> "Team Rocket"
+            else -> titleCaseVariantToken(key)
+        }
+
+    private fun searchTokenForStamp(
+        key: String
+    ): String =
+        when (key) {
+            "pre release" -> "Prerelease"
+            "pokemon center" -> "Pokemon Center"
+            "set logo" -> "Set Logo"
+            "w promo" -> "W Promo"
+            else -> titleCaseVariantToken(key)
+        }
+
+    private fun titleCaseVariantToken(
+        key: String
+    ): String =
+        key.split(' ')
+            .filter(String::isNotBlank)
+            .joinToString(" ") { token ->
+                token.replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
+                }
+            }
 
     private fun isFirstEditionMarker(value: String): Boolean =
         normalizeCompSniperText(value) in FIRST_EDITION_MARKERS
@@ -748,6 +1062,7 @@ class CompSniperEbayQuoteProvider(
     companion object {
         private const val MIN_MARKET_SALES = 10
         private const val MAX_MARKET_SALES = 30
+        private const val MAX_PROVIDER_VARIANT_TOKENS = 3
 
         private val FIRST_EDITION_MARKERS = setOf(
             "1st edition",
@@ -759,19 +1074,164 @@ class CompSniperEbayQuoteProvider(
             "erste auflage"
         )
 
-        private val SHADOWLESS_MARKERS = setOf(
-            "shadowless",
-            "schattenlos"
+        private val NON_HOLO_MARKERS = setOf(
+            "non holo",
+            "nonholo",
+            "non foil",
+            "nonfoil",
+            "nicht holo"
         )
 
-        private val UNLIMITED_MARKERS = setOf(
-            "unlimited",
-            "unbegrenzt"
+        private val JUMBO_MARKERS = setOf(
+            "jumbo",
+            "oversized",
+            "oversize",
+            "oversize card",
+            "giant card",
+            "xxl card"
         )
 
-        private val COPYRIGHT_1999_2000_MARKERS = setOf(
-            "1999 2000",
-            "copyright 1999 2000"
+        private val TYPE_ALIASES = mapOf(
+            "normal" to setOf(
+                "normal",
+                "non holo",
+                "nonholo",
+                "non foil"
+            ),
+            "holo" to setOf(
+                "holo",
+                "holofoil",
+                "foil",
+                "holographic"
+            ),
+            "reverse" to setOf(
+                "reverse",
+                "reverse holo",
+                "reverse holofoil",
+                "reverse foil"
+            ),
+            "metal" to setOf(
+                "metal",
+                "metal card",
+                "metallic",
+                "metallkarte",
+                "metall karte"
+            ),
+            "lenticular" to setOf(
+                "lenticular",
+                "lentikular",
+                "wackelbild",
+                "3d card",
+                "3d karte"
+            )
+        )
+
+        private val SUBTYPE_ALIASES = mapOf(
+            "shadowless" to setOf("shadowless", "schattenlos"),
+            "unlimited" to setOf("unlimited", "unbegrenzt"),
+            "1999 2000 copyright" to setOf(
+                "1999 2000",
+                "copyright 1999 2000"
+            ),
+            "missing expansion symbol" to setOf(
+                "missing expansion symbol",
+                "no expansion symbol",
+                "missing set symbol",
+                "no set symbol",
+                "ohne set symbol"
+            ),
+            "gold border" to setOf("gold border", "goldrand"),
+            "missing hp" to setOf("missing hp", "no hp", "fehlende kp", "ohne kp"),
+            "aoki error" to setOf("aoki error"),
+            "1999 copyright" to setOf("1999 copyright", "copyright 1999"),
+            "evolution box error" to setOf("evolution box error", "evolution box misprint"),
+            "no holo error" to setOf("no holo error", "no holo misprint", "non holo error"),
+            "d ink dot error" to setOf("d ink dot error", "ink dot error", "d ink dot"),
+            "energy symbol error" to setOf("energy symbol error", "energy symbol misprint"),
+            "text error" to setOf("text error", "text misprint"),
+            "shifted energy cost" to setOf("shifted energy cost", "shifted energy"),
+            "japanese back" to setOf("japanese back", "japanische ruckseite"),
+            "no e reader" to setOf("no e reader", "without e reader", "no ereader"),
+            "rarity error" to setOf("rarity error", "rarity misprint"),
+            "cosmos" to setOf("cosmos"),
+            "blue border" to setOf("blue border", "blauer rand"),
+            "glossy" to setOf("glossy", "glanzend"),
+            "shadowless red cheek" to setOf(
+                "shadowless red cheek",
+                "shadowless red cheeks",
+                "red cheek",
+                "red cheeks"
+            ),
+            "2019 copyright" to setOf("2019 copyright", "copyright 2019"),
+            "2020 copyright" to setOf("2020 copyright", "copyright 2020"),
+            "nintedo error" to setOf("nintedo error", "nintedo misprint"),
+            "1995 1998 copyright" to setOf(
+                "1995 1998 copyright",
+                "copyright 1995 1998"
+            ),
+            "no rarity" to setOf(
+                "no rarity",
+                "no rarity symbol",
+                "missing rarity symbol",
+                "ohne seltenheitssymbol"
+            ),
+            "missing retreat cost" to setOf(
+                "missing retreat cost",
+                "no retreat cost"
+            ),
+            "phanphy error" to setOf("phanphy error", "phanpy error"),
+            "peelable ditto" to setOf("peelable ditto", "peelable")
+        )
+
+        private val ALWAYS_EXPLICIT_SUBTYPES =
+            SUBTYPE_ALIASES.keys - setOf(
+                "unlimited"
+            )
+
+        private val FOIL_ALIASES = mapOf(
+            "pokeball" to setOf("pokeball", "poke ball"),
+            "greatball" to setOf("greatball", "great ball"),
+            "ultraball" to setOf("ultraball", "ultra ball"),
+            "masterball" to setOf("masterball", "master ball"),
+            "gold" to setOf("gold foil", "gold holo", "gold"),
+            "cosmos" to setOf("cosmos", "cosmos holo"),
+            "galaxy" to setOf("galaxy", "galaxy holo"),
+            "starlight" to setOf("starlight", "starlight holo"),
+            "energy" to setOf("energy holo", "energy foil"),
+            "cracked ice" to setOf("cracked ice", "cracked ice holo"),
+            "mirror" to setOf("mirror", "mirror holo"),
+            "league" to setOf("league", "league holo"),
+            "player reward" to setOf("player reward", "player rewards"),
+            "professor program" to setOf("professor program"),
+            "tinsel" to setOf("tinsel", "tinsel holo"),
+            "loveball" to setOf("loveball", "love ball"),
+            "friendball" to setOf("friendball", "friend ball"),
+            "quickball" to setOf("quickball", "quick ball"),
+            "team rocket" to setOf("team rocket", "rocket foil"),
+            "duskball" to setOf("duskball", "dusk ball"),
+            "rainbow" to setOf("rainbow foil", "rainbow holo", "rainbow"),
+            "glitter" to setOf("glitter", "glitter holo")
+        )
+
+        private val STAMP_ALIASES = mapOf(
+            "w promo" to setOf("w promo", "w stamp", "wizards promo"),
+            "pre release" to setOf("pre release", "prerelease"),
+            "pokemon center" to setOf("pokemon center", "pokecenter"),
+            "set logo" to setOf("set logo", "set stamp", "set stamped"),
+            "staff" to setOf("staff", "staff stamp"),
+            "winner" to setOf("winner", "winner stamp"),
+            "snowflake" to setOf("snowflake", "snowflake stamp"),
+            "trick or trade" to setOf("trick or trade", "halloween stamp"),
+            "gamestop" to setOf("gamestop", "game stop"),
+            "eb games" to setOf("eb games", "ebgames"),
+            "professor program" to setOf("professor program"),
+            "player rewards program" to setOf("player rewards", "player reward"),
+            "pokemon day" to setOf("pokemon day", "pokeday"),
+            "pokemon together" to setOf("pokemon together", "together stamp"),
+            "illustration contest 2022" to setOf("illustration contest 2022"),
+            "illustration contest 2024" to setOf("illustration contest 2024"),
+            "25th celebration" to setOf("25th celebration", "25th anniversary"),
+            "30th pokeday" to setOf("30th pokeday", "30th pokemon day")
         )
     }
 }
