@@ -54,20 +54,25 @@ if data.get('status') != 'ok':
     raise SystemExit(f"FAIL: API health status={data.get('status')!r}")
 if data.get('database') != 'connected':
     raise SystemExit(f"FAIL: API database={data.get('database')!r}")
-if data.get('version') != '0.2.2':
+if data.get('version') != '0.2.3':
     raise SystemExit(
-        f"FAIL: production backend is stale: version={data.get('version')!r}, expected='0.2.2'"
+        f"FAIL: production backend is stale: version={data.get('version')!r}, expected='0.2.3'"
     )
-if 'soldCompsConfigured' not in data:
-    raise SystemExit('FAIL: production backend has not picked up the eBay pricing readiness health contract')
+if 'compSniperConfigured' not in data:
+    raise SystemExit('FAIL: production backend has not picked up the multi-provider eBay health contract')
 if data.get('soldCompsConfigured') is not True:
-    raise SystemExit('FAIL: production backend has no SOLDCOMPS_API_KEY configured')
+    raise SystemExit('FAIL: production backend has no SOLDCOMPS_API_KEY fallback configured')
 if data.get('soldCompsEbaySessionConfigured') is not True:
-    raise SystemExit('FAIL: production backend has no authenticated eBay session configured')
+    raise SystemExit('FAIL: production backend has no authenticated SoldComps eBay fallback session configured')
+cache_ttl = data.get('ebayPriceCacheTtlHours')
+if not isinstance(cache_ttl, int) or cache_ttl <= 0:
+    raise SystemExit(f'FAIL: invalid eBay price cache TTL: {cache_ttl!r}')
 
 print(
     'OK: API health -> '
-    f"version {data.get('version', 'unknown')}, SoldComps configured, eBay session=configured"
+    f"version {data.get('version', 'unknown')}, "
+    f"CompSniper={'configured' if data.get('compSniperConfigured') else 'not configured'}, "
+    f"SoldComps fallback configured, eBay session=configured, cache TTL={cache_ttl}h"
 )
 PY
 }
@@ -212,7 +217,7 @@ auth_check() {
 
 ebay_price_check() {
   url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID?language=$EBAY_SMOKE_LANGUAGE&condition=NEAR_MINT&market=EBAY"
-  code="$(curl -sS --connect-timeout 12 --max-time 60 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
+  code="$(curl -sS --connect-timeout 12 --max-time 90 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
     -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
     "$url" || true)"
 
@@ -237,8 +242,8 @@ samples = data.get('sampleCount')
 
 if market != 'EBAY':
     raise SystemExit(f'FAIL: eBay pricing probe returned market={market!r}')
-if source != 'SOLDCOMPS':
-    raise SystemExit(f'FAIL: eBay pricing probe has no SoldComps quote (source={source!r})')
+if source not in {'COMPSNIPER', 'SOLDCOMPS'}:
+    raise SystemExit(f'FAIL: eBay pricing probe has no supported sold provider quote (source={source!r})')
 if not isinstance(mean, (int, float)) or mean <= 0:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid mean eur={mean!r}')
 if not isinstance(low, (int, float)) or low <= 0:
@@ -253,7 +258,7 @@ if not isinstance(samples, int) or samples < 1:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid sampleCount={samples!r}')
 
 print(
-    f'OK: eBay production pricing -> mean {mean:.2f} EUR, '
+    f'OK: eBay production pricing -> provider {source}, mean {mean:.2f} EUR, '
     f'range {low:.2f}-{high:.2f} EUR from {samples} sold comp(s)'
 )
 PY
