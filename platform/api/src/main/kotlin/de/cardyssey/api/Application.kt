@@ -295,7 +295,7 @@ fun Application.module() {
                         "cardyssey-api",
 
                     version =
-                        "0.2.1",
+                        "0.2.2",
 
                     justTcgConfigured =
                         justTcgApiKey != null,
