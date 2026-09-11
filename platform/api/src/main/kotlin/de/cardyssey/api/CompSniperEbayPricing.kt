@@ -278,7 +278,16 @@ class CompSniperEbayQuoteProvider(
         if (cardName.isNotBlank() && !containsPhrase(title, cardName)) return false
 
         if (!cardNumberMatches(title, card.localId, card.officialCount)) return false
-        if (!languageMatches(title, card.languageCode, context.foreignExpectedSetName)) return false
+        if (
+            !languageMatches(
+                title = title,
+                language = card.languageCode,
+                expectedSetName = context.expectedSetName,
+                foreignExpectedSetName = context.foreignExpectedSetName
+            )
+        ) {
+            return false
+        }
         if (context.conflictingSetNames.any { containsPhrase(title, it) }) return false
 
         return variantMatches(title, card, variant)
@@ -375,6 +384,7 @@ class CompSniperEbayQuoteProvider(
     private fun languageMatches(
         title: String,
         language: String,
+        expectedSetName: String,
         foreignExpectedSetName: String?
     ): Boolean {
         val explicit = mapOf(
@@ -393,6 +403,21 @@ class CompSniperEbayQuoteProvider(
             .flatten()
 
         if (foreignMarkers.any { containsPhrase(title, it) }) return false
+
+        if (language == "de") {
+            val explicitGerman = explicit["de"].orEmpty().any {
+                containsPhrase(title, it)
+            } || containsPhrase(title, "de")
+
+            val localizedSetEvidence =
+                expectedSetName.isNotBlank() &&
+                    expectedSetName != foreignExpectedSetName &&
+                    containsPhrase(title, expectedSetName)
+
+            if (!explicitGerman && !localizedSetEvidence) {
+                return false
+            }
+        }
 
         if (
             foreignExpectedSetName != null &&
