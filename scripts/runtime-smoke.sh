@@ -52,6 +52,10 @@ if data.get('status') != 'ok':
     raise SystemExit(f"FAIL: API health status={data.get('status')!r}")
 if data.get('database') != 'connected':
     raise SystemExit(f"FAIL: API database={data.get('database')!r}")
+if data.get('version') != '0.2.2':
+    raise SystemExit(
+        f"FAIL: production backend is stale: version={data.get('version')!r}, expected='0.2.2'"
+    )
 if 'soldCompsConfigured' not in data:
     raise SystemExit('FAIL: production backend has not picked up the eBay pricing readiness health contract')
 if data.get('soldCompsConfigured') is not True:
@@ -147,19 +151,32 @@ path = Path('/tmp/cardyssey-smoke-ebay.json')
 data = json.loads(path.read_text())
 market = data.get('market')
 source = data.get('source')
-base = data.get('baseEur')
+mean = data.get('eur')
+low = data.get('rangeLowEur')
+high = data.get('rangeHighEur')
 samples = data.get('sampleCount')
 
 if market != 'EBAY':
     raise SystemExit(f'FAIL: eBay pricing probe returned market={market!r}')
 if source != 'SOLDCOMPS':
     raise SystemExit(f'FAIL: eBay pricing probe has no SoldComps quote (source={source!r})')
-if not isinstance(base, (int, float)) or base <= 0:
-    raise SystemExit(f'FAIL: eBay pricing probe has invalid baseEur={base!r}')
+if not isinstance(mean, (int, float)) or mean <= 0:
+    raise SystemExit(f'FAIL: eBay pricing probe has invalid mean eur={mean!r}')
+if not isinstance(low, (int, float)) or low <= 0:
+    raise SystemExit(f'FAIL: eBay pricing probe has invalid rangeLowEur={low!r}')
+if not isinstance(high, (int, float)) or high <= 0:
+    raise SystemExit(f'FAIL: eBay pricing probe has invalid rangeHighEur={high!r}')
+if low > high:
+    raise SystemExit(f'FAIL: eBay pricing range is reversed: {low!r}..{high!r}')
+if mean < low - 1e-9 or mean > high + 1e-9:
+    raise SystemExit(f'FAIL: eBay mean {mean!r} lies outside sold range {low!r}..{high!r}')
 if not isinstance(samples, int) or samples < 1:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid sampleCount={samples!r}')
 
-print(f'OK: eBay production pricing -> {base:.2f} EUR from {samples} sold comp(s)')
+print(
+    f'OK: eBay production pricing -> mean {mean:.2f} EUR, '
+    f'range {low:.2f}-{high:.2f} EUR from {samples} sold comp(s)'
+)
 PY
   }
 
