@@ -13,6 +13,10 @@ import {
   singleValueEur,
 } from "@/lib/pricing";
 
+import {
+  physicalVariantLabel,
+} from "@/lib/variantLabel";
+
 const CONDITIONS = [
   ["MINT", "Mint"],
   ["NEAR_MINT", "Near Mint"],
@@ -68,13 +72,9 @@ function variantLabel(
     return item.variant;
   }
 
-  return [
-    spec.type,
-    spec.subtype,
-    ...spec.stamps,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  return physicalVariantLabel(
+    spec
+  );
 }
 
 type Props = {
@@ -380,7 +380,7 @@ export function CollectionItemEditor({
 
         <div className="editorInfo">
           <div>
-            <span>Variante</span>
+            <span>Physische Variante</span>
             <strong>
               {variantLabel(item)}
             </strong>
