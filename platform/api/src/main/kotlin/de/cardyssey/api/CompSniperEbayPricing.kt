@@ -47,6 +47,14 @@ class CompSniperEbayQuoteProvider(
         val conflictingSetNames: Set<String>
     )
 
+    private data class VariantTraits(
+        val firstEdition: Boolean,
+        val shadowless: Boolean,
+        val unlimited: Boolean,
+        val copyright19992000: Boolean,
+        val specialStamps: Set<String>
+    )
+
     private val json = Json { ignoreUnknownKeys = true }
     private val http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -134,6 +142,12 @@ class CompSniperEbayQuoteProvider(
             conflictingSetNames = conflictingSetNames
         )
 
+        /*
+         * Provider-Suche bewusst breit halten. Die exakte physische Variante
+         * wird lokal anhand der TCGdex-Variantenmerkmale validiert. So verlieren
+         * wir seltene Listings nicht nur deshalb, weil ein Verkäufer z. B.
+         * "1. Auflage" statt "1st Edition" schreibt.
+         */
         val query = listOf(
             card.name,
             printedNumber,
@@ -174,7 +188,6 @@ class CompSniperEbayQuoteProvider(
 
             val basePrice = normalizeSoldCondition(item, rawPrice)
                 ?: return@forEach
-
             if (!basePrice.isFinite() || basePrice <= 0.0) return@forEach
 
             val endedAt = item.stringValue("endedAt")
@@ -399,54 +412,197 @@ class CompSniperEbayQuoteProvider(
             " lot ",
             " auswahl ",
             " choose ",
-            " choice "
+            " choice ",
+            " playset "
         )
 
         if (blocked.any { it in padded }) return true
         if (Regex("""\bace\s*(?:grade\s*)?\d{1,2}\b""").containsMatchIn(title)) return true
         if (Regex("""\b(?:psa|bgs|cgc|sgc)\s*\d{1,2}\b""").containsMatchIn(title)) return true
 
+        /* Mehrfach-Angebote dürfen nie als Einzelkarten-Verkauf in den Mittelwert. */
+        if (Regex("""\b(?:[2-9]|[1-9][0-9]+)\s*x\b""").containsMatchIn(title)) return true
+        if (Regex("""\bx\s*(?:[2-9]|[1-9][0-9]+)\b""").containsMatchIn(title)) return true
+        if (
+            Regex(
+                """\b(?:[2-9]|[1-9][0-9]+)\s*(?:karten|cards|stuck|stueck|stk|copies|exemplare)\b"""
+            ).containsMatchIn(title)
+        ) {
+            return true
+        }
+        if (Regex("""\b[2-9]er\s*(?:set|pack|lot)\b""").containsMatchIn(title)) return true
+
         return false
     }
 
+    /*
+     * Physische Varianten werden als Fingerprint geprüft, nicht nur als
+     * "Holo/Reverse/Normal". Das ist besonders bei Vintage entscheidend:
+     * Shadowless, Unlimited und 1st Edition können bei derselben Kartennummer
+     * preislich um ein Vielfaches auseinanderliegen.
+     *
+     * Regel: lieber keinen eBay-Wert als Verkäufe einer anderen physischen
+     * Variante in den Mittelwert zu mischen.
+     */
     private fun variantMatches(
         title: String,
         card: CatalogCardDetails,
         variant: CatalogVariant
     ): Boolean {
         val padded = " $title "
-        val reverse = " reverse " in padded || " reverse holo " in padded
-        val nonHolo = " non holo " in padded || " nonholo " in padded
+        val reverse =
+            " reverse " in padded ||
+                " reverse holo " in padded ||
+                " reverse foil " in padded
+        val nonHolo =
+            " non holo " in padded ||
+                " nonholo " in padded ||
+                " non foil " in padded
         val holo =
             " holo " in padded ||
+                " holofoil " in padded ||
                 " foil " in padded ||
                 " holographic " in padded
 
         val legacy = variant.legacyVariant.uppercase(Locale.ROOT)
+        val legacyFamilies = card.variants
+            .map { it.legacyVariant.uppercase(Locale.ROOT) }
+            .toSet()
+        val hasCompetingFoilFamily = legacyFamilies.size > 1
 
-        if (card.variants.size == 1) {
-            return when (legacy) {
-                "REVERSE" ->
-                    reverse || normalizeCompSniperText(variant.type).contains("reverse")
+        val baseMatches = when (legacy) {
+            "REVERSE" ->
+                if (hasCompetingFoilFamily) reverse else !nonHolo
 
-                "HOLO" ->
-                    !reverse && !nonHolo
+            "HOLO" ->
+                !reverse && !nonHolo && (!hasCompetingFoilFamily || holo)
 
-                "NORMAL" ->
-                    !reverse && !holo
+            "NORMAL" ->
+                !reverse && !holo
 
-                else ->
-                    true
+            /* Legacy-1st-Edition hat keinen eigenen Foil-Marker. */
+            "FIRST_EDITION" ->
+                !reverse && !nonHolo
+
+            else ->
+                false
+        }
+
+        if (!baseMatches) return false
+
+        val target = variantTraits(variant)
+        val firstEditionInTitle = containsAnyPhrase(title, FIRST_EDITION_MARKERS)
+        val shadowlessInTitle = containsAnyPhrase(title, SHADOWLESS_MARKERS)
+        val unlimitedInTitle = containsAnyPhrase(title, UNLIMITED_MARKERS)
+        val copyrightInTitle = containsAnyPhrase(title, COPYRIGHT_1999_2000_MARKERS)
+
+        /* 1st Edition ist niemals mit Unlimited austauschbar. */
+        if (target.firstEdition) {
+            if (!firstEditionInTitle) return false
+        } else if (firstEditionInTitle) {
+            return false
+        }
+
+        /*
+         * Bei Base-Set-artigen Varianten kann "1st Edition" Shadowless bereits
+         * eindeutig implizieren. Das wird aus den vorhandenen Varianten
+         * abgeleitet statt hart auf ein bestimmtes Set zu codieren.
+         */
+        if (target.shadowless) {
+            val sameLegacyFirstEditions = card.variants
+                .filter {
+                    it.legacyVariant.equals(
+                        variant.legacyVariant,
+                        ignoreCase = true
+                    ) && variantTraits(it).firstEdition
+                }
+            val firstEditionImpliesShadowless =
+                target.firstEdition &&
+                    sameLegacyFirstEditions.isNotEmpty() &&
+                    sameLegacyFirstEditions.all { variantTraits(it).shadowless }
+
+            if (!shadowlessInTitle && !firstEditionImpliesShadowless) return false
+        } else if (shadowlessInTitle) {
+            return false
+        }
+
+        if (!target.unlimited && unlimitedInTitle) return false
+
+        if (target.copyright19992000) {
+            if (!copyrightInTitle) return false
+        } else if (copyrightInTitle) {
+            return false
+        }
+
+        /*
+         * Weitere TCGdex-Stamps werden generisch gegeneinander abgegrenzt.
+         * Nur wenn innerhalb derselben Grundvariante tatsächlich konkurrierende
+         * Stamps existieren, verlangen wir den Marker im Listing-Titel.
+         */
+        val related = card.variants.filter {
+            it.legacyVariant.equals(
+                variant.legacyVariant,
+                ignoreCase = true
+            )
+        }
+        val targetStamps = target.specialStamps
+        val competingStamps = related
+            .flatMap { variantTraits(it).specialStamps }
+            .toSet()
+
+        for (stamp in targetStamps) {
+            val needsExplicitMarker = related.any {
+                stamp !in variantTraits(it).specialStamps
             }
+            if (needsExplicitMarker && !containsPhrase(title, stamp)) return false
         }
 
-        return when (legacy) {
-            "REVERSE" -> reverse
-            "HOLO" -> holo && !reverse && !nonHolo
-            "NORMAL" -> !reverse && !holo
-            else -> false
+        for (stamp in competingStamps - targetStamps) {
+            if (containsPhrase(title, stamp)) return false
         }
+
+        return true
     }
+
+    private fun variantTraits(variant: CatalogVariant): VariantTraits {
+        val subtype = normalizeCompSniperText(variant.subtype.orEmpty())
+        val compactSubtype = subtype.replace(" ", "")
+        val normalizedStamps = variant.stamps
+            .map(::normalizeCompSniperText)
+            .filter(String::isNotBlank)
+            .toSet()
+
+        val firstEdition =
+            variant.legacyVariant.equals("FIRST_EDITION", ignoreCase = true) ||
+                normalizedStamps.any(::isFirstEditionMarker)
+
+        return VariantTraits(
+            firstEdition = firstEdition,
+            shadowless =
+                subtype == "shadowless" ||
+                    subtype == "schattenlos",
+            unlimited =
+                subtype == "unlimited" ||
+                    subtype == "unbegrenzt",
+            copyright19992000 =
+                compactSubtype in setOf(
+                    "copyright19992000",
+                    "19992000"
+                ),
+            specialStamps = normalizedStamps
+                .filterNot(::isFirstEditionMarker)
+                .toSet()
+        )
+    }
+
+    private fun isFirstEditionMarker(value: String): Boolean =
+        normalizeCompSniperText(value) in FIRST_EDITION_MARKERS
+
+    private fun containsAnyPhrase(
+        title: String,
+        phrases: Set<String>
+    ): Boolean =
+        phrases.any { containsPhrase(title, it) }
 
     private fun languageMatches(
         title: String,
@@ -517,7 +673,6 @@ class CompSniperEbayQuoteProvider(
             listOf(
                 "damaged",
                 "beschadigt",
-                "beschädigt",
                 "poor condition",
                 "knick",
                 "crease"
@@ -593,6 +748,31 @@ class CompSniperEbayQuoteProvider(
     companion object {
         private const val MIN_MARKET_SALES = 10
         private const val MAX_MARKET_SALES = 30
+
+        private val FIRST_EDITION_MARKERS = setOf(
+            "1st edition",
+            "first edition",
+            "1st ed",
+            "first ed",
+            "1 edition",
+            "1 auflage",
+            "erste auflage"
+        )
+
+        private val SHADOWLESS_MARKERS = setOf(
+            "shadowless",
+            "schattenlos"
+        )
+
+        private val UNLIMITED_MARKERS = setOf(
+            "unlimited",
+            "unbegrenzt"
+        )
+
+        private val COPYRIGHT_1999_2000_MARKERS = setOf(
+            "1999 2000",
+            "copyright 1999 2000"
+        )
     }
 }
 
