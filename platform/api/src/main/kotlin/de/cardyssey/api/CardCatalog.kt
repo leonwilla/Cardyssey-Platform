@@ -447,7 +447,8 @@ class CardCatalogService(
 
             variants =
                 parseVariants(
-                    source
+                    card = source,
+                    language = sourceLanguage
                 )
         )
     }
@@ -992,7 +993,8 @@ class CardCatalogService(
         }.getOrNull()
 
     private fun parseVariants(
-        card: JsonObject
+        card: JsonObject,
+        language: String
     ): List<CatalogVariant> {
 
         val detailed =
@@ -1005,6 +1007,31 @@ class CardCatalogService(
                     val raw =
                         element.asObject()
                             ?: return@mapNotNull null
+
+                    /*
+                     * TCGdex kann einzelne physische Varianten auf bestimmte
+                     * Sprachen begrenzen. Varianten, die es in der ausgewählten
+                     * Sprache gar nicht gibt, dürfen weder in der UI noch beim
+                     * Pricing/eBay-Matching angeboten werden.
+                     */
+                    val variantLanguages =
+                        raw["languages"]
+                            ?.asArray()
+                            .orEmpty()
+                            .mapNotNull { value ->
+                                value.asPrimitive()
+                                    ?.content
+                                    ?.trim()
+                                    ?.lowercase()
+                                    ?.takeIf(String::isNotBlank)
+                            }
+
+                    if (
+                        variantLanguages.isNotEmpty() &&
+                        language.lowercase() !in variantLanguages
+                    ) {
+                        return@mapNotNull null
+                    }
 
                     val type =
                         raw.string("type")
@@ -1078,6 +1105,13 @@ class CardCatalogService(
                         stamps =
                             stamps,
 
+                        /*
+                         * Nur Kompatibilität für ältere Clients/Backups.
+                         * Die exakte Identität bleibt immer id + type/subtype/
+                         * foil/stamps/size. Metal/Lenticular dürfen deshalb
+                         * beim Matching nie über diesen Legacy-Wert beurteilt
+                         * werden.
+                         */
                         legacyVariant =
                             legacyVariant(
                                 type
@@ -1109,17 +1143,15 @@ class CardCatalogService(
             )
         }
 
-        val result =
-            mutableListOf<
-                CatalogVariant
-            >()
+        val baseVariants =
+            mutableListOf<CatalogVariant>()
 
         if (
             legacy.boolean(
                 "normal"
             ) == true
         ) {
-            result +=
+            baseVariants +=
                 legacyVariantDto(
                     "NORMAL"
                 )
@@ -1130,7 +1162,7 @@ class CardCatalogService(
                 "reverse"
             ) == true
         ) {
-            result +=
+            baseVariants +=
                 legacyVariantDto(
                     "REVERSE"
                 )
@@ -1141,11 +1173,30 @@ class CardCatalogService(
                 "holo"
             ) == true
         ) {
-            result +=
+            baseVariants +=
                 legacyVariantDto(
                     "HOLO"
                 )
         }
+
+        if (baseVariants.isEmpty()) {
+            baseVariants +=
+                legacyVariantDto(
+                    "NORMAL"
+                )
+        }
+
+        val result =
+            baseVariants.toMutableList()
+
+        /*
+         * Die alten TCGdex-Flags beschreiben zusätzliche physische
+         * Ausführungen. Wenn genau ein Basistyp existiert, können wir diese
+         * eindeutig auf diesen Typ abbilden. Bei mehreren Basistypen wird
+         * bewusst nichts erfunden; lieber keine unsichere Variante.
+         */
+        val unambiguousBase =
+            baseVariants.singleOrNull()
 
         if (
             legacy.boolean(
@@ -1153,17 +1204,63 @@ class CardCatalogService(
             ) == true
         ) {
             result +=
-                legacyVariantDto(
-                    "FIRST_EDITION"
+                unambiguousBase
+                    ?.copy(
+                        id = "${unambiguousBase.id}:first-edition",
+                        stamps =
+                            unambiguousBase.stamps +
+                                "1st-edition"
+                    )
+                    ?: legacyVariantDto(
+                        "FIRST_EDITION"
+                    )
+        }
+
+        if (
+            legacy.boolean(
+                "jumbo"
+            ) == true &&
+            unambiguousBase != null
+        ) {
+            result +=
+                unambiguousBase.copy(
+                    id = "${unambiguousBase.id}:jumbo",
+                    size = "jumbo"
                 )
         }
 
-        return result.ifEmpty {
-            listOf(
-                legacyVariantDto(
-                    "NORMAL"
+        if (
+            legacy.boolean(
+                "preRelease"
+            ) == true &&
+            unambiguousBase != null
+        ) {
+            result +=
+                unambiguousBase.copy(
+                    id = "${unambiguousBase.id}:pre-release",
+                    stamps =
+                        unambiguousBase.stamps +
+                            "pre-release"
                 )
-            )
+        }
+
+        if (
+            legacy.boolean(
+                "wPromo"
+            ) == true &&
+            unambiguousBase != null
+        ) {
+            result +=
+                unambiguousBase.copy(
+                    id = "${unambiguousBase.id}:w-promo",
+                    stamps =
+                        unambiguousBase.stamps +
+                            "w-promo"
+                )
+        }
+
+        return result.distinctBy {
+            it.id
         }
     }
 
@@ -1249,6 +1346,11 @@ class CardCatalogService(
             "1stedition" ->
                 "FIRST_EDITION"
 
+            /*
+             * CardVariant in älteren Clients kennt Metal/Lenticular noch
+             * nicht. Diese beiden Typen bleiben ausschließlich für die
+             * Kompatibilität NORMAL; die exakten Felder oben bleiben erhalten.
+             */
             else ->
                 "NORMAL"
         }
