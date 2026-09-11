@@ -147,6 +147,8 @@ class EbaySoldPricingService(
 ) {
     private data class SoldSummary(
         val baseEur: Double,
+        val rangeLowEur: Double,
+        val rangeHighEur: Double,
         val sampleCount: Int,
         val updatedAtMs: Long
     )
@@ -194,6 +196,8 @@ class EbaySoldPricingService(
             exactLanguageMatch = exactLanguageMatch,
             exactVariantMatch = exactVariantMatch,
             sampleCount = sold?.sampleCount,
+            rangeLowEur = sold?.rangeLowEur?.times(condition.factor),
+            rangeHighEur = sold?.rangeHighEur?.times(condition.factor),
             updatedAtMs = sold?.updatedAtMs
         )
     }
@@ -286,23 +290,34 @@ class EbaySoldPricingService(
             unique.putIfAbsent(stableId, basePrice)
         }
 
-        println(
-            "eBay pricing: card=${card.id} language=${card.languageCode} " +
-                "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
-                "ebaySession=${if (ebayCookies.isBlank()) "none" else "configured"}"
-        )
-
         if (unique.isEmpty()) return null
 
         val filtered = rejectOutliers(unique.values.toList())
         if (filtered.isEmpty()) return null
 
-        val baseEur = median(filtered)
+        val baseEur = filtered.average()
             .takeIf { it.isFinite() && it > 0.0 }
             ?: return null
 
+        val rangeLowEur = filtered.minOrNull()
+            ?.takeIf { it.isFinite() && it > 0.0 }
+            ?: return null
+
+        val rangeHighEur = filtered.maxOrNull()
+            ?.takeIf { it.isFinite() && it > 0.0 }
+            ?: return null
+
+        println(
+            "eBay pricing: card=${card.id} language=${card.languageCode} " +
+                "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
+                "kept=${filtered.size} mean=$baseEur range=$rangeLowEur..$rangeHighEur " +
+                "ebaySession=${if (ebayCookies.isBlank()) "none" else "configured"}"
+        )
+
         return SoldSummary(
             baseEur = baseEur,
+            rangeLowEur = rangeLowEur,
+            rangeHighEur = rangeHighEur,
             sampleCount = filtered.size,
             updatedAtMs = System.currentTimeMillis()
         )
@@ -351,19 +366,33 @@ class EbaySoldPricingService(
     }
 
     private fun rejectOutliers(values: List<Double>): List<Double> {
-        if (values.size < 5) return values
+        val clean = values.filter { it.isFinite() && it > 0.0 }
+        if (clean.size <= 2) return clean
 
-        val center = median(values)
-        val deviations = values.map { abs(it - center) }
+        val center = median(clean)
+        if (!center.isFinite() || center <= 0.0) return clean
+
+        val deviations = clean.map { abs(it - center) }
         val mad = median(deviations)
 
-        if (!mad.isFinite() || mad <= 0.0) return values
-
-        val filtered = values.filter {
-            abs(it - center) / mad <= 3.5
+        val filtered = if (mad.isFinite() && mad > 0.0) {
+            clean.filter {
+                abs(it - center) / mad <= 3.5
+            }
+        } else {
+            /*
+             * Wenn mehrere Verkäufe exakt am Median liegen, ist MAD = 0.
+             * Dann fangen wir nur wirklich extreme Einzelpreise ab und
+             * lassen einen breiten normalen Marktbereich unangetastet.
+             */
+            clean.filter {
+                it >= center * 0.35 &&
+                    it <= center * 2.85
+            }
         }
 
-        return if (filtered.isNotEmpty()) filtered else values
+        val minimumKept = if (clean.size >= 5) 3 else 2
+        return if (filtered.size >= minimumKept) filtered else clean
     }
 
     private fun listingMatches(
