@@ -9,6 +9,7 @@ on:
       - "platform/api/**"
       - "contracts/**"
       - "scripts/write-contract.py"
+      - "scripts/enrich-admin-contract.py"
       - "scripts/generate-clients.sh"
       - ".github/workflows/platform-ci.yml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "platform/api/**"
       - "contracts/**"
       - "scripts/write-contract.py"
+      - "scripts/enrich-admin-contract.py"
       - "scripts/generate-clients.sh"
       - ".github/workflows/platform-ci.yml"
 
