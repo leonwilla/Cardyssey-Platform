@@ -30,6 +30,8 @@ data class CardPriceQuoteResponse(
     val exactLanguageMatch: Boolean,
     val exactVariantMatch: Boolean,
     val sampleCount: Int? = null,
+    val rangeLowEur: Double? = null,
+    val rangeHighEur: Double? = null,
     val updatedAtMs: Long? = null
 )
 
