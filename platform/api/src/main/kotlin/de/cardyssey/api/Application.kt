@@ -31,6 +31,7 @@ data class HealthResponse(
     val service: String,
     val version: String,
     val justTcgConfigured: Boolean,
+    val compSniperConfigured: Boolean,
     val soldCompsConfigured: Boolean,
     val soldCompsEbaySessionConfigured: Boolean,
     val ebayPriceCacheTtlHours: Long
@@ -120,6 +121,11 @@ fun Application.module() {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
+    val compSniperApiKey =
+        System.getenv("COMPSNIPER_API_KEY")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+
     val soldCompsApiKey =
         System.getenv("SOLDCOMPS_API_KEY")
             ?.trim()
@@ -127,9 +133,8 @@ fun Application.module() {
 
     /*
      * SoldComps kann optional eine echte ebay.de-Session weiterreichen.
-     * Das ist besonders wichtig, solange eBay Sold-Listings für anonyme
-     * Sessions einschränkt. Der Cookie-Wert bleibt ausschließlich als
-     * Server-Secret in der Umgebung und wird niemals an Clients ausgegeben.
+     * Das ist nur noch der Fallback. Der Cookie-Wert bleibt ausschließlich
+     * als Server-Secret in der Umgebung und wird niemals an Clients ausgegeben.
      */
     val soldCompsEbayCookies =
         System.getenv("SOLDCOMPS_EBAY_COOKIES")
@@ -163,15 +168,31 @@ fun Application.module() {
                 soldCompsEbayCookies
         )
 
+    val ebayProviders =
+        buildList<EbayQuoteProvider> {
+            compSniperApiKey?.let { apiKey ->
+                add(
+                    CompSniperEbayQuoteProvider(
+                        catalog = cardCatalog,
+                        apiKey = apiKey
+                    )
+                )
+            }
+
+            soldCompsApiKey?.let {
+                add(
+                    SoldCompsEbayQuoteProvider(
+                        soldCompsEbayPricing
+                    )
+                )
+            }
+        }
+
     val ebayPricing =
         CachedEbayPricingService(
             catalog = cardCatalog,
             cache = ebayPriceCache,
-            providers = listOf(
-                SoldCompsEbayQuoteProvider(
-                    soldCompsEbayPricing
-                )
-            ),
+            providers = ebayProviders,
             cacheTtlMs =
                 ebayPriceCacheTtlHours * 60L * 60L * 1000L
         )
@@ -329,6 +350,9 @@ fun Application.module() {
 
                     justTcgConfigured =
                         justTcgApiKey != null,
+
+                    compSniperConfigured =
+                        compSniperApiKey != null,
 
                     soldCompsConfigured =
                         soldCompsApiKey != null,
