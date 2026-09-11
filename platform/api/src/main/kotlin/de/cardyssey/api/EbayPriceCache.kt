@@ -7,7 +7,7 @@ import java.time.OffsetDateTime
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-internal data class CachedEbayPrice(
+data class CachedEbayPrice(
     val cardId: String,
     val languageCode: String,
     val variantId: String,
@@ -111,7 +111,7 @@ class EbayPriceCacheRepository(
     }
 }
 
-internal interface EbayQuoteProvider {
+interface EbayQuoteProvider {
     suspend fun quote(
         cardId: String,
         language: String,
@@ -121,7 +121,7 @@ internal interface EbayQuoteProvider {
     ): CardPriceQuoteResponse?
 }
 
-internal class SoldCompsEbayQuoteProvider(
+class SoldCompsEbayQuoteProvider(
     private val delegate: EbaySoldPricingService
 ) : EbayQuoteProvider {
     override suspend fun quote(
