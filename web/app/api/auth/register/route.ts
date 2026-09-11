@@ -45,73 +45,102 @@ export async function POST(
       await request.text();
   }
 
-  const response =
-    await backendFetch(
-      "/api/v1/auth/register",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body,
-      }
-    );
+  try {
+    const response =
+      await backendFetch(
+        "/api/v1/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body,
+        }
+      );
 
-  const data =
-    await readBackendJson(
-      response
-    );
+    const data =
+      await readBackendJson(
+        response
+      );
 
-  if (!response.ok) {
-    if (formMode) {
-      const error =
-        encodeURIComponent(
-          data?.error ??
-            "register_failed"
+    if (!response.ok) {
+      if (formMode) {
+        const error =
+          encodeURIComponent(
+            data?.error ??
+              "register_failed"
+          );
+
+        return new Response(
+          null,
+          {
+            status: 303,
+            headers: {
+              Location:
+                `/register?error=${error}`,
+            },
+          }
         );
+      }
 
+      return Response.json(
+        data,
+        {
+          status:
+            response.status,
+        }
+      );
+    }
+
+    await setAuthCookies(data);
+
+    if (formMode) {
       return new Response(
         null,
         {
           status: 303,
           headers: {
-            Location:
-              `/register?error=${error}`,
+            Location: "/collection",
           },
         }
       );
     }
 
     return Response.json(
-      data,
       {
-        status:
-          response.status,
+        user: data.user,
+      },
+      {
+        status: 201,
       }
     );
-  }
-
-  await setAuthCookies(data);
-
-  if (formMode) {
-    return new Response(
-      null,
-      {
-        status: 303,
-        headers: {
-          Location: "/collection",
-        },
-      }
+  } catch (error) {
+    console.error(
+      "Registration backend unavailable",
+      error
     );
-  }
 
-  return Response.json(
-    {
-      user: data.user,
-    },
-    {
-      status: 201,
+    if (formMode) {
+      return new Response(
+        null,
+        {
+          status: 303,
+          headers: {
+            Location:
+              "/register?error=server_unavailable",
+          },
+        }
+      );
     }
-  );
+
+    return Response.json(
+      {
+        error: "server_unavailable",
+      },
+      {
+        status: 503,
+      }
+    );
+  }
 }
