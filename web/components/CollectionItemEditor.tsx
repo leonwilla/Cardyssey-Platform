@@ -41,6 +41,23 @@ type PricingQuote = {
   recentSales?: EbayRecentSale[];
 };
 
+function nullableFiniteNumber(
+  value: unknown
+): number | null {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
 function variantLabel(
   item: PortfolioItem
 ) {
@@ -181,21 +198,21 @@ export function CollectionItemEditor({
               ? data.source
               : null,
           eur:
-            Number.isFinite(Number(data?.eur))
-              ? Number(data.eur)
-              : null,
+            nullableFiniteNumber(
+              data?.eur
+            ),
           sampleCount:
-            Number.isFinite(Number(data?.sampleCount))
-              ? Number(data.sampleCount)
-              : null,
+            nullableFiniteNumber(
+              data?.sampleCount
+            ),
           rangeLowEur:
-            Number.isFinite(Number(data?.rangeLowEur))
-              ? Number(data.rangeLowEur)
-              : null,
+            nullableFiniteNumber(
+              data?.rangeLowEur
+            ),
           rangeHighEur:
-            Number.isFinite(Number(data?.rangeHighEur))
-              ? Number(data.rangeHighEur)
-              : null,
+            nullableFiniteNumber(
+              data?.rangeHighEur
+            ),
           recentSales:
             Array.isArray(data?.recentSales)
               ? data.recentSales
@@ -268,7 +285,10 @@ export function CollectionItemEditor({
     );
 
   const liveUnitValue =
-    pricingQuote?.eur ?? null;
+    pricingQuote?.eur != null &&
+    pricingQuote.eur > 0
+      ? pricingQuote.eur
+      : null;
 
   const unitValue =
     liveUnitValue ??
