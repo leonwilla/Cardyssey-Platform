@@ -17,7 +17,6 @@ jobs:
     env:
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
-      E2E_ACCESS_TOKEN: ${{ secrets.E2E_ACCESS_TOKEN }}
       CARDYSSEY_EBAY_SMOKE_CARD_ID: me05-088
       CARDYSSEY_EBAY_SMOKE_LANGUAGE: de
     steps:
