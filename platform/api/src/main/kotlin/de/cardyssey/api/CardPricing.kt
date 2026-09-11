@@ -16,6 +16,16 @@ import java.net.http.HttpResponse
 import java.time.Duration
 
 @Serializable
+data class EbayRecentSaleResponse(
+    val itemId: String? = null,
+    val title: String,
+    val soldPriceEur: Double,
+    val rawCondition: String? = null,
+    val endedAt: String? = null,
+    val url: String? = null
+)
+
+@Serializable
 data class CardPriceQuoteResponse(
     val cardId: String,
     val languageCode: String,
@@ -32,7 +42,8 @@ data class CardPriceQuoteResponse(
     val sampleCount: Int? = null,
     val rangeLowEur: Double? = null,
     val rangeHighEur: Double? = null,
-    val updatedAtMs: Long? = null
+    val updatedAtMs: Long? = null,
+    val recentSales: List<EbayRecentSaleResponse> = emptyList()
 )
 
 enum class PricingCondition(
