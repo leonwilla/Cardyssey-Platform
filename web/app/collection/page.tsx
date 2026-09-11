@@ -33,6 +33,7 @@ import type {
 
 import {
   positionValueEur,
+  singleValueEur,
 } from "@/lib/pricing";
 
 function eur(
@@ -47,6 +48,45 @@ function eur(
           currency: "EUR",
         }
       ).format(value);
+}
+
+function ebayQuoteIdentity(
+  item: PortfolioItem
+) {
+  return [
+    item.cardId,
+    item.languageCode,
+    item.variantSpec?.id ??
+      `legacy:${item.variant}`,
+    item.condition,
+  ].join("|");
+}
+
+function ebayQuoteUrl(
+  item: PortfolioItem
+) {
+  const params =
+    new URLSearchParams({
+      language: item.languageCode,
+      condition: item.condition,
+      market: "EBAY",
+    });
+
+  if (item.variantSpec?.id) {
+    params.set(
+      "variantId",
+      item.variantSpec.id
+    );
+  } else if (item.variant) {
+    params.set(
+      "variant",
+      item.variant
+    );
+  }
+
+  return `/api/pricing/cards/${
+    encodeURIComponent(item.cardId)
+  }?${params.toString()}`;
 }
 
 export default function CollectionPage() {
@@ -87,6 +127,15 @@ export default function CollectionPage() {
 
   const [saving, setSaving] =
     useState(false);
+
+  const [ebayLiveUnitEur, setEbayLiveUnitEur] =
+    useState<Record<string, number | null>>({});
+
+  const [ebayLoading, setEbayLoading] =
+    useState(false);
+
+  const [ebayLoadError, setEbayLoadError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     const params =
@@ -262,6 +311,186 @@ export default function CollectionPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    if (
+      market !== "EBAY" ||
+      items.length === 0
+    ) {
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    let cancelled = false;
+
+    const storedValues:
+      Record<string, number | null> = {};
+
+    for (const item of items) {
+      storedValues[item.key] =
+        singleValueEur(
+          item,
+          "EBAY"
+        );
+    }
+
+    setEbayLiveUnitEur(
+      storedValues
+    );
+    setEbayLoadError(null);
+    setEbayLoading(true);
+
+    const grouped =
+      new Map<
+        string,
+        {
+          item: PortfolioItem;
+          keys: string[];
+        }
+      >();
+
+    for (const item of items) {
+      const identity =
+        ebayQuoteIdentity(item);
+
+      const existing =
+        grouped.get(identity);
+
+      if (existing) {
+        existing.keys.push(
+          item.key
+        );
+      } else {
+        grouped.set(
+          identity,
+          {
+            item,
+            keys: [item.key],
+          }
+        );
+      }
+    }
+
+    async function loadEbayCollectionValues() {
+      try {
+        const groups =
+          Array.from(
+            grouped.values()
+          );
+
+        // Keep provider/cache pressure bounded. Duplicate collection
+        // positions share one quote through ebayQuoteIdentity above.
+        for (
+          let offset = 0;
+          offset < groups.length;
+          offset += 3
+        ) {
+          const batch =
+            groups.slice(
+              offset,
+              offset + 3
+            );
+
+          const results =
+            await Promise.all(
+              batch.map(
+                async (group) => {
+                  const response =
+                    await fetch(
+                      ebayQuoteUrl(
+                        group.item
+                      ),
+                      {
+                        signal:
+                          controller.signal,
+                        cache: "no-store",
+                      }
+                    );
+
+                  if (!response.ok) {
+                    return {
+                      keys: group.keys,
+                      unitEur: null,
+                    };
+                  }
+
+                  const data =
+                    await response.json();
+
+                  const raw =
+                    Number(data?.eur);
+
+                  return {
+                    keys: group.keys,
+                    unitEur:
+                      Number.isFinite(raw) &&
+                      raw > 0
+                        ? raw
+                        : null,
+                  };
+                }
+              )
+            );
+
+          if (cancelled) {
+            return;
+          }
+
+          setEbayLiveUnitEur(
+            (current) => {
+              const next = {
+                ...current,
+              };
+
+              for (
+                const result of results
+              ) {
+                for (
+                  const key of result.keys
+                ) {
+                  next[key] =
+                    result.unitEur;
+                }
+              }
+
+              return next;
+            }
+          );
+        }
+      } catch (e) {
+        if (
+          e instanceof DOMException &&
+          e.name === "AbortError"
+        ) {
+          return;
+        }
+
+        if (!cancelled) {
+          setEbayLoadError(
+            e instanceof Error
+              ? e.message
+              : "eBay-Marktwerte konnten nicht geladen werden."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setEbayLoading(false);
+        }
+      }
+    }
+
+    loadEbayCollectionValues();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [
+    market,
+    items,
+  ]);
+
   async function saveItem(
     item: PortfolioItem
   ) {
@@ -356,17 +585,62 @@ export default function CollectionPage() {
     }
   }
 
+  const ebayPricedCount =
+    useMemo(
+      () =>
+        items.filter(
+          (item) =>
+            ebayLiveUnitEur[
+              item.key
+            ] != null ||
+            singleValueEur(
+              item,
+              "EBAY"
+            ) != null
+        ).length,
+      [
+        items,
+        ebayLiveUnitEur,
+      ]
+    );
+
   const total =
     useMemo(() => {
 
       const values =
         items
           .map(
-            (item) =>
-              positionValueEur(
+            (item) => {
+              if (
+                market === "EBAY"
+              ) {
+                const hasLive =
+                  Object.prototype.hasOwnProperty.call(
+                    ebayLiveUnitEur,
+                    item.key
+                  );
+
+                const unit =
+                  hasLive
+                    ? ebayLiveUnitEur[
+                        item.key
+                      ]
+                    : singleValueEur(
+                        item,
+                        "EBAY"
+                      );
+
+                return unit == null
+                  ? null
+                  : unit *
+                      item.quantity;
+              }
+
+              return positionValueEur(
                 item,
                 market
-              )
+              );
+            }
           )
           .filter(
             (
@@ -390,6 +664,7 @@ export default function CollectionPage() {
     }, [
       items,
       market,
+      ebayLiveUnitEur,
     ]);
 
   const count =
@@ -465,7 +740,11 @@ export default function CollectionPage() {
                 </span>
 
                 <strong>
-                  {eur(total)}
+                  {market === "EBAY" &&
+                  ebayLoading &&
+                  total == null
+                    ? "Lädt …"
+                    : eur(total)}
                 </strong>
 
                 <div className="segmented">
@@ -503,6 +782,21 @@ export default function CollectionPage() {
                     eBay
                   </button>
                 </div>
+
+                {market === "EBAY" && (
+                  <small>
+                    {ebayLoading
+                      ? `eBay-Werte werden geladen · ${ebayPricedCount}/${items.length} Einträge bewertet`
+                      : `${ebayPricedCount}/${items.length} Einträge mit eBay-Marktwert`}
+                  </small>
+                )}
+
+                {market === "EBAY" &&
+                  ebayLoadError && (
+                    <small>
+                      {ebayLoadError}
+                    </small>
+                  )}
               </div>
 
               <div className="statCard">
@@ -566,21 +860,37 @@ export default function CollectionPage() {
               ) : (
                 <div className="cardGrid">
                   {items.map(
-                    (item) => (
-                      <CardTile
-                        key={
-                          item.id ||
+                    (item) => {
+                      const hasLiveEbay =
+                        market === "EBAY" &&
+                        Object.prototype.hasOwnProperty.call(
+                          ebayLiveUnitEur,
                           item.key
-                        }
-                        item={item}
-                        market={
-                          market
-                        }
-                        onEdit={
-                          setEditing
-                        }
-                      />
-                    )
+                        );
+
+                      return (
+                        <CardTile
+                          key={
+                            item.id ||
+                            item.key
+                          }
+                          item={item}
+                          market={
+                            market
+                          }
+                          liveUnitEur={
+                            hasLiveEbay
+                              ? ebayLiveUnitEur[
+                                  item.key
+                                ]
+                              : undefined
+                          }
+                          onEdit={
+                            setEditing
+                          }
+                        />
+                      );
+                    }
                   )}
                 </div>
               )}
