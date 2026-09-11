@@ -41,68 +41,97 @@ export async function POST(
       await request.text();
   }
 
-  const response =
-    await backendFetch(
-      "/api/v1/auth/login",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body,
-      }
-    );
+  try {
+    const response =
+      await backendFetch(
+        "/api/v1/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body,
+        }
+      );
 
-  const data =
-    await readBackendJson(
-      response
-    );
+    const data =
+      await readBackendJson(
+        response
+      );
 
-  if (!response.ok) {
-    if (formMode) {
-      const error =
-        encodeURIComponent(
-          data?.error ??
-            "login_failed"
+    if (!response.ok) {
+      if (formMode) {
+        const error =
+          encodeURIComponent(
+            data?.error ??
+              "login_failed"
+          );
+
+        return new Response(
+          null,
+          {
+            status: 303,
+            headers: {
+              Location:
+                `/login?error=${error}`,
+            },
+          }
         );
+      }
 
+      return Response.json(
+        data,
+        {
+          status:
+            response.status,
+        }
+      );
+    }
+
+    await setAuthCookies(data);
+
+    if (formMode) {
+      return new Response(
+        null,
+        {
+          status: 303,
+          headers: {
+            Location: "/collection",
+          },
+        }
+      );
+    }
+
+    return Response.json({
+      user: data.user,
+    });
+  } catch (error) {
+    console.error(
+      "Login backend unavailable",
+      error
+    );
+
+    if (formMode) {
       return new Response(
         null,
         {
           status: 303,
           headers: {
             Location:
-              `/login?error=${error}`,
+              "/login?error=server_unavailable",
           },
         }
       );
     }
 
     return Response.json(
-      data,
       {
-        status:
-          response.status,
+        error: "server_unavailable",
+      },
+      {
+        status: 503,
       }
     );
   }
-
-  await setAuthCookies(data);
-
-  if (formMode) {
-    return new Response(
-      null,
-      {
-        status: 303,
-        headers: {
-          Location: "/collection",
-        },
-      }
-    );
-  }
-
-  return Response.json({
-    user: data.user,
-  });
 }
