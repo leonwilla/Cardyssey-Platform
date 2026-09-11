@@ -6,6 +6,10 @@ import {
   useState,
 } from "react";
 
+import {
+  physicalVariantLabel,
+} from "@/lib/variantLabel";
+
 type SearchResult = {
   id: string;
   localId: string;
@@ -71,19 +75,6 @@ function imageUrl(
   return `${
     imageBase.replace(/\/$/, "")
   }/high.webp`;
-}
-
-function variantLabel(
-  variant: CatalogVariant
-) {
-  return [
-    variant.type,
-    variant.subtype,
-    variant.foil,
-    ...variant.stamps,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 }
 
 function eur(
@@ -1066,7 +1057,7 @@ export function AddCardDialog({
                         key={variant.id}
                         value={variant.id}
                       >
-                        {variantLabel(
+                        {physicalVariantLabel(
                           variant
                         )}
                       </option>
