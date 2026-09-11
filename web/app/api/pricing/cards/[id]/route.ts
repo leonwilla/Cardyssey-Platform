@@ -28,6 +28,7 @@ export async function GET(
       "variantId",
       "variant",
       "condition",
+      "market",
     ]
   ) {
     const value =
