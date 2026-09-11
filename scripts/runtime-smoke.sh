@@ -8,6 +8,8 @@ API_PREFIX="${API_PREFIX:-/api/v1}"
 ANDROID_APK_URL="${ANDROID_APK_URL:-https://github.com/leonwilla/Cardyssey-Downloads/releases/latest/download/cardyssey-latest.apk}"
 EBAY_SMOKE_CARD_ID="${CARDYSSEY_EBAY_SMOKE_CARD_ID:-me05-088}"
 EBAY_SMOKE_LANGUAGE="${CARDYSSEY_EBAY_SMOKE_LANGUAGE:-de}"
+E2E_ACCESS_TOKEN="${E2E_ACCESS_TOKEN:-}"
+E2E_REFRESH_TOKEN=""
 
 check() {
   label="$1"
@@ -60,12 +62,12 @@ if 'soldCompsConfigured' not in data:
     raise SystemExit('FAIL: production backend has not picked up the eBay pricing readiness health contract')
 if data.get('soldCompsConfigured') is not True:
     raise SystemExit('FAIL: production backend has no SOLDCOMPS_API_KEY configured')
+if data.get('soldCompsEbaySessionConfigured') is not True:
+    raise SystemExit('FAIL: production backend has no authenticated eBay session configured')
 
-session = data.get('soldCompsEbaySessionConfigured')
 print(
     'OK: API health -> '
-    f"version {data.get('version', 'unknown')}, SoldComps configured, "
-    f"eBay session={'configured' if session else 'not configured'}"
+    f"version {data.get('version', 'unknown')}, SoldComps configured, eBay session=configured"
 )
 PY
 }
@@ -106,44 +108,121 @@ print(f"OK: Android release metadata -> build {data['buildNumber']} ({data['buil
 PY
 }
 
-check "Web homepage" "$BASE_WEB_URL/"
-check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
-check_android_metadata
-check "Android latest APK" "$ANDROID_APK_URL"
-check_api_health
-check_status \
-  "Central pricing authentication guard" \
-  "$BASE_API_URL$API_PREFIX/pricing/cards/__smoke__?language=en&variant=NORMAL" \
-  "401"
+e2e_logout() {
+  if [ -z "${E2E_REFRESH_TOKEN:-}" ]; then
+    return 0
+  fi
 
-if [ -n "${E2E_ACCESS_TOKEN:-}" ]; then
-  auth_check() {
-    label="$1"
-    path="$2"
-    code="$(curl -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-smoke-auth-body -w '%{http_code}' \
-      -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
-      "$BASE_API_URL$API_PREFIX$path" || true)"
-    if [ "$code" != "200" ]; then
-      echo "FAIL: $label -> HTTP $code"
-      cat /tmp/cardyssey-smoke-auth-body 2>/dev/null || true
-      return 1
-    fi
-    echo "OK: $label"
-  }
+  export E2E_REFRESH_TOKEN
+  python3 - <<'PY'
+import json
+import os
+from pathlib import Path
 
-  ebay_price_check() {
-    url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID?language=$EBAY_SMOKE_LANGUAGE&condition=NEAR_MINT&market=EBAY"
-    code="$(curl -sS --connect-timeout 12 --max-time 60 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
-      -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
-      "$url" || true)"
+Path('/tmp/cardyssey-smoke-logout.json').write_text(
+    json.dumps({'refreshToken': os.environ['E2E_REFRESH_TOKEN']})
+)
+PY
 
-    if [ "$code" != "200" ]; then
-      echo "FAIL: eBay production pricing probe -> HTTP $code"
-      cat /tmp/cardyssey-smoke-ebay.json 2>/dev/null || true
+  curl -sS --connect-timeout 12 --max-time 30 \
+    -H 'Content-Type: application/json' \
+    --data-binary @/tmp/cardyssey-smoke-logout.json \
+    "$BASE_API_URL$API_PREFIX/auth/logout" \
+    >/dev/null 2>&1 || true
+
+  rm -f /tmp/cardyssey-smoke-logout.json
+  E2E_REFRESH_TOKEN=""
+}
+
+e2e_login() {
+  if [ -n "${E2E_EMAIL:-}" ] || [ -n "${E2E_PASSWORD:-}" ]; then
+    if [ -z "${E2E_EMAIL:-}" ] || [ -z "${E2E_PASSWORD:-}" ]; then
+      echo "FAIL: E2E_EMAIL and E2E_PASSWORD must either both be set or both be empty"
       return 1
     fi
 
+    export E2E_EMAIL E2E_PASSWORD
     python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+Path('/tmp/cardyssey-smoke-login.json').write_text(
+    json.dumps({
+        'email': os.environ['E2E_EMAIL'],
+        'password': os.environ['E2E_PASSWORD'],
+    })
+)
+PY
+
+    code="$(curl -sS --connect-timeout 12 --max-time 45 \
+      -H 'Content-Type: application/json' \
+      --data-binary @/tmp/cardyssey-smoke-login.json \
+      -o /tmp/cardyssey-smoke-login-response.json \
+      -w '%{http_code}' \
+      "$BASE_API_URL$API_PREFIX/auth/login" || true)"
+
+    rm -f /tmp/cardyssey-smoke-login.json
+
+    if [ "$code" != "200" ]; then
+      echo "FAIL: E2E login -> HTTP $code"
+      rm -f /tmp/cardyssey-smoke-login-response.json
+      return 1
+    fi
+
+    E2E_ACCESS_TOKEN="$(python3 - <<'PY'
+import json
+from pathlib import Path
+print(json.loads(Path('/tmp/cardyssey-smoke-login-response.json').read_text()).get('accessToken', ''))
+PY
+)"
+    E2E_REFRESH_TOKEN="$(python3 - <<'PY'
+import json
+from pathlib import Path
+print(json.loads(Path('/tmp/cardyssey-smoke-login-response.json').read_text()).get('refreshToken', ''))
+PY
+)"
+    rm -f /tmp/cardyssey-smoke-login-response.json
+
+    if [ -z "$E2E_ACCESS_TOKEN" ] || [ -z "$E2E_REFRESH_TOKEN" ]; then
+      echo "FAIL: E2E login response did not contain both tokens"
+      return 1
+    fi
+
+    trap e2e_logout EXIT
+    echo "OK: E2E login"
+  elif [ -n "$E2E_ACCESS_TOKEN" ]; then
+    echo "INFO: using legacy E2E_ACCESS_TOKEN fallback"
+  fi
+}
+
+auth_check() {
+  label="$1"
+  path="$2"
+  code="$(curl -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-smoke-auth-body -w '%{http_code}' \
+    -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
+    "$BASE_API_URL$API_PREFIX$path" || true)"
+  if [ "$code" != "200" ]; then
+    echo "FAIL: $label -> HTTP $code"
+    cat /tmp/cardyssey-smoke-auth-body 2>/dev/null || true
+    return 1
+  fi
+  echo "OK: $label"
+}
+
+ebay_price_check() {
+  url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID?language=$EBAY_SMOKE_LANGUAGE&condition=NEAR_MINT&market=EBAY"
+  code="$(curl -sS --connect-timeout 12 --max-time 60 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
+    -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
+    "$url" || true)"
+
+  if [ "$code" != "200" ]; then
+    echo "FAIL: eBay production pricing probe -> HTTP $code"
+    cat /tmp/cardyssey-smoke-ebay.json 2>/dev/null || true
+    return 1
+  fi
+
+  python3 - <<'PY'
 import json
 from pathlib import Path
 
@@ -178,8 +257,21 @@ print(
     f'range {low:.2f}-{high:.2f} EUR from {samples} sold comp(s)'
 )
 PY
-  }
+}
 
+check "Web homepage" "$BASE_WEB_URL/"
+check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
+check_android_metadata
+check "Android latest APK" "$ANDROID_APK_URL"
+check_api_health
+check_status \
+  "Central pricing authentication guard" \
+  "$BASE_API_URL$API_PREFIX/pricing/cards/__smoke__?language=en&variant=NORMAL" \
+  "401"
+
+e2e_login
+
+if [ -n "$E2E_ACCESS_TOKEN" ]; then
   auth_check "Authenticated profile" "/me"
   auth_check "Collection read" "/collection"
   auth_check "Wishlist read" "/wishlist"
@@ -188,5 +280,5 @@ PY
   auth_check "Outgoing offers read" "/offers/outgoing"
   ebay_price_check
 else
-  echo "INFO: E2E_ACCESS_TOKEN not set; authenticated read-only and eBay pricing checks skipped."
+  echo "INFO: E2E credentials not set; authenticated read-only and eBay pricing checks skipped."
 fi
