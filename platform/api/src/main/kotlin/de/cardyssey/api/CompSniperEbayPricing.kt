@@ -15,6 +15,9 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.abs
 
@@ -34,6 +37,7 @@ class CompSniperEbayQuoteProvider(
     private data class MatchedSale(
         val stableId: String,
         val basePrice: Double,
+        val soldDate: LocalDate,
         val sale: EbayRecentSaleResponse
     )
 
@@ -165,8 +169,6 @@ class CompSniperEbayQuoteProvider(
                 ?.uppercase(Locale.ROOT)
             if (currency != "EUR") return@forEach
 
-            // Only a known soldPrice is an exact transaction price. totalPrice
-            // may include shipping or an unknown accepted-offer amount.
             val rawPrice = item.doubleValue("soldPrice") ?: return@forEach
             if (!rawPrice.isFinite() || rawPrice <= 0.0) return@forEach
 
@@ -175,6 +177,11 @@ class CompSniperEbayQuoteProvider(
 
             if (!basePrice.isFinite() || basePrice <= 0.0) return@forEach
 
+            val endedAt = item.stringValue("endedAt")
+                ?: item.stringValue("soldDate")
+            val soldDate = parseCompSniperSoldDate(endedAt)
+                ?: return@forEach
+
             val stableId = item.stringValue("itemId")
                 ?: item.stringValue("listingId")
                 ?: item.stringValue("id")
@@ -182,8 +189,7 @@ class CompSniperEbayQuoteProvider(
                 ?: listOf(
                     normalizeCompSniperText(item.stringValue("title").orEmpty()),
                     rawPrice.toString(),
-                    item.stringValue("endedAt").orEmpty(),
-                    item.stringValue("soldDate").orEmpty()
+                    endedAt.orEmpty()
                 ).joinToString("|")
 
             val itemId = item.stringValue("itemId")
@@ -196,13 +202,13 @@ class CompSniperEbayQuoteProvider(
                 MatchedSale(
                     stableId = stableId,
                     basePrice = basePrice,
+                    soldDate = soldDate,
                     sale = EbayRecentSaleResponse(
                         itemId = itemId,
                         title = item.stringValue("title").orEmpty(),
                         soldPriceEur = rawPrice,
                         rawCondition = item.stringValue("condition"),
-                        endedAt = item.stringValue("endedAt")
-                            ?: item.stringValue("soldDate"),
+                        endedAt = endedAt,
                         url = directUrl
                     )
                 )
@@ -211,7 +217,30 @@ class CompSniperEbayQuoteProvider(
 
         if (unique.isEmpty()) return null
 
-        val filtered = rejectOutliers(unique.values.toList())
+        val today = LocalDate.now(ZoneOffset.UTC)
+        val windowSelections = listOf(30, 60, 90).map { days ->
+            val candidates = unique.values
+                .asSequence()
+                .filter { matched ->
+                    val ageDays = ChronoUnit.DAYS.between(matched.soldDate, today)
+                    ageDays in 0L..days.toLong()
+                }
+                .sortedWith(
+                    compareByDescending<MatchedSale> { it.soldDate }
+                        .thenByDescending { it.sale.itemId.orEmpty() }
+                )
+                .take(MAX_MARKET_SALES)
+                .toList()
+
+            days to rejectOutliers(candidates)
+        }
+
+        val selectedWindow = windowSelections
+            .firstOrNull { (_, sales) -> sales.size >= MIN_MARKET_SALES }
+            ?: windowSelections.last()
+        val selectedWindowDays = selectedWindow.first
+        val filtered = selectedWindow.second
+
         if (filtered.isEmpty()) return null
 
         val prices = filtered.map { it.basePrice }
@@ -227,7 +256,7 @@ class CompSniperEbayQuoteProvider(
 
         val recentSales = filtered
             .sortedWith(
-                compareByDescending<MatchedSale> { it.sale.endedAt.orEmpty() }
+                compareByDescending<MatchedSale> { it.soldDate }
                     .thenByDescending { it.sale.itemId.orEmpty() }
             )
             .take(10)
@@ -236,7 +265,8 @@ class CompSniperEbayQuoteProvider(
         println(
             "eBay pricing: provider=COMPSNIPER card=${card.id} language=${card.languageCode} " +
                 "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
-                "kept=${filtered.size} mean=$mean range=$low..$high recent=${recentSales.size}"
+                "windowDays=$selectedWindowDays kept=${filtered.size} mean=$mean " +
+                "range=$low..$high recent=${recentSales.size}"
         )
 
         return SoldSummary(
@@ -559,6 +589,11 @@ class CompSniperEbayQuoteProvider(
 
         return if (filtered.size >= 3) filtered else clean
     }
+
+    companion object {
+        private const val MIN_MARKET_SALES = 10
+        private const val MAX_MARKET_SALES = 30
+    }
 }
 
 private fun JsonObject.stringValue(key: String): String? =
@@ -582,6 +617,17 @@ private fun JsonObject.boolValue(key: String): Boolean? =
 
 private fun JsonObject.doubleValue(key: String): Double? =
     (this[key] as? JsonPrimitive)?.doubleOrNull
+
+private fun parseCompSniperSoldDate(raw: String?): LocalDate? {
+    val normalized = raw
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?: return null
+
+    return runCatching {
+        LocalDate.parse(normalized.take(10))
+    }.getOrNull()
+}
 
 private fun normalizeCompSniperText(raw: String): String =
     java.text.Normalizer.normalize(raw, java.text.Normalizer.Form.NFD)
