@@ -67,6 +67,7 @@ function imageUrl(
 type Props = {
   item: PortfolioItem;
   market?: "TCG" | "EBAY";
+  liveUnitEur?: number | null;
   onEdit?: (
     item: PortfolioItem
   ) => void;
@@ -75,23 +76,33 @@ type Props = {
 export function CardTile({
   item,
   market = "TCG",
+  liveUnitEur,
   onEdit,
 }: Props) {
 
   const image =
     imageUrl(item);
 
-  const unitValue =
+  const storedUnitValue =
     singleValueEur(
       item,
       market
     );
 
+  const unitValue =
+    liveUnitEur !== undefined
+      ? liveUnitEur
+      : storedUnitValue;
+
   const positionValue =
-    positionValueEur(
-      item,
-      market
-    );
+    liveUnitEur !== undefined
+      ? liveUnitEur == null
+        ? null
+        : liveUnitEur * item.quantity
+      : positionValueEur(
+          item,
+          market
+        );
 
   return (
     <article
