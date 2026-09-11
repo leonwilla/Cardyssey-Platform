@@ -10,7 +10,6 @@ import type {
 } from "@/lib/types";
 
 import {
-  positionValueEur,
   singleValueEur,
 } from "@/lib/pricing";
 
@@ -22,6 +21,8 @@ const CONDITIONS = [
   ["PLAYED", "Played"],
 ] as const;
 
+type Market = "TCG" | "EBAY";
+
 type EbayRecentSale = {
   itemId?: string | null;
   title: string;
@@ -29,6 +30,15 @@ type EbayRecentSale = {
   rawCondition?: string | null;
   endedAt?: string | null;
   url?: string | null;
+};
+
+type PricingQuote = {
+  source?: string | null;
+  eur?: number | null;
+  sampleCount?: number | null;
+  rangeLowEur?: number | null;
+  rangeHighEur?: number | null;
+  recentSales?: EbayRecentSale[];
 };
 
 function variantLabel(
@@ -52,7 +62,7 @@ function variantLabel(
 
 type Props = {
   item: PortfolioItem | null;
-  market: "TCG" | "EBAY";
+  market: Market;
   busy: boolean;
   onClose: () => void;
   onSave:
@@ -80,14 +90,20 @@ export function CollectionItemEditor({
   const [condition, setCondition] =
     useState("NEAR_MINT");
 
-  const [ebaySales, setEbaySales] =
-    useState<EbayRecentSale[]>([]);
+  const [selectedMarket, setSelectedMarket] =
+    useState<Market>(market);
 
-  const [ebaySalesLoading, setEbaySalesLoading] =
+  const [pricingQuote, setPricingQuote] =
+    useState<PricingQuote | null>(null);
+
+  const [pricingLoading, setPricingLoading] =
     useState(false);
 
-  const [ebaySalesError, setEbaySalesError] =
+  const [pricingError, setPricingError] =
     useState<string | null>(null);
+
+  const [ebaySales, setEbaySales] =
+    useState<EbayRecentSale[]>([]);
 
   useEffect(() => {
     if (!item) return;
@@ -99,13 +115,15 @@ export function CollectionItemEditor({
     setCondition(
       item.condition
     );
-  }, [item]);
+
+    setSelectedMarket(market);
+    setPricingQuote(null);
+    setPricingError(null);
+    setEbaySales([]);
+  }, [item, market]);
 
   useEffect(() => {
-    if (!item || market !== "EBAY") {
-      setEbaySales([]);
-      setEbaySalesError(null);
-      setEbaySalesLoading(false);
+    if (!item) {
       return;
     }
 
@@ -116,7 +134,7 @@ export function CollectionItemEditor({
       new URLSearchParams({
         language: item.languageCode,
         condition,
-        market: "EBAY",
+        market: selectedMarket,
       });
 
     if (item.variantSpec?.id) {
@@ -131,8 +149,13 @@ export function CollectionItemEditor({
       );
     }
 
-    setEbaySalesLoading(true);
-    setEbaySalesError(null);
+    setPricingLoading(true);
+    setPricingError(null);
+    setPricingQuote(null);
+
+    if (selectedMarket !== "EBAY") {
+      setEbaySales([]);
+    }
 
     fetch(
       `/api/pricing/cards/${encodeURIComponent(item.cardId)}?${params.toString()}`,
@@ -148,25 +171,56 @@ export function CollectionItemEditor({
         if (!response.ok) {
           throw new Error(
             data?.error ??
-              "eBay-Verkäufe konnten nicht geladen werden."
+              "Marktpreis konnte nicht geladen werden."
           );
         }
 
-        const sales =
-          Array.isArray(data?.recentSales)
-            ? data.recentSales
-                .filter(
-                  (sale: EbayRecentSale) =>
-                    sale &&
-                    typeof sale.title === "string" &&
-                    Number.isFinite(
-                      Number(sale.soldPriceEur)
-                    )
-                )
-                .slice(0, 10)
-            : [];
+        const quote: PricingQuote = {
+          source:
+            typeof data?.source === "string"
+              ? data.source
+              : null,
+          eur:
+            Number.isFinite(Number(data?.eur))
+              ? Number(data.eur)
+              : null,
+          sampleCount:
+            Number.isFinite(Number(data?.sampleCount))
+              ? Number(data.sampleCount)
+              : null,
+          rangeLowEur:
+            Number.isFinite(Number(data?.rangeLowEur))
+              ? Number(data.rangeLowEur)
+              : null,
+          rangeHighEur:
+            Number.isFinite(Number(data?.rangeHighEur))
+              ? Number(data.rangeHighEur)
+              : null,
+          recentSales:
+            Array.isArray(data?.recentSales)
+              ? data.recentSales
+              : [],
+        };
 
-        setEbaySales(sales);
+        setPricingQuote(quote);
+
+        if (selectedMarket === "EBAY") {
+          const sales =
+            Array.isArray(data?.recentSales)
+              ? data.recentSales
+                  .filter(
+                    (sale: EbayRecentSale) =>
+                      sale &&
+                      typeof sale.title === "string" &&
+                      Number.isFinite(
+                        Number(sale.soldPriceEur)
+                      )
+                  )
+                  .slice(0, 10)
+              : [];
+
+          setEbaySales(sales);
+        }
       })
       .catch((error) => {
         if (
@@ -176,22 +230,30 @@ export function CollectionItemEditor({
           return;
         }
 
-        setEbaySales([]);
-        setEbaySalesError(
+        setPricingQuote(null);
+        setPricingError(
           error instanceof Error
             ? error.message
-            : "eBay-Verkäufe konnten nicht geladen werden."
+            : "Marktpreis konnte nicht geladen werden."
         );
+
+        if (selectedMarket === "EBAY") {
+          setEbaySales([]);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) {
-          setEbaySalesLoading(false);
+          setPricingLoading(false);
         }
       });
 
     return () =>
       controller.abort();
-  }, [item, market, condition]);
+  }, [
+    item,
+    selectedMarket,
+    condition,
+  ]);
 
   if (!item) {
     return null;
@@ -199,17 +261,23 @@ export function CollectionItemEditor({
 
   const currentItem = item;
 
-  const unitValue =
+  const storedUnitValue =
     singleValueEur(
       currentItem,
-      market
+      selectedMarket
     );
 
+  const liveUnitValue =
+    pricingQuote?.eur ?? null;
+
+  const unitValue =
+    liveUnitValue ??
+    storedUnitValue;
+
   const positionValue =
-    positionValueEur(
-      currentItem,
-      market
-    );
+    unitValue == null
+      ? null
+      : unitValue * quantity;
 
   const formatEur = (
     value: number | null
@@ -252,6 +320,11 @@ export function CollectionItemEditor({
     >
       <div
         className="editorModal"
+        style={{
+          maxHeight: "calc(100vh - 32px)",
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+        }}
         onMouseDown={
           (event) =>
             event.stopPropagation()
@@ -299,6 +372,54 @@ export function CollectionItemEditor({
               {item.languageCode
                 .toUpperCase()}
             </strong>
+          </div>
+        </div>
+
+        <div className="editorField">
+          <span>Preismarkt</span>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 6,
+              padding: 4,
+              border: "1px solid rgba(38,58,85,.85)",
+              borderRadius: 12,
+              background: "#09111e",
+            }}
+          >
+            {(["TCG", "EBAY"] as const).map(
+              (value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setSelectedMarket(value)
+                  }
+                  disabled={busy}
+                  style={{
+                    minHeight: 42,
+                    border: 0,
+                    borderRadius: 9,
+                    cursor: "pointer",
+                    fontWeight: 850,
+                    background:
+                      selectedMarket === value
+                        ? "rgba(85,221,246,.14)"
+                        : "transparent",
+                    color:
+                      selectedMarket === value
+                        ? "var(--cyan)"
+                        : "var(--secondary)",
+                  }}
+                >
+                  {value === "EBAY"
+                    ? "eBay"
+                    : "TCG"}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -372,21 +493,60 @@ export function CollectionItemEditor({
 
         <div className="editorValuePanel">
           <div>
-            <span>Marktwert pro Karte</span>
+            <span>
+              {selectedMarket === "EBAY"
+                ? "eBay-Mittelwert pro Karte"
+                : "TCG-Marktwert pro Karte"}
+            </span>
             <strong>
-              {formatEur(unitValue)}
+              {pricingLoading && unitValue == null
+                ? "Lädt …"
+                : formatEur(unitValue)}
             </strong>
           </div>
 
           <div>
             <span>Positionswert</span>
             <strong>
-              {formatEur(positionValue)}
+              {pricingLoading && positionValue == null
+                ? "Lädt …"
+                : formatEur(positionValue)}
             </strong>
           </div>
         </div>
 
-        {market === "EBAY" && (
+        {pricingError && (
+          <p
+            style={{
+              margin: "10px 0 0",
+              color: "#ffb4df",
+            }}
+          >
+            {pricingError}
+          </p>
+        )}
+
+        {selectedMarket === "EBAY" &&
+          pricingQuote && (
+            <p
+              style={{
+                margin: "10px 0 0",
+                color: "var(--secondary)",
+                fontSize: 12,
+              }}
+            >
+              {pricingQuote.source ?? "eBay"}
+              {pricingQuote.sampleCount != null
+                ? ` · ${pricingQuote.sampleCount} Verkäufe`
+                : ""}
+              {pricingQuote.rangeLowEur != null &&
+              pricingQuote.rangeHighEur != null
+                ? ` · ${formatEur(pricingQuote.rangeLowEur)} – ${formatEur(pricingQuote.rangeHighEur)}`
+                : ""}
+            </p>
+          )}
+
+        {selectedMarket === "EBAY" && (
           <div
             style={{
               marginTop: 18,
@@ -407,21 +567,15 @@ export function CollectionItemEditor({
                 fontSize: 12,
               }}
             >
-              Zum Prüfen anklicken – öffnet das originale eBay-Angebot.
+              Die letzten 10 Verkäufe, die in die Berechnung eingeflossen sind.
             </p>
 
-            {ebaySalesLoading && (
+            {pricingLoading && (
               <p>Verkäufe werden geladen …</p>
             )}
 
-            {ebaySalesError && (
-              <p style={{ color: "#ffb4df" }}>
-                {ebaySalesError}
-              </p>
-            )}
-
-            {!ebaySalesLoading &&
-              !ebaySalesError &&
+            {!pricingLoading &&
+              !pricingError &&
               ebaySales.length === 0 && (
                 <p style={{ color: "var(--secondary)" }}>
                   Noch keine gespeicherten Verkäufe für diesen Preis.
@@ -465,6 +619,18 @@ export function CollectionItemEditor({
                       <small style={{ color: "var(--secondary)" }}>
                         {sale.rawCondition}
                       </small>
+                    )}
+                    {href && (
+                      <div
+                        style={{
+                          marginTop: 7,
+                          color: "var(--cyan)",
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        Bei eBay öffnen ↗
+                      </div>
                     )}
                   </>
                 );
