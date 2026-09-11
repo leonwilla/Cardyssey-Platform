@@ -16,7 +16,10 @@ export default async function RegisterPage({
       ? params.error ===
         "email_already_registered"
         ? "Diese E-Mail ist bereits registriert."
-        : "Registrierung fehlgeschlagen."
+        : params.error ===
+          "server_unavailable"
+          ? "Server momentan nicht erreichbar. Bitte versuche es gleich erneut."
+          : "Registrierung fehlgeschlagen."
       : null;
 
   return (
