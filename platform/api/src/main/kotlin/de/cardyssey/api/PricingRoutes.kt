@@ -11,7 +11,7 @@ import io.ktor.server.routing.route
 fun Route.pricingRoutes(
     catalog: CardCatalogService,
     pricing: CardPricingService,
-    ebayPricing: EbaySoldPricingService
+    ebayPricing: CachedEbayPricingService
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/pricing") {
