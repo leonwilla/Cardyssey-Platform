@@ -23,7 +23,9 @@ export default function LoginPage() {
       code
         ? code === "invalid_credentials"
           ? "E-Mail oder Passwort ist falsch."
-          : "Anmeldung fehlgeschlagen."
+          : code === "server_unavailable"
+            ? "Server momentan nicht erreichbar. Bitte versuche es gleich erneut."
+            : "Anmeldung fehlgeschlagen."
         : null
     );
   }, []);
