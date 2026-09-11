@@ -27,7 +27,14 @@ class CompSniperEbayQuoteProvider(
         val rangeLowEur: Double,
         val rangeHighEur: Double,
         val sampleCount: Int,
-        val updatedAtMs: Long
+        val updatedAtMs: Long,
+        val recentSales: List<EbayRecentSaleResponse>
+    )
+
+    private data class MatchedSale(
+        val stableId: String,
+        val basePrice: Double,
+        val sale: EbayRecentSaleResponse
     )
 
     private data class ListingMatchContext(
@@ -78,7 +85,8 @@ class CompSniperEbayQuoteProvider(
             sampleCount = sold?.sampleCount,
             rangeLowEur = sold?.rangeLowEur?.times(condition.factor),
             rangeHighEur = sold?.rangeHighEur?.times(condition.factor),
-            updatedAtMs = sold?.updatedAtMs
+            updatedAtMs = sold?.updatedAtMs,
+            recentSales = sold?.recentSales.orEmpty()
         )
     }
 
@@ -138,7 +146,7 @@ class CompSniperEbayQuoteProvider(
 
         val root = getJson(url) ?: return null
         val items = root["items"] as? JsonArray ?: return null
-        val unique = linkedMapOf<String, Double>()
+        val unique = linkedMapOf<String, MatchedSale>()
 
         items.mapNotNull { it as? JsonObject }.forEach { item ->
             if (!listingMatches(item, card, variant, matchContext)) return@forEach
@@ -157,10 +165,9 @@ class CompSniperEbayQuoteProvider(
                 ?.uppercase(Locale.ROOT)
             if (currency != "EUR") return@forEach
 
-            val rawPrice = item.doubleValue("soldPrice")
-                ?: item.doubleValue("totalPrice")
-                ?: return@forEach
-
+            // Only a known soldPrice is an exact transaction price. totalPrice
+            // may include shipping or an unknown accepted-offer amount.
+            val rawPrice = item.doubleValue("soldPrice") ?: return@forEach
             if (!rawPrice.isFinite() || rawPrice <= 0.0) return@forEach
 
             val basePrice = normalizeSoldCondition(item, rawPrice)
@@ -179,7 +186,27 @@ class CompSniperEbayQuoteProvider(
                     item.stringValue("soldDate").orEmpty()
                 ).joinToString("|")
 
-            unique.putIfAbsent(stableId, basePrice)
+            val itemId = item.stringValue("itemId")
+            val directUrl = item.stringValue("url")
+                ?.takeIf { it.startsWith("https://", ignoreCase = true) }
+                ?: itemId?.let { "https://www.ebay.de/itm/$it" }
+
+            unique.putIfAbsent(
+                stableId,
+                MatchedSale(
+                    stableId = stableId,
+                    basePrice = basePrice,
+                    sale = EbayRecentSaleResponse(
+                        itemId = itemId,
+                        title = item.stringValue("title").orEmpty(),
+                        soldPriceEur = rawPrice,
+                        rawCondition = item.stringValue("condition"),
+                        endedAt = item.stringValue("endedAt")
+                            ?: item.stringValue("soldDate"),
+                        url = directUrl
+                    )
+                )
+            )
         }
 
         if (unique.isEmpty()) return null
@@ -187,20 +214,29 @@ class CompSniperEbayQuoteProvider(
         val filtered = rejectOutliers(unique.values.toList())
         if (filtered.isEmpty()) return null
 
-        val mean = filtered.average()
+        val prices = filtered.map { it.basePrice }
+        val mean = prices.average()
             .takeIf { it.isFinite() && it > 0.0 }
             ?: return null
-        val low = filtered.minOrNull()
+        val low = prices.minOrNull()
             ?.takeIf { it.isFinite() && it > 0.0 }
             ?: return null
-        val high = filtered.maxOrNull()
+        val high = prices.maxOrNull()
             ?.takeIf { it.isFinite() && it > 0.0 }
             ?: return null
+
+        val recentSales = filtered
+            .sortedWith(
+                compareByDescending<MatchedSale> { it.sale.endedAt.orEmpty() }
+                    .thenByDescending { it.sale.itemId.orEmpty() }
+            )
+            .take(10)
+            .map { it.sale }
 
         println(
             "eBay pricing: provider=COMPSNIPER card=${card.id} language=${card.languageCode} " +
                 "variant=${variant.id} providerItems=${items.size} matched=${unique.size} " +
-                "kept=${filtered.size} mean=$mean range=$low..$high"
+                "kept=${filtered.size} mean=$mean range=$low..$high recent=${recentSales.size}"
         )
 
         return SoldSummary(
@@ -208,7 +244,8 @@ class CompSniperEbayQuoteProvider(
             rangeLowEur = low,
             rangeHighEur = high,
             sampleCount = filtered.size,
-            updatedAtMs = System.currentTimeMillis()
+            updatedAtMs = System.currentTimeMillis(),
+            recentSales = recentSales
         )
     }
 
@@ -459,7 +496,7 @@ class CompSniperEbayQuoteProvider(
             return null
         }
 
-        val condition = when {
+        val soldCondition = when {
             "near mint" in conditionText ||
                 "boosterfrisch" in conditionText ||
                 "pack fresh" in conditionText ||
@@ -487,43 +524,36 @@ class CompSniperEbayQuoteProvider(
                 Regex("""\bgut\b""").containsMatchIn(conditionText) ->
                 PricingCondition.GOOD
 
-            /*
-             * eBay.de meldet einzelne Rohkarten fast immer nur als
-             * "Gebraucht | Privat/Gewerblich". Das ist keine echte
-             * Karten-Zustandsstufe. Ohne gegenteiligen Hinweis behandeln wir
-             * moderne ungraded Singles deshalb als NM-Basis statt sie komplett
-             * aus der Stichprobe zu verlieren.
-             */
             else -> PricingCondition.NEAR_MINT
         }
 
-        return rawPrice / condition.factor
+        return rawPrice / soldCondition.factor
     }
 
-    private fun rejectOutliers(values: List<Double>): List<Double> {
-        val clean = values.filter { it.isFinite() && it > 0.0 }
+    private fun rejectOutliers(values: List<MatchedSale>): List<MatchedSale> {
+        val clean = values.filter { it.basePrice.isFinite() && it.basePrice > 0.0 }
         if (clean.size <= 2) return clean
 
-        val center = medianCompSniper(clean)
+        val center = medianCompSniper(clean.map { it.basePrice })
         if (!center.isFinite() || center <= 0.0) return clean
 
         if (clean.size <= 4) {
             val conservative = clean.filter {
-                it >= center * 0.20 && it <= center * 5.0
+                it.basePrice >= center * 0.20 && it.basePrice <= center * 5.0
             }
             return if (conservative.size >= 2) conservative else clean
         }
 
-        val deviations = clean.map { abs(it - center) }
+        val deviations = clean.map { abs(it.basePrice - center) }
         val mad = medianCompSniper(deviations)
 
         val filtered = if (mad.isFinite() && mad > 0.0) {
             clean.filter {
-                0.6745 * abs(it - center) / mad <= 3.5
+                0.6745 * abs(it.basePrice - center) / mad <= 3.5
             }
         } else {
             clean.filter {
-                it >= center * 0.35 && it <= center * 2.85
+                it.basePrice >= center * 0.35 && it.basePrice <= center * 2.85
             }
         }
 
