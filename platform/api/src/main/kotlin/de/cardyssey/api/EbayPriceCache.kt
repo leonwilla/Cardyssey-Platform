@@ -3,6 +3,9 @@ package de.cardyssey.api
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.Locale
@@ -17,12 +20,15 @@ data class CachedEbayPrice(
     val rangeLowEur: Double,
     val rangeHighEur: Double,
     val sampleCount: Int,
-    val updatedAtMs: Long
+    val updatedAtMs: Long,
+    val recentSales: List<EbayRecentSaleResponse> = emptyList()
 )
 
 class EbayPriceCacheRepository(
     private val dataSource: HikariDataSource
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun read(
         cardId: String,
         languageCode: String,
@@ -40,7 +46,8 @@ class EbayPriceCacheRepository(
                     range_low_eur,
                     range_high_eur,
                     sample_count,
-                    updated_at
+                    updated_at,
+                    recent_sales::text AS recent_sales
                 FROM ebay_price_cache
                 WHERE card_id = ?
                   AND language_code = ?
@@ -54,6 +61,12 @@ class EbayPriceCacheRepository(
                 statement.executeQuery().use { result ->
                     if (!result.next()) return null
 
+                    val recentSales = runCatching {
+                        json.decodeFromString<List<EbayRecentSaleResponse>>(
+                            result.getString("recent_sales") ?: "[]"
+                        )
+                    }.getOrDefault(emptyList())
+
                     CachedEbayPrice(
                         cardId = result.getString("card_id"),
                         languageCode = result.getString("language_code"),
@@ -66,7 +79,8 @@ class EbayPriceCacheRepository(
                         updatedAtMs = result
                             .getObject("updated_at", OffsetDateTime::class.java)
                             .toInstant()
-                            .toEpochMilli()
+                            .toEpochMilli(),
+                        recentSales = recentSales.take(10)
                     )
                 }
             }
@@ -85,9 +99,10 @@ class EbayPriceCacheRepository(
                     range_low_eur,
                     range_high_eur,
                     sample_count,
-                    updated_at
+                    updated_at,
+                    recent_sales
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?::jsonb)
                 ON CONFLICT (card_id, language_code, variant_id)
                 DO UPDATE SET
                     source = EXCLUDED.source,
@@ -95,6 +110,7 @@ class EbayPriceCacheRepository(
                     range_low_eur = EXCLUDED.range_low_eur,
                     range_high_eur = EXCLUDED.range_high_eur,
                     sample_count = EXCLUDED.sample_count,
+                    recent_sales = EXCLUDED.recent_sales,
                     updated_at = NOW()
                 """.trimIndent()
             ).use { statement ->
@@ -106,6 +122,7 @@ class EbayPriceCacheRepository(
                 statement.setDouble(6, price.rangeLowEur)
                 statement.setDouble(7, price.rangeHighEur)
                 statement.setInt(8, price.sampleCount)
+                statement.setString(9, json.encodeToString(price.recentSales.take(10)))
                 statement.executeUpdate()
             }
         }
@@ -378,7 +395,8 @@ class CachedEbayPricingService(
             rangeLowEur = low,
             rangeHighEur = high,
             sampleCount = samples,
-            updatedAtMs = updatedAtMs ?: System.currentTimeMillis()
+            updatedAtMs = updatedAtMs ?: System.currentTimeMillis(),
+            recentSales = recentSales.take(10)
         )
     }
 
@@ -403,7 +421,8 @@ class CachedEbayPricingService(
             sampleCount = sampleCount,
             rangeLowEur = rangeLowEur * condition.factor,
             rangeHighEur = rangeHighEur * condition.factor,
-            updatedAtMs = updatedAtMs
+            updatedAtMs = updatedAtMs,
+            recentSales = recentSales.take(10)
         )
 
     private fun emptyQuote(
