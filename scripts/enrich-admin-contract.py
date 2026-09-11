@@ -64,6 +64,21 @@ spec = json.loads(OUT.read_text())
 schemas = spec.setdefault("components", {}).setdefault("schemas", {})
 paths = spec.setdefault("paths", {})
 
+# Cardyssey's eBay pricing response additionally exposes the cleaned sold-price
+# range. Keeping this enrichment here makes client generation safe even when an
+# older checked-in base contract was produced before these optional fields.
+pricing_quote = schemas.get("CardPriceQuoteResponse")
+if pricing_quote is not None:
+    pricing_properties = pricing_quote.setdefault("properties", {})
+    pricing_properties["rangeLowEur"] = nullable({
+        "type": "number",
+        "format": "double",
+    })
+    pricing_properties["rangeHighEur"] = nullable({
+        "type": "number",
+        "format": "double",
+    })
+
 role = {
     "type": "string",
     "enum": ["USER", "ADMIN", "FOUNDER"],
