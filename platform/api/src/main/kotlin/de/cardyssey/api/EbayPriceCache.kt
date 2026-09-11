@@ -1,0 +1,325 @@
+package de.cardyssey.api
+
+import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.time.OffsetDateTime
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+
+internal data class CachedEbayPrice(
+    val cardId: String,
+    val languageCode: String,
+    val variantId: String,
+    val source: String,
+    val baseEur: Double,
+    val rangeLowEur: Double,
+    val rangeHighEur: Double,
+    val sampleCount: Int,
+    val updatedAtMs: Long
+)
+
+class EbayPriceCacheRepository(
+    private val dataSource: HikariDataSource
+) {
+    fun read(
+        cardId: String,
+        languageCode: String,
+        variantId: String
+    ): CachedEbayPrice? =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT
+                    card_id,
+                    language_code,
+                    variant_id,
+                    source,
+                    base_eur,
+                    range_low_eur,
+                    range_high_eur,
+                    sample_count,
+                    updated_at
+                FROM ebay_price_cache
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND variant_id = ?
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, cardId)
+                statement.setString(2, languageCode)
+                statement.setString(3, variantId)
+
+                statement.executeQuery().use { result ->
+                    if (!result.next()) return null
+
+                    CachedEbayPrice(
+                        cardId = result.getString("card_id"),
+                        languageCode = result.getString("language_code"),
+                        variantId = result.getString("variant_id"),
+                        source = result.getString("source"),
+                        baseEur = result.getDouble("base_eur"),
+                        rangeLowEur = result.getDouble("range_low_eur"),
+                        rangeHighEur = result.getDouble("range_high_eur"),
+                        sampleCount = result.getInt("sample_count"),
+                        updatedAtMs = result
+                            .getObject("updated_at", OffsetDateTime::class.java)
+                            .toInstant()
+                            .toEpochMilli()
+                    )
+                }
+            }
+        }
+
+    fun write(price: CachedEbayPrice) {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                INSERT INTO ebay_price_cache (
+                    card_id,
+                    language_code,
+                    variant_id,
+                    source,
+                    base_eur,
+                    range_low_eur,
+                    range_high_eur,
+                    sample_count,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                ON CONFLICT (card_id, language_code, variant_id)
+                DO UPDATE SET
+                    source = EXCLUDED.source,
+                    base_eur = EXCLUDED.base_eur,
+                    range_low_eur = EXCLUDED.range_low_eur,
+                    range_high_eur = EXCLUDED.range_high_eur,
+                    sample_count = EXCLUDED.sample_count,
+                    updated_at = NOW()
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, price.cardId)
+                statement.setString(2, price.languageCode)
+                statement.setString(3, price.variantId)
+                statement.setString(4, price.source)
+                statement.setDouble(5, price.baseEur)
+                statement.setDouble(6, price.rangeLowEur)
+                statement.setDouble(7, price.rangeHighEur)
+                statement.setInt(8, price.sampleCount)
+                statement.executeUpdate()
+            }
+        }
+    }
+}
+
+internal interface EbayQuoteProvider {
+    suspend fun quote(
+        cardId: String,
+        language: String,
+        variantId: String?,
+        legacyVariant: String?,
+        condition: PricingCondition
+    ): CardPriceQuoteResponse?
+}
+
+internal class SoldCompsEbayQuoteProvider(
+    private val delegate: EbaySoldPricingService
+) : EbayQuoteProvider {
+    override suspend fun quote(
+        cardId: String,
+        language: String,
+        variantId: String?,
+        legacyVariant: String?,
+        condition: PricingCondition
+    ): CardPriceQuoteResponse? =
+        delegate.quote(
+            cardId = cardId,
+            language = language,
+            variantId = variantId,
+            legacyVariant = legacyVariant,
+            condition = condition
+        )
+}
+
+class CachedEbayPricingService(
+    private val catalog: CardCatalogService,
+    private val cache: EbayPriceCacheRepository,
+    private val providers: List<EbayQuoteProvider>,
+    private val cacheTtlMs: Long
+) {
+    private val refreshLocks =
+        ConcurrentHashMap<String, Mutex>()
+
+    suspend fun quote(
+        cardId: String,
+        language: String,
+        variantId: String?,
+        legacyVariant: String?,
+        condition: PricingCondition
+    ): CardPriceQuoteResponse? {
+        val details = catalog.details(cardId, language) ?: return null
+        val exactLanguageMatch = details.languageCode == language
+        val selected = selectVariant(details, variantId, legacyVariant)
+
+        if (!exactLanguageMatch || selected == null) {
+            return providers.firstNotNullOfOrNull { provider ->
+                provider.quote(
+                    cardId = cardId,
+                    language = language,
+                    variantId = variantId,
+                    legacyVariant = legacyVariant,
+                    condition = condition
+                )
+            } ?: emptyQuote(details, selected, exactLanguageMatch, condition)
+        }
+
+        val key = "${details.id}|${details.languageCode}|${selected.id}"
+        val cached = cache.read(details.id, details.languageCode, selected.id)
+
+        if (cached != null && isFresh(cached)) {
+            println("eBay pricing cache hit: $key ageMs=${System.currentTimeMillis() - cached.updatedAtMs}")
+            return cached.toResponse(details, selected, condition)
+        }
+
+        val mutex = refreshLocks.computeIfAbsent(key) { Mutex() }
+
+        return mutex.withLock {
+            try {
+                val latestCached = cache.read(details.id, details.languageCode, selected.id)
+                if (latestCached != null && isFresh(latestCached)) {
+                    return@withLock latestCached.toResponse(details, selected, condition)
+                }
+
+                val live = providers.firstNotNullOfOrNull { provider ->
+                    provider.quote(
+                        cardId = cardId,
+                        language = language,
+                        variantId = selected.id,
+                        legacyVariant = null,
+                        condition = condition
+                    )?.takeIf { it.baseEur != null }
+                }
+
+                if (live != null) {
+                    live.toCacheRecord(condition)?.let(cache::write)
+                    return@withLock live
+                }
+
+                if (latestCached != null) {
+                    println(
+                        "eBay pricing cache stale fallback: $key ageMs=" +
+                            (System.currentTimeMillis() - latestCached.updatedAtMs)
+                    )
+                    return@withLock latestCached.toResponse(details, selected, condition)
+                }
+
+                emptyQuote(details, selected, true, condition)
+            } finally {
+                refreshLocks.remove(key, mutex)
+            }
+        }
+    }
+
+    private fun isFresh(price: CachedEbayPrice): Boolean =
+        System.currentTimeMillis() - price.updatedAtMs <= cacheTtlMs
+
+    private fun CardPriceQuoteResponse.toCacheRecord(
+        condition: PricingCondition
+    ): CachedEbayPrice? {
+        val base = baseEur ?: return null
+        val sourceName = source?.takeIf(String::isNotBlank) ?: return null
+        val variant = variantId?.takeIf(String::isNotBlank) ?: return null
+        val samples = sampleCount?.takeIf { it > 0 } ?: return null
+        val factor = condition.factor.takeIf { it > 0.0 } ?: return null
+        val low = rangeLowEur?.div(factor) ?: return null
+        val high = rangeHighEur?.div(factor) ?: return null
+
+        if (
+            !base.isFinite() || base <= 0.0 ||
+            !low.isFinite() || low <= 0.0 ||
+            !high.isFinite() || high <= 0.0 ||
+            low > high
+        ) {
+            return null
+        }
+
+        return CachedEbayPrice(
+            cardId = cardId,
+            languageCode = languageCode,
+            variantId = variant,
+            source = sourceName,
+            baseEur = base,
+            rangeLowEur = low,
+            rangeHighEur = high,
+            sampleCount = samples,
+            updatedAtMs = updatedAtMs ?: System.currentTimeMillis()
+        )
+    }
+
+    private fun CachedEbayPrice.toResponse(
+        details: CatalogCardDetails,
+        selected: CatalogVariant,
+        condition: PricingCondition
+    ): CardPriceQuoteResponse =
+        CardPriceQuoteResponse(
+            cardId = details.id,
+            languageCode = details.languageCode,
+            variantId = selected.id,
+            variantType = selected.type,
+            condition = condition.name,
+            market = "EBAY",
+            source = source,
+            baseEur = baseEur,
+            conditionFactor = condition.factor,
+            eur = baseEur * condition.factor,
+            exactLanguageMatch = true,
+            exactVariantMatch = true,
+            sampleCount = sampleCount,
+            rangeLowEur = rangeLowEur * condition.factor,
+            rangeHighEur = rangeHighEur * condition.factor,
+            updatedAtMs = updatedAtMs
+        )
+
+    private fun emptyQuote(
+        details: CatalogCardDetails,
+        selected: CatalogVariant?,
+        exactLanguageMatch: Boolean,
+        condition: PricingCondition
+    ): CardPriceQuoteResponse =
+        CardPriceQuoteResponse(
+            cardId = details.id,
+            languageCode = details.languageCode,
+            variantId = selected?.id,
+            variantType = selected?.type,
+            condition = condition.name,
+            market = "EBAY",
+            source = null,
+            baseEur = null,
+            conditionFactor = condition.factor,
+            eur = null,
+            exactLanguageMatch = exactLanguageMatch,
+            exactVariantMatch = selected != null
+        )
+
+    private fun selectVariant(
+        details: CatalogCardDetails,
+        variantId: String?,
+        legacyVariant: String?
+    ): CatalogVariant? {
+        if (!variantId.isNullOrBlank()) {
+            return details.variants.firstOrNull { it.id == variantId.trim() }
+        }
+
+        val legacy = legacyVariant
+            ?.trim()
+            ?.uppercase(Locale.ROOT)
+            ?.takeIf(String::isNotBlank)
+
+        if (legacy != null) {
+            return details.variants
+                .filter { it.legacyVariant == legacy }
+                .singleOrNull()
+        }
+
+        return details.variants.singleOrNull()
+    }
+}
