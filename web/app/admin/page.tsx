@@ -130,6 +130,17 @@ function roleLabel(role: UserRole) {
   return "User";
 }
 
+function isRuntimeSmokeBot(
+  entry: Pick<AdminUser, "email" | "displayName">
+) {
+  const email = entry.email.trim().toLowerCase();
+
+  return (
+    email.startsWith("runtime-smoke-") &&
+    email.endsWith("@cardyssey.de")
+  ) || entry.displayName === "Cardyssey Runtime Smoke";
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
@@ -567,14 +578,31 @@ export default function AdminPage() {
                           {entry.email}
                         </div>
                       </div>
-                      <span
-                        className="chip"
+                      <div
                         style={{
-                          color: entry.role === "FOUNDER" ? "var(--gold)" : undefined,
+                          display: "flex",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
                         }}
                       >
-                        {roleLabel(entry.role)}
-                      </span>
+                        {isRuntimeSmokeBot(entry) && (
+                          <span
+                            className="chip"
+                            style={{ color: "var(--cyan)" }}
+                          >
+                            BOT
+                          </span>
+                        )}
+                        <span
+                          className="chip"
+                          style={{
+                            color: entry.role === "FOUNDER" ? "var(--gold)" : undefined,
+                          }}
+                        >
+                          {roleLabel(entry.role)}
+                        </span>
+                      </div>
                     </div>
                     <div className="chips">
                       <span className="chip mutedChip">
@@ -614,9 +642,26 @@ export default function AdminPage() {
                       }}
                     >
                       <div>
-                        <span className="eyebrowText">
-                          {roleLabel(detail.user.role)}
-                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "6px",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span className="eyebrowText">
+                            {roleLabel(detail.user.role)}
+                          </span>
+                          {isRuntimeSmokeBot(detail.user) && (
+                            <span
+                              className="chip"
+                              style={{ color: "var(--cyan)" }}
+                            >
+                              BOT
+                            </span>
+                          )}
+                        </div>
                         <h2 style={{ marginBottom: "6px" }}>
                           {detail.user.displayName || "Cardyssey Collector"}
                         </h2>
