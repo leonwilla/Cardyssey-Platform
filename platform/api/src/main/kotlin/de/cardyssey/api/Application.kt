@@ -74,6 +74,9 @@ fun Application.module() {
     val adminRepository =
         AdminRepository(database)
 
+    val adminUserManagementRepository =
+        AdminUserManagementRepository(database)
+
     val collectionRepository =
         CollectionRepository(database)
 
@@ -378,6 +381,8 @@ fun Application.module() {
         adminRoutes(
             roles = roleRepository,
             admin = adminRepository,
+            userManagement =
+                adminUserManagementRepository,
             justTcgConfigured =
                 justTcgApiKey != null,
             soldCompsConfigured =
