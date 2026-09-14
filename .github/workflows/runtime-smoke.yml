@@ -21,7 +21,7 @@ jobs:
       CARDYSSEY_EBAY_SMOKE_LANGUAGE: de
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Production smoke checks
         run: bash scripts/runtime-smoke.sh
