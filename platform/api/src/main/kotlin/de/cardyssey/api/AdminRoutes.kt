@@ -13,9 +13,13 @@ import java.util.UUID
 fun Route.adminRoutes(
     roles: RoleRepository,
     admin: AdminRepository,
+    userManagement: AdminUserManagementRepository,
     justTcgConfigured: Boolean,
     soldCompsConfigured: Boolean
 ) {
+    @Suppress("UNUSED_VARIABLE")
+    val reservedUserManagement = userManagement
+
     authenticate("auth-jwt") {
         route("/api/v1/admin") {
 
