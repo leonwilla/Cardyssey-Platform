@@ -8,6 +8,7 @@ import zipfile
 ROOT = Path("/home/tv/cardshop")
 ENV = ROOT / ".env"
 TARGET = ROOT / "web/public/downloads/cardyssey-latest.apk"
+ANDROID_REPOSITORY = "leonwilla/Pokemonkarten-APP"
 
 token = None
 
@@ -33,7 +34,7 @@ def github_json(url):
 
 runs = github_json(
     "https://api.github.com/repos/"
-    "GranBBX/Pokemonkarten-APP/actions/workflows/"
+    f"{ANDROID_REPOSITORY}/actions/workflows/"
     "android-demo-apk.yml/runs"
     "?branch=main&status=success&per_page=1"
 )
@@ -60,7 +61,7 @@ if (
 
 artifacts = github_json(
     "https://api.github.com/repos/"
-    f"GranBBX/Pokemonkarten-APP/actions/runs/{run_id}/artifacts"
+    f"{ANDROID_REPOSITORY}/actions/runs/{run_id}/artifacts"
 )
 
 artifact = next(
