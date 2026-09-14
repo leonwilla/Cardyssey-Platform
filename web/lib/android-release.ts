@@ -7,6 +7,7 @@ export type AndroidReleaseInfo = {
   file: string;
   sizeBytes: number;
   sha256: string;
+  signingCertificateSha256?: string;
 };
 
 export const ANDROID_RELEASE_METADATA_URL =
