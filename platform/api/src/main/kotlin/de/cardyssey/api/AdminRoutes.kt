@@ -6,6 +6,7 @@ import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import java.util.UUID
@@ -17,9 +18,6 @@ fun Route.adminRoutes(
     justTcgConfigured: Boolean,
     soldCompsConfigured: Boolean
 ) {
-    @Suppress("UNUSED_VARIABLE")
-    val reservedUserManagement = userManagement
-
     authenticate("auth-jwt") {
         route("/api/v1/admin") {
 
@@ -93,6 +91,75 @@ fun Route.adminRoutes(
                 }
 
                 call.respond(detail)
+            }
+
+            delete("/users/{id}") {
+                val actorUserId = call.authenticatedUserId()
+
+                if (actorUserId == null) {
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@delete
+                }
+
+                if (!call.requireFounder(roles)) {
+                    return@delete
+                }
+
+                val userId =
+                    call.parameters["id"]
+                        ?.let {
+                            runCatching {
+                                UUID.fromString(it)
+                            }.getOrNull()
+                        }
+
+                if (userId == null) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "invalid_user_id")
+                    )
+                    return@delete
+                }
+
+                when (
+                    userManagement.deleteUser(
+                        userId = userId,
+                        actorUserId = actorUserId
+                    )
+                ) {
+                    AdminDeleteUserResult.DELETED ->
+                        call.respond(
+                            HttpStatusCode.OK,
+                            mapOf(
+                                "deleted" to true,
+                                "id" to userId.toString()
+                            )
+                        )
+
+                    AdminDeleteUserResult.NOT_FOUND ->
+                        call.respond(
+                            HttpStatusCode.NotFound,
+                            mapOf("error" to "user_not_found")
+                        )
+
+                    AdminDeleteUserResult.SELF_FORBIDDEN ->
+                        call.respond(
+                            HttpStatusCode.Conflict,
+                            mapOf("error" to "cannot_delete_self")
+                        )
+
+                    AdminDeleteUserResult.FOUNDER_FORBIDDEN ->
+                        call.respond(
+                            HttpStatusCode.Forbidden,
+                            mapOf("error" to "cannot_delete_founder")
+                        )
+
+                    AdminDeleteUserResult.SYSTEM_BOT_FORBIDDEN ->
+                        call.respond(
+                            HttpStatusCode.Conflict,
+                            mapOf("error" to "cannot_delete_system_bot")
+                        )
+                }
             }
 
             get("/system") {
