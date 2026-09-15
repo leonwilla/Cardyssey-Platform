@@ -77,6 +77,9 @@ fun Application.module() {
     val adminUserManagementRepository =
         AdminUserManagementRepository(database)
 
+    val registrationSettingsRepository =
+        RegistrationSettingsRepository(database)
+
     val collectionRepository =
         CollectionRepository(database)
 
@@ -370,8 +373,10 @@ fun Application.module() {
         }
 
         authRoutes(
-            authRepository,
-            tokenService
+            repository = authRepository,
+            tokens = tokenService,
+            registrationSettings =
+                registrationSettingsRepository
         )
 
         avatarRoutes(
@@ -383,6 +388,8 @@ fun Application.module() {
             admin = adminRepository,
             userManagement =
                 adminUserManagementRepository,
+            registrationSettings =
+                registrationSettingsRepository,
             justTcgConfigured =
                 justTcgApiKey != null,
             soldCompsConfigured =
