@@ -141,6 +141,23 @@ function isRuntimeSmokeBot(
   ) || entry.displayName === "Cardyssey Runtime Smoke";
 }
 
+function deleteErrorMessage(error?: string) {
+  switch (error) {
+    case "cannot_delete_self":
+      return "Deinen eigenen Founder-Account kannst du nicht löschen.";
+    case "cannot_delete_founder":
+      return "Founder-Accounts sind vor dem Löschen geschützt.";
+    case "cannot_delete_system_bot":
+      return "Der Runtime-Smoke-Bot ist ein geschützter Systemaccount.";
+    case "user_not_found":
+      return "Der Account existiert nicht mehr.";
+    case "founder_required":
+      return "Nur der Founder darf Accounts endgültig löschen.";
+    default:
+      return "Account konnte nicht gelöscht werden.";
+  }
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
@@ -160,6 +177,8 @@ export default function AdminPage() {
     useState(true);
   const [detailLoading, setDetailLoading] =
     useState(false);
+  const [deletingId, setDeletingId] =
+    useState<string | null>(null);
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -237,6 +256,8 @@ export default function AdminPage() {
         void loadUser(
           loadedUsers[0].id
         );
+      } else {
+        setDetail(null);
       }
 
       if (me.role === "FOUNDER") {
@@ -340,12 +361,93 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteUserAccount(
+    entry: AdminUser
+  ) {
+    if (user?.role !== "FOUNDER") {
+      setMessage(
+        "Nur der Founder darf Accounts endgültig löschen."
+      );
+      return;
+    }
+
+    if (
+      entry.id === user.id ||
+      entry.role === "FOUNDER" ||
+      isRuntimeSmokeBot(entry)
+    ) {
+      setMessage(
+        "Dieser Account ist vor dem Löschen geschützt."
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Account ${entry.displayName || entry.email} wirklich ENDGÜLTIG löschen?\n\n` +
+        "Sammlung, Wishlist, Listings, Angebote, Freundschaften und Sessions werden mit gelöscht. " +
+        "Das kann nicht rückgängig gemacht werden."
+      );
+
+    if (!confirmed) return;
+
+    setDeletingId(entry.id);
+    setMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/users/${
+            encodeURIComponent(entry.id)
+          }`,
+          {
+            method: "DELETE",
+          }
+        );
+
+      const payload =
+        await response
+          .json()
+          .catch(() => ({})) as {
+            error?: string;
+          };
+
+      if (!response.ok) {
+        throw new Error(
+          deleteErrorMessage(payload.error)
+        );
+      }
+
+      setDetail(null);
+      await initialize();
+      setMessage(
+        `Account ${entry.displayName || entry.email} wurde vollständig gelöscht.`
+      );
+
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Account konnte nicht gelöscht werden."
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function submitSearch(
     event: FormEvent
   ) {
     event.preventDefault();
     void loadUsers();
   }
+
+  const selectedProtected =
+    detail != null && (
+      detail.user.id === user?.id ||
+      detail.user.role === "FOUNDER" ||
+      isRuntimeSmokeBot(detail.user)
+    );
 
   return (
     <AppShell
@@ -364,8 +466,8 @@ export default function AdminPage() {
           </h1>
           <p>
             Zentrale, serverseitig geschützte Übersicht über Nutzer,
-            Sammlungen, Marketplace und Systemstatus. Diese erste
-            Version ist bewusst read-only.
+            Sammlungen, Marketplace und Systemstatus. Founder können
+            unerwünschte Accounts vollständig entfernen.
           </p>
         </div>
 
@@ -389,7 +491,7 @@ export default function AdminPage() {
       ) : (
         <>
           {message && (
-            <div className="statusPanel errorPanel">
+            <div className="statusPanel">
               {message}
             </div>
           )}
@@ -490,7 +592,9 @@ export default function AdminPage() {
                 <h2>Nutzer</h2>
               </div>
               <span className="chip mutedChip">
-                Read-only
+                {user?.role === "FOUNDER"
+                  ? "Founder-Verwaltung"
+                  : "Read-only"}
               </span>
             </div>
 
@@ -670,8 +774,42 @@ export default function AdminPage() {
                           {detail.user.friendCode}
                         </div>
                       </div>
-                      <div className="muted">
-                        Beigetreten: {formatDate(detail.user.createdAt)}
+
+                      <div
+                        style={{
+                          display: "grid",
+                          justifyItems: "end",
+                          gap: "10px",
+                        }}
+                      >
+                        <div className="muted">
+                          Beigetreten: {formatDate(detail.user.createdAt)}
+                        </div>
+
+                        {user?.role === "FOUNDER" && !selectedProtected && (
+                          <button
+                            type="button"
+                            className="ghostButton"
+                            disabled={deletingId === detail.user.id}
+                            onClick={() =>
+                              void deleteUserAccount(detail.user)
+                            }
+                            style={{
+                              color: "var(--pink)",
+                              borderColor: "rgba(255,90,130,.45)",
+                            }}
+                          >
+                            {deletingId === detail.user.id
+                              ? "Wird gelöscht …"
+                              : "Account endgültig löschen"}
+                          </button>
+                        )}
+
+                        {user?.role === "FOUNDER" && selectedProtected && (
+                          <span className="chip mutedChip">
+                            Geschützter Account
+                          </span>
+                        )}
                       </div>
                     </div>
 
