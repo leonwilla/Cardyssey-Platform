@@ -4,10 +4,12 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import java.util.UUID
 
@@ -15,6 +17,7 @@ fun Route.adminRoutes(
     roles: RoleRepository,
     admin: AdminRepository,
     userManagement: AdminUserManagementRepository,
+    registrationSettings: RegistrationSettingsRepository,
     justTcgConfigured: Boolean,
     soldCompsConfigured: Boolean
 ) {
@@ -160,6 +163,31 @@ fun Route.adminRoutes(
                             mapOf("error" to "cannot_delete_system_bot")
                         )
                 }
+            }
+
+            get("/registration") {
+                if (!call.requireFounder(roles)) {
+                    return@get
+                }
+
+                call.respond(
+                    registrationSettings.get()
+                )
+            }
+
+            put("/registration") {
+                if (!call.requireFounder(roles)) {
+                    return@put
+                }
+
+                val request =
+                    call.receive<UpdateRegistrationSettingsRequest>()
+
+                call.respond(
+                    registrationSettings.setRegistrationsEnabled(
+                        request.enabled
+                    )
+                )
             }
 
             get("/system") {
