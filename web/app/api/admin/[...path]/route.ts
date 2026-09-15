@@ -42,6 +42,33 @@ export async function GET(
   );
 }
 
+export async function PUT(
+  request: Request,
+  context: Context
+) {
+  const { path } =
+    await context.params;
+  const body =
+    await request.text();
+
+  const response =
+    await authenticatedBackendFetch(
+      adminPath(request, path),
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body,
+      }
+    );
+
+  return Response.json(
+    await readBackendJson(response),
+    { status: response.status }
+  );
+}
+
 export async function DELETE(
   request: Request,
   context: Context
