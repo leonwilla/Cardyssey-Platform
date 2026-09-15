@@ -9,13 +9,10 @@ type Context = {
   }>;
 };
 
-export async function GET(
+function adminPath(
   request: Request,
-  context: Context
+  path: string[]
 ) {
-  const { path } =
-    await context.params;
-
   const requestUrl =
     new URL(request.url);
 
@@ -24,11 +21,38 @@ export async function GET(
       .map(encodeURIComponent)
       .join("/");
 
+  return `/api/v1/admin/${encodedPath}${requestUrl.search}`;
+}
+
+export async function GET(
+  request: Request,
+  context: Context
+) {
+  const { path } =
+    await context.params;
+
   const response =
     await authenticatedBackendFetch(
-      `/api/v1/admin/${encodedPath}${
-        requestUrl.search
-      }`
+      adminPath(request, path)
+    );
+
+  return Response.json(
+    await readBackendJson(response),
+    { status: response.status }
+  );
+}
+
+export async function DELETE(
+  request: Request,
+  context: Context
+) {
+  const { path } =
+    await context.params;
+
+  const response =
+    await authenticatedBackendFetch(
+      adminPath(request, path),
+      { method: "DELETE" }
     );
 
   return Response.json(
