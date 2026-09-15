@@ -22,12 +22,30 @@ private val EMAIL_REGEX =
 
 fun Route.authRoutes(
     repository: AuthRepository,
-    tokens: TokenService
+    tokens: TokenService,
+    registrationSettings: RegistrationSettingsRepository
 ) {
 
     route("/api/v1/auth") {
 
+        get("/registration-status") {
+            call.respond(
+                registrationSettings.get()
+            )
+        }
+
         post("/register") {
+            if (!registrationSettings.registrationsEnabled()) {
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    mapOf(
+                        "error" to "registration_closed",
+                        "message" to "Registrations are currently disabled."
+                    )
+                )
+                return@post
+            }
+
             val request =
                 call.receive<RegisterRequest>()
 
@@ -236,11 +254,11 @@ fun Route.authRoutes(
                     id = user.id.toString(),
                     email = user.email,
                     displayName =
-                    user.displayName,
-                avatarUrl =
-                    avatarUrlFor(
-                        user.avatarPath
-                    )
+                        user.displayName,
+                    avatarUrl =
+                        avatarUrlFor(
+                            user.avatarPath
+                        )
                 )
             )
         }
@@ -275,11 +293,11 @@ fun Route.authRoutes(
                     email =
                         user.email,
                     displayName =
-                    user.displayName,
-                avatarUrl =
-                    avatarUrlFor(
-                        user.avatarPath
-                    )
+                        user.displayName,
+                    avatarUrl =
+                        avatarUrlFor(
+                            user.avatarPath
+                        )
                 )
             )
         }
