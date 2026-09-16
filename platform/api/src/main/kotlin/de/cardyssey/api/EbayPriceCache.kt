@@ -308,7 +308,11 @@ class CachedEbayPricingService(
         val key = "${details.id}|${details.languageCode}|${selected.id}"
         val cached = cache.read(details.id, details.languageCode, selected.id)
 
-        if (cached != null && isFresh(cached)) {
+        if (
+            cached != null &&
+            cached.hasSalesEvidence() &&
+            isFresh(cached)
+        ) {
             println("eBay pricing cache hit: $key ageMs=${System.currentTimeMillis() - cached.updatedAtMs}")
             return cached.toResponse(details, selected, condition)
         }
@@ -318,14 +322,31 @@ class CachedEbayPricingService(
         return mutex.withLock {
             try {
                 val latestCached = cache.read(details.id, details.languageCode, selected.id)
-                if (latestCached != null && isFresh(latestCached)) {
+                if (
+                    latestCached != null &&
+                    latestCached.hasSalesEvidence() &&
+                    isFresh(latestCached)
+                ) {
                     return@withLock latestCached.toResponse(details, selected, condition)
                 }
 
                 if (!cache.canRefresh(details.id, details.languageCode, selected.id)) {
                     println("eBay pricing refresh backoff active: $key")
-                    return@withLock latestCached?.toResponse(details, selected, condition)
-                        ?: emptyQuote(details, selected, true, condition)
+                    return@withLock latestCached
+                        ?.takeIf {
+                            it.hasSalesEvidence()
+                        }
+                        ?.toResponse(
+                            details,
+                            selected,
+                            condition
+                        )
+                        ?: emptyQuote(
+                            details,
+                            selected,
+                            true,
+                            condition
+                        )
                 }
 
                 val live = providers.firstNotNullOfOrNull { provider ->
@@ -348,7 +369,10 @@ class CachedEbayPricingService(
 
                 cache.recordRefreshFailure(details.id, details.languageCode, selected.id)
 
-                if (latestCached != null) {
+                if (
+                    latestCached != null &&
+                    latestCached.hasSalesEvidence()
+                ) {
                     println(
                         "eBay pricing cache stale fallback: $key ageMs=" +
                             (System.currentTimeMillis() - latestCached.updatedAtMs)
@@ -373,6 +397,18 @@ class CachedEbayPricingService(
         val sourceName = source?.takeIf(String::isNotBlank) ?: return null
         val variant = variantId?.takeIf(String::isNotBlank) ?: return null
         val samples = sampleCount?.takeIf { it > 0 } ?: return null
+        val sales =
+            recentSales
+                .filter {
+                    it.soldPriceEur.isFinite() &&
+                        it.soldPriceEur > 0.0
+                }
+                .take(10)
+
+        if (sales.isEmpty()) {
+            return null
+        }
+
         val factor = condition.factor.takeIf { it > 0.0 } ?: return null
         val low = rangeLowEur?.div(factor) ?: return null
         val high = rangeHighEur?.div(factor) ?: return null
@@ -396,9 +432,16 @@ class CachedEbayPricingService(
             rangeHighEur = high,
             sampleCount = samples,
             updatedAtMs = updatedAtMs ?: System.currentTimeMillis(),
-            recentSales = recentSales.take(10)
+            recentSales = sales
         )
     }
+
+    private fun CachedEbayPrice.hasSalesEvidence(): Boolean =
+        sampleCount > 0 &&
+            recentSales.any {
+                it.soldPriceEur.isFinite() &&
+                    it.soldPriceEur > 0.0
+            }
 
     private fun CachedEbayPrice.toResponse(
         details: CatalogCardDetails,
