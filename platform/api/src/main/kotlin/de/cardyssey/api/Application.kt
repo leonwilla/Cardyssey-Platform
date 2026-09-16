@@ -132,6 +132,12 @@ fun Application.module() {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
+    val ebayDirectEnabled =
+        System.getenv("EBAY_DIRECT_ENABLED")
+            ?.trim()
+            ?.toBooleanStrictOrNull()
+            ?: true
+
     val soldCompsApiKey =
         System.getenv("SOLDCOMPS_API_KEY")
             ?.trim()
@@ -176,11 +182,20 @@ fun Application.module() {
 
     val ebayProviders =
         buildList<EbayQuoteProvider> {
-            compSniperApiKey?.let { apiKey ->
+            if (
+                ebayDirectEnabled ||
+                compSniperApiKey != null
+            ) {
                 add(
                     CompSniperEbayQuoteProvider(
                         catalog = cardCatalog,
-                        apiKey = apiKey
+                        apiKey = compSniperApiKey.orEmpty(),
+                        directCollector =
+                            if (ebayDirectEnabled) {
+                                EbayDirectSoldListingCollector()
+                            } else {
+                                null
+                            }
                     )
                 )
             }

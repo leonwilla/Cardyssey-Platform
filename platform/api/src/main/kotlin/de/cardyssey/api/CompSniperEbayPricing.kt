@@ -23,9 +23,11 @@ import kotlin.math.abs
 
 class CompSniperEbayQuoteProvider(
     private val catalog: CardCatalogService,
-    private val apiKey: String
+    private val apiKey: String,
+    private val directCollector: EbayDirectSoldListingCollector? = null
 ) : EbayQuoteProvider {
     private data class SoldSummary(
+        val source: String,
         val baseEur: Double,
         val rangeLowEur: Double,
         val rangeHighEur: Double,
@@ -74,7 +76,7 @@ class CompSniperEbayQuoteProvider(
         val selected = selectVariant(details, variantId, legacyVariant)
         val exactVariantMatch = selected != null
 
-        val sold = if (apiKey.isNotBlank() && exactLanguageMatch && selected != null) {
+        val sold = if (exactLanguageMatch && selected != null) {
             soldSummary(details, selected)
         } else {
             null
@@ -89,7 +91,7 @@ class CompSniperEbayQuoteProvider(
             variantType = selected?.type,
             condition = condition.name,
             market = "EBAY",
-            source = if (baseEur != null) "COMPSNIPER" else null,
+            source = if (baseEur != null) sold.source else null,
             baseEur = baseEur,
             conditionFactor = condition.factor,
             eur = baseEur?.times(condition.factor),
@@ -162,14 +164,27 @@ class CompSniperEbayQuoteProvider(
             .distinct()
             .joinToString(" ")
 
-        val url = "https://api.compsniper.com/v1/scrape" +
-            "?keyword=${encodeCompSniper(query)}" +
-            "&ebaySite=ebay.de&page=1&count=240" +
-            "&sortOrder=endedRecently&sold=true" +
-            "&exactMatch=false&relevance=false"
+        val directItems = directCollector?.search(query)
 
-        val root = getJson(url) ?: return null
-        val items = root["items"] as? JsonArray ?: return null
+        val providerSource: String
+        val items: JsonArray
+
+        if (!directItems.isNullOrEmpty()) {
+            providerSource = "EBAY_DIRECT"
+            items = JsonArray(directItems)
+        } else {
+            if (apiKey.isBlank()) return null
+
+            val url = "https://api.compsniper.com/v1/scrape" +
+                "?keyword=${encodeCompSniper(query)}" +
+                "&ebaySite=ebay.de&page=1&count=240" +
+                "&sortOrder=endedRecently&sold=true" +
+                "&exactMatch=false&relevance=false"
+
+            val root = getJson(url) ?: return null
+            items = root["items"] as? JsonArray ?: return null
+            providerSource = "COMPSNIPER"
+        }
         val unique = linkedMapOf<String, MatchedSale>()
 
         items.mapNotNull { it as? JsonObject }.forEach { item ->
@@ -282,7 +297,7 @@ class CompSniperEbayQuoteProvider(
             .map { it.sale }
 
         println(
-            "eBay pricing: provider=COMPSNIPER card=${card.id} language=${card.languageCode} " +
+            "eBay pricing: provider=$providerSource card=${card.id} language=${card.languageCode} " +
                 "variant=${variant.id} type=${variant.type} subtype=${variant.subtype} " +
                 "foil=${variant.foil} size=${variant.size} stamps=${variant.stamps.joinToString("+")} " +
                 "providerItems=${items.size} matched=${unique.size} " +
@@ -291,6 +306,7 @@ class CompSniperEbayQuoteProvider(
         )
 
         return SoldSummary(
+            source = providerSource,
             baseEur = mean,
             rangeLowEur = low,
             rangeHighEur = high,
