@@ -89,6 +89,12 @@ function ebayQuoteUrl(
   }?${params.toString()}`;
 }
 
+function collectionMarketStorageKey(
+  userId: string
+) {
+  return `cardyssey.collection.market.${userId}`;
+}
+
 export default function CollectionPage() {
 
   const router =
@@ -96,7 +102,7 @@ export default function CollectionPage() {
 
   const [market, setMarket] =
     useState<"TCG" | "EBAY">(
-      "EBAY"
+      "TCG"
     );
 
   const [items, setItems] =
@@ -136,6 +142,21 @@ export default function CollectionPage() {
 
   const [ebayLoadError, setEbayLoadError] =
     useState<string | null>(null);
+
+  function selectMarket(
+    nextMarket: "TCG" | "EBAY"
+  ) {
+    setMarket(nextMarket);
+
+    if (user) {
+      window.localStorage.setItem(
+        collectionMarketStorageKey(
+          user.id
+        ),
+        nextMarket
+      );
+    }
+  }
 
   useEffect(() => {
     const params =
@@ -245,6 +266,22 @@ export default function CollectionPage() {
           setUser(
             currentUser
           );
+
+          const savedMarket =
+            window.localStorage.getItem(
+              collectionMarketStorageKey(
+                currentUser.id
+              )
+            );
+
+          if (
+            savedMarket === "TCG" ||
+            savedMarket === "EBAY"
+          ) {
+            setMarket(
+              savedMarket
+            );
+          }
         }
 
         const collectionResponse =
@@ -751,7 +788,7 @@ export default function CollectionPage() {
                   <button
                     onClick={
                       () =>
-                        setMarket(
+                        selectMarket(
                           "TCG"
                         )
                     }
@@ -768,7 +805,7 @@ export default function CollectionPage() {
                   <button
                     onClick={
                       () =>
-                        setMarket(
+                        selectMarket(
                           "EBAY"
                         )
                     }
