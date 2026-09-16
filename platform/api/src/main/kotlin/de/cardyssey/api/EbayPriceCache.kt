@@ -358,7 +358,9 @@ class CachedEbayPricingService(
                             legacyVariant = null,
                             condition = condition
                         )
-                    }.getOrNull()?.takeIf { it.baseEur != null }
+                    }.getOrNull()?.takeIf {
+                        it.hasSalesEvidence()
+                    }
                 }
 
                 if (live != null) {
@@ -389,6 +391,16 @@ class CachedEbayPricingService(
 
     private fun isFresh(price: CachedEbayPrice): Boolean =
         System.currentTimeMillis() - price.updatedAtMs <= cacheTtlMs
+
+    private fun CardPriceQuoteResponse.hasSalesEvidence(): Boolean =
+        baseEur?.let {
+            it.isFinite() && it > 0.0
+        } == true &&
+            sampleCount?.let { it > 0 } == true &&
+            recentSales.any {
+                it.soldPriceEur.isFinite() &&
+                    it.soldPriceEur > 0.0
+            }
 
     private fun CardPriceQuoteResponse.toCacheRecord(
         condition: PricingCondition

@@ -291,14 +291,17 @@ export function CollectionItemEditor({
       : null;
 
   /*
-   * Sobald die zentrale eBay-Abfrage geantwortet hat, ist sie maßgeblich.
-   * Eine leere Antwort darf niemals auf einen alten gespeicherten eBay-Wert
-   * zurückfallen – ohne nachgewiesene Verkäufe gibt es keinen Marktwert.
+   * eBay-Werte sind nur belastbar, wenn die API auch mindestens einen
+   * konkreten Verkauf zurückliefert. Während der Abfrage und bei einer
+   * reinen Zusammenfassung ohne Verkaufsdetails zeigen wir keinen alten
+   * gespeicherten Wert und keinen unbestätigten Durchschnitt an.
    */
   const unitValue =
-    selectedMarket === "EBAY" &&
-    pricingQuote !== null
-      ? liveUnitValue
+    selectedMarket === "EBAY"
+      ? pricingQuote !== null &&
+        ebaySales.length > 0
+        ? liveUnitValue
+        : null
       : liveUnitValue ??
         storedUnitValue;
 
@@ -555,7 +558,8 @@ export function CollectionItemEditor({
         )}
 
         {selectedMarket === "EBAY" &&
-          pricingQuote && (
+          pricingQuote &&
+          ebaySales.length > 0 && (
             <>
               <p
                 style={{
