@@ -153,6 +153,12 @@ fun Application.module() {
             ?.trim()
             .orEmpty()
 
+    val ebayDirectCookies =
+        System.getenv("EBAY_DIRECT_COOKIES")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+            ?: soldCompsEbayCookies
+
     /*
      * Der eBay-Marktwert wird global pro Karte/Sprache/Variante geteilt.
      * Dadurch löst nicht jede Collection und nicht jeder Nutzer erneut einen
@@ -192,7 +198,10 @@ fun Application.module() {
                         apiKey = compSniperApiKey.orEmpty(),
                         directCollector =
                             if (ebayDirectEnabled) {
-                                EbayDirectSoldListingCollector()
+                                EbayDirectSoldListingCollector(
+                                    cookieHeader =
+                                        ebayDirectCookies
+                                )
                             } else {
                                 null
                             }

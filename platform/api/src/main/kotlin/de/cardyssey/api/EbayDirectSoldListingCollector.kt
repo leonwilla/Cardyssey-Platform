@@ -30,6 +30,7 @@ import java.util.Locale
  * Ebay-Quote-Provider. Diese Klasse ersetzt nur die Rohdatenlieferung.
  */
 class EbayDirectSoldListingCollector(
+    private val cookieHeader: String = "",
     private val requestSpacingMs: Long = 2_000L
 ) {
     private val http =
@@ -58,7 +59,7 @@ class EbayDirectSoldListingCollector(
                 }
 
                 try {
-                    val request =
+                    val requestBuilder =
                         HttpRequest
                             .newBuilder(
                                 URI.create(
@@ -84,6 +85,16 @@ class EbayDirectSoldListingCollector(
                                 "User-Agent",
                                 "Cardyssey/0.2 (+https://cardyssey.de)"
                             )
+
+                    if (cookieHeader.isNotBlank()) {
+                        requestBuilder.header(
+                            "Cookie",
+                            cookieHeader
+                        )
+                    }
+
+                    val request =
+                        requestBuilder
                             .GET()
                             .build()
 
@@ -98,6 +109,18 @@ class EbayDirectSoldListingCollector(
                     if (response.statusCode() !in 200..299) {
                         println(
                             "eBay direct request failed: HTTP ${response.statusCode()}"
+                        )
+                        return@synchronized null
+                    }
+
+                    if (
+                        response.uri().host.equals(
+                            "signin.ebay.de",
+                            ignoreCase = true
+                        )
+                    ) {
+                        println(
+                            "eBay direct request needs a renewed server session"
                         )
                         return@synchronized null
                     }
