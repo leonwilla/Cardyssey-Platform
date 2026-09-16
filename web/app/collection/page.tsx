@@ -96,7 +96,7 @@ export default function CollectionPage() {
 
   const [market, setMarket] =
     useState<"TCG" | "EBAY">(
-      "TCG"
+      "EBAY"
     );
 
   const [items, setItems] =
