@@ -290,9 +290,17 @@ export function CollectionItemEditor({
       ? pricingQuote.eur
       : null;
 
+  /*
+   * Sobald die zentrale eBay-Abfrage geantwortet hat, ist sie maßgeblich.
+   * Eine leere Antwort darf niemals auf einen alten gespeicherten eBay-Wert
+   * zurückfallen – ohne nachgewiesene Verkäufe gibt es keinen Marktwert.
+   */
   const unitValue =
-    liveUnitValue ??
-    storedUnitValue;
+    selectedMarket === "EBAY" &&
+    pricingQuote !== null
+      ? liveUnitValue
+      : liveUnitValue ??
+        storedUnitValue;
 
   const positionValue =
     unitValue == null
@@ -611,7 +619,7 @@ export function CollectionItemEditor({
               !pricingError &&
               ebaySales.length === 0 && (
                 <p style={{ color: "var(--secondary)" }}>
-                  Noch keine gespeicherten Verkäufe für diesen Preis.
+                  Keine passenden verkauften eBay-Angebote gefunden. Deshalb wird kein eBay-Marktwert angezeigt.
                 </p>
               )}
 
