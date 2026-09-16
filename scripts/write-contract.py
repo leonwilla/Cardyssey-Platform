@@ -246,13 +246,25 @@ schemas = {
                 "status": string(),
                 "database": string(),
                 "service": string(),
-                "version": string()
+                "version": string(),
+                "justTcgConfigured": boolean(),
+                "ebayPricingMode":
+                    string(enum=["CARDYSSEY_DIRECT_ONLY"]),
+                "ebayDirectEnabled": boolean(),
+                "ebayDirectSessionConfigured": boolean(),
+                "ebayPriceCacheTtlHours":
+                    integer(minimum=1)
             },
             [
                 "status",
                 "database",
                 "service",
-                "version"
+                "version",
+                "justTcgConfigured",
+                "ebayPricingMode",
+                "ebayDirectEnabled",
+                "ebayDirectSessionConfigured",
+                "ebayPriceCacheTtlHours"
             ]
         ),
 
@@ -2204,7 +2216,7 @@ document = {
             "Cardyssey API",
 
         "version":
-            "0.2.0",
+            "0.2.4",
 
         "description":
             "Zentraler API-Vertrag für Cardyssey Web, Android und Backend."
@@ -2268,7 +2280,22 @@ collection_properties["positionValueEur"] = map_of(number())
 
 pricing_conditions = ["MINT", "NEAR_MINT", "EXCELLENT", "GOOD", "PLAYED"]
 pricing_markets = ["TCG", "EBAY"]
-pricing_sources = ["TCGDEX", "JUSTTCG", "SOLDCOMPS"]
+pricing_sources = ["TCGDEX", "JUSTTCG", "CARDYSSEY_EBAY"]
+
+document["components"]["schemas"]["EbayRecentSaleResponse"] = obj(
+    {
+        "itemId": string(nullable=True),
+        "title": string(),
+        "soldPriceEur": number(),
+        "rawCondition": string(nullable=True),
+        "endedAt": string(nullable=True),
+        "url": string(nullable=True)
+    },
+    [
+        "title",
+        "soldPriceEur"
+    ]
+)
 
 document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
     {
@@ -2285,7 +2312,11 @@ document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
         "exactLanguageMatch": boolean(),
         "exactVariantMatch": boolean(),
         "sampleCount": integer(nullable=True, minimum=0),
-        "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64")
+        "rangeLowEur": number(nullable=True),
+        "rangeHighEur": number(nullable=True),
+        "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64"),
+        "recentSales":
+            arr("EbayRecentSaleResponse")
     },
     [
         "cardId",
@@ -2294,7 +2325,8 @@ document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
         "market",
         "conditionFactor",
         "exactLanguageMatch",
-        "exactVariantMatch"
+        "exactVariantMatch",
+        "recentSales"
     ]
 )
 

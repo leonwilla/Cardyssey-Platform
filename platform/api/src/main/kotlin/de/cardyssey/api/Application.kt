@@ -31,9 +31,9 @@ data class HealthResponse(
     val service: String,
     val version: String,
     val justTcgConfigured: Boolean,
-    val compSniperConfigured: Boolean,
-    val soldCompsConfigured: Boolean,
-    val soldCompsEbaySessionConfigured: Boolean,
+    val ebayPricingMode: String,
+    val ebayDirectEnabled: Boolean,
+    val ebayDirectSessionConfigured: Boolean,
     val ebayPriceCacheTtlHours: Long
 )
 
@@ -127,29 +127,18 @@ fun Application.module() {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
-    val compSniperApiKey =
-        System.getenv("COMPSNIPER_API_KEY")
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-
     val ebayDirectEnabled =
         System.getenv("EBAY_DIRECT_ENABLED")
             ?.trim()
             ?.toBooleanStrictOrNull()
             ?: true
 
-    val soldCompsApiKey =
-        System.getenv("SOLDCOMPS_API_KEY")
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-
     /*
-     * Die vorhandene ebay.de-Session darf vom eigenen Cardyssey-Collector
-     * genutzt werden. SoldComps und CompSniper sind keine aktiven Preisquellen
-     * mehr. Der Cookie-Wert bleibt ausschließlich als Server-Secret in der
-     * Umgebung und wird niemals an Clients ausgegeben.
+     * Der direkte Cardyssey-Collector darf die vorhandene ebay.de-Session
+     * weiterverwenden. Der alte Secret-Name bleibt vorerst nur als
+     * Deployment-Kompatibilität erhalten; SoldComps ist keine Preisquelle.
      */
-    val soldCompsEbayCookies =
+    val legacyEbaySessionCookies =
         System.getenv("SOLDCOMPS_EBAY_COOKIES")
             ?.trim()
             .orEmpty()
@@ -158,7 +147,7 @@ fun Application.module() {
         System.getenv("EBAY_DIRECT_COOKIES")
             ?.trim()
             ?.takeIf(String::isNotBlank)
-            ?: soldCompsEbayCookies
+            ?: legacyEbaySessionCookies
 
     /*
      * Der eBay-Marktwert wird global pro Karte/Sprache/Variante geteilt.
@@ -358,19 +347,19 @@ fun Application.module() {
                         "cardyssey-api",
 
                     version =
-                        "0.2.3",
+                        "0.2.4",
 
                     justTcgConfigured =
                         justTcgApiKey != null,
 
-                    compSniperConfigured =
-                        compSniperApiKey != null,
+                    ebayPricingMode =
+                        "CARDYSSEY_DIRECT_ONLY",
 
-                    soldCompsConfigured =
-                        soldCompsApiKey != null,
+                    ebayDirectEnabled =
+                        ebayDirectEnabled,
 
-                    soldCompsEbaySessionConfigured =
-                        soldCompsEbayCookies.isNotBlank(),
+                    ebayDirectSessionConfigured =
+                        ebayDirectCookies.isNotBlank(),
 
                     ebayPriceCacheTtlHours =
                         ebayPriceCacheTtlHours
@@ -399,7 +388,7 @@ fun Application.module() {
             justTcgConfigured =
                 justTcgApiKey != null,
             soldCompsConfigured =
-                soldCompsApiKey != null
+                false
         )
 
         collectionRoutes(

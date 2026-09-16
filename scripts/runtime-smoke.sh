@@ -38,45 +38,57 @@ check_status() {
 
 check_api_health() {
   url="$BASE_API_URL$API_PREFIX/health"
-  code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-api-health.json -w '%{http_code}' "$url" || true)"
-  if [ "$code" != "200" ]; then
-    echo "FAIL: API health -> HTTP $code"
-    cat /tmp/cardyssey-api-health.json 2>/dev/null || true
-    return 1
-  fi
 
-  python3 - <<'PY'
+  for attempt in $(seq 1 12); do
+    code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-api-health.json -w '%{http_code}' "$url" || true)"
+
+    if [ "$code" = "200" ] && python3 - <<'PY'
 import json
 from pathlib import Path
 
 data = json.loads(Path('/tmp/cardyssey-api-health.json').read_text())
 if data.get('status') != 'ok':
-    raise SystemExit(f"FAIL: API health status={data.get('status')!r}")
+    raise SystemExit(f"API health status={data.get('status')!r}")
 if data.get('database') != 'connected':
-    raise SystemExit(f"FAIL: API database={data.get('database')!r}")
-if data.get('version') != '0.2.3':
+    raise SystemExit(f"API database={data.get('database')!r}")
+if data.get('version') != '0.2.4':
     raise SystemExit(
-        f"FAIL: production backend is stale: version={data.get('version')!r}, expected='0.2.3'"
+        f"production backend is stale: version={data.get('version')!r}, expected='0.2.4'"
     )
-if 'compSniperConfigured' not in data:
-    raise SystemExit('FAIL: production backend has not picked up the multi-provider eBay health contract')
-if data.get('soldCompsConfigured') is not True:
-    raise SystemExit('FAIL: production backend has no SOLDCOMPS_API_KEY fallback configured')
-if data.get('soldCompsEbaySessionConfigured') is not True:
-    raise SystemExit('FAIL: production backend has no authenticated SoldComps eBay fallback session configured')
+if data.get('ebayPricingMode') != 'CARDYSSEY_DIRECT_ONLY':
+    raise SystemExit(
+        f"unexpected eBay pricing mode={data.get('ebayPricingMode')!r}"
+    )
+if data.get('ebayDirectEnabled') is not True:
+    raise SystemExit('direct Cardyssey eBay collector is disabled')
+if not isinstance(data.get('ebayDirectSessionConfigured'), bool):
+    raise SystemExit('missing ebayDirectSessionConfigured health flag')
 cache_ttl = data.get('ebayPriceCacheTtlHours')
 if not isinstance(cache_ttl, int) or cache_ttl <= 0:
-    raise SystemExit(f'FAIL: invalid eBay price cache TTL: {cache_ttl!r}')
+    raise SystemExit(f'invalid eBay price cache TTL: {cache_ttl!r}')
 
 print(
     'OK: API health -> '
-    f"version {data.get('version', 'unknown')}, "
-    f"CompSniper={'configured' if data.get('compSniperConfigured') else 'not configured'}, "
-    f"SoldComps fallback configured, eBay session=configured, cache TTL={cache_ttl}h"
+    f"version {data.get('version')}, "
+    'eBay mode=CARDYSSEY_DIRECT_ONLY, '
+    f"direct session={'configured' if data.get('ebayDirectSessionConfigured') else 'not configured'}, "
+    f"cache TTL={cache_ttl}h"
 )
 PY
-}
+    then
+      return 0
+    fi
 
+    if [ "$attempt" -lt 12 ]; then
+      echo "INFO: API deployment not ready yet (attempt $attempt/12, HTTP $code); retrying in 15s."
+      sleep 15
+    fi
+  done
+
+  echo "FAIL: API health did not reach the direct Cardyssey eBay release."
+  cat /tmp/cardyssey-api-health.json 2>/dev/null || true
+  return 1
+}
 check_android_metadata() {
   url="$BASE_WEB_URL/api/android/latest"
   code="$(curl -L -sS --connect-timeout 12 --max-time 45 -o /tmp/cardyssey-android-release.json -w '%{http_code}' "$url" || true)"
@@ -216,54 +228,153 @@ auth_check() {
 }
 
 ebay_price_check() {
-  url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID?language=$EBAY_SMOKE_LANGUAGE&condition=NEAR_MINT&market=EBAY"
-  code="$(curl -sS --connect-timeout 12 --max-time 90 -o /tmp/cardyssey-smoke-ebay.json -w '%{http_code}' \
-    -H "Authorization: Bearer $E2E_ACCESS_TOKEN" \
-    "$url" || true)"
+  card_url="$BASE_API_URL$API_PREFIX/cards/$EBAY_SMOKE_CARD_ID"
+  code="$(curl -sS --get --connect-timeout 12 --max-time 60     -o /tmp/cardyssey-smoke-ebay-card.json -w '%{http_code}'     -H "Authorization: Bearer $E2E_ACCESS_TOKEN"     --data-urlencode "language=$EBAY_SMOKE_LANGUAGE"     "$card_url" || true)"
 
   if [ "$code" != "200" ]; then
-    echo "FAIL: eBay production pricing probe -> HTTP $code"
-    cat /tmp/cardyssey-smoke-ebay.json 2>/dev/null || true
+    echo "FAIL: eBay smoke card lookup -> HTTP $code"
+    cat /tmp/cardyssey-smoke-ebay-card.json 2>/dev/null || true
     return 1
   fi
 
-  python3 - <<'PY'
+  mapfile -t ebay_variants < <(python3 - <<'PY'
 import json
 from pathlib import Path
 
-path = Path('/tmp/cardyssey-smoke-ebay.json')
-data = json.loads(path.read_text())
+data = json.loads(Path('/tmp/cardyssey-smoke-ebay-card.json').read_text())
+variants = data.get('variants')
+if not isinstance(variants, list) or not variants:
+    raise SystemExit('FAIL: eBay smoke card has no physical variants')
+
+seen = set()
+for variant in variants:
+    variant_id = variant.get('id') if isinstance(variant, dict) else None
+    if isinstance(variant_id, str) and variant_id and variant_id not in seen:
+        seen.add(variant_id)
+        print(variant_id)
+        if len(seen) >= 8:
+            break
+PY
+  )
+
+  if [ "${#ebay_variants[@]}" -eq 0 ]; then
+    echo "FAIL: eBay smoke card returned no usable variant IDs."
+    return 1
+  fi
+
+  echo "INFO: probing $EBAY_SMOKE_CARD_ID/$EBAY_SMOKE_LANGUAGE with ${#ebay_variants[@]} exact variant(s)."
+
+  found_quote=0
+  variant_index=0
+  for variant_id in "${ebay_variants[@]}"; do
+    variant_index=$((variant_index + 1))
+    quote_file="/tmp/cardyssey-smoke-ebay-$variant_index.json"
+    price_url="$BASE_API_URL$API_PREFIX/pricing/cards/$EBAY_SMOKE_CARD_ID"
+    code="$(curl -sS --get --connect-timeout 12 --max-time 90       -o "$quote_file" -w '%{http_code}'       -H "Authorization: Bearer $E2E_ACCESS_TOKEN"       --data-urlencode "language=$EBAY_SMOKE_LANGUAGE"       --data-urlencode "condition=NEAR_MINT"       --data-urlencode "market=EBAY"       --data-urlencode "variantId=$variant_id"       "$price_url" || true)"
+
+    if [ "$code" != "200" ]; then
+      echo "FAIL: eBay production pricing probe ($variant_id) -> HTTP $code"
+      cat "$quote_file" 2>/dev/null || true
+      return 1
+    fi
+
+    if ! classification="$(QUOTE_FILE="$quote_file" EXPECTED_VARIANT="$variant_id" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data = json.loads(Path(os.environ['QUOTE_FILE']).read_text())
+expected_variant = os.environ['EXPECTED_VARIANT']
 market = data.get('market')
 source = data.get('source')
 mean = data.get('eur')
 low = data.get('rangeLowEur')
 high = data.get('rangeHighEur')
 samples = data.get('sampleCount')
+recent = data.get('recentSales')
 
 if market != 'EBAY':
     raise SystemExit(f'FAIL: eBay pricing probe returned market={market!r}')
-if source not in {'COMPSNIPER', 'SOLDCOMPS'}:
-    raise SystemExit(f'FAIL: eBay pricing probe has no supported sold provider quote (source={source!r})')
+if data.get('variantId') != expected_variant or data.get('exactVariantMatch') is not True:
+    raise SystemExit(
+        f"FAIL: eBay pricing probe did not preserve exact variant {expected_variant!r}: "
+        f"variantId={data.get('variantId')!r}, exact={data.get('exactVariantMatch')!r}"
+    )
+
+if source is None:
+    fields = {
+        key: data.get(key)
+        for key in (
+            'baseEur', 'eur', 'sampleCount', 'rangeLowEur',
+            'rangeHighEur', 'updatedAtMs'
+        )
+    }
+    dirty = {key: value for key, value in fields.items() if value is not None}
+    if dirty:
+        raise SystemExit(
+            f'FAIL: empty eBay quote contains stale price evidence: {dirty!r}'
+        )
+    if recent not in (None, []):
+        raise SystemExit(
+            f'FAIL: empty eBay quote contains stale recent sales: {recent!r}'
+        )
+    print(f'EMPTY:{expected_variant}')
+    raise SystemExit(0)
+
+if source != 'CARDYSSEY_EBAY':
+    raise SystemExit(
+        f'FAIL: forbidden external eBay source returned: source={source!r}'
+    )
 if not isinstance(mean, (int, float)) or mean <= 0:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid mean eur={mean!r}')
 if not isinstance(low, (int, float)) or low <= 0:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid rangeLowEur={low!r}')
 if not isinstance(high, (int, float)) or high <= 0:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid rangeHighEur={high!r}')
-if low > high:
-    raise SystemExit(f'FAIL: eBay pricing range is reversed: {low!r}..{high!r}')
-if mean < low - 1e-9 or mean > high + 1e-9:
-    raise SystemExit(f'FAIL: eBay mean {mean!r} lies outside sold range {low!r}..{high!r}')
+if low > high or not (low <= mean <= high):
+    raise SystemExit(
+        f'FAIL: invalid eBay mean/range relationship: mean={mean!r}, range={low!r}..{high!r}'
+    )
 if not isinstance(samples, int) or samples < 1:
     raise SystemExit(f'FAIL: eBay pricing probe has invalid sampleCount={samples!r}')
+if not isinstance(recent, list) or not recent:
+    raise SystemExit('FAIL: direct eBay quote has no verified recentSales evidence')
+for sale in recent:
+    if not isinstance(sale, dict):
+        raise SystemExit(f'FAIL: malformed verified sale: {sale!r}')
+    price = sale.get('soldPriceEur')
+    if not isinstance(price, (int, float)) or price <= 0:
+        raise SystemExit(f'FAIL: verified sale has invalid EUR price: {sale!r}')
 
 print(
-    f'OK: eBay production pricing -> provider {source}, mean {mean:.2f} EUR, '
-    f'range {low:.2f}-{high:.2f} EUR from {samples} sold comp(s)'
+    f'PRICE:{expected_variant}:{mean:.2f}:{low:.2f}:{high:.2f}:{samples}'
 )
 PY
-}
+    )"; then
+      return 1
+    fi
 
+    case "$classification" in
+      PRICE:*)
+        IFS=':' read -r _ chosen_variant mean low high samples <<<"$classification"
+        echo "OK: direct Cardyssey eBay pricing -> variant $chosen_variant, mean $mean EUR, range $low-$high EUR from $samples verified sale(s)."
+        found_quote=1
+        break
+        ;;
+      EMPTY:*)
+        echo "INFO: no verified direct eBay sales for exact variant $variant_id."
+        ;;
+      *)
+        echo "FAIL: unexpected eBay probe classification: $classification"
+        return 1
+        ;;
+    esac
+  done
+
+  if [ "$found_quote" -eq 0 ]; then
+    echo "OK: direct Cardyssey eBay route is healthy; $EBAY_SMOKE_CARD_ID currently has no verified sale for any tested exact variant."
+  fi
+}
 check "Web homepage" "$BASE_WEB_URL/"
 check "OpenAPI contract" "$BASE_WEB_URL/contracts/cardyssey.openapi.json"
 check_android_metadata
