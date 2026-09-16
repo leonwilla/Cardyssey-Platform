@@ -449,7 +449,8 @@ class CachedEbayPricingService(
     }
 
     private fun CachedEbayPrice.hasSalesEvidence(): Boolean =
-        sampleCount > 0 &&
+        source == "CARDYSSEY_EBAY" &&
+            sampleCount > 0 &&
             recentSales.any {
                 it.soldPriceEur.isFinite() &&
                     it.soldPriceEur > 0.0

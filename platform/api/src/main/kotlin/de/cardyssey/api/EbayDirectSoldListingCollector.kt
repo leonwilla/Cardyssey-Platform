@@ -228,6 +228,16 @@ class EbayDirectSoldListingCollector(
         }
 
         val fullText = element.text()
+
+        /*
+         * eBay listet bei abgeschlossenen Suchen teilweise auch Angebote,
+         * die vom Verkäufer nur beendet wurden. Nur ein ausdrücklich als
+         * verkauft markierter Eintrag darf als Vergleichsverkauf gelten.
+         */
+        if (!hasExplicitSoldStatus(fullText)) {
+            return null
+        }
+
         val endedAt =
             parseSoldDate(fullText)
                 ?.toString()
@@ -284,6 +294,30 @@ class EbayDirectSoldListingCollector(
     private fun parseEuroPrice(
         text: String
     ): Double? {
+        val normalizedText =
+            text
+                .lowercase(Locale.GERMANY)
+                .replace(Regex("\\s+"), " ")
+                .trim()
+
+        /*
+         * eBay kennzeichnet umgerechnete Fremdwährungspreise als ungefähr
+         * (zum Beispiel "ca. EUR"). Diese Werte hängen von eBays eigener
+         * Umrechnung ab und werden nicht als belastbarer Verkaufspreis
+         * übernommen. Bis Cardyssey Originalwährung und ECB-Kurs gemeinsam
+         * gespeichert hat, akzeptieren wir nur echte EUR-Preise.
+         */
+        if (
+            APPROXIMATE_PRICE_MARKERS.any {
+                it in normalizedText
+            } ||
+            FOREIGN_CURRENCY_MARKERS.any {
+                it in normalizedText
+            }
+        ) {
+            return null
+        }
+
         if (
             !text.contains("EUR", ignoreCase = true) &&
             '€' !in text
@@ -326,6 +360,28 @@ class EbayDirectSoldListingCollector(
                 it.isFinite() &&
                     it > 0.0
             }
+    }
+
+    private fun hasExplicitSoldStatus(
+        text: String
+    ): Boolean {
+        val normalized =
+            text
+                .lowercase(Locale.GERMANY)
+                .replace(Regex("\\s+"), " ")
+                .trim()
+
+        if (
+            ENDED_WITHOUT_SALE_MARKERS.any {
+                it in normalized
+            }
+        ) {
+            return false
+        }
+
+        return EXPLICIT_SOLD_MARKERS.any {
+            it in normalized
+        }
     }
 
     private fun parseSoldDate(
@@ -457,12 +513,53 @@ class EbayDirectSoldListingCollector(
 
         private val GERMAN_DATE_REGEX =
             Regex(
-                """(?:verkauft(?:\s+am)?|beendet(?:\s+am)?|sold(?:\s+on)?)?\s*([0-9]{1,2})\.\s*([a-zäöü]+)\.?\s*([0-9]{4})?"""
+                """(?:verkauft(?:\s+am)?|sold(?:\s+on)?)?\s*([0-9]{1,2})\.\s*([a-zäöü]+)\.?\s*([0-9]{4})?"""
             )
 
         private val ENGLISH_DATE_REGEX =
             Regex(
                 """(?:sold(?:\s+on)?\s*)?([a-z]+)\s+([0-9]{1,2})\s+([0-9]{4})"""
+            )
+
+        private val EXPLICIT_SOLD_MARKERS =
+            listOf(
+                "verkauft",
+                "wurde verkauft",
+                "sold"
+            )
+
+        private val ENDED_WITHOUT_SALE_MARKERS =
+            listOf(
+                "beendet",
+                "nicht mehr verfügbar",
+                "nicht mehr verfugbar",
+                "ended",
+                "no longer available"
+            )
+
+        private val APPROXIMATE_PRICE_MARKERS =
+            listOf(
+                "ca.",
+                "ca ",
+                "circa",
+                "ungefähr",
+                "ungefahr",
+                "approx",
+                "approximately"
+            )
+
+        private val FOREIGN_CURRENCY_MARKERS =
+            listOf(
+                "us $",
+                "usd",
+                "gbp",
+                "£",
+                "cad",
+                "c $",
+                "aud",
+                "au $",
+                "jpy",
+                "¥"
             )
 
         private val BEST_OFFER_MARKERS =

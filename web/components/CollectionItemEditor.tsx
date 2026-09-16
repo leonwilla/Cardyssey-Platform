@@ -568,7 +568,9 @@ export function CollectionItemEditor({
                   fontSize: 12,
                 }}
               >
-                {pricingQuote.source ?? "eBay"}
+                {pricingQuote.source === "CARDYSSEY_EBAY"
+                  ? "CARDYSSEY eBay"
+                  : pricingQuote.source ?? "eBay"}
                 {pricingQuote.sampleCount != null
                   ? ` · ${pricingQuote.sampleCount} Verkäufe`
                   : ""}

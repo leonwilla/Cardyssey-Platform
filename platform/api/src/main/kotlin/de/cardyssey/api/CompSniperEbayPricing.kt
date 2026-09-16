@@ -170,7 +170,7 @@ class CompSniperEbayQuoteProvider(
         val items: JsonArray
 
         if (directItems != null) {
-            providerSource = "EBAY_DIRECT"
+            providerSource = "CARDYSSEY_EBAY"
             items = JsonArray(directItems)
         } else {
             if (apiKey.isBlank()) return null

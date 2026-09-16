@@ -144,9 +144,10 @@ fun Application.module() {
             ?.takeIf(String::isNotBlank)
 
     /*
-     * SoldComps kann optional eine echte ebay.de-Session weiterreichen.
-     * Das ist nur noch der Fallback. Der Cookie-Wert bleibt ausschließlich
-     * als Server-Secret in der Umgebung und wird niemals an Clients ausgegeben.
+     * Die vorhandene ebay.de-Session darf vom eigenen Cardyssey-Collector
+     * genutzt werden. SoldComps und CompSniper sind keine aktiven Preisquellen
+     * mehr. Der Cookie-Wert bleibt ausschließlich als Server-Secret in der
+     * Umgebung und wird niemals an Clients ausgegeben.
      */
     val soldCompsEbayCookies =
         System.getenv("SOLDCOMPS_EBAY_COOKIES")
@@ -177,42 +178,23 @@ fun Application.module() {
                 justTcgApiKey
         )
 
-    val soldCompsEbayPricing =
-        EbaySoldPricingService(
-            catalog = cardCatalog,
-            apiKey =
-                soldCompsApiKey.orEmpty(),
-            ebayCookies =
-                soldCompsEbayCookies
-        )
-
     val ebayProviders =
         buildList<EbayQuoteProvider> {
-            if (
-                ebayDirectEnabled ||
-                compSniperApiKey != null
-            ) {
+            if (ebayDirectEnabled) {
                 add(
                     CompSniperEbayQuoteProvider(
                         catalog = cardCatalog,
-                        apiKey = compSniperApiKey.orEmpty(),
+                        /*
+                         * Absichtlich leer: Schlägt unser direkter Collector
+                         * fehl, wird kein externer Anbieter als Fallback
+                         * aufgerufen.
+                         */
+                        apiKey = "",
                         directCollector =
-                            if (ebayDirectEnabled) {
-                                EbayDirectSoldListingCollector(
-                                    cookieHeader =
-                                        ebayDirectCookies
-                                )
-                            } else {
-                                null
-                            }
-                    )
-                )
-            }
-
-            soldCompsApiKey?.let {
-                add(
-                    SoldCompsEbayQuoteProvider(
-                        soldCompsEbayPricing
+                            EbayDirectSoldListingCollector(
+                                cookieHeader =
+                                    ebayDirectCookies
+                            )
                     )
                 )
             }
