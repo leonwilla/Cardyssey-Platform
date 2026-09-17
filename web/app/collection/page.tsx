@@ -36,6 +36,35 @@ import {
   singleValueEur,
 } from "@/lib/pricing";
 
+type CollectionSort =
+  | "VALUE_DESC"
+  | "VALUE_ASC"
+  | "NAME_ASC"
+  | "NAME_DESC"
+  | "SET_ASC"
+  | "QUANTITY_DESC"
+  | "QUANTITY_ASC";
+
+const collectionSortValues:
+  CollectionSort[] = [
+    "VALUE_DESC",
+    "VALUE_ASC",
+    "NAME_ASC",
+    "NAME_DESC",
+    "SET_ASC",
+    "QUANTITY_DESC",
+    "QUANTITY_ASC",
+  ];
+
+function isCollectionSort(
+  value: string | null
+): value is CollectionSort {
+  return value != null &&
+    collectionSortValues.includes(
+      value as CollectionSort
+    );
+}
+
 function eur(
   value: number | null
 ) {
@@ -95,6 +124,12 @@ function collectionMarketStorageKey(
   return `cardyssey.collection.market.${userId}`;
 }
 
+function collectionSortStorageKey(
+  userId: string
+) {
+  return `cardyssey.collection.sort.${userId}`;
+}
+
 export default function CollectionPage() {
 
   const router =
@@ -103,6 +138,11 @@ export default function CollectionPage() {
   const [market, setMarket] =
     useState<"TCG" | "EBAY">(
       "TCG"
+    );
+
+  const [sort, setSort] =
+    useState<CollectionSort>(
+      "VALUE_DESC"
     );
 
   const [items, setItems] =
@@ -154,6 +194,21 @@ export default function CollectionPage() {
           user.id
         ),
         nextMarket
+      );
+    }
+  }
+
+  function selectSort(
+    nextSort: CollectionSort
+  ) {
+    setSort(nextSort);
+
+    if (user) {
+      window.localStorage.setItem(
+        collectionSortStorageKey(
+          user.id
+        ),
+        nextSort
       );
     }
   }
@@ -280,6 +335,23 @@ export default function CollectionPage() {
           ) {
             setMarket(
               savedMarket
+            );
+          }
+
+          const savedSort =
+            window.localStorage.getItem(
+              collectionSortStorageKey(
+                currentUser.id
+              )
+            );
+
+          if (
+            isCollectionSort(
+              savedSort
+            )
+          ) {
+            setSort(
+              savedSort
             );
           }
         }
@@ -704,6 +776,176 @@ export default function CollectionPage() {
       ebayLiveUnitEur,
     ]);
 
+  const sortedItems =
+    useMemo(() => {
+      const collator =
+        new Intl.Collator(
+          "de",
+          {
+            numeric: true,
+            sensitivity: "base",
+          }
+        );
+
+      function valueFor(
+        item: PortfolioItem
+      ): number | null {
+        if (market === "EBAY") {
+          const hasLive =
+            Object.prototype.hasOwnProperty.call(
+              ebayLiveUnitEur,
+              item.key
+            );
+
+          const unit =
+            hasLive
+              ? ebayLiveUnitEur[
+                  item.key
+                ]
+              : singleValueEur(
+                  item,
+                  "EBAY"
+                );
+
+          return unit == null
+            ? null
+            : unit *
+                item.quantity;
+        }
+
+        return positionValueEur(
+          item,
+          market
+        );
+      }
+
+      function compareValue(
+        left: number | null,
+        right: number | null,
+        descending: boolean
+      ) {
+        if (
+          left == null &&
+          right == null
+        ) {
+          return 0;
+        }
+
+        if (left == null) {
+          return 1;
+        }
+
+        if (right == null) {
+          return -1;
+        }
+
+        return descending
+          ? right - left
+          : left - right;
+      }
+
+      return items
+        .map(
+          (item, index) => ({
+            item,
+            index,
+            value: valueFor(item),
+          })
+        )
+        .sort(
+          (left, right) => {
+            let result = 0;
+
+            switch (sort) {
+              case "VALUE_DESC":
+                result = compareValue(
+                  left.value,
+                  right.value,
+                  true
+                );
+                break;
+
+              case "VALUE_ASC":
+                result = compareValue(
+                  left.value,
+                  right.value,
+                  false
+                );
+                break;
+
+              case "NAME_ASC":
+                result = collator.compare(
+                  left.item.name,
+                  right.item.name
+                );
+                break;
+
+              case "NAME_DESC":
+                result = collator.compare(
+                  right.item.name,
+                  left.item.name
+                );
+                break;
+
+              case "SET_ASC":
+                result = collator.compare(
+                  left.item.setName ||
+                    left.item.setId ||
+                    "",
+                  right.item.setName ||
+                    right.item.setId ||
+                    ""
+                );
+
+                if (result === 0) {
+                  result = collator.compare(
+                    left.item.localId ||
+                      "",
+                    right.item.localId ||
+                      ""
+                  );
+                }
+                break;
+
+              case "QUANTITY_DESC":
+                result =
+                  right.item.quantity -
+                  left.item.quantity;
+                break;
+
+              case "QUANTITY_ASC":
+                result =
+                  left.item.quantity -
+                  right.item.quantity;
+                break;
+            }
+
+            if (result !== 0) {
+              return result;
+            }
+
+            const byName =
+              collator.compare(
+                left.item.name,
+                right.item.name
+              );
+
+            return byName !== 0
+              ? byName
+              : left.index -
+                  right.index;
+          }
+        )
+        .map(
+          ({ item }) => item
+        );
+    }, [
+      items,
+      market,
+      ebayLiveUnitEur,
+      sort,
+    ]);
+
   const count =
     items.reduce(
       (sum, item) =>
@@ -871,7 +1113,7 @@ export default function CollectionPage() {
               </div>
             </section>
 
-            <section className="sectionBlock">
+            <section className="sectionBlock collectionSection">
               <div className="sectionTitle">
                 <div>
                   <span className="eyebrowText">
@@ -883,9 +1125,49 @@ export default function CollectionPage() {
                   </h2>
                 </div>
 
-                <span className="syncBadge">
-                  ● Server verbunden
-                </span>
+                <div className="collectionToolbar">
+                  <label className="collectionSortControl">
+                    <span>
+                      Sortierung
+                    </span>
+
+                    <select
+                      value={sort}
+                      onChange={
+                        (event) =>
+                          selectSort(
+                            event.target.value as CollectionSort
+                          )
+                      }
+                    >
+                      <option value="VALUE_DESC">
+                        Wert: hoch → niedrig
+                      </option>
+                      <option value="VALUE_ASC">
+                        Wert: niedrig → hoch
+                      </option>
+                      <option value="NAME_ASC">
+                        Name: A → Z
+                      </option>
+                      <option value="NAME_DESC">
+                        Name: Z → A
+                      </option>
+                      <option value="SET_ASC">
+                        Set und Kartennummer
+                      </option>
+                      <option value="QUANTITY_DESC">
+                        Menge: hoch → niedrig
+                      </option>
+                      <option value="QUANTITY_ASC">
+                        Menge: niedrig → hoch
+                      </option>
+                    </select>
+                  </label>
+
+                  <span className="syncBadge">
+                    ● Server verbunden
+                  </span>
+                </div>
               </div>
 
               {items.length ===
@@ -896,7 +1178,7 @@ export default function CollectionPage() {
                 </div>
               ) : (
                 <div className="cardGrid">
-                  {items.map(
+                  {sortedItems.map(
                     (item) => {
                       const hasLiveEbay =
                         market === "EBAY" &&
