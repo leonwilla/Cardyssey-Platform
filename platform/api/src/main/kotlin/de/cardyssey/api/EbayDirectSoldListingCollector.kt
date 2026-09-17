@@ -148,7 +148,7 @@ class EbayDirectSoldListingCollector(
                             )
                             .header(
                                 "User-Agent",
-                                "Cardyssey/0.2 (+https://cardyssey.de)"
+                                BROWSER_USER_AGENT
                             )
 
                     if (cookieHeader.isNotBlank()) {
@@ -494,7 +494,7 @@ class EbayDirectSoldListingCollector(
                 )
                 .header(
                     "User-Agent",
-                    "Cardyssey/0.2 (+https://cardyssey.de)"
+                    BROWSER_USER_AGENT
                 )
 
         if (cookieHeader.isNotBlank()) {
@@ -990,6 +990,11 @@ class EbayDirectSoldListingCollector(
         )
 
     companion object {
+        private const val BROWSER_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/140.0.0.0 Safari/537.36"
+
         private const val SEARCH_URL =
             "https://www.ebay.de/sch/i.html"
 
