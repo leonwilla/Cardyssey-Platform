@@ -29,6 +29,29 @@ services:
       retries: 10
 
 
+  ebay-browser:
+    image: selenium/standalone-chromium:latest
+    container_name: cardyssey-ebay-browser
+    restart: unless-stopped
+    shm_size: 2gb
+
+    environment:
+      SE_VNC_PASSWORD: secret
+      SE_NODE_MAX_SESSIONS: 1
+      SE_NODE_OVERRIDE_MAX_SESSIONS: "false"
+
+    ports:
+      - "127.0.0.1:7900:7900"
+
+    volumes:
+      - cardyssey_ebay_browser:/home/seluser/.config/chromium
+
+    networks:
+      - cardyssey-internal
+
+    mem_limit: 2g
+
+
   api:
     build:
       context: ./api
@@ -39,6 +62,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      ebay-browser:
+        condition: service_started
 
     environment:
       PORT: 8080
@@ -55,6 +80,7 @@ services:
       SOLDCOMPS_EBAY_COOKIES: ${SOLDCOMPS_EBAY_COOKIES:-}
       EBAY_DIRECT_COOKIES: ${EBAY_DIRECT_COOKIES:-}
       EBAY_DIRECT_ENABLED: ${EBAY_DIRECT_ENABLED:-true}
+      EBAY_BROWSER_URL: http://ebay-browser:4444
       EBAY_PRICE_CACHE_TTL_HOURS: ${EBAY_PRICE_CACHE_TTL_HOURS:-168}
 
       AVATAR_DIR: /data/avatars
@@ -83,3 +109,6 @@ volumes:
 
   cardyssey_avatars:
     name: cardyssey-avatars
+
+  cardyssey_ebay_browser:
+    name: cardyssey-ebay-browser

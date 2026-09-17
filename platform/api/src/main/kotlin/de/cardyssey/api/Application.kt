@@ -133,6 +133,11 @@ fun Application.module() {
             ?.toBooleanStrictOrNull()
             ?: true
 
+    val ebayBrowserUrl =
+        System.getenv("EBAY_BROWSER_URL")
+            ?.trim()
+            .orEmpty()
+
     /*
      * Der direkte Cardyssey-Collector darf die vorhandene ebay.de-Session
      * weiterverwenden. Der alte Secret-Name bleibt vorerst nur als
@@ -182,7 +187,19 @@ fun Application.module() {
                         directCollector =
                             EbayDirectSoldListingCollector(
                                 cookieHeader =
-                                    ebayDirectCookies
+                                    ebayDirectCookies,
+                                requestSpacingMs =
+                                    if (ebayBrowserUrl.isBlank()) {
+                                        2_000L
+                                    } else {
+                                        15_000L
+                                    },
+                                browserPageLoader =
+                                    ebayBrowserUrl
+                                        .takeIf(String::isNotBlank)
+                                        ?.let(
+                                            ::EbayBrowserPageLoader
+                                        )
                             )
                     )
                 )

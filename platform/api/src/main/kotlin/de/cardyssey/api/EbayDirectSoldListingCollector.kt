@@ -84,8 +84,14 @@ internal fun ebayTextHasExplicitSoldStatus(
  */
 class EbayDirectSoldListingCollector(
     private val cookieHeader: String = "",
-    private val requestSpacingMs: Long = 2_000L
+    private val requestSpacingMs: Long = 2_000L,
+    private val browserPageLoader: EbayBrowserPageLoader? = null
 ) {
+    private data class FetchedPage(
+        val url: String,
+        val body: String
+    )
+
     private data class OriginalMoney(
         val amount: Double,
         val currency: String
@@ -124,77 +130,26 @@ class EbayDirectSoldListingCollector(
                 }
 
                 try {
-                    val requestBuilder =
-                        HttpRequest
-                            .newBuilder(
-                                URI.create(
-                                    SEARCH_URL +
-                                        "?_nkw=" + encode(query) +
-                                        "&_sacat=" + POKEMON_SINGLE_CARD_CATEGORY +
-                                        "&LH_Sold=1" +
-                                        "&LH_Complete=1" +
-                                        "&_sop=13" +
-                                        "&_ipg=240"
-                                )
-                            )
-                            .timeout(Duration.ofSeconds(35))
-                            .header(
-                                "Accept",
-                                "text/html,application/xhtml+xml"
-                            )
-                            .header(
-                                "Accept-Language",
-                                "de-DE,de;q=0.9,en;q=0.6"
-                            )
-                            .header(
-                                "User-Agent",
-                                BROWSER_USER_AGENT
-                            )
+                    val searchUrl =
+                        SEARCH_URL +
+                            "?_nkw=" + encode(query) +
+                            "&_sacat=" + POKEMON_SINGLE_CARD_CATEGORY +
+                            "&LH_Sold=1" +
+                            "&LH_Complete=1" +
+                            "&_sop=13" +
+                            "&_ipg=240"
 
-                    if (cookieHeader.isNotBlank()) {
-                        requestBuilder.header(
-                            "Cookie",
-                            cookieHeader
+                    val page =
+                        fetchPage(
+                            url = searchUrl,
+                            timeoutSeconds = 35
                         )
-                    }
+                            ?: return@synchronized null
 
-                    val request =
-                        requestBuilder
-                            .GET()
-                            .build()
+                    lastRequestAtMs =
+                        System.currentTimeMillis()
 
-                    val response =
-                        http.send(
-                            request,
-                            HttpResponse.BodyHandlers.ofString()
-                        )
-
-                    lastRequestAtMs = System.currentTimeMillis()
-
-                    if (response.statusCode() !in 200..299) {
-                        println(
-                            "eBay direct request failed: HTTP ${response.statusCode()}"
-                        )
-                        return@synchronized null
-                    }
-
-                    if (
-                        response.uri().host.equals(
-                            "signin.ebay.de",
-                            ignoreCase = true
-                        )
-                    ) {
-                        println(
-                            "eBay direct request needs a renewed server session"
-                        )
-                        return@synchronized null
-                    }
-
-                    val body = response.body()
-                    if (looksLikeChallenge(body)) {
-                        println("eBay direct request blocked by challenge page")
-                        return@synchronized null
-                    }
+                    val body = page.body
 
                     val parsed = parse(body)
                     var detailChecks = 0
@@ -469,12 +424,31 @@ class EbayDirectSoldListingCollector(
             }
         )
 
-    private fun verifyAndConvertListing(
-        item: JsonObject
-    ): JsonObject? {
-        val url =
-            item.stringValue("url")
-                ?: return null
+    private fun fetchPage(
+        url: String,
+        timeoutSeconds: Long
+    ): FetchedPage? {
+        val browser = browserPageLoader
+
+        if (browser != null) {
+            val page = browser.load(url)
+
+            if (
+                "/splashui/challenge" in page.url ||
+                looksLikeChallenge(page.html)
+            ) {
+                println(
+                    "eBay browser paused on challenge page; " +
+                        "open http://localhost:7900 to continue"
+                )
+                return null
+            }
+
+            return FetchedPage(
+                url = page.url,
+                body = page.html
+            )
+        }
 
         val requestBuilder =
             HttpRequest
@@ -482,7 +456,9 @@ class EbayDirectSoldListingCollector(
                     URI.create(url)
                 )
                 .timeout(
-                    Duration.ofSeconds(25)
+                    Duration.ofSeconds(
+                        timeoutSeconds
+                    )
                 )
                 .header(
                     "Accept",
@@ -505,29 +481,58 @@ class EbayDirectSoldListingCollector(
         }
 
         val response =
-            runCatching {
-                http.send(
-                    requestBuilder.GET().build(),
-                    HttpResponse.BodyHandlers.ofString()
-                )
-            }.getOrNull()
-                ?: return null
+            http.send(
+                requestBuilder.GET().build(),
+                HttpResponse.BodyHandlers.ofString()
+            )
 
         if (
-            response.statusCode() !in 200..299 ||
-            response.uri().host.contains(
-                "signin.ebay",
-                ignoreCase = true
-            ) ||
-            looksLikeChallenge(response.body())
+            response.statusCode() !in 200..299
         ) {
+            println(
+                "eBay direct request failed: HTTP " +
+                    response.statusCode()
+            )
             return null
         }
 
+        val body = response.body()
+
+        if (
+            "/splashui/challenge" in
+                response.uri().path ||
+            looksLikeChallenge(body)
+        ) {
+            println(
+                "eBay direct request blocked by challenge page"
+            )
+            return null
+        }
+
+        return FetchedPage(
+            url = response.uri().toString(),
+            body = body
+        )
+    }
+
+    private fun verifyAndConvertListing(
+        item: JsonObject
+    ): JsonObject? {
+        val url =
+            item.stringValue("url")
+                ?: return null
+
+        val page =
+            fetchPage(
+                url = url,
+                timeoutSeconds = 25
+            )
+                ?: return null
+
         val document =
             Jsoup.parse(
-                response.body(),
-                response.uri().toString()
+                page.body,
+                page.url
             )
 
         if (
@@ -965,6 +970,8 @@ class EbayDirectSoldListingCollector(
         val normalized = html.lowercase(Locale.ROOT)
         return normalized.length < 1_000 ||
             "pardon our interruption" in normalized ||
+            "bitte entschuldigen sie die störung" in normalized ||
+            "bitte entschuldigen sie die stoerung" in normalized ||
             "security measure" in normalized ||
             "captcha" in normalized ||
             "verify you are human" in normalized ||

@@ -204,10 +204,10 @@ class EbayPriceCacheRepository(
 
             val failureCount = currentFailures + 1
             val backoffMinutes = when (failureCount) {
-                1 -> 15L
-                2 -> 60L
-                3 -> 6L * 60L
-                else -> 24L * 60L
+                1 -> 1L
+                2 -> 5L
+                3 -> 15L
+                else -> 60L
             }
             val nextAttemptAt = OffsetDateTime
                 .now(ZoneOffset.UTC)

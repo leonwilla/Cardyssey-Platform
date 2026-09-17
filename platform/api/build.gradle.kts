@@ -31,6 +31,7 @@ dependencies {
 
     implementation("de.mkammerer:argon2-jvm:2.11")
     implementation("org.jsoup:jsoup:1.18.3")
+    implementation("org.seleniumhq.selenium:selenium-java:4.35.0")
 
     implementation("ch.qos.logback:logback-classic:1.5.18")
 
