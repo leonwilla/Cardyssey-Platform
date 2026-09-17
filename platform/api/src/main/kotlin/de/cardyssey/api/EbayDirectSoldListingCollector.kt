@@ -17,6 +17,59 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Locale
 
+private val EBAY_SELLER_ENDED_PATTERNS =
+    listOf(
+        Regex(
+            """\b(?:dieses\s+)?angebot\s+wurde\s+vom\s+verk[äa]ufer\b.{0,160}\bbeendet\b"""
+        ),
+        Regex(
+            """\b(?:this\s+)?listing\s+was\s+ended\s+by\s+(?:the\s+)?seller\b"""
+        ),
+        Regex(
+            """\b(?:the\s+)?seller\s+ended\s+(?:this\s+)?listing\b"""
+        )
+    )
+
+private val EBAY_EXPLICIT_SOLD_PATTERN =
+    Regex("""\b(?:verkauft|sold)\b""")
+
+private fun normalizeEbayStatusText(
+    text: String
+): String =
+    text
+        .lowercase(Locale.GERMANY)
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+internal fun ebayTextIsExplicitlyEndedWithoutSale(
+    text: String
+): Boolean {
+    val normalized =
+        normalizeEbayStatusText(text)
+
+    return EBAY_SELLER_ENDED_PATTERNS.any {
+        it.containsMatchIn(normalized)
+    }
+}
+
+internal fun ebayTextHasExplicitSoldStatus(
+    text: String
+): Boolean {
+    val normalized =
+        normalizeEbayStatusText(text)
+
+    if (
+        EBAY_SELLER_ENDED_PATTERNS.any {
+            it.containsMatchIn(normalized)
+        }
+    ) {
+        return false
+    }
+
+    return EBAY_EXPLICIT_SOLD_PATTERN
+        .containsMatchIn(normalized)
+}
+
 /**
  * Liest die öffentlich sichtbaren, als verkauft markierten ebay.de-Suchergebnisse.
  *
@@ -810,45 +863,17 @@ class EbayDirectSoldListingCollector(
 
     private fun isExplicitlyEndedWithoutSale(
         text: String
-    ): Boolean {
-        val normalized =
+    ): Boolean =
+        ebayTextIsExplicitlyEndedWithoutSale(
             text
-                .lowercase(Locale.GERMANY)
-                .replace(Regex("\\s+"), " ")
-                .trim()
-
-        val sold =
-            EXPLICIT_SOLD_MARKERS.any {
-                it in normalized
-            }
-
-        return !sold &&
-            ENDED_WITHOUT_SALE_MARKERS.any {
-                it in normalized
-            }
-    }
+        )
 
     private fun hasExplicitSoldStatus(
         text: String
-    ): Boolean {
-        val normalized =
+    ): Boolean =
+        ebayTextHasExplicitSoldStatus(
             text
-                .lowercase(Locale.GERMANY)
-                .replace(Regex("\\s+"), " ")
-                .trim()
-
-        if (
-            ENDED_WITHOUT_SALE_MARKERS.any {
-                it in normalized
-            }
-        ) {
-            return false
-        }
-
-        return EXPLICIT_SOLD_MARKERS.any {
-            it in normalized
-        }
-    }
+        )
 
     private fun parseSoldDate(
         text: String
@@ -1053,22 +1078,6 @@ class EbayDirectSoldListingCollector(
         private val ENGLISH_DATE_REGEX =
             Regex(
                 """(?:sold(?:\s+on)?\s*)?([a-z]+)\s+([0-9]{1,2})\s+([0-9]{4})"""
-            )
-
-        private val EXPLICIT_SOLD_MARKERS =
-            listOf(
-                "verkauft",
-                "wurde verkauft",
-                "sold"
-            )
-
-        private val ENDED_WITHOUT_SALE_MARKERS =
-            listOf(
-                "beendet",
-                "nicht mehr verfügbar",
-                "nicht mehr verfugbar",
-                "ended",
-                "no longer available"
             )
 
         private val APPROXIMATE_PRICE_MARKERS =

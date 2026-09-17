@@ -435,7 +435,9 @@ class CompSniperEbayQuoteProvider(
             " bundle ",
             " lot ",
             " auswahl ",
+            " aussuchen ",
             " choose ",
+            " select ",
             " choice ",
             " playset "
         )

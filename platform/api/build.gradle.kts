@@ -33,10 +33,16 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.3")
 
     implementation("ch.qos.logback:logback-classic:1.5.18")
+
+    testImplementation(kotlin("test-junit5"))
 }
 
 application {
     mainClass.set("de.cardyssey.api.ApplicationKt")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 kotlin {
