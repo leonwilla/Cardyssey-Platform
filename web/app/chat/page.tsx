@@ -322,15 +322,28 @@ export default function ChatPage() {
             ))
           )}
 
-          <div className="globalChatPreview">
-            <span>Demnächst</span>
+          <div
+            className="globalChatPreview"
+            aria-disabled="true"
+          >
+            <span>Global · Vorschau</span>
             <strong>
               Cardyssey Lounge
             </strong>
             <small>
-              Globaler Chat startet erst mit
-              Melden, Sperren und Spam-Schutz.
+              Die globale Community-Umgebung ist
+              vorbereitet. Schreiben bleibt
+              gesperrt, bis die Schutzfunktionen
+              vollständig aktiv sind.
             </small>
+            <div className="globalChatSafety">
+              <b>Melden</b>
+              <b>Blockieren</b>
+              <b>Spam-Schutz</b>
+            </div>
+            <button type="button" disabled>
+              Lounge noch geschlossen
+            </button>
           </div>
         </aside>
 
