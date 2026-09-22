@@ -182,11 +182,11 @@ export default function FriendsPage() {
             Community
           </span>
 
-          <h1>Freunde</h1>
+          <h1>Sammler verbinden</h1>
 
           <p>
-            Finde andere Sammler über
-            Namen oder Cardyssey-ID.
+            Freunde, Sammlungen und
+            gemeinsame Karten an einem Ort.
           </p>
         </div>
       </section>

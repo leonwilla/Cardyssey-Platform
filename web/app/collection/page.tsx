@@ -975,13 +975,12 @@ export default function CollectionPage() {
           </span>
 
           <h1>
-            Deine Kartenwelt
+            Deine Sammlung
           </h1>
 
           <p>
-            Zentral gespeichert und
-            bereit für Web- und
-            Android-Synchronisierung.
+            Karten, Mengen und Marktwerte
+            zentral und synchron verwalten.
           </p>
         </div>
 

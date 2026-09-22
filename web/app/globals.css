@@ -3786,3 +3786,61 @@ body{
     width:76%;
   }
 }
+
+
+/* Mobile page composition mirrors the Android information hierarchy. */
+@media(max-width:760px){
+  .statsGrid{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+    gap:9px;
+  }
+
+  .statsGrid .heroStat{
+    grid-column:1 / -1;
+    min-height:172px;
+  }
+
+  .statsGrid .statCard:not(.heroStat){
+    min-height:92px;
+    padding:13px 10px;
+    text-align:center;
+    align-items:center;
+  }
+
+  .statsGrid .statCard:not(.heroStat) strong{
+    font-size:21px;
+  }
+
+  .statsGrid .statCard:not(.heroStat) small{
+    display:none;
+  }
+
+  .collectionSection{
+    margin-top:32px;
+  }
+
+  .collectionSection .sectionTitle{
+    align-items:stretch;
+  }
+
+  .collectionToolbar{
+    gap:9px;
+  }
+
+  .cardGrid{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .cardTile{
+    min-height:182px;
+    border-radius:22px;
+  }
+
+  .setCatalogTile,
+  .friendRow,
+  .accountCard{
+    border-radius:22px;
+  }
+}

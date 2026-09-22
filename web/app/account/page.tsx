@@ -328,12 +328,12 @@ export default function AccountPage() {
           </span>
 
           <h1>
-            Dein Cardyssey Account
+            Dein Cardyssey-Konto
           </h1>
 
           <p>
-            Zentrale Identität für Web,
-            Android und später den Shop.
+            Profil, Cloud und Einstellungen
+            auf Web und Android.
           </p>
         </div>
       </section>

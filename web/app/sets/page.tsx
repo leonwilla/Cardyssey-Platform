@@ -473,13 +473,12 @@ export default function SetsPage() {
             Deine Sets
           </span>
 
-          <h1>Set-Fortschritt</h1>
+          <h1>Set-Bibliothek</h1>
 
           <p>
-            Alle Pokémon-Sets an einem
-            Ort. Verfolge deinen
-            Sammlungsfortschritt und
-            öffne jedes Set vollständig.
+            Entdecken, sammeln und
+            deinen Fortschritt auf
+            einen Blick verfolgen.
           </p>
         </div>
 

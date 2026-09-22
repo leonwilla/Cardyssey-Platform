@@ -32,7 +32,7 @@ const nav: readonly [
   ["/shop", "Shop", "shop"],
   ["/marketplace", "Marktplatz", "marketplace"],
   ["/offers", "Angebote", "offers"],
-  ["/friends", "Freunde", "friends"],
+  ["/friends", "Community", "friends"],
   ["/account", "Account", "account"],
 ];
 
