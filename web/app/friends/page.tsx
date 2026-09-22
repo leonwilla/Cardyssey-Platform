@@ -384,21 +384,39 @@ export default function FriendsPage() {
                 </span>
               </div>
 
-              <button
-                className="ghostButton"
-                onClick={
-                  () =>
-                    router.push(
-                      `/friends/${
-                        encodeURIComponent(
-                          friend.friendCode
-                        )
-                      }`
-                    )
-                }
-              >
-                Profil ansehen
-              </button>
+              <div className="friendActions">
+                <button
+                  className="ghostButton"
+                  onClick={
+                    () =>
+                      router.push(
+                        `/friends/${
+                          encodeURIComponent(
+                            friend.friendCode
+                          )
+                        }`
+                      )
+                  }
+                >
+                  Profil ansehen
+                </button>
+
+                <button
+                  className="primaryButton"
+                  onClick={
+                    () =>
+                      router.push(
+                        `/chat?friend=${
+                          encodeURIComponent(
+                            friend.friendCode
+                          )
+                        }`
+                      )
+                  }
+                >
+                  Nachricht
+                </button>
+              </div>
             </div>
           ))
         )}

@@ -33,6 +33,7 @@ const nav: readonly [
   ["/marketplace", "Marktplatz", "marketplace"],
   ["/offers", "Angebote", "offers"],
   ["/friends", "Community", "friends"],
+  ["/chat", "Nachrichten", "friends"],
   ["/account", "Account", "account"],
 ];
 
@@ -328,22 +329,41 @@ export function AppShell({
           )}
 
           {canAdmin && (
-            <Link
-              href="/admin"
-              className={
-                active === "/admin"
-                  ? "navItem active adminNavItem"
-                  : "navItem adminNavItem"
-              }
-            >
-              <span className="navIcon">
-                <NavGlyph name="admin" />
-              </span>
+            <>
+              <Link
+                href="/admin"
+                className={
+                  active === "/admin"
+                    ? "navItem active adminNavItem"
+                    : "navItem adminNavItem"
+                }
+              >
+                <span className="navIcon">
+                  <NavGlyph name="admin" />
+                </span>
 
-              <span>
-                Control Center
-              </span>
-            </Link>
+                <span>
+                  Control Center
+                </span>
+              </Link>
+
+              <Link
+                href="/admin/chat"
+                className={
+                  active === "/admin/chat"
+                    ? "navItem active adminNavItem"
+                    : "navItem adminNavItem"
+                }
+              >
+                <span className="navIcon">
+                  <NavGlyph name="friends" />
+                </span>
+
+                <span>
+                  Chat-Moderation
+                </span>
+              </Link>
+            </>
           )}
         </nav>
 
