@@ -38,8 +38,8 @@ class EbayBrowserPageLoader(
             Thread.sleep(PAGE_SETTLE_MS)
 
             EbayBrowserPage(
-                url = active.currentUrl,
-                html = active.pageSource
+                url = active.currentUrl ?: url,
+                html = active.pageSource.orEmpty()
             )
         } catch (error: Exception) {
             runCatching {
