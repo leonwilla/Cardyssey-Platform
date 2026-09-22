@@ -98,6 +98,9 @@ fun Application.module() {
             friendships = friendshipRepository
         )
 
+    val chatModerationRepository =
+        ChatModerationRepository(database)
+
     val showcaseRepository =
         ShowcaseRepository(database)
 
@@ -440,6 +443,11 @@ fun Application.module() {
 
         chatRoutes(
             chatRepository
+        )
+
+        chatModerationRoutes(
+            repository = chatModerationRepository,
+            roles = roleRepository
         )
 
         showcaseRoutes(
