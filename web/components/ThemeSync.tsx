@@ -4,6 +4,10 @@ import {
   useEffect,
 } from "react";
 
+import {
+  usePathname,
+} from "next/navigation";
+
 export type AppearanceTheme =
   | "OBSIDIAN_GOLD"
   | "MIDNIGHT_CYAN"
@@ -85,6 +89,8 @@ export function cachedAppearanceTheme():
 }
 
 export function ThemeSync() {
+  const pathname = usePathname();
+
   useEffect(() => {
     applyAppearanceTheme(
       cachedAppearanceTheme()
@@ -113,7 +119,7 @@ export function ThemeSync() {
         // Der lokale Stand bleibt aktiv,
         // wenn Tiny kurz nicht erreichbar ist.
       });
-  }, []);
+  }, [pathname]);
 
   return null;
 }
