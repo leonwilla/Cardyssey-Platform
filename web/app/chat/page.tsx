@@ -75,9 +75,8 @@ export default function ChatPage() {
         );
 
       if (response.ok) {
-        const loaded =
-          await response.json()
-            as Thread[];
+        const loaded: Thread[] =
+          await response.json();
 
         setThreads(loaded);
 
