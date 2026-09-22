@@ -10,6 +10,10 @@ import type {
   PortfolioItem,
 } from "@/lib/types";
 
+import {
+  singleValueEur,
+} from "@/lib/pricing";
+
 type ShowcaseItem = {
   collectionItemId: string;
   position: number;
@@ -24,6 +28,42 @@ type ShowcaseItem = {
 type Privacy = {
   showcaseSize: 5 | 10;
 };
+
+type ShowcaseSort =
+  | "VALUE_DESC"
+  | "VALUE_ASC"
+  | "NAME_ASC"
+  | "SET_ASC";
+
+function showcaseValue(
+  item: PortfolioItem
+): number | null {
+  const values = [
+    singleValueEur(item, "TCG"),
+    singleValueEur(item, "EBAY"),
+  ].filter(
+    (value): value is number =>
+      value != null
+  );
+
+  return values.length > 0
+    ? Math.max(...values)
+    : null;
+}
+
+function eur(
+  value: number | null
+) {
+  return value == null
+    ? "Kein Preis"
+    : new Intl.NumberFormat(
+        "de-DE",
+        {
+          style: "currency",
+          currency: "EUR",
+        }
+      ).format(value);
+}
 
 function imageUrl(
   base?: string | null
@@ -49,6 +89,14 @@ export function ShowcaseSettingsPanel() {
 
   const [message, setMessage] =
     useState<string | null>(null);
+
+  const [query, setQuery] =
+    useState("");
+
+  const [sort, setSort] =
+    useState<ShowcaseSort>(
+      "VALUE_DESC"
+    );
 
   useEffect(() => {
     async function load() {
@@ -113,6 +161,95 @@ export function ShowcaseSettingsPanel() {
         ),
       [collection]
     );
+
+  const visibleSelectable =
+    useMemo(() => {
+      const needle =
+        query
+          .trim()
+          .toLocaleLowerCase("de");
+
+      const filtered =
+        selectable.filter(
+          (item) =>
+            !needle ||
+            [
+              item.name,
+              item.setName,
+              item.localId,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLocaleLowerCase("de")
+              .includes(needle)
+        );
+
+      return [...filtered].sort(
+        (left, right) => {
+          if (
+            sort === "NAME_ASC"
+          ) {
+            return left.name.localeCompare(
+              right.name,
+              "de"
+            );
+          }
+
+          if (
+            sort === "SET_ASC"
+          ) {
+            return (
+              (
+                left.setName ?? ""
+              ).localeCompare(
+                right.setName ?? "",
+                "de"
+              ) ||
+              (
+                left.localId ?? ""
+              ).localeCompare(
+                right.localId ?? "",
+                "de",
+                {
+                  numeric: true,
+                }
+              )
+            );
+          }
+
+          const leftValue =
+            showcaseValue(left);
+          const rightValue =
+            showcaseValue(right);
+
+          if (
+            leftValue == null &&
+            rightValue == null
+          ) {
+            return left.name.localeCompare(
+              right.name,
+              "de"
+            );
+          }
+
+          if (leftValue == null) {
+            return 1;
+          }
+
+          if (rightValue == null) {
+            return -1;
+          }
+
+          return sort === "VALUE_ASC"
+            ? leftValue - rightValue
+            : rightValue - leftValue;
+        }
+      );
+    }, [
+      query,
+      selectable,
+      sort,
+    ]);
 
   function toggle(id: string) {
 
@@ -296,12 +433,61 @@ export function ShowcaseSettingsPanel() {
         </div>
       )}
 
-      <h3>
-        Karten auswählen
-      </h3>
+      <div className="showcasePickerHeading">
+        <h3>
+          Karten auswählen
+        </h3>
+
+        <span>
+          {visibleSelectable.length} Karten
+        </span>
+      </div>
+
+      <div className="showcasePickerControls">
+        <input
+          type="search"
+          value={query}
+          onChange={(event) =>
+            setQuery(
+              event.target.value
+            )
+          }
+          placeholder="Karte, Set oder Nummer suchen …"
+          aria-label="Showcase-Karten suchen"
+        />
+
+        <select
+          value={sort}
+          onChange={(event) =>
+            setSort(
+              event.target.value as ShowcaseSort
+            )
+          }
+          aria-label="Showcase-Karten sortieren"
+        >
+          <option value="VALUE_DESC">
+            Wert: hoch → niedrig
+          </option>
+          <option value="VALUE_ASC">
+            Wert: niedrig → hoch
+          </option>
+          <option value="NAME_ASC">
+            Name: A → Z
+          </option>
+          <option value="SET_ASC">
+            Set und Kartennummer
+          </option>
+        </select>
+      </div>
+
+      {visibleSelectable.length === 0 && (
+        <div className="statusPanel">
+          Keine passende Karte gefunden.
+        </div>
+      )}
 
       <div className="showcasePicker">
-        {selectable.map((item) => {
+        {visibleSelectable.map((item) => {
 
           const id = item.id!;
           const active =
@@ -344,6 +530,15 @@ export function ShowcaseSettingsPanel() {
                 <small>
                   {item.setName ??
                     "Unbekanntes Set"}
+                  {item.localId
+                    ? ` · #${item.localId}`
+                    : ""}
+                </small>
+
+                <small className="showcasePickValue">
+                  {eur(
+                    showcaseValue(item)
+                  )}
                 </small>
               </span>
 

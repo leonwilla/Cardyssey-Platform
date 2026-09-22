@@ -171,11 +171,20 @@ export default function SetDetailsPage() {
             : null;
 
           return (
-            <article
+            <button
+              type="button"
               key={card.id}
-              className={`cardTile ${
+              className={`cardTile setCardButton ${
                 isOwned ? "ownedSetCard" : ""
               }`}
+              onClick={() =>
+                router.push(
+                  `/collection?addCard=${encodeURIComponent(
+                    card.id
+                  )}&language=de`
+                )
+              }
+              aria-label={`${card.name} zur Sammlung hinzufügen`}
             >
               <div className="cardImageWrap">
                 {image ? (
@@ -200,9 +209,15 @@ export default function SetDetailsPage() {
                   <span className="chip">
                     {isOwned ? "✓ In Sammlung" : "Fehlt"}
                   </span>
+
+                  <span className="chip setCardAction">
+                    {isOwned
+                      ? "+ Weiteres Exemplar"
+                      : "+ Hinzufügen"}
+                  </span>
                 </div>
               </div>
-            </article>
+            </button>
           );
         })}
       </div>

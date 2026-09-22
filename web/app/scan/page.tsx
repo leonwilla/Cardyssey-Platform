@@ -333,28 +333,6 @@ export default function ScanPage() {
     };
   }, []);
 
-  const statusLabel =
-    recognizing
-      ? "PRÜFEN"
-      : candidates.length > 0
-        ? "ERKANNT"
-        : image
-          ? "AUFNAHME"
-          : cameraActive
-            ? "BEREIT"
-            : "START";
-
-  const statusText =
-    recognizing
-      ? "Kartendaten werden abgeglichen …"
-      : candidates.length > 0
-        ? `${candidates.length} passende Karte${candidates.length === 1 ? "" : "n"} gefunden`
-        : image
-          ? "Bild bereit zur Erkennung"
-          : cameraActive
-            ? "Karte vollständig in den Rahmen halten"
-            : "Kamera starten oder Bild auswählen";
-
   return (
     <AppShell active="/scan">
       <section className="pageIntro scannerPageIntro">
@@ -435,39 +413,6 @@ export default function ScanPage() {
             <span className="scanLine" />
           </div>
 
-          <div className="scannerHud">
-            <div className="scannerHudMeta">
-              <b>
-                {automaticLanguage
-                  ? "AUTO · TEST"
-                  : "STANDARD"}
-              </b>
-
-              <span>
-                SPRACHE:{" "}
-                {automaticLanguage
-                  ? "AUTO"
-                  : selectedLanguage.label.toUpperCase()}
-              </span>
-            </div>
-
-            <div className="scannerHudStatus">
-              <i
-                className={
-                  error
-                    ? "error"
-                    : candidates.length > 0
-                      ? "success"
-                      : ""
-                }
-              />
-
-              <div>
-                <b>{statusLabel}</b>
-                <span>{statusText}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="scannerModeBlock">

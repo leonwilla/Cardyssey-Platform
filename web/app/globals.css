@@ -3844,3 +3844,91 @@ body{
     border-radius:22px;
   }
 }
+
+
+/* Clickable cards inside a set open the existing collection add dialog. */
+.setCardButton{
+  width:100%;
+  color:inherit;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+  appearance:none;
+}
+
+.setCardButton:hover{
+  transform:translateY(-2px);
+  border-color:rgba(226,188,112,.5);
+  box-shadow:0 18px 46px rgba(0,0,0,.24);
+}
+
+.setCardButton:focus-visible{
+  outline:3px solid rgba(94,220,235,.32);
+  outline-offset:3px;
+}
+
+.setCardAction{
+  color:#0A0A08;
+  border-color:rgba(226,188,112,.65);
+  background:var(--gold);
+}
+
+
+/* Showcase search and value sorting. */
+.showcasePickerHeading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-top:24px;
+}
+
+.showcasePickerHeading h3{
+  margin:0;
+}
+
+.showcasePickerHeading span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+
+.showcasePickerControls{
+  display:grid;
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(220px,.38fr);
+  gap:10px;
+  margin:13px 0;
+}
+
+.showcasePickerControls input,
+.showcasePickerControls select{
+  width:100%;
+  min-height:48px;
+  padding:0 14px;
+  border:1px solid rgba(90,83,67,.72);
+  border-radius:14px;
+  outline:none;
+  background:#0C0D0B;
+  color:var(--text);
+  font:inherit;
+}
+
+.showcasePickerControls input:focus,
+.showcasePickerControls select:focus{
+  border-color:rgba(226,188,112,.58);
+  box-shadow:0 0 0 3px rgba(226,188,112,.08);
+}
+
+.showcasePickValue{
+  margin-top:5px;
+  color:var(--gold) !important;
+  font-weight:900;
+}
+
+@media(max-width:700px){
+  .showcasePickerControls{
+    grid-template-columns:1fr;
+  }
+}
