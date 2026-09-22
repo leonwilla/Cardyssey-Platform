@@ -21,6 +21,10 @@ import {
   ShowcaseSettingsPanel,
 } from "@/components/ShowcaseSettingsPanel";
 
+import {
+  AppearanceSettingsPanel,
+} from "@/components/AppearanceSettingsPanel";
+
 import type {
   User,
 } from "@/lib/types";
@@ -60,6 +64,7 @@ export default function AccountPage() {
       "profile" |
       "showcase" |
       "privacy" |
+      "appearance" |
       "app"
     >("profile");
 
@@ -486,6 +491,20 @@ export default function AccountPage() {
             <button
               type="button"
               className={
+                accountTab === "appearance"
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setAccountTab("appearance")
+              }
+            >
+              Design
+            </button>
+
+            <button
+              type="button"
+              className={
                 accountTab === "app"
                   ? "active"
                   : ""
@@ -620,6 +639,12 @@ export default function AccountPage() {
           {accountTab === "privacy" && (
             <div className="accountTabPanel">
               <PrivacySettingsPanel />
+            </div>
+          )}
+
+          {accountTab === "appearance" && (
+            <div className="accountTabPanel">
+              <AppearanceSettingsPanel />
             </div>
           )}
         </>
