@@ -89,6 +89,15 @@ fun Application.module() {
     val privacyRepository =
         PrivacyRepository(database)
 
+    val appearanceRepository =
+        AppearanceRepository(database)
+
+    val chatRepository =
+        ChatRepository(
+            dataSource = database,
+            friendships = friendshipRepository
+        )
+
     val showcaseRepository =
         ShowcaseRepository(database)
 
@@ -423,6 +432,14 @@ fun Application.module() {
 
         privacyRoutes(
             privacyRepository
+        )
+
+        appearanceRoutes(
+            appearanceRepository
+        )
+
+        chatRoutes(
+            chatRepository
         )
 
         showcaseRoutes(
