@@ -9,7 +9,6 @@ import {
 
 import {
   useRouter,
-  useSearchParams,
 } from "next/navigation";
 
 import {
@@ -48,7 +47,6 @@ function time(value: string) {
 
 export default function ChatPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [user, setUser] =
     useState<User | null>(null);
@@ -57,9 +55,7 @@ export default function ChatPage() {
     useState<Thread[]>([]);
 
   const [selected, setSelected] =
-    useState<string | null>(
-      searchParams.get("friend")
-    );
+    useState<string | null>(null);
 
   const [messages, setMessages] =
     useState<Message[]>([]);
@@ -120,6 +116,15 @@ export default function ChatPage() {
     );
 
   useEffect(() => {
+    const initialFriend =
+      new URLSearchParams(
+        window.location.search
+      ).get("friend");
+
+    if (initialFriend) {
+      setSelected(initialFriend);
+    }
+
     fetch("/api/auth/me", {
       cache: "no-store",
     })
