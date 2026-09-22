@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://cardyssey.de"),
   title: "Cardyssey",
   description: "Cardyssey – Sammeln, Scannen, Tauschen und Handeln.",
+  icons: {
+    icon: "/cardyssey-emblem-gold.png",
+    apple: "/cardyssey-emblem-gold.png",
+  },
   openGraph: {
     title: "Cardyssey",
     description: "Deine TCG-Plattform für Sammlung, Scanner, Wishlist, Marketplace und Community.",

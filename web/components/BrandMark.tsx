@@ -3,17 +3,11 @@ export function BrandMark() {
     <span
       className="brandMark"
       aria-hidden="true"
-      style={{
-        display: "inline-grid",
-        placeItems: "center",
-        color: "var(--cyan)",
-        fontSize: "32px",
-        lineHeight: 1,
-        fontWeight: 950,
-        letterSpacing: "-0.08em",
-      }}
     >
-      C
+      <img
+        src="/cardyssey-emblem-gold.png"
+        alt=""
+      />
     </span>
   );
 }

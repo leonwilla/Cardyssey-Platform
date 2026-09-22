@@ -36,6 +36,18 @@ const nav: readonly [
   ["/account", "Account", "account"],
 ];
 
+const mobileNav: readonly [
+  string,
+  string,
+  NavIconName,
+][] = [
+  ["/collection", "Sammlung", "collection"],
+  ["/scan", "Scannen", "scan"],
+  ["/sets", "Sets", "sets"],
+  ["/friends", "Community", "friends"],
+  ["/account", "Account", "account"],
+];
+
 let cachedShellUser:
   | User
   | null
@@ -424,9 +436,7 @@ export function AppShell({
       </div>
 
       <nav className="bottomNav">
-        {nav
-          .slice(0, 4)
-          .map(
+        {mobileNav.map(
             ([href, label, icon]) => (
               <Link
                 key={href}
