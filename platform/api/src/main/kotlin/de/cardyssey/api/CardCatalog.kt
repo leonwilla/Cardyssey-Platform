@@ -1,6 +1,9 @@
 package de.cardyssey.api
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -181,6 +184,29 @@ class CardCatalogService(
         language: String
     ): Boolean =
         language in ALLOWED_LANGUAGES
+
+    /*
+     * Lädt die kompakten Karten- und Setkataloge aller unterstützten
+     * Sprachen beim Serverstart vor. fetchJson schreibt jede erfolgreiche
+     * Antwort zusätzlich in PostgreSQL. Android und Web arbeiten danach
+     * gegen Tiny; TCGdex bleibt nur die zentrale Aktualisierungsquelle.
+     */
+    suspend fun preload() = coroutineScope {
+        ALLOWED_LANGUAGES
+            .map { language ->
+                async {
+                    runCatching {
+                        loadCards(language)
+                        sets(language)
+                    }.onFailure { error ->
+                        println(
+                            "Catalog preload failed: language=$language error=${error.message}"
+                        )
+                    }
+                }
+            }
+            .awaitAll()
+    }
 
     suspend fun search(
         query: String,
