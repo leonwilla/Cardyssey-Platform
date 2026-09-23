@@ -107,6 +107,87 @@ private data class CacheEntry<T>(
     val expiresAtMs: Long
 )
 
+/*
+ * TCGdex hat die 30th Classic Collection bereits katalogisiert, liefert
+ * aktuell aber noch keine Bildfelder. Bis die Quelle nachzieht, verwenden
+ * wir die veröffentlichten Reprint-Abbildungen. Sobald TCGdex ein Bild
+ * liefert, gewinnt dieses automatisch vor dem Fallback.
+ */
+private val CLASSIC_COLLECTION_IMAGE_FALLBACKS =
+    mapOf(
+        "30th-c-001" to "https://images.ctfassets.net/0hawnqdvsfxb/4uLdwLq8x7naSZfKlZPpqA/dee4ec4267c9644327c1ad1f8a947a15/02-charizard-base-set_rc.png",
+        "30th-c-002" to "https://images.ctfassets.net/0hawnqdvsfxb/3VdBxMmef0IipVgvNAFwcS/db634329df5b0038a70c7104f78d53df/08-delcatty-ex-ruby-sapphire_rc.png",
+        "30th-c-003" to "https://images.ctfassets.net/0hawnqdvsfxb/1vyQjQA51yGqr4pDTc6Lqf/b7ee7d5a8809f93f6e6b17ff18c6a20d/11-metagross-ex-delta-species_rc.png",
+        "30th-c-004" to "https://images.ctfassets.net/0hawnqdvsfxb/3eq946ECMyl2SN43sA3FrP/cc3a2991743394af196ab5a26bc3b7b2/19-genesect-ex-plasma-blast_rc.png",
+        "30th-c-005" to "https://images.ctfassets.net/0hawnqdvsfxb/4D20PvDNVNYWgMr4rVlTGJ/f7b679447fe90d8990adca83078da86a/03-misty-gym-heroes_rc.png",
+        "30th-c-006" to "https://images.ctfassets.net/0hawnqdvsfxb/1fXBGs65bxydv5zO8SQs1Z/293f4995e421cf438125527645e43e60/09-dark-tyranitar-ex-team-rocket-returns_rc.png",
+        "30th-c-007" to "https://images.ctfassets.net/0hawnqdvsfxb/ECILlMWXDqwMjyfqx6yUe/96d8b4de0ab4bc66ce3e36078f3a2838/05-sneasel-neo-genesis_rc.png",
+        "30th-c-008" to "https://images.ctfassets.net/0hawnqdvsfxb/20sxHnek2vNXPQX7u9NimG/902e7df257e361bea05a244b6ce1ede6/24-pikachu-zekrom-gx-team-up_rc.png",
+        "30th-c-009" to "https://images.ctfassets.net/0hawnqdvsfxb/6Xr3wT9oR9mbCkFlPO9KRh/df2ff203a58f12bba2324d9448165d65/21-greninja-break-breakpoint_rc.png",
+        "30th-c-010" to "https://images.ctfassets.net/0hawnqdvsfxb/6Kw0RTJTWpaqIBZrT3szWL/e8d95dd3ab514daf81002120ad4bf4cc/13-uxie-legends-awakened_rc.png",
+        "30th-c-011" to "https://images.ctfassets.net/0hawnqdvsfxb/4fJSqhOhCt3coWSjCK5YFS/d7ac4e2d51304966586604c1a14aa230/14-crobat-g-platinum_rc.png",
+        "30th-c-012" to "https://images.ctfassets.net/0hawnqdvsfxb/44mFpNvtHu2vxPU4IUn0kU/7af89dcd2a7aca7f514123b9cd1f92d6/26-raikou-vivid-voltage_rc.png",
+        "30th-c-013" to "https://images.ctfassets.net/0hawnqdvsfxb/6PaO4X7A7OBo6MKGKelYcz/42e547cef01814a8ffa5462d71754db7/23-buzzwole-gx-crimson-invasion_rc.png",
+        "30th-c-014" to "https://images.ctfassets.net/0hawnqdvsfxb/698jDlMm2wGE2U27UN3JRb/18d8e3529165e92b325da03f49a4048a/01-pikachu-base-set_rc.png",
+        "30th-c-015" to "https://images.ctfassets.net/0hawnqdvsfxb/6oA5XBqPx6TdEOSJdm8lU0/897646c71d35bd452c33a89ddc16741a/04-erikas-jigglypuff-gym-challenge_rc.png",
+        "30th-c-016" to "https://images.ctfassets.net/0hawnqdvsfxb/5bLOEGhjUaWMeltym4PFdf/b34fc9e640074ce808c34142cab35c91/18-rayquaza-ex-dragons-exalted_rc.png",
+        "30th-c-017" to "https://images.ctfassets.net/0hawnqdvsfxb/aNwIpDivxhXCEleKcMz0c/f21e8be54189509ad95db2d7a262857e/22-solgaleo-gx-sun-moon_rc.png",
+        "30th-c-018" to "https://images.ctfassets.net/0hawnqdvsfxb/62GC59fcrIL4Wa5yZSM20U/6aa0d27ed16a497def41e396b7713e62/15-gengar-prime-hgss-triumphant_rc.png",
+        "30th-c-019" to "https://images.ctfassets.net/0hawnqdvsfxb/5UQBHt5UiOdZT2K9iUT4sU/054b5c179d3d5ae0bfe4eddb2d3c638b/16-darkrai-cresselia-legend-connected_rc.png",
+        "30th-c-020" to "https://images.ctfassets.net/0hawnqdvsfxb/5UQBHt5UiOdZT2K9iUT4sU/054b5c179d3d5ae0bfe4eddb2d3c638b/16-darkrai-cresselia-legend-connected_rc.png",
+        "30th-c-021" to "https://images.ctfassets.net/0hawnqdvsfxb/2mQq5sfqTvFQDYSDYc5Dmy/2571082f46839b3ba16fa3aa08f219ed/17-n-noble-victories_rc.png",
+        "30th-c-022" to "https://images.ctfassets.net/0hawnqdvsfxb/1UVnLlAEbGzEaYbjZb2faJ/461721da6078f07fecfb0c663c8ce5d1/12-palkia-lvx-great-encounters_rc.png",
+        "30th-c-023" to "https://images.ctfassets.net/0hawnqdvsfxb/1OsF109it2ou8HaexpFJ3V/ef3f33d454ab8c02c40bf9b6460c074d/20-m-gardevoir-ex-primal-clash_rc.png",
+        "30th-c-024" to "https://images.ctfassets.net/0hawnqdvsfxb/68uGXmVSeSZ76BuO6ayY4n/f3a765cd2ba48d1fe50613c309abf8f2/06-shining-celebi-neo-destiny_rc.png",
+        "30th-c-025" to "https://images.ctfassets.net/0hawnqdvsfxb/SPcQBEdhdZS7MWbfEqCBz/fa80e2dba0e809ef4678c55e68538759/10-scizor-ex-ex-unseen-forces_rc.png",
+        "30th-c-026" to "https://images.ctfassets.net/0hawnqdvsfxb/1EEqiLOcyR22TadQcVowQZ/efa83ec19f2a8f71116e255d8fa46cc0/27-mew-vmax-fusion-strike_rc.png",
+        "30th-c-027" to "https://images.ctfassets.net/0hawnqdvsfxb/5K8vMosl2VmW1mFY8IZepe/be59c9c826277dbc376c281df77c4e53/28-arceus-vstar-brilliant-stars_rc.png",
+        "30th-c-028" to "https://images.ctfassets.net/0hawnqdvsfxb/46zgQSPxiTgByfWxeP4PXa/5a80a2e1832e78a12cd029d050dc99e3/25-zacian-v-sword-shield_rc.png",
+        "30th-c-029" to "https://images.ctfassets.net/0hawnqdvsfxb/6K89w3NX2qJgfuVZ02YMBp/2d164320873dfd19f90a8045b4c0f3c2/07-crystal-lugia-aquapolis_rc.png",
+        "30th-c-030" to "https://images.ctfassets.net/0hawnqdvsfxb/0xFDSWaaVQ4PEnvs3YOas/877c8ca708e99fe4463744626e6fdfb8/29-magikarp-paldea-evolved_rc.png"
+    )
+
+private const val NIDORINA_PROMO_IMAGE =
+    "https://images.pokemoncard.io/images/mep/mep-101_hiresopt.jpg"
+
+private fun catalogImageFallback(
+    cardId: String
+): String? =
+    CLASSIC_COLLECTION_IMAGE_FALLBACKS[cardId]
+        ?: if (cardId == "mep-101") {
+            NIDORINA_PROMO_IMAGE
+        } else {
+            null
+        }
+
+private fun nidorinaPromoDetails(
+    language: String
+): CatalogCardDetails? =
+    if (language == "de" || language == "en") {
+        CatalogCardDetails(
+            id = "mep-101",
+            localId = "101",
+            name = "Nidorina",
+            languageCode = language,
+            imageBase = NIDORINA_PROMO_IMAGE,
+            imageLanguage = "en",
+            setId = "mep",
+            setName = "MEP Black Star Promos",
+            officialCount = 0,
+            rarity = "Promo",
+            variants =
+                listOf(
+                    CatalogVariant(
+                        id = "legacy:holo",
+                        type = "Holo",
+                        legacyVariant = "HOLO"
+                    )
+                )
+        )
+    } else {
+        null
+    }
+
 class CardCatalogService(
     private val persistentCache: CatalogCacheRepository
 ) {
@@ -371,7 +452,11 @@ class CardCatalogService(
         val source =
             requested
                 ?: english
-                ?: return null
+                ?: return nidorinaPromoDetails(
+                    language = language
+                )?.takeIf {
+                    it.id == cardId
+                }
 
         val sourceLanguage =
             if (requested != null) {
@@ -386,6 +471,9 @@ class CardCatalogService(
             )
                 ?: english?.string(
                     "image"
+                )
+                ?: catalogImageFallback(
+                    cardId
                 )
 
         val imageLanguage =
@@ -791,9 +879,32 @@ class CardCatalogService(
                         imageBase =
                             fallback
                                 ?.imageBase
+                                ?: catalogImageFallback(
+                                    card.id
+                                )
                     )
                 }
             }
+                .let { currentCards ->
+                    if (
+                        language == "de" &&
+                        setId == "mep" &&
+                        currentCards.none {
+                            it.id == "mep-101"
+                        }
+                    ) {
+                        currentCards +
+                            CatalogSetCard(
+                                id = "mep-101",
+                                localId = "101",
+                                name = "Nidorina",
+                                imageBase =
+                                    NIDORINA_PROMO_IMAGE
+                            )
+                    } else {
+                        currentCards
+                    }
+                }
 
         val sourceCount =
             source["cardCount"]
@@ -932,15 +1043,34 @@ class CardCatalogService(
                 loaded
             }
 
+        val completeResult =
+            if (
+                language == "de" &&
+                result.none {
+                    it.id == "mep-101"
+                }
+            ) {
+                result +
+                    BriefCard(
+                        id = "mep-101",
+                        localId = "101",
+                        name = "Nidorina",
+                        imageBase =
+                            NIDORINA_PROMO_IMAGE
+                    )
+            } else {
+                result
+            }
+
         cardsCache[
             language
         ] =
             CacheEntry(
-                result,
+                completeResult,
                 now + CACHE_MS
             )
 
-        return result
+        return completeResult
     }
 
     private suspend fun loadSets(
