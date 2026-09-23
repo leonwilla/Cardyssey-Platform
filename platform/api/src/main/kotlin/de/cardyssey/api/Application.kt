@@ -20,6 +20,7 @@ import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.flywaydb.core.Flyway
@@ -133,6 +134,16 @@ fun Application.module() {
         CardCatalogService(
             catalogCache
         )
+
+    /*
+     * Der komplette kompakte Suchkatalog liegt zentral auf Tiny und wird
+     * dauerhaft in PostgreSQL gesichert. Der Start der API wird dadurch
+     * nicht blockiert; bei einer nicht erreichbaren Quelle greift der
+     * bestehende persistente Cache.
+     */
+    launch {
+        cardCatalog.preload()
+    }
 
     val justTcgApiKey =
         System.getenv("JUSTTCG_API_KEY")
