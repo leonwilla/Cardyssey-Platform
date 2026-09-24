@@ -949,14 +949,15 @@ class CardCatalogService(
                             ?.int("official")
                         ?: 0,
                 totalCount =
-                    sourceCount
-                        ?.int("total")
-                        ?.takeIf {
-                            it > 0
-                        }
-                        ?: englishCount
+                    maxOf(
+                        sourceCount
                             ?.int("total")
-                        ?: cards.size,
+                            ?: 0,
+                        englishCount
+                            ?.int("total")
+                            ?: 0,
+                        cards.size
+                    ),
                 cards =
                     cards
             )
