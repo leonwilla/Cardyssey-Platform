@@ -1,6 +1,7 @@
 package de.cardyssey.api
 
 import com.zaxxer.hikari.HikariDataSource
+import kotlinx.serialization.Serializable
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -13,9 +14,21 @@ data class MirrorImageWork(
     val sourceUrl: String?
 )
 
+@Serializable
 data class CatalogVisualMatch(
     val card: CatalogCardSearchResult,
     val distance: Int
+)
+
+@Serializable
+data class CatalogMirrorStatus(
+    val language: String,
+    val status: String,
+    val phase: String,
+    val setCount: Int,
+    val cardCount: Int,
+    val imageCount: Int,
+    val lastError: String?
 )
 
 class PermanentCatalogRepository(
@@ -227,9 +240,11 @@ class PermanentCatalogRepository(
         language: String,
         hash: Long,
         number: String?,
+        setCode: String? = null,
         limit: Int
     ): List<CatalogVisualMatch> {
         val normalizedNumber = normalizeNumber(number)
+        val resolvedSetId = resolveSetId(language, setCode)
 
         val rows = dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -240,12 +255,26 @@ class PermanentCatalogRepository(
                 LEFT JOIN catalog_sets_mirror s
                   ON s.language_code = c.language_code AND s.set_id = c.set_id
                 WHERE c.language_code = ? AND c.image_dhash IS NOT NULL
-                  AND (? IS NULL OR REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g') = ?)
+                  AND (
+                    ? IS NULL OR
+                    CASE
+                      WHEN REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g') ~ '^[0-9]+$'
+                        THEN COALESCE(NULLIF(LTRIM(REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g'), '0'), ''), '0')
+                      ELSE REGEXP_REPLACE(
+                        REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g'),
+                        '^([A-Z]+)0+([0-9])',
+                        '\\1\\2'
+                      )
+                    END = ?
+                  )
+                  AND (? IS NULL OR c.set_id = ?)
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, language)
                 statement.setString(2, normalizedNumber)
                 statement.setString(3, normalizedNumber)
+                statement.setString(4, resolvedSetId)
+                statement.setString(5, resolvedSetId)
                 statement.executeQuery().use { result ->
                     buildList {
                         while (result.next()) {
@@ -332,13 +361,93 @@ class PermanentCatalogRepository(
         }
     }
 
+    fun statuses(): List<CatalogMirrorStatus> =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT language_code, status, phase, set_count,
+                       card_count, image_count, last_error
+                FROM catalog_sync_state
+                ORDER BY language_code
+                """.trimIndent()
+            ).use { statement ->
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(
+                                CatalogMirrorStatus(
+                                    language = result.getString("language_code"),
+                                    status = result.getString("status"),
+                                    phase = result.getString("phase"),
+                                    setCount = result.getInt("set_count"),
+                                    cardCount = result.getInt("card_count"),
+                                    imageCount = result.getInt("image_count"),
+                                    lastError = result.getString("last_error")
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
     private fun normalizeNumber(value: String?): String? =
         value
             ?.substringBefore('/')
             ?.uppercase()
             ?.replace(Regex("[^A-Z0-9]"), "")
-            ?.dropWhile { it == '0' }
-            ?.ifBlank { "0" }
+            ?.let { cleaned ->
+                if (cleaned.all(Char::isDigit)) {
+                    cleaned.trimStart('0').ifBlank { "0" }
+                } else {
+                    cleaned.replace(
+                        Regex("^([A-Z]+)0+([0-9])"),
+                        "${'    private fun safe(value: String): String =
+        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+}
+}1${'    private fun safe(value: String): String =
+        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
+}
+}2"
+                    )
+                }
+            }
+
+    private fun resolveSetId(
+        language: String,
+        setCode: String?
+    ): String? {
+        val normalized =
+            setCode
+                ?.trim()
+                ?.uppercase()
+                ?.replace(Regex("[^A-Z0-9-]"), "")
+                ?.takeIf(String::isNotBlank)
+                ?: return null
+
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT set_id
+                FROM catalog_set_code_aliases
+                WHERE language_code = ? AND printed_code = ?
+                UNION ALL
+                SELECT set_id
+                FROM catalog_sets_mirror
+                WHERE language_code = ? AND UPPER(set_id) = ?
+                LIMIT 1
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, language)
+                statement.setString(2, normalized)
+                statement.setString(3, language)
+                statement.setString(4, normalized)
+                statement.executeQuery().use { result ->
+                    if (result.next()) result.getString("set_id") else null
+                }
+            }
+        }
+    }
 
     private fun safe(value: String): String =
         value.replace(Regex("[^A-Za-z0-9._-]"), "_")
