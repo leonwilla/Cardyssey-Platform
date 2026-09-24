@@ -84,6 +84,12 @@ services:
       EBAY_PRICE_CACHE_TTL_HOURS: ${EBAY_PRICE_CACHE_TTL_HOURS:-168}
 
       AVATAR_DIR: /data/avatars
+      CATALOG_DIR: /data/catalog
+      CATALOG_SYNC_INTERVAL_HOURS: ${CATALOG_SYNC_INTERVAL_HOURS:-24}
+      CATALOG_DOWNLOAD_IMAGES: ${CATALOG_DOWNLOAD_IMAGES:-true}
+      CATALOG_DETAIL_BATCH_SIZE: ${CATALOG_DETAIL_BATCH_SIZE:-250}
+      CATALOG_IMAGE_BATCH_SIZE: ${CATALOG_IMAGE_BATCH_SIZE:-250}
+      CATALOG_LANGUAGES: ${CATALOG_LANGUAGES:-de,en,fr,es,it,pt,ja,zh-tw,zh-cn,ko,id,th,nl,pl,ru}
       PUBLIC_API_URL: https://api.cardyssey.de
 
     ports:
@@ -91,6 +97,7 @@ services:
 
     volumes:
       - cardyssey_avatars:/data/avatars
+      - cardyssey_catalog:/data/catalog
 
     networks:
       - cardyssey-internal
@@ -109,6 +116,9 @@ volumes:
 
   cardyssey_avatars:
     name: cardyssey-avatars
+
+  cardyssey_catalog:
+    name: cardyssey-catalog
 
   cardyssey_ebay_browser:
     name: cardyssey-ebay-browser
