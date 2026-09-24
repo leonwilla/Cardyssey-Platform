@@ -11,8 +11,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class CardRecognitionRequest(
-    val text: String,
-    val language: String = "de"
+    val text: String = "",
+    val language: String = "de",
+    val imageBase64: String? = null,
+    val number: String? = null,
+    val setCode: String? = null
 )
 
 @Serializable
@@ -23,7 +26,9 @@ data class CardRecognitionResponse(
 )
 
 fun Route.cardRecognitionRoutes(
-    catalog: CardCatalogService
+    catalog: CardCatalogService,
+    mirror: PermanentCatalogRepository,
+    imageHasher: CatalogImageHasher
 ) {
     authenticate("auth-jwt") {
 
@@ -50,18 +55,24 @@ fun Route.cardRecognitionRoutes(
             val text =
                 request.text.trim()
 
-            if (text.isBlank()) {
+            if (
+                text.isBlank() &&
+                request.imageBase64.isNullOrBlank()
+            ) {
                 call.respond(
                     HttpStatusCode.BadRequest,
                     mapOf(
-                        "error" to "empty_ocr_text"
+                        "error" to "empty_recognition_input"
                     )
                 )
                 return@post
             }
 
             val number =
-                extractCardNumber(text)
+                request.number
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: extractCardNumber(text)
 
             val lines =
                 recognitionLines(text)
@@ -119,13 +130,89 @@ fun Route.cardRecognitionRoutes(
                         .take(15)
                 }
 
+            val visualCandidates =
+                request.imageBase64
+                    ?.takeIf {
+                        it.length <=
+                            12_000_000
+                    }
+                    ?.let { encoded ->
+                        runCatching {
+                            val bytes =
+                                java.util.Base64
+                                    .getDecoder()
+                                    .decode(
+                                        encoded.substringAfter(
+                                            ","
+                                        )
+                                    )
+
+                            val hash =
+                                imageHasher.hash(bytes)
+
+                            val narrowed =
+                                mirror.visualMatches(
+                                    language = language,
+                                    hash = hash,
+                                    number = number,
+                                    limit = 20
+                                )
+
+                            val matches =
+                                if (
+                                    narrowed
+                                        .firstOrNull()
+                                        ?.distance
+                                        ?.let {
+                                            it <= 18
+                                        } == true
+                                ) {
+                                    narrowed
+                                } else {
+                                    mirror.visualMatches(
+                                        language = language,
+                                        hash = hash,
+                                        number = null,
+                                        limit = 20
+                                    )
+                                }
+
+                            matches
+                                .filter {
+                                    it.distance <= 26
+                                }
+                                .map {
+                                    it.card
+                                }
+                        }
+                            .getOrDefault(
+                                emptyList()
+                            )
+                    }
+                    .orEmpty()
+
+            /*
+             * A good local image hit is the strongest signal. OCR results are
+             * retained as corroboration/fallback for glare, missing artwork
+             * and cards which have not been mirrored yet.
+             */
+            val combined =
+                (
+                    visualCandidates +
+                        candidates
+                    )
+                    .distinctBy {
+                        it.id
+                    }
+                    .take(15)
+
             call.respond(
                 CardRecognitionResponse(
                     detectedNumber = number,
                     detectedQuery =
                         lines.firstOrNull(),
                     candidates =
-                        candidates
+                        combined
                 )
             )
         }
