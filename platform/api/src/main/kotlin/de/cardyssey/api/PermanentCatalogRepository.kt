@@ -260,11 +260,7 @@ class PermanentCatalogRepository(
                     CASE
                       WHEN REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g') ~ '^[0-9]+$'
                         THEN COALESCE(NULLIF(LTRIM(REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g'), '0'), ''), '0')
-                      ELSE REGEXP_REPLACE(
-                        REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g'),
-                        '^([A-Z]+)0+([0-9])',
-                        '\\1\\2'
-                      )
+                      ELSE REGEXP_REPLACE(UPPER(c.local_id), '[^A-Z0-9]', '', 'g')
                     END = ?
                   )
                   AND (? IS NULL OR c.set_id = ?)
@@ -400,16 +396,7 @@ class PermanentCatalogRepository(
                 if (cleaned.all(Char::isDigit)) {
                     cleaned.trimStart('0').ifBlank { "0" }
                 } else {
-                    cleaned.replace(
-                        Regex("^([A-Z]+)0+([0-9])"),
-                        "${'    private fun safe(value: String): String =
-        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
-}
-}1${'    private fun safe(value: String): String =
-        value.replace(Regex("[^A-Za-z0-9._-]"), "_")
-}
-}2"
-                    )
+                    cleaned
                 }
             }
 
