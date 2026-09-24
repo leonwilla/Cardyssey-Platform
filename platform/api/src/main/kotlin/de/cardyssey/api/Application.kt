@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.flywaydb.core.Flyway
+import java.nio.file.Path
 
 @Serializable
 data class HealthResponse(
@@ -135,14 +136,104 @@ fun Application.module() {
             catalogCache
         )
 
+    val publicApiUrl =
+        System.getenv("PUBLIC_API_URL")
+            ?.trim()
+            ?.removeSuffix("/")
+            ?.takeIf(String::isNotBlank)
+            ?: "https://api.cardyssey.de"
+
+    val catalogDir =
+        Path.of(
+            System.getenv("CATALOG_DIR")
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?: "/data/catalog"
+        )
+
+    val permanentCatalog =
+        PermanentCatalogRepository(
+            dataSource = database,
+            catalogDir = catalogDir,
+            publicBaseUrl = publicApiUrl
+        )
+
+    val catalogImageHasher =
+        CatalogImageHasher()
+
+    val catalogLanguages =
+        System.getenv("CATALOG_LANGUAGES")
+            ?.split(",")
+            ?.map {
+                it.trim().lowercase()
+            }
+            ?.filter {
+                it.isNotBlank() &&
+                    cardCatalog.validLanguage(it)
+            }
+            ?.distinct()
+            ?.takeIf(List<String>::isNotEmpty)
+            ?: listOf(
+                "de",
+                "en",
+                "fr",
+                "es",
+                "it",
+                "pt",
+                "ja",
+                "zh-tw",
+                "zh-cn",
+                "ko",
+                "id",
+                "th",
+                "nl",
+                "pl",
+                "ru"
+            )
+
+    val catalogSyncIntervalHours =
+        System.getenv("CATALOG_SYNC_INTERVAL_HOURS")
+            ?.toLongOrNull()
+            ?.coerceAtLeast(1L)
+            ?: 24L
+
+    val catalogSync =
+        CatalogMirrorSyncService(
+            catalog = cardCatalog,
+            mirror = permanentCatalog,
+            images = catalogImageHasher,
+            languages = catalogLanguages,
+            syncIntervalHours =
+                catalogSyncIntervalHours,
+            detailBatchSize =
+                System.getenv(
+                    "CATALOG_DETAIL_BATCH_SIZE"
+                )
+                    ?.toIntOrNull()
+                    ?.coerceIn(10, 2_000)
+                    ?: 250,
+            imageBatchSize =
+                System.getenv(
+                    "CATALOG_IMAGE_BATCH_SIZE"
+                )
+                    ?.toIntOrNull()
+                    ?.coerceIn(10, 2_000)
+                    ?: 250,
+            imagesEnabled =
+                System.getenv(
+                    "CATALOG_DOWNLOAD_IMAGES"
+                )
+                    ?.toBooleanStrictOrNull()
+                    ?: true
+        )
+
     /*
-     * Der komplette kompakte Suchkatalog liegt zentral auf Tiny und wird
-     * dauerhaft in PostgreSQL gesichert. Der Start der API wird dadurch
-     * nicht blockiert; bei einer nicht erreichbaren Quelle greift der
-     * bestehende persistente Cache.
+     * Search traffic never waits for the first full import. Source refresh,
+     * detail completion and image mirroring continue in the application
+     * lifecycle and resume from PostgreSQL/files after every restart.
      */
     launch {
-        cardCatalog.preload()
+        catalogSync.runForever()
     }
 
     val justTcgApiKey =
@@ -387,7 +478,7 @@ fun Application.module() {
                         "cardyssey-api",
 
                     version =
-                        "0.2.4",
+                        "0.3.0",
 
                     justTcgConfigured =
                         justTcgApiKey != null,
@@ -483,11 +574,14 @@ fun Application.module() {
         )
 
         cardCatalogRoutes(
-            cardCatalog
+            catalog = cardCatalog,
+            mirror = permanentCatalog
         )
 
         cardRecognitionRoutes(
-            cardCatalog
+            catalog = cardCatalog,
+            mirror = permanentCatalog,
+            imageHasher = catalogImageHasher
         )
 
         setCatalogRoutes(
