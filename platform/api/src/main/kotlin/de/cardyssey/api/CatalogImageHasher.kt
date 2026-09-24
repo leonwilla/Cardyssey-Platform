@@ -1,0 +1,155 @@
+package de.cardyssey.api
+
+import java.awt.Graphics2D
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.time.Duration
+import javax.imageio.ImageIO
+
+class CatalogImageHasher {
+    private val http =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(15))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
+
+    fun downloadAndHash(
+        imageBase: String,
+        destination: Path
+    ): Pair<Long, Long> {
+        val url =
+            when {
+                imageBase.endsWith(".jpg") -> imageBase
+                else -> imageBase.removeSuffix("/") + "/low.jpg"
+            }
+
+        val request =
+            HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .header("Accept", "image/jpeg,image/*")
+                .header("User-Agent", "Cardyssey-CatalogMirror/1.0")
+                .GET()
+                .build()
+
+        val response =
+            http.send(
+                request,
+                HttpResponse.BodyHandlers.ofByteArray()
+            )
+
+        check(response.statusCode() in 200..299) {
+            "Image returned HTTP ${response.statusCode()}: $url"
+        }
+
+        val bytes = response.body()
+        check(bytes.isNotEmpty()) {
+            "Image was empty: $url"
+        }
+
+        val hash = hash(bytes)
+        Files.createDirectories(destination.parent)
+
+        val temporary =
+            Files.createTempFile(
+                destination.parent,
+                destination.fileName.toString(),
+                ".part"
+            )
+
+        try {
+            Files.write(temporary, bytes)
+            Files.move(
+                temporary,
+                destination,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+            )
+        } finally {
+            Files.deleteIfExists(temporary)
+        }
+
+        return hash to bytes.size.toLong()
+    }
+
+    fun hash(bytes: ByteArray): Long {
+        val decoded =
+            ImageIO.read(ByteArrayInputStream(bytes))
+                ?: error("Unsupported recognition image")
+
+        return differenceHash(normalizeCard(decoded))
+    }
+
+    private fun normalizeCard(source: BufferedImage): BufferedImage {
+        val targetRatio = 63.0 / 88.0
+        val sourceRatio = source.width.toDouble() / source.height.toDouble()
+
+        val cropWidth: Int
+        val cropHeight: Int
+
+        if (sourceRatio > targetRatio) {
+            cropHeight = source.height
+            cropWidth = (cropHeight * targetRatio).toInt()
+        } else {
+            cropWidth = source.width
+            cropHeight = (cropWidth / targetRatio).toInt()
+        }
+
+        val left = ((source.width - cropWidth) / 2).coerceAtLeast(0)
+        val top = ((source.height - cropHeight) / 2).coerceAtLeast(0)
+
+        return source.getSubimage(
+            left,
+            top,
+            cropWidth.coerceAtMost(source.width - left),
+            cropHeight.coerceAtMost(source.height - top)
+        )
+    }
+
+    private fun differenceHash(source: BufferedImage): Long {
+        val resized =
+            BufferedImage(
+                9,
+                8,
+                BufferedImage.TYPE_BYTE_GRAY
+            )
+
+        val graphics: Graphics2D = resized.createGraphics()
+
+        try {
+            graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR
+            )
+            graphics.drawImage(source, 0, 0, 9, 8, null)
+        } finally {
+            graphics.dispose()
+        }
+
+        var value = 0L
+        var bit = 0
+
+        for (y in 0 until 8) {
+            for (x in 0 until 8) {
+                val left = resized.raster.getSample(x, y, 0)
+                val right = resized.raster.getSample(x + 1, y, 0)
+
+                if (left > right) {
+                    value = value or (1L shl bit)
+                }
+
+                bit += 1
+            }
+        }
+
+        return value
+    }
+}
