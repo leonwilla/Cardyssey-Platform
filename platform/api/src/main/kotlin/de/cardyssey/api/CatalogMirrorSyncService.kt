@@ -35,12 +35,48 @@ class CatalogMirrorSyncService(
     }
 
     suspend fun runAllLanguages() {
-        for (language in languages.distinct()) {
-            runLanguage(language)
+        val activeLanguages = languages.distinct()
+
+        /*
+         * Index every language first. A very large German or English image
+         * import must not prevent newer Japanese/Korean/Chinese sets from
+         * becoming searchable for hours or days.
+         */
+        for (language in activeLanguages) {
+            indexLanguage(language)
+        }
+
+        /*
+         * Materialise one batch per language in a round-robin. The process is
+         * restart-safe: completed rows and files are never downloaded again.
+         */
+        while (true) {
+            var progressed = false
+
+            for (language in activeLanguages) {
+                mirror.updateStatus(language, "running", "details")
+                progressed = syncDetailsBatch(language) || progressed
+
+                if (imagesEnabled) {
+                    mirror.updateStatus(language, "running", "images")
+                    progressed = syncImagesBatch(language) || progressed
+                }
+            }
+
+            if (!progressed) break
+        }
+
+        activeLanguages.forEach { language ->
+            mirror.updateStatus(
+                language = language,
+                status = "ready",
+                phase = "waiting",
+                nextSyncHours = syncIntervalHours
+            )
         }
     }
 
-    private suspend fun runLanguage(language: String) {
+    private suspend fun indexLanguage(language: String) {
         mirror.updateStatus(
             language = language,
             status = "running",
@@ -69,31 +105,6 @@ class CatalogMirrorSyncService(
                 )
             }
 
-            mirror.updateStatus(
-                language = language,
-                status = "running",
-                phase = "details"
-            )
-
-            syncMissingDetails(language)
-
-            if (imagesEnabled) {
-                mirror.updateStatus(
-                    language = language,
-                    status = "running",
-                    phase = "images"
-                )
-
-                syncMissingImages(language)
-            }
-
-            mirror.updateStatus(
-                language = language,
-                status = "ready",
-                phase = "waiting",
-                nextSyncHours =
-                    syncIntervalHours
-            )
         }.onFailure { error ->
             mirror.updateStatus(
                 language = language,
@@ -108,119 +119,109 @@ class CatalogMirrorSyncService(
         }
     }
 
-    private suspend fun syncMissingDetails(language: String) {
-        while (true) {
-            val pending =
-                mirror.pendingDetails(
-                    language = language,
-                    limit = detailBatchSize
+    private suspend fun syncDetailsBatch(language: String): Boolean {
+        val pending =
+            mirror.pendingDetails(
+                language = language,
+                limit = detailBatchSize
+            )
+
+        if (pending.isEmpty()) return false
+
+        var completed = 0
+
+        for (item in pending) {
+            val details =
+                runCatching {
+                    catalog.details(
+                        cardId = item.cardId,
+                        language = language,
+                        forceRemote = true
+                    )
+                }
+                    .getOrNull()
+                    ?: continue
+
+            val card =
+                CatalogCardSearchResult(
+                    id = details.id,
+                    localId = details.localId,
+                    name = details.name,
+                    setId = details.setId,
+                    setName = details.setName,
+                    imageBase = details.imageBase
                 )
 
-            if (pending.isEmpty()) {
-                return
-            }
+            mirror.upsertCard(
+                language = language,
+                card = card,
+                rarity = details.rarity,
+                variantsJson =
+                    json.encodeToString(
+                        details.variants
+                    ),
+                rawPayload =
+                    json.encodeToString(details),
+                detailsComplete = true
+            )
 
-            var completed = 0
+            completed += 1
 
-            for (item in pending) {
-                val details =
-                    runCatching {
-                        catalog.details(
-                            cardId = item.cardId,
-                            language = language
+            /* Respect the upstream service while the initial import runs. */
+            delay(100L)
+        }
+
+        return completed > 0
+    }
+
+    private suspend fun syncImagesBatch(language: String): Boolean {
+        val pending =
+            mirror.pendingImages(
+                language = language,
+                limit = imageBatchSize
+            )
+
+        if (pending.isEmpty()) return false
+
+        var completed = 0
+
+        for (item in pending) {
+            val source =
+                item.sourceUrl
+                    ?.takeIf(String::isNotBlank)
+                    ?: continue
+
+            val destination =
+                mirror.imagePath(
+                    language = language,
+                    cardId = item.cardId
+                )
+
+            val downloaded =
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        images.downloadAndHash(
+                            imageBase = source,
+                            destination = destination
                         )
                     }
-                        .getOrNull()
-                        ?: continue
+                }
+                    .getOrNull()
+                    ?: continue
 
-                val card =
-                    CatalogCardSearchResult(
-                        id = details.id,
-                        localId = details.localId,
-                        name = details.name,
-                        setId = details.setId,
-                        setName = details.setName,
-                        imageBase = details.imageBase
-                    )
+            mirror.completeImage(
+                language = language,
+                cardId = item.cardId,
+                path = destination,
+                hash = downloaded.first,
+                byteCount = downloaded.second
+            )
 
-                mirror.upsertCard(
-                    language = language,
-                    card = card,
-                    rarity = details.rarity,
-                    variantsJson =
-                        json.encodeToString(
-                            details.variants
-                        ),
-                    rawPayload =
-                        json.encodeToString(details),
-                    detailsComplete = true
-                )
-
-                completed += 1
-
-                /* Respect the upstream service while the initial import runs. */
-                delay(35L)
-            }
-
-            if (completed == 0) {
-                return
-            }
+            completed += 1
+            delay(50L)
         }
+
+        return completed > 0
     }
 
-    private suspend fun syncMissingImages(language: String) {
-        while (true) {
-            val pending =
-                mirror.pendingImages(
-                    language = language,
-                    limit = imageBatchSize
-                )
-
-            if (pending.isEmpty()) {
-                return
-            }
-
-            var completed = 0
-
-            for (item in pending) {
-                val source =
-                    item.sourceUrl
-                        ?.takeIf(String::isNotBlank)
-                        ?: continue
-
-                val destination =
-                    mirror.imagePath(
-                        language = language,
-                        cardId = item.cardId
-                    )
-
-                val downloaded =
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            images.downloadAndHash(
-                                imageBase = source,
-                                destination = destination
-                            )
-                        }
-                    }
-                        .getOrNull()
-                        ?: continue
-
-                mirror.completeImage(
-                    language = language,
-                    cardId = item.cardId,
-                    path = destination,
-                    hash = downloaded.first,
-                    byteCount = downloaded.second
-                )
-
-                completed += 1
-                delay(20L)
-            }
-
-            if (completed == 0) {
-                return
-            }
-        }
-    }
 }
