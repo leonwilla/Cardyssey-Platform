@@ -172,7 +172,7 @@ fun Application.module() {
                     cardCatalog.validLanguage(it)
             }
             ?.distinct()
-            ?.takeIf(List<String>::isNotEmpty)
+            ?.takeIf { it.isNotEmpty() }
             ?: listOf(
                 "de",
                 "en",
