@@ -717,13 +717,27 @@ class CardCatalogService(
                                 ?.officialCount
                             ?: 0,
                     totalCount =
-                        set.totalCount
-                            .takeIf {
-                                it > 0
+                        (
+                            set.totalCount
+                                .takeIf {
+                                    it > 0
+                                }
+                                ?: fallback
+                                    ?.totalCount
+                                ?: 0
+                        ).let { count ->
+                            if (
+                                language == "de" &&
+                                set.id == "mep"
+                            ) {
+                                maxOf(
+                                    count,
+                                    89
+                                )
+                            } else {
+                                count
                             }
-                            ?: fallback
-                                ?.totalCount
-                            ?: 0
+                        }
                 )
             }
 
