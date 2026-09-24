@@ -4,6 +4,7 @@ import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -25,10 +26,17 @@ class CatalogImageHasher {
         imageBase: String,
         destination: Path
     ): Pair<Long, Long> {
+        val path =
+            imageBase.substringBefore("?").lowercase()
+
         val url =
-            when {
-                imageBase.endsWith(".jpg") -> imageBase
-                else -> imageBase.removeSuffix("/") + "/low.jpg"
+            if (
+                listOf(".jpg", ".jpeg", ".png")
+                    .any(path::endsWith)
+            ) {
+                imageBase
+            } else {
+                imageBase.removeSuffix("/") + "/low.jpg"
             }
 
         val request =
@@ -55,7 +63,34 @@ class CatalogImageHasher {
             "Image was empty: $url"
         }
 
-        val hash = hash(bytes)
+        val decoded =
+            ImageIO.read(ByteArrayInputStream(bytes))
+                ?: error("Unsupported catalog image: $url")
+
+        val rgb =
+            BufferedImage(
+                decoded.width,
+                decoded.height,
+                BufferedImage.TYPE_INT_RGB
+            )
+
+        rgb.createGraphics().use { graphics ->
+            graphics.drawImage(decoded, 0, 0, null)
+        }
+
+        val encoded =
+            ByteArrayOutputStream().use { output ->
+                check(ImageIO.write(rgb, "jpg", output)) {
+                    "JPEG encoder unavailable"
+                }
+                output.toByteArray()
+            }
+
+        val hash =
+            differenceHash(
+                normalizeCard(decoded)
+            )
+
         Files.createDirectories(destination.parent)
 
         val temporary =
@@ -66,7 +101,7 @@ class CatalogImageHasher {
             )
 
         try {
-            Files.write(temporary, bytes)
+            Files.write(temporary, encoded)
             Files.move(
                 temporary,
                 destination,
@@ -77,7 +112,7 @@ class CatalogImageHasher {
             Files.deleteIfExists(temporary)
         }
 
-        return hash to bytes.size.toLong()
+        return hash to encoded.size.toLong()
     }
 
     fun hash(bytes: ByteArray): Long {
