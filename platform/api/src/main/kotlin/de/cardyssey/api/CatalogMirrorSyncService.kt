@@ -24,13 +24,29 @@ class CatalogMirrorSyncService(
 
     suspend fun runForever() {
         while (true) {
-            runAllLanguages()
+            val completed =
+                runCatching {
+                    runAllLanguages()
+                }
+                    .onFailure { error ->
+                        println(
+                            "Catalog mirror cycle failed: " +
+                                (error.message
+                                    ?: error::class.java.simpleName)
+                        )
+                    }
+                    .isSuccess
 
-            delay(
-                syncIntervalHours
-                    .coerceAtLeast(1L) *
-                    60L * 60L * 1000L
-            )
+            val waitMs =
+                if (completed) {
+                    syncIntervalHours
+                        .coerceAtLeast(1L) *
+                        60L * 60L * 1000L
+                } else {
+                    15L * 60L * 1000L
+                }
+
+            delay(waitMs)
         }
     }
 
