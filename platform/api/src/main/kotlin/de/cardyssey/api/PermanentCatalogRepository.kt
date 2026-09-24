@@ -10,7 +10,7 @@ data class MirrorImageWork(
     val setId: String,
     val localId: String,
     val name: String,
-    val sourceUrl: String
+    val sourceUrl: String?
 )
 
 data class CatalogVisualMatch(
@@ -120,6 +120,10 @@ class PermanentCatalogRepository(
                     END,
                     raw_payload = EXCLUDED.raw_payload,
                     details_complete = catalog_cards_mirror.details_complete OR EXCLUDED.details_complete,
+                    source_updated_at = CASE
+                        WHEN EXCLUDED.details_complete THEN NOW()
+                        ELSE catalog_cards_mirror.source_updated_at
+                    END,
                     last_seen_at = NOW()
                 """.trimIndent()
             ).use { statement ->
@@ -139,14 +143,35 @@ class PermanentCatalogRepository(
     }
 
     fun pendingImages(language: String, limit: Int): List<MirrorImageWork> =
+        pendingWork(
+            language = language,
+            predicate =
+                "image_complete = FALSE " +
+                    "AND image_source_url IS NOT NULL",
+            limit = limit
+        )
+
+    fun pendingDetails(language: String, limit: Int): List<MirrorImageWork> =
+        pendingWork(
+            language = language,
+            predicate =
+                "details_complete = FALSE OR " +
+                    "source_updated_at < NOW() - INTERVAL '30 days'",
+            limit = limit
+        )
+
+    private fun pendingWork(
+        language: String,
+        predicate: String,
+        limit: Int
+    ): List<MirrorImageWork> =
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
                 SELECT language_code, card_id, set_id, local_id, name, image_source_url
                 FROM catalog_cards_mirror
                 WHERE language_code = ?
-                  AND image_complete = FALSE
-                  AND image_source_url IS NOT NULL
+                  AND $predicate
                 ORDER BY first_seen_at, card_id
                 LIMIT ?
                 """.trimIndent()
