@@ -1,6 +1,5 @@
 package de.cardyssey.api
 
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
@@ -59,10 +58,7 @@ fun Route.cardCatalogRoutes(
             "public, max-age=31536000, immutable"
         )
         call.respondFile(
-            file = image.toFile(),
-            configure = {
-                contentType(ContentType.Image.JPEG)
-            }
+            image.toFile()
         )
     }
 
