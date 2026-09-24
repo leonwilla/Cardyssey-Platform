@@ -155,6 +155,7 @@ fun Route.cardRecognitionRoutes(
                                     language = language,
                                     hash = hash,
                                     number = number,
+                                    setCode = request.setCode,
                                     limit = 20
                                 )
 
@@ -173,6 +174,7 @@ fun Route.cardRecognitionRoutes(
                                         language = language,
                                         hash = hash,
                                         number = null,
+                                        setCode = null,
                                         limit = 20
                                     )
                                 }
