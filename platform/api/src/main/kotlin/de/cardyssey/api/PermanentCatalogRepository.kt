@@ -322,7 +322,10 @@ class PermanentCatalogRepository(
                     ?, ?, ?,
                     CASE WHEN ? = 'running' THEN NOW() ELSE NULL END,
                     CASE WHEN ? = 'ready' THEN NOW() ELSE NULL END,
-                    CASE WHEN ? IS NULL THEN NULL ELSE NOW() + (? * INTERVAL '1 hour') END,
+                    CASE
+                        WHEN CAST(? AS BIGINT) IS NULL THEN NULL
+                        ELSE NOW() + (CAST(? AS BIGINT) * INTERVAL '1 hour')
+                    END,
                     (SELECT COUNT(*) FROM catalog_sets_mirror WHERE language_code = ?),
                     (SELECT COUNT(*) FROM catalog_cards_mirror WHERE language_code = ?),
                     (SELECT COUNT(*) FROM catalog_cards_mirror WHERE language_code = ? AND image_complete),
