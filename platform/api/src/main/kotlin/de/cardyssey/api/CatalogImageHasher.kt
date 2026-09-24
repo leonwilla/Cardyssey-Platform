@@ -74,8 +74,13 @@ class CatalogImageHasher {
                 BufferedImage.TYPE_INT_RGB
             )
 
-        rgb.createGraphics().use { graphics ->
+        val graphics =
+            rgb.createGraphics()
+
+        try {
             graphics.drawImage(decoded, 0, 0, null)
+        } finally {
+            graphics.dispose()
         }
 
         val encoded =
