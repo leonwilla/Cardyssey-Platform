@@ -21,7 +21,7 @@ RUN useradd \
     cardyssey
 
 
-RUN mkdir -p /data/avatars \
+RUN mkdir -p /data/avatars /data/catalog \
     && chown -R cardyssey:cardyssey /data
 
 COPY --from=build \
