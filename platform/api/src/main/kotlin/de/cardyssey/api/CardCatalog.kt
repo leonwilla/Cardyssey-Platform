@@ -1015,13 +1015,15 @@ class CardCatalogService(
         val cards =
             loadCards(
                 language = language,
-                forceRemote = true
+                forceRemote = true,
+                allowEnglishFallback = false
             )
 
         val setNames =
             loadSets(
                 language = language,
-                forceRemote = true
+                forceRemote = true,
+                allowEnglishFallback = false
             )
 
         val basicSets =
@@ -1075,7 +1077,8 @@ class CardCatalogService(
 
     private suspend fun loadCards(
         language: String,
-        forceRemote: Boolean = false
+        forceRemote: Boolean = false,
+        allowEnglishFallback: Boolean = true
     ): List<BriefCard> {
 
         val now =
@@ -1138,11 +1141,13 @@ class CardCatalogService(
         val result =
             if (
                 loaded.isEmpty() &&
-                language != "en"
+                language != "en" &&
+                allowEnglishFallback
             ) {
                 loadCards(
                     language = "en",
-                    forceRemote = forceRemote
+                    forceRemote = forceRemote,
+                    allowEnglishFallback = true
                 )
             } else {
                 loaded
@@ -1180,7 +1185,8 @@ class CardCatalogService(
 
     private suspend fun loadSets(
         language: String,
-        forceRemote: Boolean = false
+        forceRemote: Boolean = false,
+        allowEnglishFallback: Boolean = true
     ): Map<String, String> {
 
         val now =
@@ -1227,11 +1233,13 @@ class CardCatalogService(
         val result =
             if (
                 loaded.isEmpty() &&
-                language != "en"
+                language != "en" &&
+                allowEnglishFallback
             ) {
                 loadSets(
                     language = "en",
-                    forceRemote = forceRemote
+                    forceRemote = forceRemote,
+                    allowEnglishFallback = true
                 )
             } else {
                 loaded
