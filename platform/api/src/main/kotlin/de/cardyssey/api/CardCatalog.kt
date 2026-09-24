@@ -215,7 +215,12 @@ class CardCatalogService(
                 "ja",
                 "ko",
                 "zh-tw",
-                "zh-cn"
+                "zh-cn",
+                "id",
+                "th",
+                "nl",
+                "pl",
+                "ru"
             )
     }
 
