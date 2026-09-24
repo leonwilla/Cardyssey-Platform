@@ -432,13 +432,15 @@ class CardCatalogService(
 
     suspend fun details(
         cardId: String,
-        language: String
+        language: String,
+        forceRemote: Boolean = false
     ): CatalogCardDetails? {
 
         val requested =
             loadCardObject(
                 language,
-                cardId
+                cardId,
+                forceRemote
             )
 
         val english =
@@ -453,7 +455,8 @@ class CardCatalogService(
             ) {
                 loadCardObject(
                     "en",
-                    cardId
+                    cardId,
+                    forceRemote
                 )
             } else {
                 null
@@ -1247,11 +1250,13 @@ class CardCatalogService(
 
     private suspend fun loadCardObject(
         language: String,
-        cardId: String
+        cardId: String,
+        forceRemote: Boolean = false
     ): JsonObject? =
         runCatching {
             fetchObject(
-                "$BASE/$language/cards/$cardId"
+                "$BASE/$language/cards/$cardId",
+                forceRemote = forceRemote
             )
         }.getOrNull()
 
