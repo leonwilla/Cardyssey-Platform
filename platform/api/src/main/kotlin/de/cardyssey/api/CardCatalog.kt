@@ -95,6 +95,11 @@ data class CatalogSetDetails(
     val cards: List<CatalogSetCard>
 )
 
+data class CatalogSourceSnapshot(
+    val sets: List<CatalogSetSummary>,
+    val cards: List<CatalogCardSearchResult>
+)
+
 private data class BriefCard(
     val id: String,
     val localId: String,
@@ -988,8 +993,81 @@ class CardCatalogService(
     }
 
 
-    private suspend fun loadCards(
+    suspend fun refreshSourceIndex(
         language: String
+    ): CatalogSourceSnapshot {
+        require(validLanguage(language)) {
+            "Unsupported catalog language: $language"
+        }
+
+        cardsCache.remove(language)
+        setsCache.remove(language)
+        setSummaryCache.remove(language)
+
+        val cards =
+            loadCards(
+                language = language,
+                forceRemote = true
+            )
+
+        val setNames =
+            loadSets(
+                language = language,
+                forceRemote = true
+            )
+
+        val basicSets =
+            setNames.map { (id, name) ->
+                CatalogSetSummary(
+                    id = id,
+                    name = name
+                )
+            }
+
+        val detailedSets =
+            runCatching {
+                sets(language)
+            }
+                .getOrDefault(basicSets)
+                .ifEmpty {
+                    basicSets
+                }
+
+        val namesById =
+            detailedSets.associateBy {
+                it.id
+            }
+
+        val cardResults =
+            cards.map { card ->
+                val setId =
+                    card.id.substringBeforeLast(
+                        "-",
+                        "unknown"
+                    )
+
+                CatalogCardSearchResult(
+                    id = card.id,
+                    localId = card.localId,
+                    name = card.name,
+                    setId = setId,
+                    setName =
+                        namesById[setId]
+                            ?.name
+                            ?: setNames[setId],
+                    imageBase = card.imageBase
+                )
+            }
+
+        return CatalogSourceSnapshot(
+            sets = detailedSets,
+            cards = cardResults
+        )
+    }
+
+    private suspend fun loadCards(
+        language: String,
+        forceRemote: Boolean = false
     ): List<BriefCard> {
 
         val now =
@@ -1008,7 +1086,8 @@ class CardCatalogService(
         val loaded =
             runCatching {
                 fetchArray(
-                    "$BASE/$language/cards"
+                    "$BASE/$language/cards",
+                    forceRemote = forceRemote
                 )
             }
                 .getOrNull()
@@ -1053,7 +1132,10 @@ class CardCatalogService(
                 loaded.isEmpty() &&
                 language != "en"
             ) {
-                loadCards("en")
+                loadCards(
+                    language = "en",
+                    forceRemote = forceRemote
+                )
             } else {
                 loaded
             }
@@ -1089,7 +1171,8 @@ class CardCatalogService(
     }
 
     private suspend fun loadSets(
-        language: String
+        language: String,
+        forceRemote: Boolean = false
     ): Map<String, String> {
 
         val now =
@@ -1108,7 +1191,8 @@ class CardCatalogService(
         val loaded =
             runCatching {
                 fetchArray(
-                    "$BASE/$language/sets"
+                    "$BASE/$language/sets",
+                    forceRemote = forceRemote
                 )
             }
                 .getOrNull()
@@ -1137,7 +1221,10 @@ class CardCatalogService(
                 loaded.isEmpty() &&
                 language != "en"
             ) {
-                loadSets("en")
+                loadSets(
+                    language = "en",
+                    forceRemote = forceRemote
+                )
             } else {
                 loaded
             }
@@ -1601,23 +1688,43 @@ class CardCatalogService(
     }
 
     private suspend fun fetchArray(
-        url: String
+        url: String,
+        forceRemote: Boolean = false
     ): JsonArray =
-        fetchJson(url)
+        fetchJson(
+            url = url,
+            forceRemote = forceRemote
+        )
             .jsonArray
 
     private suspend fun fetchObject(
-        url: String
+        url: String,
+        forceRemote: Boolean = false
     ): JsonObject =
-        fetchJson(url)
+        fetchJson(
+            url = url,
+            forceRemote = forceRemote
+        )
             .jsonObject
 
     private suspend fun fetchJson(
-        url: String
+        url: String,
+        forceRemote: Boolean = false
     ): JsonElement =
         withContext(
             Dispatchers.IO
         ) {
+            if (!forceRemote) {
+                persistentCache
+                    .read(url)
+                    ?.let { cached ->
+                        return@withContext json
+                            .parseToJsonElement(
+                                cached
+                            )
+                    }
+            }
+
             try {
                 val request =
                     HttpRequest
