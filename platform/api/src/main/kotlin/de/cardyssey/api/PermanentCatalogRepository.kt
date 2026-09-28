@@ -118,20 +118,33 @@ class PermanentCatalogRepository(
                 INSERT INTO catalog_cards_mirror (
                     language_code, card_id, set_id, local_id, name,
                     rarity, image_source_url, variants, raw_payload,
-                    details_complete, last_seen_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, NOW())
+                    details_complete, source_updated_at, last_seen_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, NOW(), NOW())
                 ON CONFLICT (language_code, card_id)
                 DO UPDATE SET
                     set_id = EXCLUDED.set_id,
                     local_id = EXCLUDED.local_id,
                     name = EXCLUDED.name,
                     rarity = COALESCE(EXCLUDED.rarity, catalog_cards_mirror.rarity),
+                    image_complete = CASE
+                        WHEN EXCLUDED.image_source_url IS NOT NULL
+                          AND EXCLUDED.image_source_url IS DISTINCT FROM catalog_cards_mirror.image_source_url
+                        THEN FALSE ELSE catalog_cards_mirror.image_complete
+                    END,
+                    image_dhash = CASE
+                        WHEN EXCLUDED.image_source_url IS NOT NULL
+                          AND EXCLUDED.image_source_url IS DISTINCT FROM catalog_cards_mirror.image_source_url
+                        THEN NULL ELSE catalog_cards_mirror.image_dhash
+                    END,
                     image_source_url = COALESCE(EXCLUDED.image_source_url, catalog_cards_mirror.image_source_url),
                     variants = CASE
                         WHEN EXCLUDED.details_complete THEN EXCLUDED.variants
                         ELSE catalog_cards_mirror.variants
                     END,
-                    raw_payload = EXCLUDED.raw_payload,
+                    raw_payload = CASE
+                        WHEN EXCLUDED.details_complete OR NOT catalog_cards_mirror.details_complete
+                        THEN EXCLUDED.raw_payload ELSE catalog_cards_mirror.raw_payload
+                    END,
                     details_complete = catalog_cards_mirror.details_complete OR EXCLUDED.details_complete,
                     source_updated_at = CASE
                         WHEN EXCLUDED.details_complete THEN NOW()
@@ -155,28 +168,32 @@ class PermanentCatalogRepository(
         }
     }
 
-    fun pendingImages(language: String, limit: Int): List<MirrorImageWork> =
+    fun pendingImages(language: String, limit: Int, afterCardId: String? = null): List<MirrorImageWork> =
         pendingWork(
             language = language,
             predicate =
                 "image_complete = FALSE " +
                     "AND image_source_url IS NOT NULL",
-            limit = limit
+            limit = limit,
+            afterCardId = afterCardId
         )
 
-    fun pendingDetails(language: String, limit: Int): List<MirrorImageWork> =
+    fun pendingDetails(language: String, limit: Int, afterCardId: String? = null): List<MirrorImageWork> =
         pendingWork(
             language = language,
             predicate =
                 "details_complete = FALSE OR " +
+                    "source_updated_at IS NULL OR " +
                     "source_updated_at < NOW() - INTERVAL '30 days'",
-            limit = limit
+            limit = limit,
+            afterCardId = afterCardId
         )
 
     private fun pendingWork(
         language: String,
         predicate: String,
-        limit: Int
+        limit: Int,
+        afterCardId: String?
     ): List<MirrorImageWork> =
         dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -184,13 +201,16 @@ class PermanentCatalogRepository(
                 SELECT language_code, card_id, set_id, local_id, name, image_source_url
                 FROM catalog_cards_mirror
                 WHERE language_code = ?
-                  AND $predicate
-                ORDER BY first_seen_at, card_id
+                  AND ($predicate)
+                  AND (CAST(? AS TEXT) IS NULL OR card_id > ?)
+                ORDER BY card_id
                 LIMIT ?
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, language)
-                statement.setInt(2, limit.coerceIn(1, 5000))
+                statement.setString(2, afterCardId)
+                statement.setString(3, afterCardId)
+                statement.setInt(4, limit.coerceIn(1, 5000))
                 statement.executeQuery().use { result ->
                     buildList {
                         while (result.next()) {

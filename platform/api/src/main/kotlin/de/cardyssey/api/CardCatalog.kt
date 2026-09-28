@@ -1,5 +1,6 @@
 package de.cardyssey.api
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -1011,6 +1012,7 @@ class CardCatalogService(
         cardsCache.remove(language)
         setsCache.remove(language)
         setSummaryCache.remove(language)
+        setDetailsCache.keys.removeIf { it.startsWith("$language:") }
 
         val cards =
             loadCards(
@@ -1088,7 +1090,7 @@ class CardCatalogService(
             language
         ]
             ?.takeIf {
-                it.expiresAtMs > now
+                !forceRemote && it.expiresAtMs > now
             }
             ?.let {
                 return it.value
@@ -1101,6 +1103,9 @@ class CardCatalogService(
                     forceRemote = forceRemote
                 )
             }
+                .onFailure {
+                    if (it is CancellationException || forceRemote) throw it
+                }
                 .getOrNull()
                 ?.mapNotNull {
                     element ->
@@ -1196,7 +1201,7 @@ class CardCatalogService(
             language
         ]
             ?.takeIf {
-                it.expiresAtMs > now
+                !forceRemote && it.expiresAtMs > now
             }
             ?.let {
                 return it.value
@@ -1209,6 +1214,9 @@ class CardCatalogService(
                     forceRemote = forceRemote
                 )
             }
+                .onFailure {
+                    if (it is CancellationException || forceRemote) throw it
+                }
                 .getOrNull()
                 ?.mapNotNull {
                     element ->
@@ -1734,7 +1742,7 @@ class CardCatalogService(
         ) {
             if (!forceRemote) {
                 persistentCache
-                    .read(url)
+                    .read(url, maxAgeHours = 6L)
                     ?.let { cached ->
                         return@withContext json
                             .parseToJsonElement(
@@ -1790,6 +1798,7 @@ class CardCatalogService(
                 )
 
             } catch (cause: Exception) {
+                if (cause is CancellationException || forceRemote) throw cause
 
                 val cached =
                     persistentCache.read(

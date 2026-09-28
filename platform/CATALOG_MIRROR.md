@@ -51,6 +51,37 @@ Metadata is permanent. The 24-hour interval only checks for new/corrected
 source data. It does not expire or delete stored cards. Prices are refreshed by
 the existing pricing system and are not copied into this permanent catalog.
 
+## Coverage and retries
+
+`ready / waiting` means the sync cycle ended without recorded request failures;
+it does **not** mean every printed card or every source image exists locally.
+`partial / waiting` retains the last failed source/detail/image operation.
+Failed items remain pending and are retried in the next cycle. Keyset cursors
+allow later items to proceed even when an entire earlier batch fails.
+
+The detail work query keeps stale records inside their requested language.
+Wrong-language detail fallbacks are not written as completed localized records.
+Index refreshes preserve previously stored detailed payloads. A changed image
+URL invalidates the existing fingerprint so the replacement is downloaded and
+hashed. Unchanged images are retained; edits at the same upstream URL are not
+detected by this mechanism.
+
+Normal catalog reads refresh the persistent response cache after six hours;
+on upstream failure an older response remains available. Explicit mirror source
+refreshes do not silently treat an old cached response as a successful refresh.
+
+Run the read-only coverage audit from `~/cardshop/platform` after updating:
+
+```bash
+docker compose exec -T db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < ../scripts/catalog-coverage.sql
+```
+
+The audit separates missing source URLs from pending downloads and includes
+concrete Asian card/set IDs for validating supplemental-source mappings.
+Additional official Asian source adapters are not included in this patch.
+No completeness claim or all-card price backfill is made. Prices can be absent
+when the provider does not cover the exact language and physical variant.
+
 ## Scanner path
 
 Android extracts OCR plus a compact card crop. It sends that crop only to the

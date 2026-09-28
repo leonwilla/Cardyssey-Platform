@@ -1,5 +1,6 @@
 package de.cardyssey.api
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -22,6 +23,15 @@ class CatalogMirrorSyncService(
             ignoreUnknownKeys = true
         }
 
+    private val detailCursors = mutableMapOf<String, String>()
+    private val imageCursors = mutableMapOf<String, String>()
+    private val failures = mutableMapOf<String, String>()
+
+    private fun recordFailure(language: String, error: Throwable) {
+        if (error is CancellationException) throw error
+        failures[language] = (error.message ?: error::class.java.simpleName).take(1000)
+    }
+
     suspend fun runForever() {
         while (true) {
             val completed =
@@ -29,6 +39,7 @@ class CatalogMirrorSyncService(
                     runAllLanguages()
                 }
                     .onFailure { error ->
+                        if (error is CancellationException) throw error
                         println(
                             "Catalog mirror cycle failed: " +
                                 (error.message
@@ -51,6 +62,9 @@ class CatalogMirrorSyncService(
     }
 
     suspend fun runAllLanguages() {
+        detailCursors.clear()
+        imageCursors.clear()
+        failures.clear()
         val activeLanguages = languages.distinct()
 
         /*
@@ -64,7 +78,8 @@ class CatalogMirrorSyncService(
 
         /*
          * Materialise one batch per language in a round-robin. The process is
-         * restart-safe: completed rows and files are never downloaded again.
+         * restart-safe: unchanged completed files are retained. Changed image
+         * URLs are invalidated by the repository and downloaded again.
          */
         while (true) {
             var progressed = false
@@ -85,8 +100,9 @@ class CatalogMirrorSyncService(
         activeLanguages.forEach { language ->
             mirror.updateStatus(
                 language = language,
-                status = "ready",
+                status = if (language in failures) "partial" else "ready",
                 phase = "waiting",
+                error = failures[language],
                 nextSyncHours = syncIntervalHours
             )
         }
@@ -122,6 +138,7 @@ class CatalogMirrorSyncService(
             }
 
         }.onFailure { error ->
+            recordFailure(language, error)
             mirror.updateStatus(
                 language = language,
                 status = "error",
@@ -139,14 +156,14 @@ class CatalogMirrorSyncService(
         val pending =
             mirror.pendingDetails(
                 language = language,
-                limit = detailBatchSize
+                limit = detailBatchSize,
+                afterCardId = detailCursors[language]
             )
 
         if (pending.isEmpty()) return false
 
-        var completed = 0
-
         for (item in pending) {
+            detailCursors[language] = item.cardId
             val details =
                 runCatching {
                     catalog.details(
@@ -155,8 +172,13 @@ class CatalogMirrorSyncService(
                         forceRemote = true
                     )
                 }
+                    .onFailure { recordFailure(language, it) }
                     .getOrNull()
-                    ?: continue
+            if (details == null || details.languageCode != language) {
+                failures[language] = "Missing or wrong-language details: ${item.cardId}/$language"
+                delay(100L)
+                continue
+            }
 
             val card =
                 CatalogCardSearchResult(
@@ -181,27 +203,25 @@ class CatalogMirrorSyncService(
                 detailsComplete = true
             )
 
-            completed += 1
-
             /* Respect the upstream service while the initial import runs. */
             delay(100L)
         }
 
-        return completed > 0
+        return true
     }
 
     private suspend fun syncImagesBatch(language: String): Boolean {
         val pending =
             mirror.pendingImages(
                 language = language,
-                limit = imageBatchSize
+                limit = imageBatchSize,
+                afterCardId = imageCursors[language]
             )
 
         if (pending.isEmpty()) return false
 
-        var completed = 0
-
         for (item in pending) {
+            imageCursors[language] = item.cardId
             val source =
                 item.sourceUrl
                     ?.takeIf(String::isNotBlank)
@@ -222,8 +242,12 @@ class CatalogMirrorSyncService(
                         )
                     }
                 }
+                    .onFailure { recordFailure(language, it) }
                     .getOrNull()
-                    ?: continue
+            if (downloaded == null) {
+                delay(50L)
+                continue
+            }
 
             mirror.completeImage(
                 language = language,
@@ -233,11 +257,10 @@ class CatalogMirrorSyncService(
                 byteCount = downloaded.second
             )
 
-            completed += 1
             delay(50L)
         }
 
-        return completed > 0
+        return true
     }
 
 }
