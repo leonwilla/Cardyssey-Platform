@@ -1,0 +1,55 @@
+name: Supplemental Catalog Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/catalog-supplemental-sync.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_api:
+        description: Build and deploy the catalog API before importing
+        type: boolean
+        default: false
+  schedule:
+    - cron: '10 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplemental-catalog-production
+  cancel-in-progress: false
+
+jobs:
+  catalog:
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check source parsers
+        run: python3 scripts/test-supplemental-catalog.py
+      - name: Deploy catalog API
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy_api)
+        shell: bash
+        run: |
+          set -euo pipefail
+          env_file="$HOME/cardshop/platform/.env"
+          test -f "$env_file"
+          project="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' cardyssey-api)"
+          test -n "$project"
+          docker compose --project-name "$project" --env-file "$env_file" -f platform/compose.yml up -d --build --no-deps api
+          for attempt in $(seq 1 30); do
+            if docker exec -i cardyssey-db sh -lc 'exec psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1 FROM catalog_supplemental_cards LIMIT 0"' >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Catalog migration V29 is not ready."
+          exit 1
+      - name: Import official-language cards and image sources
+        run: python3 scripts/sync-supplemental-catalog.py --apply --max-seconds 15600
+      - name: Coverage and remaining gaps
+        if: always()
+        run: |
+          docker exec -i cardyssey-db sh -lc 'exec psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/catalog-coverage.sql

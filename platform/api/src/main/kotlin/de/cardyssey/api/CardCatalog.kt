@@ -195,7 +195,8 @@ private fun nidorinaPromoDetails(
     }
 
 class CardCatalogService(
-    private val persistentCache: CatalogCacheRepository
+    private val persistentCache: CatalogCacheRepository,
+    private val supplemental: SupplementalCatalogRepository? = null
 ) {
 
     companion object {
@@ -300,7 +301,61 @@ class CardCatalogService(
             .awaitAll()
     }
 
-    suspend fun search(
+    suspend fun search(query: String, number: String?, language: String, limit: Int): List<CatalogCardSearchResult> {
+        val extra = supplemental?.cards(language).orEmpty()
+        if (extra.isEmpty()) return searchPrimary(query, number, language, limit)
+        val candidates = extra.filter { card ->
+            (number.isNullOrBlank() || normalizeNumber(card.localId) == normalizeNumber(number)) &&
+                (query.isBlank() || scoreName(card.name, query.trim().lowercase()) < 100)
+        }.map { card ->
+            CatalogCardSearchResult(card.id, card.localId, card.name, card.setId, card.setName, card.imageBase)
+        }
+        val primary = searchPrimary(query, number, language, limit)
+        if (query.isBlank() && number.isNullOrBlank()) return emptyList()
+        val images = extra.associateBy { it.id }
+        return (primary.map { card ->
+            val supplement = images[card.id]
+            if (supplement?.imageBase == null) card else card.copy(imageBase = supplement.imageBase)
+        } + candidates).distinctBy { it.id }
+            .sortedWith(compareBy<CatalogCardSearchResult> { scoreName(it.name, query.trim().lowercase()) }.thenBy { it.name })
+            .take(limit.coerceIn(1, 50))
+    }
+
+    suspend fun details(cardId: String, language: String, forceRemote: Boolean = false): CatalogCardDetails? {
+        val extra = if (forceRemote) null else supplemental?.cards(language)?.firstOrNull { it.id == cardId }
+        if (cardId.startsWith("official_")) return extra
+        val primary = detailsPrimary(cardId, language, forceRemote) ?: return extra
+        // Never replace the physical variants or price identities with guesses from an image source.
+        return if (!forceRemote && extra?.imageBase != null) primary.copy(imageBase = extra.imageBase, imageLanguage = language) else primary
+    }
+
+    suspend fun sets(language: String): List<CatalogSetSummary> {
+        val primary = setsPrimary(language)
+        val extra = supplemental?.cards(language).orEmpty().groupBy { it.setId }
+        val byId = primary.associateBy { it.id.lowercase() }
+        return primary.map { set ->
+            val cards = extra.entries.firstOrNull { it.key.equals(set.id, true) }?.value.orEmpty()
+            set.copy(totalCount = maxOf(set.totalCount, cards.size))
+        } + extra.filterKeys { it.lowercase() !in byId }.map { (id, cards) ->
+            CatalogSetSummary(id, cards.first().setName, officialCount = cards.maxOf { it.officialCount }, totalCount = cards.size)
+        }
+    }
+
+    suspend fun setDetails(setId: String, language: String): CatalogSetDetails? {
+        val extra = supplemental?.cards(language).orEmpty().filter { it.setId.equals(setId, true) }
+        val primary = setDetailsPrimary(setId, language)
+        if (extra.isEmpty()) return primary
+        val images = extra.associateBy { it.id }
+        val cards = (primary?.cards.orEmpty().map { card ->
+            card.copy(imageBase = images[card.id]?.imageBase ?: card.imageBase)
+        } + extra.map { CatalogSetCard(it.id, it.localId, it.name, it.imageBase) })
+            .distinctBy { it.id }.sortedWith(compareBy<CatalogSetCard> { it.localId.toIntOrNull() ?: Int.MAX_VALUE }.thenBy { it.localId })
+        return (primary ?: CatalogSetDetails(setId, extra.first().setName,
+            officialCount = extra.maxOf { it.officialCount }, totalCount = cards.size, cards = cards))
+            .copy(cards = cards, totalCount = maxOf(primary?.totalCount ?: 0, cards.size))
+    }
+
+    private suspend fun searchPrimary(
         query: String,
         number: String?,
         language: String,
@@ -431,7 +486,7 @@ class CardCatalogService(
             .toList()
     }
 
-    suspend fun details(
+    private suspend fun detailsPrimary(
         cardId: String,
         language: String,
         forceRemote: Boolean = false
@@ -582,7 +637,7 @@ class CardCatalogService(
     }
 
 
-    suspend fun sets(
+    private suspend fun setsPrimary(
         language: String
     ): List<CatalogSetSummary> {
 
@@ -769,7 +824,7 @@ class CardCatalogService(
     }
 
 
-    suspend fun setDetails(
+    private suspend fun setDetailsPrimary(
         setId: String,
         language: String
     ): CatalogSetDetails? {
@@ -1038,7 +1093,7 @@ class CardCatalogService(
 
         val detailedSets =
             runCatching {
-                sets(language)
+                setsPrimary(language)
             }
                 .getOrDefault(basicSets)
                 .ifEmpty {
@@ -1860,3 +1915,4 @@ private fun JsonObject.boolean(
 ): Boolean? =
     (this[key] as? JsonPrimitive)
         ?.booleanOrNull
+

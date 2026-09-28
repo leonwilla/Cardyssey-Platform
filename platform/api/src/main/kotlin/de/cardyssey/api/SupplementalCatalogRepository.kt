@@ -1,0 +1,55 @@
+package de.cardyssey.api
+
+import com.zaxxer.hikari.HikariDataSource
+import kotlinx.serialization.json.Json
+import java.util.concurrent.ConcurrentHashMap
+
+/** Official print records are independent of TCGdex IDs and prices. */
+class SupplementalCatalogRepository(
+    private val dataSource: HikariDataSource,
+    private val mirror: PermanentCatalogRepository
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+    private data class Cached(val loadedAt: Long, val cards: List<CatalogCardDetails>)
+    private val cache = ConcurrentHashMap<String, Cached>()
+
+    @Synchronized
+    fun cards(language: String): List<CatalogCardDetails> {
+        val now = System.currentTimeMillis()
+        cache[language]?.takeIf { now - it.loadedAt < 60_000L }?.let { return it.cards }
+        val cards = dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT DISTINCT ON (s.canonical_card_id)
+                    s.canonical_card_id, s.details, s.german_species_name,
+                    COALESCE(m.image_complete, FALSE) AS image_complete
+                FROM catalog_supplemental_cards s
+                LEFT JOIN catalog_cards_mirror m ON m.language_code = s.language_code
+                    AND m.card_id = s.canonical_card_id
+                WHERE s.language_code = ?
+                ORDER BY s.canonical_card_id, s.source_id
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, language)
+                statement.executeQuery().use { rows ->
+                    buildList {
+                        while (rows.next()) {
+                            val card = json.decodeFromString<CatalogCardDetails>(rows.getString("details"))
+                            val id = rows.getString("canonical_card_id")
+                            val species = rows.getString("german_species_name")
+                            add(card.copy(
+                                id = id,
+                                // Keep the original name; the German species is an aid, not a translation of the print.
+                                name = if (species.isNullOrBlank()) card.name else "${card.name} ($species)",
+                                imageBase = if (rows.getBoolean("image_complete")) mirror.imageBase(language, id) else null,
+                                imageLanguage = language
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+        cache[language] = Cached(now, cards)
+        return cards
+    }
+}

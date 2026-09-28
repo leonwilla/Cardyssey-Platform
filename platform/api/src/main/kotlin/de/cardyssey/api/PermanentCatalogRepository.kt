@@ -182,9 +182,9 @@ class PermanentCatalogRepository(
         pendingWork(
             language = language,
             predicate =
-                "details_complete = FALSE OR " +
+                "LEFT(card_id, 9) <> 'official_' AND (details_complete = FALSE OR " +
                     "source_updated_at IS NULL OR " +
-                    "source_updated_at < NOW() - INTERVAL '30 days'",
+                    "source_updated_at < NOW() - INTERVAL '30 days')",
             limit = limit,
             afterCardId = afterCardId
         )

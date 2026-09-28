@@ -17,7 +17,7 @@ fun Route.cardCatalogRoutes(
 ) {
 
     /*
-     * Mirrored images are immutable public catalog assets. The URL keeps the
+     * Mirrored images are public catalog assets that can be repaired. The URL keeps the
      * TCGdex-style quality suffix so existing Android/Web image helpers can
      * switch to Tiny without special cases.
      */
@@ -55,7 +55,7 @@ fun Route.cardCatalogRoutes(
 
         call.response.header(
             HttpHeaders.CacheControl,
-            "public, max-age=31536000, immutable"
+            "public, max-age=3600, must-revalidate"
         )
         call.respondFile(
             image.toFile()
@@ -208,3 +208,4 @@ fun Route.cardCatalogRoutes(
         }
     }
 }
+

@@ -78,7 +78,7 @@ docker compose exec -T db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < 
 
 The audit separates missing source URLs from pending downloads and includes
 concrete Asian card/set IDs for validating supplemental-source mappings.
-Additional official Asian source adapters are not included in this patch.
+Supplemental sources and their independent import status are described below.
 No completeness claim or all-card price backfill is made. Prices can be absent
 when the provider does not cover the exact language and physical variant.
 
@@ -141,3 +141,77 @@ Additional price infrastructure:
 The Next.js web app runs as `cardyssey-web.service` on the host, not as a
 Compose container. WordPress/cardshop, Vinted and Palworld are unrelated to the
 Cardyssey catalog.
+
+## Supplemental Asian sources (V29)
+
+`Supplemental Catalog Sync` is a daily Tiny workflow (02:10 UTC) and supports
+manual dispatch. A change to this workflow on main deploys the API and starts
+the import automatically; a manual dispatch can set `deploy_api=true`. It rebuilds only
+the API, using the existing Tiny environment and Compose project, waits for V29,
+and starts the import. Later scheduled runs do not redeploy the API.
+
+- Japanese, Korean and Traditional Chinese records come from the data files in
+  https://github.com/type-null/PTCG-database (MIT, attribution in
+  `docs/THIRD_PARTY_CATALOG_SOURCES.md`). Official page and image URLs are retained.
+  The source revision is recorded. No code from that repository is executed.
+- Thai and Indonesian records are read from the official Pokémon Asia lists and
+  detail pages. Product code and collector number must be explicitly present.
+- Simplified Chinese has **no new source** in this change. Its existing TCGdex
+  records are not a verified complete Simplified Chinese catalog. The separate
+  PTCG-CHS-Datasets repository is not imported: its published terms exclude
+  redistribution without authorization.
+
+The importer defaults to a read-only dry run; `--apply` writes to the Tiny database:
+
+```bash
+python3 scripts/sync-supplemental-catalog.py --apply
+```
+
+A dedicated sparse Git cache and cached official detail pages live under
+`~/.cache/cardyssey-catalog`. A file lock prevents overlapping imports. Records
+are committed in batches; a timeout or source refusal preserves completed work
+and reports an error/partial status. The next run resumes from cached pages.
+No challenge bypass is performed. The first download can take hours.
+
+New official cards have stable source-derived IDs. A record reuses an existing
+TCGdex ID only when language, explicit set code, printed number and original
+name uniquely agree, and the source does not show multiple illustrations at that
+identity. Streaming Thai/Indonesian imports retain independent IDs. This can
+leave visible duplicates; it prevents silently replacing an existing print.
+Unverified or malformed rows are counted as skipped, not imported successfully.
+
+Supplemental cards are available in search, card details, sets and set details.
+The original name is retained, with a German species-name aid when the data
+contains a unique Pokédex number. This is not a translation of the entire card.
+No normal/holo/reverse variants or prices are inferred from a picture or rarity.
+Existing TCGdex variant and pricing identities are preserved.
+
+The existing image worker downloads and hashes the added images into the same
+permanent volume. It also drains pending images between daily source cycles.
+An imported metadata record is not yet an indexed image. Public image responses
+have a one-hour cache lifetime so future replacements are not declared immutable.
+
+`catalog_supplemental_sync` reports metadata-source progress separately from
+`catalog-coverage.sql`'s actual downloaded/indexed image counts. `imported` means
+all accepted metadata from that source run was processed, not full worldwide
+card coverage or completion of every image download. Rejected records produce
+`partial` and a non-zero workflow result so gaps cannot silently appear green.
+
+### Prices
+
+Image downloads do not supply market values. Existing exact-language,
+exact-variant pricing providers continue to retrieve available prices on demand.
+There is no all-card price backfill in this change. Unsupported languages,
+unknown variants and blocked eBay requests remain without a verified price.
+Nothing substitutes a different-language price or zero for an unavailable value.
+
+### Validation
+
+- Python source/parser regressions: `python3 scripts/test-supplemental-catalog.py`.
+- Catalog Kotlin sources compiled with Kotlin 2.1.20 and the serialization plugin.
+- V28/V29 and the actual import SQL were exercised with PostgreSQL (PGlite):
+  language/number matching, unchanged-image retention, changed-image invalidation,
+  variant preservation, repeated import and ambiguous-print separation.
+- Official Thai/Indonesian HTML and Korean M1S 013/056 source records were checked.
+- Production deployment, full import counts and physical scanner behavior require
+  the Tiny workflow and the device tests; these are not claimed by local checks.

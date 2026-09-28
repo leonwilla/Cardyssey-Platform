@@ -57,7 +57,28 @@ class CatalogMirrorSyncService(
                     15L * 60L * 1000L
                 }
 
-            delay(waitMs)
+            // Supplemental sources arrive independently of the daily TCGdex index.
+            // Drain newly imported image work between full cycles as well.
+            val nextCycleAt = System.currentTimeMillis() + waitMs
+            imageCursors.clear()
+            while (System.currentTimeMillis() < nextCycleAt) {
+                delay(minOf(60_000L, (nextCycleAt - System.currentTimeMillis()).coerceAtLeast(1L)))
+                if (imagesEnabled) {
+                    var progressed = false
+                    for (language in languages.distinct()) {
+                        val advanced = runCatching { syncImagesBatch(language) }
+                            .onFailure { error ->
+                                recordFailure(language, error)
+                                println("Supplemental image sync failed for $language: ${error.message}")
+                            }.getOrDefault(false)
+                        progressed = advanced || progressed
+                    }
+                    if (!progressed) {
+                        imageCursors.clear()
+                        delay(minOf(15L * 60_000L, (nextCycleAt - System.currentTimeMillis()).coerceAtLeast(1L)))
+                    }
+                }
+            }
         }
     }
 
@@ -187,7 +208,7 @@ class CatalogMirrorSyncService(
                     name = details.name,
                     setId = details.setId,
                     setName = details.setName,
-                    imageBase = details.imageBase
+                    imageBase = details.imageBase.takeIf { details.imageLanguage == null || details.imageLanguage == language }
                 )
 
             mirror.upsertCard(
@@ -264,3 +285,4 @@ class CatalogMirrorSyncService(
     }
 
 }
+

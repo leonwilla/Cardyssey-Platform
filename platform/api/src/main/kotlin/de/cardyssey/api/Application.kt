@@ -131,11 +131,6 @@ fun Application.module() {
             database
         )
 
-    val cardCatalog =
-        CardCatalogService(
-            catalogCache
-        )
-
     val publicApiUrl =
         System.getenv("PUBLIC_API_URL")
             ?.trim()
@@ -157,6 +152,9 @@ fun Application.module() {
             catalogDir = catalogDir,
             publicBaseUrl = publicApiUrl
         )
+
+    val supplementalCatalog = SupplementalCatalogRepository(database, permanentCatalog)
+    val cardCatalog = CardCatalogService(catalogCache, supplementalCatalog)
 
     val catalogImageHasher =
         CatalogImageHasher()
@@ -608,3 +606,4 @@ private fun migrateDatabase(
         .load()
         .migrate()
 }
+
