@@ -51,9 +51,9 @@ if data.get('status') != 'ok':
     raise SystemExit(f"API health status={data.get('status')!r}")
 if data.get('database') != 'connected':
     raise SystemExit(f"API database={data.get('database')!r}")
-if data.get('version') != '0.2.4':
+if data.get('version') != '0.3.0':
     raise SystemExit(
-        f"production backend is stale: version={data.get('version')!r}, expected='0.2.4'"
+        f"production backend version mismatch: version={data.get('version')!r}, expected='0.3.0'"
     )
 if data.get('ebayPricingMode') != 'CARDYSSEY_DIRECT_ONLY':
     raise SystemExit(
