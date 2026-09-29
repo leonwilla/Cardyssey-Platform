@@ -10,6 +10,7 @@ SELECT s.language_code, s.status, s.phase,
        COUNT(*) FILTER (WHERE c.details_complete AND c.raw_payload->>'languageCode' IS NULL) AS missing_detail_language_metadata
 FROM catalog_sync_state s
 LEFT JOIN catalog_cards_mirror c ON c.language_code = s.language_code
+WHERE s.language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
 GROUP BY s.language_code, s.status, s.phase, s.last_completed_at, s.next_sync_at, s.last_error
 ORDER BY s.language_code;
 
@@ -19,10 +20,11 @@ WITH gaps AS (
            details_complete, image_complete,
            ROW_NUMBER() OVER (PARTITION BY language_code ORDER BY set_id, card_id) AS n
     FROM catalog_cards_mirror
-    WHERE language_code IN ('ja', 'ko', 'zh-cn', 'zh-tw', 'th', 'id')
+    WHERE language_code IN ('ja', 'ko', 'zh-cn', 'zh-tw')
       AND NOT image_complete
 )
 SELECT * FROM gaps WHERE n <= 10 ORDER BY language_code, n;
 
 SELECT source, status, card_count, last_error, updated_at
-FROM catalog_supplemental_sync ORDER BY source;
+FROM catalog_supplemental_sync
+WHERE source IN ('type-null/ko', 'type-null/ja', 'type-null/zh-tw') ORDER BY source;

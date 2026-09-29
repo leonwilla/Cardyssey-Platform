@@ -28,7 +28,8 @@ concurrency:
 
 jobs:
   web:
-    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
     defaults:
       run:
         working-directory: web
@@ -53,9 +54,16 @@ jobs:
         run: npm run build
 
   backend:
-    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: web
+    if: always() && !cancelled()
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Build backend image
-        run: docker build -t cardyssey-api-ci ./platform/api
+        run: |
+          docker run --rm --memory=3g --cpus=2 --user "$(id -u):$(id -g)" \
+            -e GRADLE_USER_HOME=/tmp/gradle -v "$PWD/platform/api:/app" -w /app \
+            gradle:8.13-jdk21 gradle test --no-daemon --max-workers=2
+          docker build -t cardyssey-api-ci ./platform/api

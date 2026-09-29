@@ -159,35 +159,12 @@ fun Application.module() {
     val catalogImageHasher =
         CatalogImageHasher()
 
-    val catalogLanguages =
-        System.getenv("CATALOG_LANGUAGES")
-            ?.split(",")
-            ?.map {
-                it.trim().lowercase()
-            }
-            ?.filter {
-                it.isNotBlank() &&
-                    cardCatalog.validLanguage(it)
-            }
-            ?.distinct()
-            ?.takeIf { it.isNotEmpty() }
-            ?: listOf(
-                "de",
-                "en",
-                "fr",
-                "es",
-                "it",
-                "pt",
-                "ja",
-                "zh-tw",
-                "zh-cn",
-                "ko",
-                "id",
-                "th",
-                "nl",
-                "pl",
-                "ru"
-            )
+    // Keep background work limited to the languages selectable in the Android app.
+    val appCatalogLanguages = listOf("de", "en", "ko", "ja", "zh-tw", "zh-cn")
+    val catalogLanguages = System.getenv("CATALOG_LANGUAGES")
+        ?.split(",")?.map { it.trim().lowercase() }
+        ?.filter { it in appCatalogLanguages }?.distinct()
+        ?.takeIf { it.isNotEmpty() } ?: appCatalogLanguages
 
     val catalogSyncIntervalHours =
         System.getenv("CATALOG_SYNC_INTERVAL_HOURS")

@@ -1,5 +1,6 @@
 package de.cardyssey.api
 
+
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
@@ -105,10 +106,10 @@ private fun withCentralValuation(item: CollectionItemDto): CollectionItemDto {
         putAll(item.marketUnitEur)
         if ("TCG" !in this && item.unitEur != null) put("TCG", item.unitEur)
     }
-    val valued = bases.mapValues { (_, base) -> base * conditionFactor }
+    val valued = bases.mapValues { (_, base) -> roundedUnitEur(base, conditionFactor) }
     return item.copy(
         valuedUnitEur = valued,
-        positionValueEur = valued.mapValues { (_, unit) -> unit * item.quantity }
+        positionValueEur = valued.mapValues { (_, unit) -> roundedUnitEur(unit * item.quantity) }
     )
 }
 

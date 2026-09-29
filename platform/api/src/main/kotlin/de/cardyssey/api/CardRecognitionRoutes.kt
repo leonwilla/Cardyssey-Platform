@@ -154,30 +154,12 @@ fun Route.cardRecognitionRoutes(
                                 mirror.visualMatches(
                                     language = language,
                                     hash = hash,
-                                    number = number,
+                                    number = number?.substringBefore("/"),
                                     setCode = request.setCode,
                                     limit = 20
                                 )
 
-                            val matches =
-                                if (
-                                    narrowed
-                                        .firstOrNull()
-                                        ?.distance
-                                        ?.let {
-                                            it <= 18
-                                        } == true
-                                ) {
-                                    narrowed
-                                } else {
-                                    mirror.visualMatches(
-                                        language = language,
-                                        hash = hash,
-                                        number = null,
-                                        setCode = null,
-                                        limit = 20
-                                    )
-                                }
+                            val matches = narrowed
 
                             matches
                                 .filter {
@@ -200,8 +182,8 @@ fun Route.cardRecognitionRoutes(
              */
             val combined =
                 (
-                    visualCandidates +
-                        candidates
+                    candidates +
+                        visualCandidates
                     )
                     .distinctBy {
                         it.id

@@ -215,3 +215,12 @@ Nothing substitutes a different-language price or zero for an unavailable value.
 - Official Thai/Indonesian HTML and Korean M1S 013/056 source records were checked.
 - Production deployment, full import counts and physical scanner behavior require
   the Tiny workflow and the device tests; these are not claimed by local checks.
+
+## Active app languages (29 September 2026)
+
+Background metadata and image synchronization is limited to de, en, ko, ja,
+zh-tw and zh-cn, including when an older environment variable lists all languages.
+The supplemental workflow imports ko, ja and zh-tw only. Thai and Indonesian
+parsers are retained but are not scheduled or accepted by the importer CLI.
+Existing records in other languages are retained. Simplified Chinese still needs
+an additional verified, reusable source; this change does not claim full coverage.

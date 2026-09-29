@@ -504,9 +504,7 @@ class CardPricingService(
             baseEur = baseEur,
             conditionFactor = condition.factor,
             eur =
-                baseEur?.times(
-                    condition.factor
-                ),
+                baseEur?.let { roundedUnitEur(it, condition.factor) },
             exactLanguageMatch =
                 exactLanguageMatch,
             exactVariantMatch =
@@ -514,3 +512,4 @@ class CardPricingService(
         )
     }
 }
+

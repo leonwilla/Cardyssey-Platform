@@ -285,7 +285,7 @@ class CardCatalogService(
      * gegen Tiny; TCGdex bleibt nur die zentrale Aktualisierungsquelle.
      */
     suspend fun preload() = coroutineScope {
-        ALLOWED_LANGUAGES
+        listOf("de", "en", "ko", "ja", "zh-tw", "zh-cn")
             .map { language ->
                 async {
                     runCatching {
@@ -304,7 +304,9 @@ class CardCatalogService(
     suspend fun search(query: String, number: String?, language: String, limit: Int): List<CatalogCardSearchResult> {
         val extra = supplemental?.cards(language).orEmpty()
         if (extra.isEmpty()) return searchPrimary(query, number, language, limit)
+        val expectedTotal = number?.substringAfter('/', "")?.trim()?.toIntOrNull()
         val candidates = extra.filter { card ->
+            (expectedTotal == null || card.officialCount == expectedTotal) &&
             (number.isNullOrBlank() || normalizeNumber(card.localId) == normalizeNumber(number)) &&
                 (query.isBlank() || scoreName(card.name, query.trim().lowercase()) < 100)
         }.map { card ->
@@ -318,7 +320,7 @@ class CardCatalogService(
             if (supplement?.imageBase == null) card else card.copy(imageBase = supplement.imageBase)
         } + candidates).distinctBy { it.id }
             .sortedWith(compareBy<CatalogCardSearchResult> { scoreName(it.name, query.trim().lowercase()) }.thenBy { it.name })
-            .take(limit.coerceIn(1, 50))
+            .take(limit.coerceIn(1, 250))
     }
 
     suspend fun details(cardId: String, language: String, forceRemote: Boolean = false): CatalogCardDetails? {
@@ -330,7 +332,14 @@ class CardCatalogService(
     }
 
     suspend fun sets(language: String): List<CatalogSetSummary> {
-        val primary = setsPrimary(language)
+        val listed = setsPrimary(language)
+        val listedIds = listed.map { it.id.lowercase() }.toSet()
+        val promoIds = setOf("basep", "wbsp", "np", "dpp", "hgssp", "bwp", "xyp", "smp", "swshp", "svp", "mep")
+        val missingPromos = loadCards(language).groupBy { it.id.substringBeforeLast("-", "") }
+            .filterKeys { id -> id.lowercase() !in listedIds &&
+                (id.lowercase() in promoIds || id.matches(Regex("(?i)(?:bw|xy|sm|s|sv|me)-p"))) }
+            .map { (id, cards) -> CatalogSetSummary(id, "${id.uppercase()} Promos", totalCount = cards.size) }
+        val primary = listed + missingPromos
         val extra = supplemental?.cards(language).orEmpty().groupBy { it.setId }
         val byId = primary.associateBy { it.id.lowercase() }
         return primary.map { set ->
@@ -343,7 +352,12 @@ class CardCatalogService(
 
     suspend fun setDetails(setId: String, language: String): CatalogSetDetails? {
         val extra = supplemental?.cards(language).orEmpty().filter { it.setId.equals(setId, true) }
-        val primary = setDetailsPrimary(setId, language)
+        val primary = setDetailsPrimary(setId, language) ?: loadCards(language)
+            .filter { it.id.substringBeforeLast("-", "").equals(setId, true) }
+            .takeIf { it.isNotEmpty() }?.let { cards ->
+                CatalogSetDetails(setId, "${setId.uppercase()} Promos", totalCount = cards.size,
+                    cards = cards.map { CatalogSetCard(it.id, it.localId, it.name, it.imageBase) })
+            }
         if (extra.isEmpty()) return primary
         val images = extra.associateBy { it.id }
         val cards = (primary?.cards.orEmpty().map { card ->
@@ -363,7 +377,7 @@ class CardCatalogService(
     ): List<CatalogCardSearchResult> {
 
         val safeLimit =
-            limit.coerceIn(1, 50)
+            limit.coerceIn(1, 250)
 
         val normalizedQuery =
             query
@@ -410,6 +424,12 @@ class CardCatalogService(
 
         if (cards.isEmpty()) {
             return emptyList()
+        }
+
+        val expectedTotal = number?.substringAfter('/', "")?.trim()?.toIntOrNull()
+        if (expectedTotal != null) {
+            val matchingSets = setsPrimary(language).filter { it.officialCount == expectedTotal }.map { it.id }.toSet()
+            cards = cards.filter { it.id.substringBeforeLast("-", "") in matchingSets }
         }
 
         val setNames =

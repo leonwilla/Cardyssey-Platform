@@ -89,7 +89,7 @@ services:
       CATALOG_DOWNLOAD_IMAGES: ${CATALOG_DOWNLOAD_IMAGES:-true}
       CATALOG_DETAIL_BATCH_SIZE: ${CATALOG_DETAIL_BATCH_SIZE:-250}
       CATALOG_IMAGE_BATCH_SIZE: ${CATALOG_IMAGE_BATCH_SIZE:-250}
-      CATALOG_LANGUAGES: ${CATALOG_LANGUAGES:-de,en,fr,es,it,pt,ja,zh-tw,zh-cn,ko,id,th,nl,pl,ru}
+      CATALOG_LANGUAGES: ${CATALOG_LANGUAGES:-de,en,ko,ja,zh-tw,zh-cn}
       PUBLIC_API_URL: https://api.cardyssey.de
 
     ports:

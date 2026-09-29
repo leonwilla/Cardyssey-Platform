@@ -138,10 +138,15 @@ def parse_asia(html, language, url):
     if len(set(code for code, _ in products)) != 1:
         raise ValueError("Ambiguous/missing product code")
     match = re.fullmatch(r"([A-Za-z0-9._-]+)\s*/\s*(\d+)", collector)
-    if not match:
-        raise ValueError("Ambiguous collector number")
+    if match:
+        number, total = match[1], match[2]
+    elif re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,39}(?:/[A-Za-z][A-Za-z0-9._-]{0,19})?", collector):
+        # Official energy identifiers (WAT/MET) and promos (001/S-P) have no denominator.
+        number, total = collector, "0"
+    else:
+        raise ValueError("Ambiguous collector number: " + repr(collector))
     return {"name": name, "set_name": products[0][0], "set_full_name": products[0][1],
-            "number": match[1], "set_total": match[2], "url": url,
+            "number": number, "set_total": total, "url": url,
             "img": urllib.parse.urljoin(url, image)}
 
 
@@ -194,25 +199,55 @@ class Fetcher:
         self.deadline, self.delay, self.last = deadline, delay, 0.0
 
     def get(self, url):
-        if time.monotonic() >= self.deadline:
-            raise TimeoutError("Time budget reached; cached progress will resume next run")
-        time.sleep(max(0, self.delay - (time.monotonic() - self.last)))
-        self.last = time.monotonic()
-        request = urllib.request.Request(url, headers={"User-Agent": "Cardyssey-Catalog/1.0 (+https://cardyssey.de)"})
-        # No challenge bypass. A refusal leaves a visible source error.
-        with urllib.request.urlopen(request, timeout=30) as response:
-            if response.status != 200:
-                raise ValueError("Source returned HTTP " + str(response.status))
-            data = response.read(5_000_001)
-            if len(data) > 5_000_000:
-                raise ValueError("Source page exceeds size limit")
-            return data.decode("utf-8")
+        for attempt in range(5):
+            remaining = self.deadline - time.monotonic()
+            pause = max(0, self.delay - (time.monotonic() - self.last))
+            if remaining <= pause:
+                raise TimeoutError("Time budget reached; cached progress will resume next run")
+            time.sleep(pause)
+            self.last = time.monotonic()
+            request = urllib.request.Request(url, headers={"User-Agent": "Cardyssey-Catalog/1.0 (+https://cardyssey.de)"})
+            try:
+                # No challenge bypass: 401/403 and other permanent errors are never retried.
+                with urllib.request.urlopen(request, timeout=min(30, max(0.1, self.deadline - time.monotonic()))) as response:
+                    if response.status != 200:
+                        raise ValueError("Source returned HTTP " + str(response.status))
+                    data = response.read(5_000_001)
+                    if len(data) > 5_000_000:
+                        raise ValueError("Source page exceeds size limit")
+                    return data.decode("utf-8")
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+                if isinstance(error, urllib.error.HTTPError) and error.code not in (408, 429, 500, 502, 503, 504):
+                    raise
+                if attempt == 4:
+                    raise
+                pause = min(30, 2 ** (attempt + 1))
+                if isinstance(error, urllib.error.HTTPError):
+                    retry_after = error.headers.get("Retry-After", "") if error.headers else ""
+                    if retry_after.isdigit():
+                        pause = max(pause, min(60, int(retry_after)))
+                if time.monotonic() + pause >= self.deadline:
+                    raise TimeoutError("Time budget reached; cached progress will resume next run") from error
+                print(f"Retry {attempt + 1}/4 after transient source failure: {url}", file=sys.stderr)
+                time.sleep(pause)
+
+
+def save_json(path, value):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(value, ensure_ascii=False))
+    tmp.replace(path)
 
 
 def asia_records(language, cache, fetcher, apply):
     folder = cache / language
     folder.mkdir(parents=True, exist_ok=True)
     seen, page, count, rejected = set(), 1, 0, 0
+    progress = folder / "progress.json"
+    if apply and progress.exists():
+        saved = json.loads(progress.read_text())
+        page, count, rejected = saved["page"], saved["count"], saved["rejected"]
+        seen = set(saved["seen"])
+        print(f"Resuming {language} listing page {page}; {count} cards already imported", flush=True)
     batch = []
     try:
         while True:
@@ -231,10 +266,14 @@ def asia_records(language, cache, fetcher, apply):
                     if local.exists() and time.time() - local.stat().st_mtime < 30 * 86400:
                         raw = json.loads(local.read_text())
                     else:
-                        raw = parse_asia(fetcher.get(link), language, link)
-                        tmp = local.with_suffix(".tmp")
-                        tmp.write_text(json.dumps(raw, ensure_ascii=False))
-                        tmp.replace(local)
+                        html_file = folder / (number + ".html")
+                        if html_file.exists() and time.time() - html_file.stat().st_mtime < 7 * 86400:
+                            html = html_file.read_text()
+                        else:
+                            html = fetcher.get(link)
+                            html_file.write_text(html)
+                        raw = parse_asia(html, language, link)
+                        save_json(local, raw)
                     row = record(raw, language, time.strftime("%Y-%m-%d"), {})
                     # Streaming pages cannot establish global print uniqueness. Keep their own IDs.
                     row["allowMatch"] = False
@@ -246,13 +285,18 @@ def asia_records(language, cache, fetcher, apply):
                 if len(batch) >= 100:
                     import_rows(batch, apply)
                     batch.clear()
+            import_rows(batch, apply)
+            batch.clear()
             seen.update(links)
             pages = [int(value) for a in root.find("a")
                      for value in urllib.parse.parse_qs(urllib.parse.urlsplit(a.attrs.get("href", "")).query).get("pageNo", [])
                      if value.isdigit()]
             if not any(value > page for value in pages):
+                progress.unlink(missing_ok=True)
                 break
             page += 1
+            if apply:
+                save_json(progress, {"page": page, "count": count, "rejected": rejected, "seen": sorted(seen)})
             if page > 5000:
                 raise ValueError("Listing page safety limit exceeded")
     finally:
@@ -264,13 +308,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, default=Path.home() / ".cache/cardyssey-catalog")
     parser.add_argument("--apply", action="store_true", help="Import into the local cardyssey-db container")
-    parser.add_argument("--languages", default="ko,ja,zh-tw,th,id")
+    parser.add_argument("--languages", default="ko,ja,zh-tw")
     parser.add_argument("--max-seconds", type=int, default=18000)
     parser.add_argument("--delay", type=float, default=0.5)
     args = parser.parse_args()
     languages = args.languages.split(",")
-    if any(lang not in HOSTS for lang in languages):
-        parser.error("Supported sources: ko,ja,zh-tw,th,id. No verified zh-cn source is configured.")
+    if any(lang not in DIRECTORIES for lang in languages):
+        parser.error("Active app sources: ko,ja,zh-tw. No verified zh-cn source is configured.")
     args.cache.mkdir(parents=True, exist_ok=True)
     with (args.cache / "sync.lock").open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -305,7 +349,9 @@ def main():
                 status(source, state, count, f"{rejected} unverified records skipped" if rejected else None, args.apply)
                 failed = failed or bool(rejected)
             except (ValueError, OSError, subprocess.CalledProcessError) as error:
-                status(source, "error", 0, str(error)[:500], args.apply)
+                progress = args.cache / language / "progress.json"
+                imported = json.loads(progress.read_text()).get("count", 0) if progress.exists() else 0
+                status(source, "error", imported, str(error)[:500], args.apply)
                 failed = True
         return 2 if failed else 0
 

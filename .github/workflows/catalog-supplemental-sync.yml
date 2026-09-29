@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/catalog-supplemental-sync.yml'
+      - 'scripts/sync-supplemental-catalog.py'
+      - 'scripts/test-supplemental-catalog.py'
   workflow_dispatch:
     inputs:
       deploy_api:
@@ -26,7 +28,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, cardyssey-android]
     timeout-minutes: 300
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check source parsers
         run: python3 scripts/test-supplemental-catalog.py
       - name: Deploy catalog API
@@ -47,8 +49,9 @@ jobs:
           done
           echo "Catalog migration V29 is not ready."
           exit 1
+      # The importer retries temporary outages and resumes committed listing pages.
       - name: Import official-language cards and image sources
-        run: python3 scripts/sync-supplemental-catalog.py --apply --max-seconds 15600
+        run: python3 scripts/sync-supplemental-catalog.py --apply --languages ko,ja,zh-tw --max-seconds 15600
       - name: Coverage and remaining gaps
         if: always()
         run: |
