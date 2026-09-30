@@ -154,7 +154,7 @@ fun Application.module() {
         )
 
     val supplementalCatalog = SupplementalCatalogRepository(database, permanentCatalog)
-    val cardCatalog = CardCatalogService(catalogCache, supplementalCatalog)
+    val cardCatalog = CardCatalogService(catalogCache, supplementalCatalog, permanentCatalog)
 
     val catalogImageHasher =
         CatalogImageHasher()

@@ -153,50 +153,12 @@ private val CLASSIC_COLLECTION_IMAGE_FALLBACKS =
         "30th-c-030" to "https://images.ctfassets.net/0hawnqdvsfxb/0xFDSWaaVQ4PEnvs3YOas/877c8ca708e99fe4463744626e6fdfb8/29-magikarp-paldea-evolved_rc.png"
     )
 
-private const val NIDORINA_PROMO_IMAGE =
-    "https://images.pokemoncard.io/images/mep/mep-101_hiresopt.jpg"
-
-private fun catalogImageFallback(
-    cardId: String
-): String? =
-    CLASSIC_COLLECTION_IMAGE_FALLBACKS[cardId]
-        ?: if (cardId == "mep-101") {
-            NIDORINA_PROMO_IMAGE
-        } else {
-            null
-        }
-
-private fun nidorinaPromoDetails(
-    language: String
-): CatalogCardDetails? =
-    if (language == "de" || language == "en") {
-        CatalogCardDetails(
-            id = "mep-101",
-            localId = "101",
-            name = "Nidorina",
-            languageCode = language,
-            imageBase = NIDORINA_PROMO_IMAGE,
-            imageLanguage = "en",
-            setId = "mep",
-            setName = "MEP Black Star Promos",
-            officialCount = 0,
-            rarity = "Promo",
-            variants =
-                listOf(
-                    CatalogVariant(
-                        id = "legacy:holo",
-                        type = "Holo",
-                        legacyVariant = "HOLO"
-                    )
-                )
-        )
-    } else {
-        null
-    }
+private fun catalogImageFallback(cardId: String): String? = CLASSIC_COLLECTION_IMAGE_FALLBACKS[cardId]
 
 class CardCatalogService(
     private val persistentCache: CatalogCacheRepository,
-    private val supplemental: SupplementalCatalogRepository? = null
+    private val supplemental: SupplementalCatalogRepository? = null,
+    private val mirror: PermanentCatalogRepository? = null
 ) {
 
     companion object {
@@ -302,6 +264,13 @@ class CardCatalogService(
     }
 
     suspend fun search(query: String, number: String?, language: String, limit: Int): List<CatalogCardSearchResult> {
+        val images = anniversaryCards(language).associateBy { it.id }
+        return searchMerged(query, number, language, limit).map { card ->
+            card.copy(imageBase = images[card.id]?.imageBase ?: card.imageBase)
+        }
+    }
+
+    private suspend fun searchMerged(query: String, number: String?, language: String, limit: Int): List<CatalogCardSearchResult> {
         val extra = supplemental?.cards(language).orEmpty()
         if (extra.isEmpty()) return searchPrimary(query, number, language, limit)
         val expectedTotal = number?.substringAfter('/', "")?.trim()?.toIntOrNull()
@@ -323,35 +292,56 @@ class CardCatalogService(
             .take(limit.coerceIn(1, 250))
     }
 
+    private fun anniversaryCards(language: String, localImages: Boolean = true): List<CatalogCardDetails> =
+        AnniversaryPromos.cards(language).map { card ->
+            val source = card.imageBase
+            if (localImages && source != null && mirror?.hasImageSource(language, card.id, source) == true)
+                card.copy(imageBase = mirror.imageBase(language, card.id)) else card
+        }
+
     suspend fun details(cardId: String, language: String, forceRemote: Boolean = false): CatalogCardDetails? {
+        val curated = anniversaryCards(language, localImages = !forceRemote).firstOrNull { it.id == cardId }
         val extra = if (forceRemote) null else supplemental?.cards(language)?.firstOrNull { it.id == cardId }
         if (cardId.startsWith("official_")) return extra
-        val primary = detailsPrimary(cardId, language, forceRemote) ?: return extra
-        // Never replace the physical variants or price identities with guesses from an image source.
-        return if (!forceRemote && extra?.imageBase != null) primary.copy(imageBase = extra.imageBase, imageLanguage = language) else primary
+        val fetched = detailsPrimary(cardId, language, forceRemote)
+        val primary = if (curated != null && fetched?.languageCode != language) curated else fetched ?: curated ?: return extra
+        // Retain richer physical variants/prices when the primary provider has them.
+        return when {
+            curated?.imageBase != null -> primary.copy(imageBase = curated.imageBase, imageLanguage = language)
+            !forceRemote && extra?.imageBase != null -> primary.copy(imageBase = extra.imageBase, imageLanguage = language)
+            else -> primary
+        }
     }
 
     suspend fun sets(language: String): List<CatalogSetSummary> {
         val listed = setsPrimary(language)
         val listedIds = listed.map { it.id.lowercase() }.toSet()
         val promoIds = setOf("basep", "wbsp", "np", "dpp", "hgssp", "bwp", "xyp", "smp", "swshp", "svp", "mep")
-        val missingPromos = loadCards(language).groupBy { it.id.substringBeforeLast("-", "") }
+        val indexedCards = loadCards(language).groupBy { it.id.substringBeforeLast("-", "") }
+        val missingPromos = indexedCards
             .filterKeys { id -> id.lowercase() !in listedIds &&
                 (id.lowercase() in promoIds || id.matches(Regex("(?i)(?:bw|xy|sm|s|sv|me)-p"))) }
             .map { (id, cards) -> CatalogSetSummary(id, "${id.uppercase()} Promos", totalCount = cards.size) }
-        val primary = listed + missingPromos
+        val primary = listed + missingPromos + listOfNotNull(AnniversaryPromos.summary(language))
         val extra = supplemental?.cards(language).orEmpty().groupBy { it.setId }
         val byId = primary.associateBy { it.id.lowercase() }
         return primary.map { set ->
             val cards = extra.entries.firstOrNull { it.key.equals(set.id, true) }?.value.orEmpty()
-            set.copy(totalCount = maxOf(set.totalCount, cards.size))
+            set.copy(totalCount = maxOf(set.totalCount, cards.size, if (set.id == "mep") indexedCards[set.id].orEmpty().size else 0))
         } + extra.filterKeys { it.lowercase() !in byId }.map { (id, cards) ->
             CatalogSetSummary(id, cards.first().setName, officialCount = cards.maxOf { it.officialCount }, totalCount = cards.size)
         }
     }
 
     suspend fun setDetails(setId: String, language: String): CatalogSetDetails? {
-        val extra = supplemental?.cards(language).orEmpty().filter { it.setId.equals(setId, true) }
+        val curated = anniversaryCards(language)
+        if (setId == AnniversaryPromos.SET_ID) {
+            if (curated.isEmpty()) return null
+            return CatalogSetDetails(setId, AnniversaryPromos.title(language), totalCount = curated.size,
+                cards = curated.map { CatalogSetCard(it.id, it.localId, it.name, it.imageBase) })
+        }
+        val extra = ((if (setId.equals("mep", true)) curated else emptyList()) +
+            supplemental?.cards(language).orEmpty().filter { it.setId.equals(setId, true) }).distinctBy { it.id }
         val primary = setDetailsPrimary(setId, language) ?: loadCards(language)
             .filter { it.id.substringBeforeLast("-", "").equals(setId, true) }
             .takeIf { it.isNotEmpty() }?.let { cards ->
@@ -541,11 +531,7 @@ class CardCatalogService(
         val source =
             requested
                 ?: english
-                ?: return nidorinaPromoDetails(
-                    language = language
-                )?.takeIf {
-                    it.id == cardId
-                }
+                ?: return AnniversaryPromos.cards(language).firstOrNull { it.id == cardId }
 
         val sourceLanguage =
             if (requested != null) {
@@ -988,26 +974,6 @@ class CardCatalogService(
                     )
                 }
             }
-                .let { currentCards ->
-                    if (
-                        language == "de" &&
-                        setId == "mep" &&
-                        currentCards.none {
-                            it.id == "mep-101"
-                        }
-                    ) {
-                        currentCards +
-                            CatalogSetCard(
-                                id = "mep-101",
-                                localId = "101",
-                                name = "Nidorina",
-                                imageBase =
-                                    NIDORINA_PROMO_IMAGE
-                            )
-                    } else {
-                        currentCards
-                    }
-                }
 
         val sourceCount =
             source["cardCount"]
@@ -1233,24 +1199,11 @@ class CardCatalogService(
                 loaded
             }
 
-        val completeResult =
-            if (
-                language == "de" &&
-                result.none {
-                    it.id == "mep-101"
-                }
-            ) {
-                result +
-                    BriefCard(
-                        id = "mep-101",
-                        localId = "101",
-                        name = "Nidorina",
-                        imageBase =
-                            NIDORINA_PROMO_IMAGE
-                    )
-            } else {
-                result
-            }
+        val curated = AnniversaryPromos.cards(language).associateBy { it.id }
+        val completeResult = (result.map { card ->
+            val promo = curated[card.id]
+            if (promo?.imageBase != null) card.copy(imageBase = promo.imageBase) else card
+        } + curated.values.map { BriefCard(it.id, it.localId, it.name, it.imageBase) }).distinctBy { it.id }
 
         cardsCache[
             language

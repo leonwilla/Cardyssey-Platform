@@ -53,6 +53,19 @@ class PermanentCatalogRepository(
     fun storedImage(language: String, cardId: String): Path? =
         imagePath(language, cardId).takeIf(Files::isRegularFile)
 
+    /** Serve a local scan only after its language-specific source has been verified and hashed. */
+    fun hasImageSource(language: String, cardId: String, source: String): Boolean {
+        if (storedImage(language, cardId) == null) return false
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT 1 FROM catalog_cards_mirror WHERE language_code = ? AND card_id = ? AND image_source_url = ? AND image_complete = TRUE").use { statement ->
+                statement.setString(1, language)
+                statement.setString(2, cardId)
+                statement.setString(3, source)
+                statement.executeQuery().use { it.next() }
+            }
+        }
+    }
+
     fun upsertSet(
         language: String,
         set: CatalogSetSummary,
