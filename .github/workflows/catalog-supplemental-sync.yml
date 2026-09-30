@@ -26,7 +26,7 @@ concurrency:
 jobs:
   catalog:
     runs-on: [self-hosted, linux, x64, cardyssey-android]
-    timeout-minutes: 300
+    timeout-minutes: 420
     steps:
       - uses: actions/checkout@v7
       - name: Check source parsers
