@@ -222,9 +222,13 @@ class TcgPriceCacheRepository(
                     base_eur,
                     resolution_status,
                     failure_detail,
-                    updated_at
+                    updated_at,
+                    next_attempt_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
+                VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, NOW(),
+                    NOW() + (? * INTERVAL '1 hour')
+                )
                 ON CONFLICT (card_id, language_code, variant_id)
                 DO UPDATE SET
                     legacy_variant = EXCLUDED.legacy_variant,
