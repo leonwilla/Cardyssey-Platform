@@ -38,7 +38,9 @@ internal class JustTcgCentralPricingProvider(
         val query = card.name.trim().takeIf(String::isNotBlank) ?: return null
         val url = "https://api.justtcg.com/v1/cards" +
             "?game=${encode(market.first)}" +
-            "&q=${encode(query)}&limit=20"
+            "&q=${encode(query)}" +
+            "&language=${encode(market.second)}" +
+            "&limit=20"
 
         val root = getJson(url, "X-API-Key", apiKey) ?: return null
         val cards = root["data"] as? JsonArray ?: return null
@@ -69,10 +71,37 @@ internal class JustTcgCentralPricingProvider(
             .firstOrNull() ?: return null
 
         val variants = candidate["variants"] as? JsonArray ?: return null
+        val expectedLanguage =
+            normalizeText(
+                market.second
+            )
+
         val usdValues = variants.mapNotNull { it as? JsonObject }
             .filter {
-                normalizeText(it.string("language").orEmpty()) ==
-                    normalizeText(market.second)
+                val rawLanguage =
+                    it.string(
+                        "language"
+                    )
+                        ?.trim()
+                        .orEmpty()
+
+                /*
+                 * JustTCG v1 documents an omitted language as English.
+                 * Treating blank as "" used to discard valid English prices.
+                 */
+                val actualLanguage =
+                    normalizeText(
+                        if (
+                            rawLanguage.isBlank()
+                        ) {
+                            "English"
+                        } else {
+                            rawLanguage
+                        }
+                    )
+
+                actualLanguage ==
+                    expectedLanguage
             }
             .filter { printingMatches(it.string("printing"), variant.legacyVariant) }
             .filter {
@@ -99,15 +128,43 @@ internal class JustTcgCentralPricingProvider(
     }
 
     private fun marketForLanguage(language: String): Pair<String, String>? =
-        when (language.lowercase(Locale.ROOT)) {
-            "de" -> "pokemon" to "German"
-            "en" -> "pokemon" to "English"
-            "fr" -> "pokemon" to "French"
-            "it" -> "pokemon" to "Italian"
-            "es" -> "pokemon" to "Spanish"
-            "pt" -> "pokemon" to "Portuguese"
-            "ja" -> "pokemon-japan" to "Japanese"
-            else -> null
+        when (
+            language.lowercase(
+                Locale.ROOT
+            )
+        ) {
+            "de" ->
+                "pokemon" to "German"
+
+            "en" ->
+                "pokemon" to "English"
+
+            "ko" ->
+                "pokemon" to "Korean"
+
+            "zh-cn" ->
+                "pokemon" to "Chinese (S)"
+
+            "zh-tw" ->
+                "pokemon" to "Chinese (T)"
+
+            "ja" ->
+                "pokemon-japan" to "Japanese"
+
+            "fr" ->
+                "pokemon" to "French"
+
+            "it" ->
+                "pokemon" to "Italian"
+
+            "es" ->
+                "pokemon" to "Spanish"
+
+            "pt" ->
+                "pokemon" to "Portuguese"
+
+            else ->
+                null
         }
 
     private fun printingMatches(raw: String?, legacyVariant: String): Boolean {

@@ -1459,7 +1459,8 @@ class CardCatalogService(
 
                         tcgDexEur =
                             exactVariantPrice(
-                                raw
+                                raw,
+                                type
                             )
                     )
                 }
@@ -1637,28 +1638,68 @@ class CardCatalogService(
     }
 
     private fun exactVariantPrice(
-        variant: JsonObject
+        variant: JsonObject,
+        type: String
     ): Double? {
 
         val cardmarket =
             variant["pricing"]
                 ?.asObject()
-                ?.get("cardmarket")
+                ?.get(
+                    "cardmarket"
+                )
                 ?.asObject()
                 ?: return null
 
-        return listOf(
-            "trend",
-            "avg7",
-            "avg30",
-            "avg",
-            "low"
-        )
+        val normalizedType =
+            type
+                .trim()
+                .lowercase()
+
+        val foil =
+            variant.string(
+                "foil"
+            )
+
+        val holoLike =
+            normalizedType ==
+                "reverse" ||
+                normalizedType ==
+                    "holo" ||
+                !foil.isNullOrBlank()
+
+        val keys =
+            if (holoLike) {
+                listOf(
+                    "trend-holo",
+                    "avg7-holo",
+                    "avg30-holo",
+                    "avg-holo",
+                    "low-holo",
+                    "trend",
+                    "avg7",
+                    "avg30",
+                    "avg",
+                    "low"
+                )
+            } else {
+                listOf(
+                    "trend",
+                    "avg7",
+                    "avg30",
+                    "avg",
+                    "low"
+                )
+            }
+
+        return keys
             .firstNotNullOfOrNull {
                 key ->
 
                 cardmarket
-                    .double(key)
+                    .double(
+                        key
+                    )
                     ?.takeIf {
                         it.isFinite() &&
                             it > 0.0

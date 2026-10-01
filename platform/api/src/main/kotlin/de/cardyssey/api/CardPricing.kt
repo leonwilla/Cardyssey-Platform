@@ -168,16 +168,6 @@ private class TcgDexCentralPricingProvider :
 
         val identity =
             selected.priceIdentity
-                ?: return null
-
-        val identityCount =
-            variants.count {
-                it.priceIdentity == identity
-            }
-
-        if (identityCount != 1) {
-            return null
-        }
 
         val eur =
             selected.eur
@@ -185,11 +175,46 @@ private class TcgDexCentralPricingProvider :
                     it.isFinite() &&
                         it > 0.0
                 }
+                ?: variant.tcgDexEur
+                    ?.takeIf {
+                        it.isFinite() &&
+                            it > 0.0
+                    }
                 ?: return null
 
+        val identityCount =
+            identity
+                ?.let {
+                    priceIdentity ->
+                    variants.count {
+                        it.priceIdentity ==
+                            priceIdentity
+                    }
+                }
+                ?: 0
+
+        /*
+         * Cardmarket sometimes exposes one market price for multiple
+         * physical variants of the same price family. The old code rejected
+         * those quotes completely and the app showed "–" although a valid
+         * TCG market value existed. The price identity already separates
+         * base vs holo families, so a shared family value is preferable to
+         * no value. The source label keeps that distinction observable.
+         */
         return CentralProviderQuote(
-            source = "TCGDEX",
-            baseEur = eur
+            source =
+                when {
+                    identity == null ->
+                        "TCGDEX_CATALOG"
+
+                    identityCount <= 1 ->
+                        "TCGDEX"
+
+                    else ->
+                        "TCGDEX_SHARED"
+                },
+            baseEur =
+                eur
         )
     }
 
@@ -486,6 +511,19 @@ class CardPricingService(
                         variant = selected
                     )
                 }
+                    ?: selected.tcgDexEur
+                        ?.takeIf {
+                            it.isFinite() &&
+                                it > 0.0
+                        }
+                        ?.let {
+                            CentralProviderQuote(
+                                source =
+                                    "TCGDEX_CATALOG_CACHE",
+                                baseEur =
+                                    it
+                            )
+                        }
             } else {
                 null
             }

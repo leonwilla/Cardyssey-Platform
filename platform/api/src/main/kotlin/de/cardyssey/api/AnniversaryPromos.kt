@@ -22,9 +22,32 @@ object AnniversaryPromos {
         if (language !in setOf("de", "en")) return emptyList()
         return names.map { (number, german, english) ->
             val image = when {
-                language == "de" -> "https://pokezentrum.de/wp-content/uploads/$german-MEP-$number-30-Jahre-Promo-Pokemon-Karte-Deutsch-430x600.jpg"
-                number in setOf("100", "101") -> "https://www.pokemon.com/static-assets/content-assets/cms2/img/cards/web/MEP/MEP_EN_$number.png"
-                else -> null // Do not label a German scan as English.
+                language == "de" ->
+                    "https://pokezentrum.de/wp-content/uploads/$german-MEP-$number-30-Jahre-Promo-Pokemon-Karte-Deutsch-430x600.jpg"
+
+                number in setOf("100", "101") ->
+                    "https://www.pokemon.com/static-assets/content-assets/cms2/img/cards/web/MEP/MEP_EN_$number.png"
+
+                /*
+                 * TCGdex still has no image field for MEP 094-099.
+                 * Pooka currently exposes the verified English scans under
+                 * stable card IDs matching the physical MEP promo numbers.
+                 * The Tiny mirrors them locally, so clients never depend on
+                 * the third-party CDN after a successful repair/sync.
+                 */
+                language == "en" &&
+                    number in setOf(
+                        "094",
+                        "095",
+                        "096",
+                        "097",
+                        "098",
+                        "099"
+                    ) ->
+                    "https://cdn.pooka.app/card/en-mep-$number.png"
+
+                else ->
+                    null
             }
             CatalogCardDetails(
                 id = "mep-$number", localId = number,
