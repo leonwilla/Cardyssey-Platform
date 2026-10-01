@@ -29,11 +29,10 @@ object AnniversaryPromos {
                     "https://www.pokemon.com/static-assets/content-assets/cms2/img/cards/web/MEP/MEP_EN_$number.png"
 
                 /*
-                 * TCGdex still has no image field for MEP 094-099.
-                 * Pooka currently exposes the verified English scans under
-                 * stable card IDs matching the physical MEP promo numbers.
-                 * The Tiny mirrors them locally, so clients never depend on
-                 * the third-party CDN after a successful repair/sync.
+                 * TCGdex still has no image field for these newly released
+                 * English promos. Limitless exposes the actual English MEP
+                 * print scans under stable card-number URLs; the Tiny mirrors
+                 * them locally on the first repair/sync run.
                  */
                 language == "en" &&
                     number in setOf(
@@ -44,7 +43,7 @@ object AnniversaryPromos {
                         "098",
                         "099"
                     ) ->
-                    "https://cdn.pooka.app/card/en-mep-$number.png"
+                    "https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/tpci/MEP/MEP_${number}_R_EN.png"
 
                 else ->
                     null

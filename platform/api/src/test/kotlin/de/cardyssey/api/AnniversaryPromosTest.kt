@@ -27,7 +27,20 @@ class AnniversaryPromosTest {
             assertTrue(it.imageBase!!.contains("MEP-${it.localId}"))
             assertTrue(it.imageBase!!.contains("Deutsch"))
         }
-        assertEquals(2, AnniversaryPromos.cards("en").count { it.imageBase != null })
+        val english = AnniversaryPromos.cards("en")
+        assertEquals(8, english.count { it.imageBase != null })
+        english.forEach {
+            assertEquals("en", it.imageLanguage)
+            assertTrue(
+                it.imageBase!!.contains(
+                    "MEP_${it.localId}_R_EN.png"
+                ) ||
+                    it.localId in setOf(
+                        "100",
+                        "101"
+                    )
+            )
+        }
         assertEquals(emptyList<CatalogCardDetails>(), AnniversaryPromos.cards("ko"))
     }
 }
