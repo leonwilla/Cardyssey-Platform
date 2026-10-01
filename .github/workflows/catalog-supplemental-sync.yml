@@ -60,7 +60,7 @@ jobs:
           # Run the repair in its own one-shot container. A concurrent API
           # replacement must not kill the import via a docker exec session.
           docker compose --project-name "$project" --env-file "$env_file" -f platform/compose.yml \
-            run --rm --no-deps api java -cp '/app/lib/*' de.cardyssey.api.AnniversaryCatalogRepairKt
+            run --rm --no-deps --entrypoint java api -cp '/app/lib/*' de.cardyssey.api.AnniversaryCatalogRepairKt
       # The importer retries temporary outages and resumes committed listing pages.
       - name: Import official-language cards and image sources
         run: python3 scripts/sync-supplemental-catalog.py --apply --languages ko,ja,zh-tw --max-seconds 15600
