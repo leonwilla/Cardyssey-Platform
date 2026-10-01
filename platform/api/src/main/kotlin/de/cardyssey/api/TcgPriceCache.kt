@@ -12,6 +12,8 @@ data class CachedTcgPrice(
     val legacyVariant: String,
     val source: String?,
     val baseEur: Double?,
+    val resolutionStatus: String,
+    val failureDetail: String?,
     val updatedAtMs: Long
 )
 
@@ -40,6 +42,8 @@ class TcgPriceCacheRepository(
                     legacy_variant,
                     source,
                     base_eur,
+                    resolution_status,
+                    failure_detail,
                     updated_at
                 FROM tcg_price_cache
                 WHERE card_id = ?
@@ -70,6 +74,11 @@ class TcgPriceCacheRepository(
                         baseEur =
                             result.getBigDecimal("base_eur")
                                 ?.toDouble(),
+                        resolutionStatus =
+                            result.getString("resolution_status")
+                                ?: "NO_PRICE",
+                        failureDetail =
+                            result.getString("failure_detail"),
                         updatedAtMs =
                             result
                                 .getObject(
@@ -99,6 +108,8 @@ class TcgPriceCacheRepository(
                     legacy_variant,
                     source,
                     base_eur,
+                    resolution_status,
+                    failure_detail,
                     updated_at
                 FROM tcg_price_cache
                 WHERE card_id = ?
@@ -179,7 +190,10 @@ class TcgPriceCacheRepository(
     fun write(
         target: TcgPriceRefreshTarget,
         source: String?,
-        baseEur: Double?
+        baseEur: Double?,
+        resolutionStatus: String,
+        failureDetail: String?,
+        retryAfterHours: Long
     ) {
         val normalized =
             baseEur
@@ -198,6 +212,8 @@ class TcgPriceCacheRepository(
                     legacy_variant,
                     source,
                     base_eur,
+                    resolution_status,
+                    failure_detail,
                     updated_at
                 )
                 VALUES (?, ?, ?, ?, ?, ?, NOW())
@@ -206,7 +222,10 @@ class TcgPriceCacheRepository(
                     legacy_variant = EXCLUDED.legacy_variant,
                     source = EXCLUDED.source,
                     base_eur = EXCLUDED.base_eur,
-                    updated_at = NOW()
+                    resolution_status = EXCLUDED.resolution_status,
+                    failure_detail = EXCLUDED.failure_detail,
+                    updated_at = NOW(),
+                    next_attempt_at = EXCLUDED.next_attempt_at
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, target.cardId)
@@ -226,6 +245,19 @@ class TcgPriceCacheRepository(
                         normalized
                     )
                 }
+
+                statement.setString(
+                    7,
+                    resolutionStatus
+                )
+                statement.setString(
+                    8,
+                    failureDetail
+                )
+                statement.setLong(
+                    9,
+                    retryAfterHours.coerceAtLeast(1L)
+                )
 
                 statement.executeUpdate()
             }
@@ -265,9 +297,8 @@ class TcgPriceCacheRepository(
               AND COALESCE(v.value ->> 'id', '') <> ''
               AND COALESCE(v.value ->> 'legacyVariant', '') <> ''
               AND (
-                    p.updated_at IS NULL
-                    OR p.updated_at <
-                        NOW() - (? * INTERVAL '1 hour')
+                    p.next_attempt_at IS NULL
+                    OR p.next_attempt_at <= NOW()
                   )
             ORDER BY
                 p.updated_at NULLS FIRST,
@@ -289,13 +320,6 @@ class TcgPriceCacheRepository(
                         it
                     )
                 }
-
-                statement.setLong(
-                    index++,
-                    ttlHours.coerceAtLeast(
-                        1L
-                    )
-                )
 
                 statement.setInt(
                     index,
@@ -371,7 +395,9 @@ class CachedTcgPricingService(
     private val cacheTtlHours: Long,
     private val batchSize: Int,
     private val requestSpacingMs: Long,
-    private val justTcgFallbacksPerDay: Int
+    private val justTcgFallbacksPerDay: Int,
+    private val missingRetryHours: Long,
+    private val providerErrorRetryHours: Long
 ) {
     @Volatile
     private var fallbackDay: String =
@@ -508,7 +534,104 @@ class CachedTcgPricingService(
     private suspend fun refreshTarget(
         target: TcgPriceRefreshTarget
     ) {
-        val primary =
+        val details =
+            runCatching {
+                catalog.details(
+                    cardId =
+                        target.cardId,
+                    language =
+                        target.languageCode
+                )
+            }
+
+        val detailsValue =
+            details.getOrNull()
+
+        if (detailsValue == null) {
+            cache.write(
+                target =
+                    target,
+                source =
+                    null,
+                baseEur =
+                    null,
+                resolutionStatus =
+                    if (
+                        details.isFailure
+                    ) {
+                        "PROVIDER_ERROR"
+                    } else {
+                        "NO_VARIANT_MATCH"
+                    },
+                failureDetail =
+                    details.exceptionOrNull()
+                        ?.message,
+                retryAfterHours =
+                    if (
+                        details.isFailure
+                    ) {
+                        providerErrorRetryHours
+                    } else {
+                        missingRetryHours
+                    }
+            )
+
+            logResolution(
+                target =
+                    target,
+                status =
+                    if (
+                        details.isFailure
+                    ) {
+                        "PROVIDER_ERROR"
+                    } else {
+                        "NO_VARIANT_MATCH"
+                    },
+                source =
+                    null,
+                price =
+                    null
+            )
+            return
+        }
+
+        val selected =
+            detailsValue.variants
+                .firstOrNull {
+                    it.id ==
+                        target.variantId
+                }
+
+        if (selected == null) {
+            cache.write(
+                target =
+                    target,
+                source =
+                    null,
+                baseEur =
+                    null,
+                resolutionStatus =
+                    "NO_VARIANT_MATCH",
+                failureDetail =
+                    "Variant not present in current catalog details",
+                retryAfterHours =
+                    missingRetryHours
+            )
+
+            logResolution(
+                target =
+                    target,
+                status =
+                    "NO_VARIANT_MATCH",
+                source =
+                    null,
+                price =
+                    null
+            )
+            return
+        }
+
+        val primaryResult =
             runCatching {
                 livePricing.quote(
                     cardId =
@@ -524,16 +647,113 @@ class CachedTcgPricingService(
                     includeFallbackProviders =
                         false
                 )
-            }.getOrNull()
+            }
+
+        if (primaryResult.isFailure) {
+            cache.write(
+                target =
+                    target,
+                source =
+                    null,
+                baseEur =
+                    null,
+                resolutionStatus =
+                    "PROVIDER_ERROR",
+                failureDetail =
+                    primaryResult.exceptionOrNull()
+                        ?.message,
+                retryAfterHours =
+                    providerErrorRetryHours
+            )
+
+            logResolution(
+                target =
+                    target,
+                status =
+                    "PROVIDER_ERROR",
+                source =
+                    null,
+                price =
+                    null
+            )
+            return
+        }
 
         var resolved =
-            primary
+            primaryResult.getOrNull()
+
+        /*
+         * If the exact physical variant has no own price, reuse a TCGdex
+         * catalog value only inside the same legacy family. This never crosses
+         * NORMAL / HOLO / REVERSE. We also require one unambiguous positive
+         * value across that family; conflicting prices are intentionally not
+         * guessed.
+         */
+        if (
+            resolved?.baseEur == null
+        ) {
+            val familyValues =
+                detailsValue.variants
+                    .asSequence()
+                    .filter {
+                        it.legacyVariant ==
+                            selected.legacyVariant
+                    }
+                    .mapNotNull {
+                        it.tcgDexEur
+                            ?.takeIf {
+                                value ->
+                                value.isFinite() &&
+                                    value > 0.0
+                            }
+                    }
+                    .map {
+                        kotlin.math.round(
+                            it * 10_000.0
+                        ) / 10_000.0
+                    }
+                    .distinct()
+                    .toList()
+
+            if (
+                familyValues.size ==
+                    1
+            ) {
+                resolved =
+                    CardPriceQuoteResponse(
+                        cardId =
+                            detailsValue.id,
+                        languageCode =
+                            detailsValue.languageCode,
+                        variantId =
+                            selected.id,
+                        variantType =
+                            selected.type,
+                        condition =
+                            PricingCondition.MINT.name,
+                        market =
+                            "TCG",
+                        source =
+                            "TCGDEX_FAMILY",
+                        baseEur =
+                            familyValues.single(),
+                        conditionFactor =
+                            PricingCondition.MINT.factor,
+                        eur =
+                            familyValues.single(),
+                        exactLanguageMatch =
+                            true,
+                        exactVariantMatch =
+                            true
+                    )
+            }
+        }
 
         if (
-            primary?.baseEur == null &&
+            resolved?.baseEur == null &&
             claimFallbackSlot()
         ) {
-            resolved =
+            val fallback =
                 runCatching {
                     livePricing.quote(
                         cardId =
@@ -549,8 +769,57 @@ class CachedTcgPricingService(
                         includeFallbackProviders =
                             true
                     )
-                }.getOrNull()
+                }
+
+            if (fallback.isFailure) {
+                cache.write(
+                    target =
+                        target,
+                    source =
+                        null,
+                    baseEur =
+                        null,
+                    resolutionStatus =
+                        "PROVIDER_ERROR",
+                    failureDetail =
+                        fallback.exceptionOrNull()
+                            ?.message,
+                    retryAfterHours =
+                        providerErrorRetryHours
+                )
+
+                logResolution(
+                    target =
+                        target,
+                    status =
+                        "PROVIDER_ERROR",
+                    source =
+                        null,
+                    price =
+                        null
+                )
+                return
+            }
+
+            resolved =
+                fallback.getOrNull()
         }
+
+        val price =
+            resolved?.baseEur
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+
+        val status =
+            if (
+                price != null
+            ) {
+                "PRICE_FOUND"
+            } else {
+                "NO_PRICE"
+            }
 
         cache.write(
             target =
@@ -558,16 +827,47 @@ class CachedTcgPricingService(
             source =
                 resolved?.source,
             baseEur =
-                resolved?.baseEur
+                price,
+            resolutionStatus =
+                status,
+            failureDetail =
+                null,
+            retryAfterHours =
+                if (
+                    price != null
+                ) {
+                    cacheTtlHours
+                } else {
+                    missingRetryHours
+                }
         )
 
+        logResolution(
+            target =
+                target,
+            status =
+                status,
+            source =
+                resolved?.source,
+            price =
+                price
+        )
+    }
+
+    private fun logResolution(
+        target: TcgPriceRefreshTarget,
+        status: String,
+        source: String?,
+        price: Double?
+    ) {
         println(
             "TCG price worker: " +
                 "${target.languageCode} " +
                 "${target.cardId} " +
                 "${target.variantId} " +
-                "source=${resolved?.source ?: "NONE"} " +
-                "price=${resolved?.baseEur ?: "-"}"
+                "status=$status " +
+                "source=${source ?: "NONE"} " +
+                "price=${price ?: "-"}"
         )
     }
 

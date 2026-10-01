@@ -324,7 +324,25 @@ fun Application.module() {
                     ?.coerceAtLeast(
                         0
                     )
-                    ?: 80
+                    ?: 80,
+            missingRetryHours =
+                System.getenv(
+                    "TCG_PRICE_MISSING_RETRY_HOURS"
+                )
+                    ?.toLongOrNull()
+                    ?.coerceAtLeast(
+                        1L
+                    )
+                    ?: 24L,
+            providerErrorRetryHours =
+                System.getenv(
+                    "TCG_PRICE_ERROR_RETRY_HOURS"
+                )
+                    ?.toLongOrNull()
+                    ?.coerceAtLeast(
+                        1L
+                    )
+                    ?: 6L
         )
 
     if (tcgPriceWorkerEnabled) {
