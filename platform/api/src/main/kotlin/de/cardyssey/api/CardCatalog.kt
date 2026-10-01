@@ -266,7 +266,12 @@ class CardCatalogService(
     suspend fun search(query: String, number: String?, language: String, limit: Int): List<CatalogCardSearchResult> {
         val images = anniversaryCards(language).associateBy { it.id }
         return searchMerged(query, number, language, limit).map { card ->
-            card.copy(imageBase = images[card.id]?.imageBase ?: card.imageBase)
+            card.copy(
+                imageBase =
+                    mirror?.completeImageBase(language, card.id)
+                        ?: images[card.id]?.imageBase
+                        ?: card.imageBase
+            )
         }
     }
 
@@ -305,10 +310,21 @@ class CardCatalogService(
         if (cardId.startsWith("official_")) return extra
         val fetched = detailsPrimary(cardId, language, forceRemote)
         val primary = if (curated != null && fetched?.languageCode != language) curated else fetched ?: curated ?: return extra
+        // Prefer a verified image mirrored for the requested language. This avoids
+        // showing an English fallback for a German card when Tiny already has the
+        // localized scan.
+        val localizedImage =
+            if (forceRemote) null
+            else mirror?.completeImageBase(language, cardId)
+
         // Retain richer physical variants/prices when the primary provider has them.
         return when {
-            curated?.imageBase != null -> primary.copy(imageBase = curated.imageBase, imageLanguage = language)
-            !forceRemote && extra?.imageBase != null -> primary.copy(imageBase = extra.imageBase, imageLanguage = language)
+            localizedImage != null ->
+                primary.copy(imageBase = localizedImage, imageLanguage = language)
+            curated?.imageBase != null ->
+                primary.copy(imageBase = curated.imageBase, imageLanguage = language)
+            !forceRemote && extra?.imageBase != null ->
+                primary.copy(imageBase = extra.imageBase, imageLanguage = language)
             else -> primary
         }
     }
@@ -351,8 +367,20 @@ class CardCatalogService(
         if (extra.isEmpty()) return primary
         val images = extra.associateBy { it.id }
         val cards = (primary?.cards.orEmpty().map { card ->
-            card.copy(imageBase = images[card.id]?.imageBase ?: card.imageBase)
-        } + extra.map { CatalogSetCard(it.id, it.localId, it.name, it.imageBase) })
+            card.copy(
+                imageBase =
+                    mirror?.completeImageBase(language, card.id)
+                        ?: images[card.id]?.imageBase
+                        ?: card.imageBase
+            )
+        } + extra.map { card ->
+            CatalogSetCard(
+                card.id,
+                card.localId,
+                card.name,
+                mirror?.completeImageBase(language, card.id) ?: card.imageBase
+            )
+        })
             .distinctBy { it.id }.sortedWith(compareBy<CatalogSetCard> { it.localId.toIntOrNull() ?: Int.MAX_VALUE }.thenBy { it.localId })
         return (primary ?: CatalogSetDetails(setId, extra.first().setName,
             officialCount = extra.maxOf { it.officialCount }, totalCount = cards.size, cards = cards))
