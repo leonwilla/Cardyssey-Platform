@@ -1468,8 +1468,22 @@ class CardCatalogService(
                     it.id
                 }
 
+        val curated =
+            curatedPhysicalVariants(
+                card =
+                    card,
+                language =
+                    language
+            )
+
         if (detailed.isNotEmpty()) {
-            return detailed
+            return (
+                detailed +
+                    curated
+                )
+                .distinctBy {
+                    it.id
+                }
         }
 
         val legacy =
@@ -1600,9 +1614,81 @@ class CardCatalogService(
                 )
         }
 
-        return result.distinctBy {
-            it.id
+        return (
+            result +
+                curated
+            )
+            .distinctBy {
+                it.id
+            }
+    }
+
+    /*
+     * Curated physical printings that are documented but still missing from
+     * the upstream variant metadata. Keep these tightly scoped by language,
+     * set and card number so they cannot leak onto another printing.
+     */
+    private fun curatedPhysicalVariants(
+        card: JsonObject,
+        language: String
+    ): List<CatalogVariant> {
+        if (
+            language.lowercase() !=
+                "en"
+        ) {
+            return emptyList()
         }
+
+        val localId =
+            card.string(
+                "localId"
+            )
+                ?.trim()
+                ?.trimStart(
+                    '0'
+                )
+                ?.ifBlank {
+                    "0"
+                }
+
+        val setId =
+            card["set"]
+                ?.asObject()
+                ?.string(
+                    "id"
+                )
+                ?.trim()
+                ?.lowercase()
+
+        if (
+            setId ==
+                "sv02" &&
+            localId ==
+                "62"
+        ) {
+            return listOf(
+                CatalogVariant(
+                    id =
+                        "curated:pumpkin-pikachu-stamp:2023",
+                    type =
+                        "holo",
+                    foil =
+                        "mirage",
+                    size =
+                        "standard",
+                    stamps =
+                        listOf(
+                            "pumpkin-pikachu"
+                        ),
+                    legacyVariant =
+                        "HOLO",
+                    tcgDexEur =
+                        null
+                )
+            )
+        }
+
+        return emptyList()
     }
 
     private fun legacyVariantDto(
