@@ -14,7 +14,8 @@ import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 
 fun Route.collectionRoutes(
-    repository: CollectionRepository
+    repository: CollectionRepository,
+    tcgPriceCache: TcgPriceCacheRepository
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/collection") {
@@ -24,7 +25,19 @@ fun Route.collectionRoutes(
                     call.respond(HttpStatusCode.Unauthorized)
                     return@get
                 }
-                call.respond(repository.list(userId).map(::withCentralValuation))
+                call.respond(
+                    repository
+                        .list(userId)
+                        .map {
+                            item ->
+                            withCentralValuation(
+                                item =
+                                    item.withCachedTcgPrice(
+                                        tcgPriceCache
+                                    )
+                            )
+                        }
+                )
             }
 
             post {
@@ -96,6 +109,62 @@ fun Route.collectionRoutes(
             }
         }
     }
+}
+
+private fun CollectionItemDto.withCachedTcgPrice(
+    cache: TcgPriceCacheRepository
+): CollectionItemDto {
+    val cached =
+        variantSpec
+            ?.id
+            ?.takeIf {
+                it.isNotBlank()
+            }
+            ?.let {
+                variantId ->
+                cache.read(
+                    cardId =
+                        cardId,
+                    languageCode =
+                        languageCode,
+                    variantId =
+                        variantId
+                )
+            }
+            ?: cache.readByLegacyVariant(
+                cardId =
+                    cardId,
+                languageCode =
+                    languageCode,
+                legacyVariant =
+                    variant
+            )
+
+    val value =
+        cached
+            ?.baseEur
+            ?.takeIf {
+                it.isFinite() &&
+                    it > 0.0
+            }
+            ?: return this
+
+    return copy(
+        unitEur =
+            value,
+        marketUnitEur =
+            marketUnitEur +
+                (
+                    "TCG" to
+                        value
+                    ),
+        marketUpdatedAtMs =
+            marketUpdatedAtMs +
+                (
+                    "TCG" to
+                        cached.updatedAtMs
+                    )
+    )
 }
 
 private fun withCentralValuation(item: CollectionItemDto): CollectionItemDto {

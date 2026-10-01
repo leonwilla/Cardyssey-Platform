@@ -576,7 +576,10 @@ fun Application.module() {
         )
 
         collectionRoutes(
-            collectionRepository
+            repository =
+                collectionRepository,
+            tcgPriceCache =
+                tcgPriceCache
         )
 
         friendshipRoutes(

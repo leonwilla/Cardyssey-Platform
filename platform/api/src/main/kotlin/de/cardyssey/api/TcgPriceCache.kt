@@ -83,6 +83,99 @@ class TcgPriceCacheRepository(
             }
         }
 
+    fun readByLegacyVariant(
+        cardId: String,
+        languageCode: String,
+        legacyVariant: String
+    ): CachedTcgPrice? =
+        dataSource.connection.use {
+            connection ->
+            connection.prepareStatement(
+                """
+                SELECT
+                    card_id,
+                    language_code,
+                    variant_id,
+                    legacy_variant,
+                    source,
+                    base_eur,
+                    updated_at
+                FROM tcg_price_cache
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND legacy_variant = ?
+                ORDER BY updated_at DESC
+                """.trimIndent()
+            ).use {
+                statement ->
+                statement.setString(
+                    1,
+                    cardId
+                )
+                statement.setString(
+                    2,
+                    languageCode
+                )
+                statement.setString(
+                    3,
+                    legacyVariant.uppercase()
+                )
+
+                statement.executeQuery().use {
+                    result ->
+                    if (!result.next()) {
+                        return null
+                    }
+
+                    val first =
+                        CachedTcgPrice(
+                            cardId =
+                                result.getString(
+                                    "card_id"
+                                ),
+                            languageCode =
+                                result.getString(
+                                    "language_code"
+                                ),
+                            variantId =
+                                result.getString(
+                                    "variant_id"
+                                ),
+                            legacyVariant =
+                                result.getString(
+                                    "legacy_variant"
+                                ),
+                            source =
+                                result.getString(
+                                    "source"
+                                ),
+                            baseEur =
+                                result.getBigDecimal(
+                                    "base_eur"
+                                )?.toDouble(),
+                            updatedAtMs =
+                                result.getObject(
+                                    "updated_at",
+                                    OffsetDateTime::class.java
+                                )
+                                    .toInstant()
+                                    .toEpochMilli()
+                        )
+
+                    /*
+                     * Legacy identities are safe only if exactly one physical
+                     * variant maps to them. Otherwise we intentionally return
+                     * no price instead of silently valuing the wrong print.
+                     */
+                    if (result.next()) {
+                        null
+                    } else {
+                        first
+                    }
+                }
+            }
+        }
+
     fun write(
         target: TcgPriceRefreshTarget,
         source: String?,
