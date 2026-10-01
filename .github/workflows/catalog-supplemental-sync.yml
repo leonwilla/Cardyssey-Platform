@@ -7,6 +7,8 @@ on:
       - '.github/workflows/catalog-supplemental-sync.yml'
       - 'scripts/sync-supplemental-catalog.py'
       - 'scripts/test-supplemental-catalog.py'
+      - 'platform/api/src/main/kotlin/de/cardyssey/api/AnniversaryCatalogRepair.kt'
+      - 'platform/api/src/main/kotlin/de/cardyssey/api/AnniversaryPromos.kt'
   workflow_dispatch:
     inputs:
       deploy_api:
