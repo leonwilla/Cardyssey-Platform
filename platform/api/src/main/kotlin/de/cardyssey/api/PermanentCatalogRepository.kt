@@ -53,6 +53,22 @@ class PermanentCatalogRepository(
     fun storedImage(language: String, cardId: String): Path? =
         imagePath(language, cardId).takeIf(Files::isRegularFile)
 
+    fun completeImageBase(language: String, cardId: String): String? {
+        if (storedImage(language, cardId) == null) return null
+        val complete = dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT image_complete FROM catalog_cards_mirror WHERE language_code = ? AND card_id = ?"
+            ).use { statement ->
+                statement.setString(1, language)
+                statement.setString(2, cardId)
+                statement.executeQuery().use { result ->
+                    result.next() && result.getBoolean("image_complete")
+                }
+            }
+        }
+        return if (complete) imageBase(language, cardId) else null
+    }
+
     /** Serve a local scan only after its language-specific source has been verified and hashed. */
     fun hasImageSource(language: String, cardId: String, source: String): Boolean {
         if (storedImage(language, cardId) == null) return false
