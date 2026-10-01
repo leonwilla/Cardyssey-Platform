@@ -164,6 +164,14 @@ class TcgPriceCacheRepository(
                                 result.getBigDecimal(
                                     "base_eur"
                                 )?.toDouble(),
+                            resolutionStatus =
+                                result.getString(
+                                    "resolution_status"
+                                ) ?: "NO_PRICE",
+                            failureDetail =
+                                result.getString(
+                                    "failure_detail"
+                                ),
                             updatedAtMs =
                                 result.getObject(
                                     "updated_at",
