@@ -347,7 +347,8 @@ def main():
                     count, rejected = asia_records(language, args.cache, Fetcher(deadline, max(0.2, args.delay)), args.apply)
                 state = "partial" if rejected else "imported"
                 status(source, state, count, f"{rejected} unverified records skipped" if rejected else None, args.apply)
-                failed = failed or bool(rejected)
+                # Unverified/skipped records are reported as partial coverage, but they are not a
+                # technical sync failure. Reserve a non-zero exit code for actual import errors.
             except (ValueError, OSError, subprocess.CalledProcessError) as error:
                 progress = args.cache / language / "progress.json"
                 imported = json.loads(progress.read_text()).get("count", 0) if progress.exists() else 0
