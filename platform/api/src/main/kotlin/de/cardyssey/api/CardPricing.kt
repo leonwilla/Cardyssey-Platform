@@ -450,7 +450,8 @@ class CardPricingService(
         language: String,
         variantId: String?,
         legacyVariant: String?,
-        condition: PricingCondition
+        condition: PricingCondition,
+        includeFallbackProviders: Boolean = true
     ): CardPriceQuoteResponse? {
         val details =
             catalog.details(
@@ -503,14 +504,26 @@ class CardPricingService(
                 exactLanguageMatch &&
                 selected != null
             ) {
-                providers.firstNotNullOfOrNull {
-                    provider ->
+                providers
+                    .let {
+                        if (
+                            includeFallbackProviders
+                        ) {
+                            it
+                        } else {
+                            it.take(
+                                1
+                            )
+                        }
+                    }
+                    .firstNotNullOfOrNull {
+                        provider ->
 
-                    provider.quote(
-                        card = details,
-                        variant = selected
-                    )
-                }
+                        provider.quote(
+                            card = details,
+                            variant = selected
+                        )
+                    }
                     ?: selected.tcgDexEur
                         ?.takeIf {
                             it.isFinite() &&

@@ -83,6 +83,14 @@ services:
       EBAY_BROWSER_URL: http://ebay-browser:4444
       EBAY_PRICE_CACHE_TTL_HOURS: ${EBAY_PRICE_CACHE_TTL_HOURS:-168}
 
+      # TCG prices are centrally prefetched and refreshed every 7 days.
+      # App/web requests read this cache only and never hit providers directly.
+      TCG_PRICE_CACHE_TTL_HOURS: ${TCG_PRICE_CACHE_TTL_HOURS:-168}
+      TCG_PRICE_WORKER_ENABLED: ${TCG_PRICE_WORKER_ENABLED:-true}
+      TCG_PRICE_WORKER_BATCH_SIZE: ${TCG_PRICE_WORKER_BATCH_SIZE:-100}
+      TCG_PRICE_REQUEST_SPACING_MS: ${TCG_PRICE_REQUEST_SPACING_MS:-250}
+      JUSTTCG_FALLBACKS_PER_DAY: ${JUSTTCG_FALLBACKS_PER_DAY:-80}
+
       AVATAR_DIR: /data/avatars
       CATALOG_DIR: /data/catalog
       CATALOG_SYNC_INTERVAL_HOURS: ${CATALOG_SYNC_INTERVAL_HOURS:-24}

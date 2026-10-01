@@ -36,7 +36,9 @@ data class HealthResponse(
     val ebayPricingMode: String,
     val ebayDirectEnabled: Boolean,
     val ebayDirectSessionConfigured: Boolean,
-    val ebayPriceCacheTtlHours: Long
+    val ebayPriceCacheTtlHours: Long,
+    val tcgPriceCacheTtlHours: Long,
+    val tcgPriceWorkerEnabled: Boolean
 )
 
 fun main() {
@@ -128,6 +130,11 @@ fun Application.module() {
 
     val ebayPriceCache =
         EbayPriceCacheRepository(
+            database
+        )
+
+    val tcgPriceCache =
+        TcgPriceCacheRepository(
             database
         )
 
@@ -254,12 +261,77 @@ fun Application.module() {
             ?.takeIf { it > 0L }
             ?: 168L
 
-    val cardPricing =
+    val liveCardPricing =
         CardPricingService(
             catalog = cardCatalog,
             justTcgApiKey =
                 justTcgApiKey
         )
+
+    val tcgPriceCacheTtlHours =
+        System.getenv(
+            "TCG_PRICE_CACHE_TTL_HOURS"
+        )
+            ?.toLongOrNull()
+            ?.takeIf {
+                it > 0L
+            }
+            ?: 168L
+
+    val tcgPriceWorkerEnabled =
+        System.getenv(
+            "TCG_PRICE_WORKER_ENABLED"
+        )
+            ?.toBooleanStrictOrNull()
+            ?: true
+
+    val tcgPricing =
+        CachedTcgPricingService(
+            catalog =
+                cardCatalog,
+            cache =
+                tcgPriceCache,
+            livePricing =
+                liveCardPricing,
+            languages =
+                catalogLanguages,
+            cacheTtlHours =
+                tcgPriceCacheTtlHours,
+            batchSize =
+                System.getenv(
+                    "TCG_PRICE_WORKER_BATCH_SIZE"
+                )
+                    ?.toIntOrNull()
+                    ?.coerceIn(
+                        1,
+                        2_000
+                    )
+                    ?: 100,
+            requestSpacingMs =
+                System.getenv(
+                    "TCG_PRICE_REQUEST_SPACING_MS"
+                )
+                    ?.toLongOrNull()
+                    ?.coerceAtLeast(
+                        100L
+                    )
+                    ?: 250L,
+            justTcgFallbacksPerDay =
+                System.getenv(
+                    "JUSTTCG_FALLBACKS_PER_DAY"
+                )
+                    ?.toIntOrNull()
+                    ?.coerceAtLeast(
+                        0
+                    )
+                    ?: 80
+        )
+
+    if (tcgPriceWorkerEnabled) {
+        launch {
+            tcgPricing.runForever()
+        }
+    }
 
     val ebayProviders =
         buildList<EbayQuoteProvider> {
@@ -468,7 +540,13 @@ fun Application.module() {
                         ebayDirectCookies.isNotBlank(),
 
                     ebayPriceCacheTtlHours =
-                        ebayPriceCacheTtlHours
+                        ebayPriceCacheTtlHours,
+
+                    tcgPriceCacheTtlHours =
+                        tcgPriceCacheTtlHours,
+
+                    tcgPriceWorkerEnabled =
+                        tcgPriceWorkerEnabled
                 )
             )
         }
@@ -565,7 +643,7 @@ fun Application.module() {
 
         pricingRoutes(
             catalog = cardCatalog,
-            pricing = cardPricing,
+            pricing = tcgPricing,
             ebayPricing = ebayPricing
         )
     }
