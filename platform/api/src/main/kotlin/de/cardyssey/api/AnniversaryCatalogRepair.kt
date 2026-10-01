@@ -1,8 +1,48 @@
 package de.cardyssey.api
 
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.file.Path
+import java.time.Duration
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+
+private val repairHttp =
+    HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NORMAL)
+        .build()
+
+private fun tcgDexEnglishImage(cardId: String): String? =
+    runCatching {
+        val request =
+            HttpRequest.newBuilder()
+                .uri(URI.create("https://api.tcgdex.net/v2/en/cards/$cardId"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Accept", "application/json")
+                .header("User-Agent", "Cardyssey-AnniversaryRepair/1.0")
+                .GET()
+                .build()
+
+        val response =
+            repairHttp.send(
+                request,
+                HttpResponse.BodyHandlers.ofString()
+            )
+
+        if (response.statusCode() !in 200..299) return@runCatching null
+
+        Json.parseToJsonElement(response.body())
+            .jsonObject["image"]
+            ?.jsonPrimitive
+            ?.content
+            ?.takeIf { it.isNotBlank() }
+    }.getOrNull()
 
 /** Idempotent Tiny backfill; no collection rows or physical card identities are changed. */
 fun main() {
@@ -18,10 +58,23 @@ fun main() {
             for (card in AnniversaryPromos.cards(language)) {
                 try {
                     // Seed missing metadata, but never overwrite existing priced print variants.
-                    mirror.upsertCard(language,
-                        CatalogCardSearchResult(card.id, card.localId, card.name, card.setId, card.setName, card.imageBase),
-                        Json.encodeToString(card), rarity = "Promo")
-                    val source = card.imageBase
+                    val source =
+                        card.imageBase
+                            ?: if (language == "en") tcgDexEnglishImage(card.id) else null
+
+                    mirror.upsertCard(
+                        language,
+                        CatalogCardSearchResult(
+                            card.id,
+                            card.localId,
+                            card.name,
+                            card.setId,
+                            card.setName,
+                            source
+                        ),
+                        Json.encodeToString(card.copy(imageBase = source, imageLanguage = if (source != null) language else null)),
+                        rarity = "Promo"
+                    )
                     if (source == null) {
                         println("GAP: $language ${card.id}: no verified image source yet")
                         continue
@@ -54,6 +107,6 @@ fun main() {
             }
         }
     }
-    println("Anniversary images: downloaded=$downloaded retained=$retained failed=$failures; EN 094–099 still need verified scans")
+    println("Anniversary images: downloaded=$downloaded retained=$retained failed=$failures; unresolved EN images stay visible as GAP entries")
     check(failures == 0) { "$failures anniversary image downloads failed; rerun to resume" }
 }
