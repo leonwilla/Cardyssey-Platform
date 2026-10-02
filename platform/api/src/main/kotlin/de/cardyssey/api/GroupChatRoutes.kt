@@ -1,18 +1,24 @@
 package de.cardyssey.api
 
 import com.zaxxer.hikari.HikariDataSource
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondTextWriter
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -84,10 +90,23 @@ data class SendGroupChatMessageRequest(
     val objectPayload: JsonElement? = null
 )
 
+@Serializable
+data class GroupChatEvent(
+    val type: String,
+    val groupId: String,
+    val message: GroupChatMessageResponse? = null
+)
+
 class GroupChatRepository(
     private val dataSource: HikariDataSource,
     private val friendships: FriendshipRepository
 ) {
+    private val events =
+        MutableSharedFlow<GroupChatEvent>(
+            extraBufferCapacity = 256
+        )
+
+    fun eventFlow() = events
     fun groups(userId: UUID): List<GroupChatSummaryResponse> =
         dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -428,6 +447,13 @@ class GroupChatRepository(
                 s.setObject(1, groupId)
                 s.executeUpdate()
             }
+            events.tryEmit(
+                GroupChatEvent(
+                    type = "MESSAGE_CREATED",
+                    groupId = groupId.toString(),
+                    message = response
+                )
+            )
             response
         }
     }
@@ -524,6 +550,30 @@ fun Route.groupChatRoutes(repository: GroupChatRepository) {
                 val group = repository.create(userId, request.name, request.memberFriendCodes)
                     ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_group_or_members"))
                 call.respond(HttpStatusCode.Created, group)
+            }
+
+            get("/events") {
+                val userId = call.authenticatedUserId()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                val groupFilter = call.request.queryParameters["groupId"]
+
+                call.respondTextWriter(ContentType.Text.EventStream) {
+                    repository.eventFlow()
+                        .filter { event ->
+                            val groupId = runCatching {
+                                UUID.fromString(event.groupId)
+                            }.getOrNull()
+
+                            groupId != null &&
+                                repository.detail(userId, groupId) != null &&
+                                (groupFilter == null || event.groupId == groupFilter)
+                        }
+                        .collect { event ->
+                            write("event: group\\n")
+                            write("data: " + Json.encodeToString(event) + "\\n\\n")
+                            flush()
+                        }
+                }
             }
 
             route("/{groupId}") {
