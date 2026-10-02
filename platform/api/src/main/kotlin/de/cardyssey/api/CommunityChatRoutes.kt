@@ -92,6 +92,35 @@ data class CommunityEvent(
     val message: CommunityMessageResponse? = null
 )
 
+@Serializable
+data class ChatModerationAccessResponse(
+    val canModerate: Boolean
+)
+
+@Serializable
+data class CommunityReportResponse(
+    val reportId: String,
+    val messageId: String,
+    val roomName: String,
+    val senderFriendCode: String,
+    val senderDisplayName: String?,
+    val reporterFriendCode: String,
+    val reason: String,
+    val body: String,
+    val createdAt: String
+)
+
+@Serializable
+data class ChatModerationAuditResponse(
+    val id: String,
+    val action: String,
+    val targetFriendCode: String?,
+    val moderatorFriendCode: String,
+    val reason: String?,
+    val expiresAt: String?,
+    val createdAt: String
+)
+
 private class ChatSendGuard {
     private data class SendState(
         val timestamps: ArrayDeque<Long> = ArrayDeque(),
@@ -442,6 +471,20 @@ class CommunityChatRepository(
                     }
                 }
 
+                if (messageId != null) {
+                    connection.prepareStatement(
+                        """
+                        UPDATE community_message_reports
+                        SET status = 'RESOLVED', resolved_at = NOW(), resolved_by = ?
+                        WHERE message_id = ? AND status = 'OPEN'
+                        """.trimIndent()
+                    ).use { s ->
+                        s.setObject(1, moderatorId)
+                        s.setObject(2, messageId)
+                        s.executeUpdate()
+                    }
+                }
+
                 connection.prepareStatement(
                     """
                     INSERT INTO chat_moderation_actions
@@ -465,6 +508,111 @@ class CommunityChatRepository(
                 false
             } finally {
                 connection.autoCommit = true
+            }
+        }
+    }
+
+    fun openReports(): List<CommunityReportResponse> =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT r.id, r.message_id, room.name AS room_name,
+                       sender.friend_code AS sender_code,
+                       sender.display_name AS sender_name,
+                       reporter.friend_code AS reporter_code,
+                       r.reason, m.body, r.created_at
+                FROM community_message_reports r
+                JOIN community_messages m ON m.id = r.message_id
+                JOIN community_rooms room ON room.id = m.room_id
+                JOIN users sender ON sender.id = m.sender_id
+                JOIN users reporter ON reporter.id = r.reporter_id
+                WHERE r.status = 'OPEN'
+                ORDER BY r.created_at ASC
+                LIMIT 250
+                """.trimIndent()
+            ).use { s ->
+                s.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                CommunityReportResponse(
+                                    reportId = rs.getString("id"),
+                                    messageId = rs.getString("message_id"),
+                                    roomName = rs.getString("room_name"),
+                                    senderFriendCode = rs.getString("sender_code"),
+                                    senderDisplayName = rs.getString("sender_name"),
+                                    reporterFriendCode = rs.getString("reporter_code"),
+                                    reason = rs.getString("reason"),
+                                    body = rs.getString("body"),
+                                    createdAt = rs.getObject("created_at").toString()
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    fun moderationHistory(limit: Int): List<ChatModerationAuditResponse> =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT a.id, a.action, target.friend_code AS target_code,
+                       moderator.friend_code AS moderator_code,
+                       a.reason, a.expires_at, a.created_at
+                FROM chat_moderation_actions a
+                LEFT JOIN users target ON target.id = a.target_user_id
+                JOIN users moderator ON moderator.id = a.moderator_id
+                ORDER BY a.created_at DESC
+                LIMIT ?
+                """.trimIndent()
+            ).use { s ->
+                s.setInt(1, limit.coerceIn(1, 250))
+                s.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                ChatModerationAuditResponse(
+                                    id = rs.getString("id"),
+                                    action = rs.getString("action"),
+                                    targetFriendCode = rs.getString("target_code"),
+                                    moderatorFriendCode = rs.getString("moderator_code"),
+                                    reason = rs.getString("reason"),
+                                    expiresAt = rs.getObject("expires_at")?.toString(),
+                                    createdAt = rs.getObject("created_at").toString()
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    fun setModerator(grantedBy: UUID, friendCode: String, active: Boolean): Boolean {
+        val targetId = findUserId(friendCode) ?: return false
+        return dataSource.connection.use { connection ->
+            if (active) {
+                connection.prepareStatement(
+                    """
+                    INSERT INTO chat_moderator_roles (user_id, granted_by, active)
+                    VALUES (?, ?, TRUE)
+                    ON CONFLICT (user_id) DO UPDATE SET
+                        granted_by = EXCLUDED.granted_by,
+                        active = TRUE,
+                        created_at = NOW()
+                    """.trimIndent()
+                ).use { s ->
+                    s.setObject(1, targetId)
+                    s.setObject(2, grantedBy)
+                    s.executeUpdate() > 0
+                }
+            } else {
+                connection.prepareStatement(
+                    "UPDATE chat_moderator_roles SET active = FALSE WHERE user_id = ?"
+                ).use { s ->
+                    s.setObject(1, targetId)
+                    s.executeUpdate() > 0
+                }
             }
         }
     }
@@ -639,6 +787,59 @@ fun Route.communityChatRoutes(
                             flush()
                         }
                 }
+            }
+
+            get("/moderation/access") {
+                val userId = call.authenticatedUserId()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                call.respond(
+                    ChatModerationAccessResponse(
+                        canModerate = repository.canModerate(userId, roles)
+                    )
+                )
+            }
+
+            get("/moderation/reports") {
+                val userId = call.authenticatedUserId()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                if (!repository.canModerate(userId, roles)) {
+                    return@get call.respond(HttpStatusCode.Forbidden)
+                }
+                call.respond(repository.openReports())
+            }
+
+            get("/moderation/history") {
+                val userId = call.authenticatedUserId()
+                    ?: return@get call.respond(HttpStatusCode.Unauthorized)
+                if (!repository.canModerate(userId, roles)) {
+                    return@get call.respond(HttpStatusCode.Forbidden)
+                }
+                val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                call.respond(repository.moderationHistory(limit))
+            }
+
+            post("/moderation/moderators/{friendCode}") {
+                val userId = call.authenticatedUserId()
+                    ?: return@post call.respond(HttpStatusCode.Unauthorized)
+                if (roles.roleFor(userId)?.canAdmin != true) {
+                    return@post call.respond(HttpStatusCode.Forbidden)
+                }
+                val friendCode = call.parameters["friendCode"]
+                    ?: return@post call.respond(HttpStatusCode.BadRequest)
+                val ok = repository.setModerator(userId, friendCode, true)
+                call.respond(if (ok) HttpStatusCode.NoContent else HttpStatusCode.BadRequest)
+            }
+
+            delete("/moderation/moderators/{friendCode}") {
+                val userId = call.authenticatedUserId()
+                    ?: return@delete call.respond(HttpStatusCode.Unauthorized)
+                if (roles.roleFor(userId)?.canAdmin != true) {
+                    return@delete call.respond(HttpStatusCode.Forbidden)
+                }
+                val friendCode = call.parameters["friendCode"]
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                val ok = repository.setModerator(userId, friendCode, false)
+                call.respond(if (ok) HttpStatusCode.NoContent else HttpStatusCode.BadRequest)
             }
 
             post("/moderation/actions") {
