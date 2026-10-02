@@ -182,8 +182,16 @@ fun Route.cardRecognitionRoutes(
              */
             val combined =
                 (
-                    candidates +
-                        visualCandidates
+                    /*
+                     * Visual matches are already ordered by perceptual hash
+                     * distance (best image hit first). Keep that order ahead
+                     * of OCR/name candidates. Previously OCR candidates were
+                     * prepended here, so two cards with the same printed name
+                     * could make the normal printing shadow the visually
+                     * correct illustration/secret rare.
+                     */
+                    visualCandidates +
+                        candidates
                     )
                     .distinctBy {
                         it.id
