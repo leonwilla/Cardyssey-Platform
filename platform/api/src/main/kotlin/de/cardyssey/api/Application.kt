@@ -111,6 +111,11 @@ fun Application.module() {
             friendships = friendshipRepository
         )
 
+    val communityChatRepository =
+        CommunityChatRepository(
+            dataSource = database
+        )
+
     val showcaseRepository =
         ShowcaseRepository(database)
 
@@ -629,6 +634,11 @@ fun Application.module() {
 
         groupChatRoutes(
             groupChatRepository
+        )
+
+        communityChatRoutes(
+            repository = communityChatRepository,
+            roles = roleRepository
         )
 
         chatModerationRoutes(
