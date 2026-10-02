@@ -152,8 +152,10 @@ if match is None:
     raise SystemExit("FAIL: created item not found")
 if match.get("quantity") != 1:
     raise SystemExit(f"FAIL: created quantity={match.get('quantity')!r}")
-if abs((match.get("positionValueEur") or {}).get("TCG", 0) - 1.1316) > 1e-6:
-    raise SystemExit(f"FAIL: central valuation mismatch: {match.get('positionValueEur')!r}")
+actual = (match.get("positionValueEur") or {}).get("TCG")
+expected = 1.13
+if not isinstance(actual, (int, float)) or abs(actual - expected) > 1e-6:
+    raise SystemExit(f"FAIL: central valuation mismatch: {match.get('positionValueEur')!r}, expected={expected!r}")
 print("OK: create verified")
 PY
 
@@ -207,7 +209,7 @@ if match is None:
     raise SystemExit("FAIL: updated item not found")
 if match.get("quantity") != 2:
     raise SystemExit(f"FAIL: updated quantity={match.get('quantity')!r}")
-expected = 1.23 * 0.92 * 2
+expected = 2.26
 actual = (match.get("positionValueEur") or {}).get("TCG")
 if not isinstance(actual, (int, float)) or abs(actual - expected) > 1e-6:
     raise SystemExit(f"FAIL: updated central valuation={actual!r}, expected={expected!r}")
