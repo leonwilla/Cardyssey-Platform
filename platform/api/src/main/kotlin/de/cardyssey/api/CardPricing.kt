@@ -169,7 +169,7 @@ private class TcgDexCentralPricingProvider :
         val identity =
             selected.priceIdentity
 
-        val eur =
+        val cardmarketEur =
             selected.eur
                 ?.takeIf {
                     it.isFinite() &&
@@ -180,6 +180,20 @@ private class TcgDexCentralPricingProvider :
                         it.isFinite() &&
                             it > 0.0
                     }
+
+        val tcgPlayerEur =
+            if (cardmarketEur == null) {
+                tcgPlayerEur(
+                    raw = raw,
+                    variant = variant
+                )
+            } else {
+                null
+            }
+
+        val eur =
+            cardmarketEur
+                ?: tcgPlayerEur
                 ?: return null
 
         val identityCount =
@@ -203,19 +217,184 @@ private class TcgDexCentralPricingProvider :
          */
         return CentralProviderQuote(
             source =
-                when {
-                    identity == null ->
-                        "TCGDEX_CATALOG"
+                if (tcgPlayerEur != null) {
+                    "TCGDEX_TCGPLAYER"
+                } else {
+                    when {
+                        identity == null ->
+                            "TCGDEX_CATALOG"
 
-                    identityCount <= 1 ->
-                        "TCGDEX"
+                        identityCount <= 1 ->
+                            "TCGDEX"
 
-                    else ->
-                        "TCGDEX_SHARED"
+                        else ->
+                            "TCGDEX_SHARED"
+                    }
                 },
             baseEur =
                 eur
         )
+    }
+
+    private var cachedUsdToEur: Double? = null
+    private var cachedUsdToEurAtMs: Long = 0L
+
+    private suspend fun tcgPlayerEur(
+        raw: JsonObject,
+        variant: CatalogVariant
+    ): Double? {
+        // TCGPlayer's card-level feed can distinguish the legacy market
+        // families, but not arbitrary stamped/jumbo/special printings.
+        if (
+            variant.stamps.isNotEmpty() ||
+            !variant.size.isNullOrBlank() &&
+                !variant.size.equals("standard", ignoreCase = true)
+        ) {
+            return null
+        }
+
+        val tcgPlayer =
+            raw["pricing"]
+                ?.asObject()
+                ?.get("tcgplayer")
+                ?.asObject()
+                ?: return null
+
+        val familyKeys =
+            when (variant.legacyVariant.uppercase()) {
+                "NORMAL" ->
+                    listOf(
+                        "normal",
+                        "unlimited"
+                    )
+
+                "REVERSE" ->
+                    listOf(
+                        "reverse-holofoil",
+                        "reverse"
+                    )
+
+                "HOLO" ->
+                    listOf(
+                        "holofoil",
+                        "holo",
+                        "unlimited-holofoil"
+                    )
+
+                else ->
+                    emptyList()
+            }
+
+        val price =
+            familyKeys
+                .asSequence()
+                .mapNotNull {
+                    tcgPlayer[it]
+                        ?.asObject()
+                }
+                .mapNotNull { family ->
+                    listOf(
+                        "marketPrice",
+                        "midPrice",
+                        "lowPrice"
+                    )
+                        .asSequence()
+                        .mapNotNull {
+                            family.double(it)
+                        }
+                        .firstOrNull {
+                            it.isFinite() &&
+                                it > 0.0
+                        }
+                }
+                .firstOrNull()
+                ?: return null
+
+        val unit =
+            tcgPlayer.string("unit")
+                ?.uppercase()
+                ?: "USD"
+
+        return when (unit) {
+            "EUR" ->
+                price
+
+            "USD" ->
+                usdToEurRate()
+                    ?.let {
+                        price * it
+                    }
+
+            else ->
+                null
+        }
+    }
+
+    private suspend fun usdToEurRate(): Double? {
+        val now =
+            System.currentTimeMillis()
+
+        cachedUsdToEur
+            ?.takeIf {
+                now - cachedUsdToEurAtMs <
+                    24L * 60L * 60L * 1000L
+            }
+            ?.let {
+                return it
+            }
+
+        val rate =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val request =
+                        HttpRequest
+                            .newBuilder(
+                                URI.create(
+                                    "https://api.frankfurter.dev/v2/providers/ecb/rate/usd/eur"
+                                )
+                            )
+                            .timeout(
+                                Duration.ofSeconds(10)
+                            )
+                            .header(
+                                "Accept",
+                                "application/json"
+                            )
+                            .GET()
+                            .build()
+
+                    val response =
+                        http.send(
+                            request,
+                            HttpResponse.BodyHandlers.ofString()
+                        )
+
+                    if (
+                        response.statusCode() !in 200..299
+                    ) {
+                        return@runCatching null
+                    }
+
+                    json.parseToJsonElement(
+                        response.body()
+                    )
+                        .jsonObject
+                        .double("rate")
+                        ?.takeIf {
+                            it.isFinite() &&
+                                it > 0.0
+                        }
+                }.getOrNull()
+            }
+
+        if (rate != null) {
+            cachedUsdToEur =
+                rate
+            cachedUsdToEurAtMs =
+                now
+        }
+
+        return rate
     }
 
     private suspend fun fetchCard(
