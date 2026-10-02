@@ -607,12 +607,21 @@ class CachedTcgPricingService(
             return
         }
 
-        val selected =
+        val exactSelected =
             detailsValue.variants
                 .firstOrNull {
                     it.id ==
                         target.variantId
                 }
+
+        val selected =
+            exactSelected
+                ?: detailsValue.variants
+                    .filter {
+                        it.legacyVariant ==
+                            target.legacyVariant
+                    }
+                    .singleOrNull()
 
         if (selected == null) {
             cache.write(
@@ -625,7 +634,7 @@ class CachedTcgPricingService(
                 resolutionStatus =
                     "NO_VARIANT_MATCH",
                 failureDetail =
-                    "Variant not present in current catalog details",
+                    "No exact or unique legacy-family variant in current catalog details",
                 retryAfterHours =
                     missingRetryHours
             )
@@ -651,7 +660,7 @@ class CachedTcgPricingService(
                     language =
                         target.languageCode,
                     variantId =
-                        target.variantId,
+                        selected.id,
                     legacyVariant =
                         null,
                     condition =
@@ -773,7 +782,7 @@ class CachedTcgPricingService(
                         language =
                             target.languageCode,
                         variantId =
-                            target.variantId,
+                            selected.id,
                         legacyVariant =
                             null,
                         condition =
