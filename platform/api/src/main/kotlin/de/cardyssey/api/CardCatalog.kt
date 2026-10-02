@@ -338,7 +338,12 @@ class CardCatalogService(
             .filterKeys { id -> id.lowercase() !in listedIds &&
                 (id.lowercase() in promoIds || id.matches(Regex("(?i)(?:bw|xy|sm|s|sv|me)-p"))) }
             .map { (id, cards) -> CatalogSetSummary(id, "${id.uppercase()} Promos", totalCount = cards.size) }
-        val primary = listed + missingPromos + listOfNotNull(AnniversaryPromos.summary(language))
+        /*
+         * AnniversaryPromos is a product grouping inside the 30th set detail,
+         * not a top-level physical set. Keep the canonical cards in MEP and
+         * avoid showing a duplicate "30 Jahre – Promos" entry in the library.
+         */
+        val primary = listed + missingPromos
         val extra = supplemental?.cards(language).orEmpty().groupBy { it.setId }
         val byId = primary.associateBy { it.id.lowercase() }
         return primary.map { set ->
