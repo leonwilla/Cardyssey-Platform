@@ -27,6 +27,7 @@ data class ChatMessageResponse(
 data class ChatThreadResponse(
     val friendCode: String,
     val displayName: String?,
+    val avatarUrl: String?,
     val lastMessage: ChatMessageResponse?,
     val unreadCount: Int
 )
@@ -62,6 +63,7 @@ class ChatRepository(
                         ?: return@map ChatThreadResponse(
                             friendCode = friend.user.friendCode,
                             displayName = friend.user.displayName,
+                            avatarUrl = null,
                             lastMessage = null,
                             unreadCount = 0
                         )
@@ -69,6 +71,12 @@ class ChatRepository(
                 ChatThreadResponse(
                     friendCode = friend.user.friendCode,
                     displayName = friend.user.displayName,
+                    avatarUrl =
+                        avatarUrlFor(
+                            friendships.avatarPath(
+                                target.first
+                            )
+                        ),
                     lastMessage =
                         latestMessage(
                             userId,
