@@ -453,6 +453,12 @@ export function AppShell({
         <main className="content">
           {children}
         </main>
+
+        <footer className="appLegalFooter">
+          <Link href="/impressum">Impressum</Link>
+          <Link href="/datenschutz">Datenschutz</Link>
+          <span>© 2026 Cardyssey</span>
+        </footer>
       </div>
 
       <nav className="bottomNav">
