@@ -53,7 +53,36 @@ fun Route.cardRecognitionRoutes(
             }
 
             val text =
-                request.text.trim()
+                request.text
+                    .trim()
+                    .take(8_000)
+
+            if (
+                request.text.length > 8_000
+            ) {
+                call.respond(
+                    HttpStatusCode.PayloadTooLarge,
+                    mapOf(
+                        "error" to "recognition_text_too_large"
+                    )
+                )
+                return@post
+            }
+
+            if (
+                request.imageBase64
+                    ?.length
+                    ?.let { it > 12_000_000 }
+                    == true
+            ) {
+                call.respond(
+                    HttpStatusCode.PayloadTooLarge,
+                    mapOf(
+                        "error" to "recognition_image_too_large"
+                    )
+                )
+                return@post
+            }
 
             if (
                 text.isBlank() &&
