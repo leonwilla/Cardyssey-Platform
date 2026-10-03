@@ -4657,3 +4657,83 @@ body{
     padding-bottom:88px;
   }
 }
+
+
+/* WISHLIST POLISH */
+
+.wishlistMetaRow{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-bottom:6px;
+}
+
+.wishlistPriority,
+.wishlistTarget{
+  display:inline-flex;
+  min-height:24px;
+  align-items:center;
+  padding:0 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+}
+
+.wishlistPriority.high{
+  color:#d9cfff;
+  background:rgba(169,139,255,.13);
+  border:1px solid rgba(169,139,255,.28);
+}
+
+.wishlistPriority.medium{
+  color:var(--cyan);
+  background:rgba(85,221,246,.09);
+  border:1px solid rgba(85,221,246,.22);
+}
+
+.wishlistPriority.low{
+  color:var(--secondary);
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.wishlistTarget{
+  color:var(--gold);
+  background:rgba(255,209,102,.08);
+  border:1px solid rgba(255,209,102,.2);
+}
+
+.wishlistMarketHit{
+  margin-top:10px;
+  color:var(--cyan);
+  font-size:13px;
+  font-weight:850;
+}
+
+.wishlistMarketHit.reached{
+  color:var(--lime);
+}
+
+.wishlistHit{
+  border-color:rgba(122,232,164,.45);
+  box-shadow:inset 0 0 0 1px rgba(122,232,164,.08);
+}
+
+.wishlistActions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.wishlistEditor{
+  width:min(520px,calc(100vw - 28px));
+}
+
+@media(max-width:700px){
+  .wishlistActions{
+    grid-column:1 / -1;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+}
