@@ -279,8 +279,24 @@ class CommunityChatRepository(
     }
 
     fun ensureSetRoom(request: EnsureSetRoomRequest): CommunityRoomResponse? {
-        val setId = request.setId.trim().takeIf { it.isNotBlank() } ?: return null
-        val setName = request.setName.trim().takeIf { it.isNotBlank() } ?: return null
+        val setId =
+            request.setId
+                .trim()
+                .takeIf {
+                    it.length in 1..120
+                }
+                ?: return null
+        val setName =
+            request.setName
+                .trim()
+                .replace(
+                    Regex("\\s+"),
+                    " "
+                )
+                .takeIf {
+                    it.length in 1..160
+                }
+                ?: return null
         val language = request.languageCode.normalizeChatLanguage() ?: return null
         val slug = "set-" + setId.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-') + "-$language"
         val id = UUID.randomUUID()
