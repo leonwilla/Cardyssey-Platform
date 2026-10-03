@@ -41,3 +41,8 @@ web-v1-backup/
 .last-android-apk-sha
 web/public/downloads/*.apk
 logs/
+
+# Cloud / Firebase credentials
+*service-account*.json
+*firebase-admin*.json
+**/google-services.json
