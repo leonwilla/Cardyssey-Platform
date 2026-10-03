@@ -40,7 +40,10 @@ data class CommunityRoomResponse(
     val languageCode: String,
     val setId: String? = null,
     val setName: String? = null,
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val lastActivityAt: String? = null,
+    val lastMessagePreview: String? = null,
+    val lastSenderDisplayName: String? = null
 )
 
 @Serializable
@@ -174,18 +177,57 @@ class CommunityChatRepository(
         return dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
-                SELECT r.id, r.slug, r.name, r.room_type, r.language_code, r.set_id, r.set_name,
-                       COALESCE((
-                           SELECT COUNT(*)
-                           FROM community_messages m
-                           LEFT JOIN community_room_reads rr
-                             ON rr.room_id = r.id AND rr.user_id = ?
-                           WHERE m.room_id = r.id
-                             AND m.deleted_at IS NULL
-                             AND m.sender_id <> ?
-                             AND m.created_at > COALESCE(rr.last_read_at, TIMESTAMPTZ '1970-01-01')
-                       ), 0) AS unread_count
+                SELECT
+                    r.id,
+                    r.slug,
+                    r.name,
+                    r.room_type,
+                    r.language_code,
+                    r.set_id,
+                    r.set_name,
+                    r.last_activity_at,
+                    last_message.preview AS last_message_preview,
+                    last_message.sender_name AS last_sender_name,
+                    COALESCE((
+                        SELECT COUNT(*)
+                        FROM community_messages m
+                        LEFT JOIN community_room_reads rr
+                          ON rr.room_id = r.id
+                         AND rr.user_id = ?
+                        WHERE m.room_id = r.id
+                          AND m.deleted_at IS NULL
+                          AND m.sender_id <> ?
+                          AND m.created_at >
+                              COALESCE(
+                                  rr.last_read_at,
+                                  TIMESTAMPTZ '1970-01-01'
+                              )
+                    ), 0) AS unread_count
                 FROM community_rooms r
+                LEFT JOIN LATERAL (
+                    SELECT
+                        CASE
+                            WHEN TRIM(m.body) <> ''
+                                THEN LEFT(m.body, 100)
+                            WHEN m.object_type IS NOT NULL
+                                THEN 'Geteilter Cardyssey-Inhalt'
+                            ELSE NULL
+                        END AS preview,
+                        COALESCE(
+                            u.display_name,
+                            u.friend_code
+                        ) AS sender_name
+                    FROM community_messages m
+                    JOIN users u
+                      ON u.id = m.sender_id
+                    WHERE m.room_id = r.id
+                      AND m.deleted_at IS NULL
+                    ORDER BY
+                        m.created_at DESC,
+                        m.id DESC
+                    LIMIT 1
+                ) last_message
+                  ON TRUE
                 WHERE (? IS NULL OR r.language_code = ?)
                   AND (? IS NULL OR LOWER(r.name) LIKE LOWER(?))
                 ORDER BY
@@ -213,7 +255,19 @@ class CommunityChatRepository(
                                     languageCode = rs.getString("language_code"),
                                     setId = rs.getString("set_id"),
                                     setName = rs.getString("set_name"),
-                                    unreadCount = rs.getInt("unread_count")
+                                    unreadCount = rs.getInt("unread_count"),
+                                    lastActivityAt =
+                                        rs.getObject(
+                                            "last_activity_at"
+                                        )?.toString(),
+                                    lastMessagePreview =
+                                        rs.getString(
+                                            "last_message_preview"
+                                        ),
+                                    lastSenderDisplayName =
+                                        rs.getString(
+                                            "last_sender_name"
+                                        )
                                 )
                             )
                         }
