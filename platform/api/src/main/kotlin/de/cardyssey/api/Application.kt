@@ -110,7 +110,8 @@ fun Application.module() {
         ChatRepository(
             dataSource = database,
             friendships = friendshipRepository,
-            push = pushNotifications
+            push = pushNotifications,
+            reactions = chatReactions
         )
 
     val chatModerationRepository =
