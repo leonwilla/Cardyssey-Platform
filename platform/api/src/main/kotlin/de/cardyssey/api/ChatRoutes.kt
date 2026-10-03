@@ -26,6 +26,10 @@ data class ChatMessageResponse(
     val senderFriendCode: String,
     val recipientFriendCode: String,
     val body: String,
+    val replyToMessageId: String? = null,
+    val replyToSenderFriendCode: String? = null,
+    val replyToBody: String? = null,
+    val reactions: List<ChatReactionResponse> = emptyList(),
     val createdAt: String,
     val readAt: String?
 )
@@ -41,7 +45,8 @@ data class ChatThreadResponse(
 
 @Serializable
 data class SendChatMessageRequest(
-    val body: String
+    val body: String,
+    val replyToMessageId: String? = null
 )
 
 @Serializable
@@ -57,6 +62,9 @@ private data class ChatMessageRecord(
     val senderFriendCode: String,
     val recipientFriendCode: String,
     val body: String,
+    val replyToMessageId: UUID?,
+    val replyToSenderFriendCode: String?,
+    val replyToBody: String?,
     val createdAt: String,
     val readAt: String?
 )
@@ -64,7 +72,8 @@ private data class ChatMessageRecord(
 class ChatRepository(
     private val dataSource: HikariDataSource,
     private val friendships: FriendshipRepository,
-    private val push: PushNotificationService? = null
+    private val push: PushNotificationService? = null,
+    private val reactions: ChatReactionRepository
 ) {
     private val events =
         MutableSharedFlow<DirectChatEvent>(
@@ -147,6 +156,9 @@ class ChatRepository(
                     sender.friend_code AS sender_friend_code,
                     recipient.friend_code AS recipient_friend_code,
                     m.body,
+                    m.reply_to_message_id,
+                    reply_sender.friend_code AS reply_sender_friend_code,
+                    reply_message.body AS reply_body,
                     m.created_at,
                     m.read_at
                 FROM direct_messages m
@@ -154,6 +166,10 @@ class ChatRepository(
                   ON sender.id = m.sender_id
                 JOIN users recipient
                   ON recipient.id = m.recipient_id
+                LEFT JOIN direct_messages reply_message
+                  ON reply_message.id = m.reply_to_message_id
+                LEFT JOIN users reply_sender
+                  ON reply_sender.id = reply_message.sender_id
                 WHERE (
                     m.sender_id = ?
                     AND m.recipient_id = ?
@@ -179,7 +195,33 @@ class ChatRepository(
                             result.toChatRecord().toResponse()
                     }
 
-                    return messages.reversed()
+                    val ordered =
+                        messages.reversed()
+
+                    val reactionMap =
+                        reactions.reactions(
+                            scope = "DIRECT",
+                            messageIds =
+                                ordered.map {
+                                    UUID.fromString(
+                                        it.id
+                                    )
+                                },
+                            viewerId =
+                                userId
+                        )
+
+                    return ordered.map {
+                        message ->
+                        message.copy(
+                            reactions =
+                                reactionMap[
+                                    UUID.fromString(
+                                        message.id
+                                    )
+                                ].orEmpty()
+                        )
+                    }
                 }
             }
         }
@@ -188,7 +230,8 @@ class ChatRepository(
     fun send(
         userId: UUID,
         friendCode: String,
-        body: String
+        body: String,
+        replyToMessageId: UUID? = null
     ): ChatMessageResponse? {
         val target =
             allowedFriend(userId, friendCode)
@@ -198,15 +241,32 @@ class ChatRepository(
             body.trim()
 
         dataSource.connection.use { connection ->
+            if (
+                replyToMessageId != null &&
+                !messageBelongsToConversation(
+                    connection =
+                        connection,
+                    messageId =
+                        replyToMessageId,
+                    userId =
+                        userId,
+                    friendId =
+                        target.first
+                )
+            ) {
+                return null
+            }
+
             connection.prepareStatement(
                 """
                 INSERT INTO direct_messages (
                     id,
                     sender_id,
                     recipient_id,
-                    body
+                    body,
+                    reply_to_message_id
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 RETURNING
                     id,
                     created_at
@@ -217,6 +277,10 @@ class ChatRepository(
                 statement.setObject(2, userId)
                 statement.setObject(3, target.first)
                 statement.setString(4, normalized)
+                statement.setObject(
+                    5,
+                    replyToMessageId
+                )
 
                 statement.executeQuery().use { result ->
                     if (!result.next()) {
@@ -231,6 +295,25 @@ class ChatRepository(
                             recipientFriendCode =
                                 target.second.friendCode,
                             body = normalized,
+                            replyToMessageId =
+                                replyToMessageId
+                                    ?.toString(),
+                            replyToSenderFriendCode =
+                                replyToMessageId
+                                    ?.let {
+                                        replyPreview(
+                                            connection,
+                                            it
+                                        )?.first
+                                    },
+                            replyToBody =
+                                replyToMessageId
+                                    ?.let {
+                                        replyPreview(
+                                            connection,
+                                            it
+                                        )?.second
+                                    },
                             createdAt =
                                 result.getObject("created_at").toString(),
                             readAt = null
@@ -262,6 +345,141 @@ class ChatRepository(
         }
     }
 
+    fun toggleReaction(
+        userId: UUID,
+        friendCode: String,
+        messageId: UUID,
+        emoji: String
+    ): List<ChatReactionResponse>? {
+        val target =
+            allowedFriend(
+                userId,
+                friendCode
+            )
+                ?: return null
+
+        val valid =
+            dataSource.connection.use {
+                connection ->
+                messageBelongsToConversation(
+                    connection =
+                        connection,
+                    messageId =
+                        messageId,
+                    userId =
+                        userId,
+                    friendId =
+                        target.first
+                )
+            }
+
+        if (!valid) {
+            return null
+        }
+
+        return reactions.toggle(
+            scope =
+                "DIRECT",
+            messageId =
+                messageId,
+            userId =
+                userId,
+            emoji =
+                emoji
+        )
+    }
+
+    private fun messageBelongsToConversation(
+        connection: java.sql.Connection,
+        messageId: UUID,
+        userId: UUID,
+        friendId: UUID
+    ): Boolean =
+        connection.prepareStatement(
+            """
+            SELECT 1
+            FROM direct_messages
+            WHERE id = ?
+              AND (
+                    (
+                        sender_id = ?
+                        AND recipient_id = ?
+                    )
+                    OR
+                    (
+                        sender_id = ?
+                        AND recipient_id = ?
+                    )
+                  )
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(
+                1,
+                messageId
+            )
+            statement.setObject(
+                2,
+                userId
+            )
+            statement.setObject(
+                3,
+                friendId
+            )
+            statement.setObject(
+                4,
+                friendId
+            )
+            statement.setObject(
+                5,
+                userId
+            )
+
+            statement.executeQuery()
+                .use {
+                    it.next()
+                }
+        }
+
+    private fun replyPreview(
+        connection: java.sql.Connection,
+        messageId: UUID
+    ): Pair<String, String>? =
+        connection.prepareStatement(
+            """
+            SELECT
+                u.friend_code,
+                m.body
+            FROM direct_messages m
+            JOIN users u
+              ON u.id = m.sender_id
+            WHERE m.id = ?
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(
+                1,
+                messageId
+            )
+
+            statement.executeQuery()
+                .use {
+                    result ->
+                    if (
+                        result.next()
+                    ) {
+                        result.getString(
+                            "friend_code"
+                        ) to
+                            result.getString(
+                                "body"
+                            )
+                    } else {
+                        null
+                    }
+                }
+        }
+
     private fun allowedFriend(
         userId: UUID,
         friendCode: String
@@ -292,6 +510,9 @@ class ChatRepository(
                     sender.friend_code AS sender_friend_code,
                     recipient.friend_code AS recipient_friend_code,
                     m.body,
+                    m.reply_to_message_id,
+                    reply_sender.friend_code AS reply_sender_friend_code,
+                    reply_message.body AS reply_body,
                     m.created_at,
                     m.read_at
                 FROM direct_messages m
@@ -299,6 +520,10 @@ class ChatRepository(
                   ON sender.id = m.sender_id
                 JOIN users recipient
                   ON recipient.id = m.recipient_id
+                LEFT JOIN direct_messages reply_message
+                  ON reply_message.id = m.reply_to_message_id
+                LEFT JOIN users reply_sender
+                  ON reply_sender.id = reply_message.sender_id
                 WHERE (
                     m.sender_id = ?
                     AND m.recipient_id = ?
@@ -430,6 +655,21 @@ class ChatRepository(
             recipientFriendCode =
                 getString("recipient_friend_code"),
             body = getString("body"),
+            replyToMessageId =
+                getString(
+                    "reply_to_message_id"
+                )
+                    ?.let(
+                        UUID::fromString
+                    ),
+            replyToSenderFriendCode =
+                getString(
+                    "reply_sender_friend_code"
+                ),
+            replyToBody =
+                getString(
+                    "reply_body"
+                ),
             createdAt =
                 getObject("created_at").toString(),
             readAt =
@@ -442,6 +682,13 @@ class ChatRepository(
             senderFriendCode = senderFriendCode,
             recipientFriendCode = recipientFriendCode,
             body = body,
+            replyToMessageId =
+                replyToMessageId
+                    ?.toString(),
+            replyToSenderFriendCode =
+                replyToSenderFriendCode,
+            replyToBody =
+                replyToBody,
             createdAt = createdAt,
             readAt = readAt
         )
@@ -536,6 +783,64 @@ fun Route.chatRoutes(
             }
 
             route("/{friendCode}/messages") {
+                post("/{messageId}/reactions") {
+                    val userId =
+                        call.authenticatedUserId()
+                            ?: return@post call.respond(
+                                HttpStatusCode.Unauthorized
+                            )
+
+                    val friendCode =
+                        call.parameters[
+                            "friendCode"
+                        ]
+                            ?.trim()
+                            .orEmpty()
+
+                    val messageId =
+                        call.parameters[
+                            "messageId"
+                        ]
+                            ?.let {
+                                runCatching {
+                                    UUID.fromString(
+                                        it
+                                    )
+                                }.getOrNull()
+                            }
+                            ?: return@post call.respond(
+                                HttpStatusCode.BadRequest
+                            )
+
+                    val request =
+                        call.receive<
+                            ToggleChatReactionRequest
+                        >()
+
+                    val updated =
+                        repository.toggleReaction(
+                            userId =
+                                userId,
+                            friendCode =
+                                friendCode,
+                            messageId =
+                                messageId,
+                            emoji =
+                                request.emoji
+                        )
+                            ?: return@post call.respond(
+                                HttpStatusCode.BadRequest,
+                                mapOf(
+                                    "error" to
+                                        "invalid_reaction"
+                                )
+                            )
+
+                    call.respond(
+                        updated
+                    )
+                }
+
                 get {
                     val userId =
                         call.authenticatedUserId()
@@ -577,14 +882,37 @@ fun Route.chatRoutes(
                             ?.trim()
                             .orEmpty()
 
+                    val request =
+                        call.receive<
+                            SendChatMessageRequest
+                        >()
+
                     val body =
-                        call.receive<SendChatMessageRequest>()
-                            .body
+                        request.body
                             .trim()
+
+                    val replyToMessageId =
+                        request.replyToMessageId
+                            ?.trim()
+                            ?.takeIf(
+                                String::isNotBlank
+                            )
+                            ?.let {
+                                runCatching {
+                                    UUID.fromString(
+                                        it
+                                    )
+                                }.getOrNull()
+                            }
 
                     if (
                         body.isBlank() ||
-                        body.length > 2000
+                        body.length > 2000 ||
+                        (
+                            request.replyToMessageId
+                                ?.isNotBlank() == true &&
+                                replyToMessageId == null
+                            )
                     ) {
                         call.respond(
                             HttpStatusCode.BadRequest,
@@ -595,9 +923,14 @@ fun Route.chatRoutes(
 
                     val message =
                         repository.send(
-                            userId,
-                            friendCode,
-                            body
+                            userId =
+                                userId,
+                            friendCode =
+                                friendCode,
+                            body =
+                                body,
+                            replyToMessageId =
+                                replyToMessageId
                         )
 
                     if (message == null) {
