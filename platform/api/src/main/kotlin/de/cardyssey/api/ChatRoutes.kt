@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import java.util.UUID
 
 @Serializable
@@ -26,6 +27,8 @@ data class ChatMessageResponse(
     val senderFriendCode: String,
     val recipientFriendCode: String,
     val body: String,
+    val objectType: String? = null,
+    val objectPayload: JsonElement? = null,
     val replyToMessageId: String? = null,
     val replyToSenderFriendCode: String? = null,
     val replyToBody: String? = null,
@@ -45,7 +48,9 @@ data class ChatThreadResponse(
 
 @Serializable
 data class SendChatMessageRequest(
-    val body: String,
+    val body: String = "",
+    val objectType: String? = null,
+    val objectPayload: JsonElement? = null,
     val replyToMessageId: String? = null
 )
 
@@ -62,6 +67,8 @@ private data class ChatMessageRecord(
     val senderFriendCode: String,
     val recipientFriendCode: String,
     val body: String,
+    val objectType: String?,
+    val objectPayload: JsonElement?,
     val replyToMessageId: UUID?,
     val replyToSenderFriendCode: String?,
     val replyToBody: String?,
@@ -156,6 +163,8 @@ class ChatRepository(
                     sender.friend_code AS sender_friend_code,
                     recipient.friend_code AS recipient_friend_code,
                     m.body,
+                    m.object_type,
+                    m.object_payload,
                     m.reply_to_message_id,
                     reply_sender.friend_code AS reply_sender_friend_code,
                     reply_message.body AS reply_body,
@@ -231,6 +240,8 @@ class ChatRepository(
         userId: UUID,
         friendCode: String,
         body: String,
+        objectType: String? = null,
+        objectPayload: JsonElement? = null,
         replyToMessageId: UUID? = null
     ): ChatMessageResponse? {
         val target =
@@ -239,6 +250,45 @@ class ChatRepository(
 
         val normalized =
             body.trim()
+
+        val normalizedObjectType =
+            objectType
+                ?.trim()
+                ?.uppercase()
+                ?.takeIf(
+                    String::isNotBlank
+                )
+
+        val allowedObjectTypes =
+            setOf(
+                "CARD",
+                "SET",
+                "WISHLIST_CARD",
+                "SHOWCASE",
+                "TRADE_OFFER"
+            )
+
+        if (
+            normalized.length >
+                2000 ||
+            (
+                normalized.isBlank() &&
+                normalizedObjectType ==
+                    null
+                ) ||
+            (
+                normalizedObjectType !=
+                    null &&
+                (
+                    normalizedObjectType !in
+                        allowedObjectTypes ||
+                    objectPayload ==
+                        null
+                    )
+                )
+        ) {
+            return null
+        }
 
         dataSource.connection.use { connection ->
             if (
@@ -264,9 +314,11 @@ class ChatRepository(
                     sender_id,
                     recipient_id,
                     body,
+                    object_type,
+                    object_payload,
                     reply_to_message_id
                 )
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?::jsonb, ?)
                 RETURNING
                     id,
                     created_at
@@ -277,8 +329,21 @@ class ChatRepository(
                 statement.setObject(2, userId)
                 statement.setObject(3, target.first)
                 statement.setString(4, normalized)
-                statement.setObject(
+                statement.setString(
                     5,
+                    normalizedObjectType
+                )
+                statement.setString(
+                    6,
+                    objectPayload
+                        ?.let {
+                            Json.encodeToString(
+                                it
+                            )
+                        }
+                )
+                statement.setObject(
+                    7,
                     replyToMessageId
                 )
 
@@ -295,6 +360,10 @@ class ChatRepository(
                             recipientFriendCode =
                                 target.second.friendCode,
                             body = normalized,
+                            objectType =
+                                normalizedObjectType,
+                            objectPayload =
+                                objectPayload,
                             replyToMessageId =
                                 replyToMessageId
                                     ?.toString(),
@@ -336,7 +405,9 @@ class ChatRepository(
                                 userId
                             ),
                         body =
-                            normalized
+                            normalized.ifBlank {
+                                "Geteilter Cardyssey-Inhalt"
+                            }
                     )
 
                     return response
@@ -510,6 +581,8 @@ class ChatRepository(
                     sender.friend_code AS sender_friend_code,
                     recipient.friend_code AS recipient_friend_code,
                     m.body,
+                    m.object_type,
+                    m.object_payload,
                     m.reply_to_message_id,
                     reply_sender.friend_code AS reply_sender_friend_code,
                     reply_message.body AS reply_body,
@@ -655,6 +728,21 @@ class ChatRepository(
             recipientFriendCode =
                 getString("recipient_friend_code"),
             body = getString("body"),
+            objectType =
+                getString(
+                    "object_type"
+                ),
+            objectPayload =
+                getString(
+                    "object_payload"
+                )
+                    ?.let {
+                        runCatching {
+                            Json.parseToJsonElement(
+                                it
+                            )
+                        }.getOrNull()
+                    },
             replyToMessageId =
                 getString(
                     "reply_to_message_id"
@@ -682,6 +770,10 @@ class ChatRepository(
             senderFriendCode = senderFriendCode,
             recipientFriendCode = recipientFriendCode,
             body = body,
+            objectType =
+                objectType,
+            objectPayload =
+                objectPayload,
             replyToMessageId =
                 replyToMessageId
                     ?.toString(),
@@ -891,6 +983,14 @@ fun Route.chatRoutes(
                         request.body
                             .trim()
 
+                    val objectType =
+                        request.objectType
+                            ?.trim()
+                            ?.uppercase()
+                            ?.takeIf(
+                                String::isNotBlank
+                            )
+
                     val replyToMessageId =
                         request.replyToMessageId
                             ?.trim()
@@ -906,8 +1006,18 @@ fun Route.chatRoutes(
                             }
 
                     if (
-                        body.isBlank() ||
+                        (
+                            body.isBlank() &&
+                            objectType ==
+                                null
+                            ) ||
                         body.length > 2000 ||
+                        (
+                            objectType !=
+                                null &&
+                            request.objectPayload ==
+                                null
+                            ) ||
                         (
                             request.replyToMessageId
                                 ?.isNotBlank() == true &&
@@ -929,6 +1039,10 @@ fun Route.chatRoutes(
                                 friendCode,
                             body =
                                 body,
+                            objectType =
+                                objectType,
+                            objectPayload =
+                                request.objectPayload,
                             replyToMessageId =
                                 replyToMessageId
                         )
