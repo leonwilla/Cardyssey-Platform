@@ -67,6 +67,9 @@ data class UserResponse(
     val email: String,
     val displayName: String?,
     val avatarUrl: String? = null,
+    val favoritePokemon: String? = null,
+    val favoriteSet: String? = null,
+    val collectingFocus: String? = null,
     val friendCode: String =
         friendCodeFor(id)
 )
@@ -84,7 +87,10 @@ data class UserRecord(
     val id: UUID,
     val email: String,
     val displayName: String?,
-    val avatarPath: String?
+    val avatarPath: String?,
+    val favoritePokemon: String? = null,
+    val favoriteSet: String? = null,
+    val collectingFocus: String? = null
 )
 
 object PasswordHasher {
@@ -263,6 +269,9 @@ class AuthRepository(
                     email,
                     display_name,
                     avatar_path,
+                    favorite_pokemon,
+                    favorite_set,
+                    collecting_focus,
                     password_hash
                 FROM users
                 WHERE LOWER(email) = LOWER(?)
@@ -292,6 +301,18 @@ class AuthRepository(
                             avatarPath =
                                 result.getString(
                                     "avatar_path"
+                                ),
+                            favoritePokemon =
+                                result.getString(
+                                    "favorite_pokemon"
+                                ),
+                            favoriteSet =
+                                result.getString(
+                                    "favorite_set"
+                                ),
+                            collectingFocus =
+                                result.getString(
+                                    "collecting_focus"
                                 )
                         ),
                         result.getString(
@@ -314,7 +335,10 @@ class AuthRepository(
                     id,
                     email,
                     display_name,
-                    avatar_path
+                    avatar_path,
+                    favorite_pokemon,
+                    favorite_set,
+                    collecting_focus
                 FROM users
                 WHERE id = ?
                   AND disabled_at IS NULL
@@ -342,6 +366,18 @@ class AuthRepository(
                         avatarPath =
                             result.getString(
                                 "avatar_path"
+                            ),
+                        favoritePokemon =
+                            result.getString(
+                                "favorite_pokemon"
+                            ),
+                        favoriteSet =
+                            result.getString(
+                                "favorite_set"
+                            ),
+                        collectingFocus =
+                            result.getString(
+                                "collecting_focus"
                             )
                     )
                 }
@@ -385,6 +421,63 @@ class AuthRepository(
         }
 
         return findById(id)
+    }
+
+    fun updateCollectorProfile(
+        id: UUID,
+        displayName: String?,
+        favoritePokemon: String?,
+        favoriteSet: String?,
+        collectingFocus: String?
+    ): UserRecord? {
+        dataSource.connection.use {
+            connection ->
+            connection.prepareStatement(
+                """
+                UPDATE users
+                SET display_name = ?,
+                    favorite_pokemon = ?,
+                    favorite_set = ?,
+                    collecting_focus = ?,
+                    updated_at = NOW()
+                WHERE id = ?
+                  AND disabled_at IS NULL
+                """.trimIndent()
+            ).use {
+                statement ->
+                statement.setString(
+                    1,
+                    displayName
+                )
+                statement.setString(
+                    2,
+                    favoritePokemon
+                )
+                statement.setString(
+                    3,
+                    favoriteSet
+                )
+                statement.setString(
+                    4,
+                    collectingFocus
+                )
+                statement.setObject(
+                    5,
+                    id
+                )
+
+                if (
+                    statement.executeUpdate() ==
+                    0
+                ) {
+                    return null
+                }
+            }
+        }
+
+        return findById(
+            id
+        )
     }
 
     fun updateAvatarPath(
@@ -487,7 +580,10 @@ class AuthRepository(
                             u.id,
                             u.email,
                             u.display_name,
-                            u.avatar_path
+                            u.avatar_path,
+                            u.favorite_pokemon,
+                            u.favorite_set,
+                            u.collecting_focus
                         FROM refresh_tokens rt
                         JOIN users u
                           ON u.id = rt.user_id
@@ -530,6 +626,18 @@ class AuthRepository(
                                         avatarPath =
                                             result.getString(
                                                 "avatar_path"
+                                            ),
+                                        favoritePokemon =
+                                            result.getString(
+                                                "favorite_pokemon"
+                                            ),
+                                        favoriteSet =
+                                            result.getString(
+                                                "favorite_set"
+                                            ),
+                                        collectingFocus =
+                                            result.getString(
+                                                "collecting_focus"
                                             )
                                     )
                                 }
