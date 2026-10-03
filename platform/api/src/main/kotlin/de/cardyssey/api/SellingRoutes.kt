@@ -63,7 +63,8 @@ private fun SaleListing.response() =
     )
 
 fun Route.sellingRoutes(
-    repository: SellingRepository
+    repository: SellingRepository,
+    push: PushNotificationService? = null
 ) {
     authenticate("auth-jwt") {
 
@@ -111,6 +112,30 @@ fun Route.sellingRoutes(
                         mapOf("error" to "invalid_sale_listing")
                     )
                 }
+
+                repository.activeListingForCollection(
+                    userId =
+                        userId,
+                    collectionItemId =
+                        collectionId
+                )
+                    ?.let {
+                        listing ->
+                        push?.wishlistMatchesForListing(
+                            sellerId =
+                                userId,
+                            listingId =
+                                listing.id,
+                            cardId =
+                                listing.cardId,
+                            languageCode =
+                                listing.languageCode,
+                            cardName =
+                                listing.name,
+                            priceEur =
+                                listing.priceEur
+                        )
+                    }
 
                 call.respond(HttpStatusCode.Created)
             }
