@@ -11,6 +11,7 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import kotlinx.serialization.Serializable
+import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
 data class UpdateMeRequest(
@@ -22,6 +23,115 @@ data class UpdateMeRequest(
 
 private val EMAIL_REGEX =
     Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
+private class LoginAttemptGuard {
+    private data class State(
+        var failures: Int,
+        var blockedUntilMs: Long
+    )
+
+    private val states =
+        ConcurrentHashMap<
+            String,
+            State
+        >()
+
+    fun allowed(
+        email: String
+    ): Boolean {
+        val now =
+            System.currentTimeMillis()
+
+        val state =
+            states[
+                email.normalizedKey()
+            ]
+                ?: return true
+
+        if (
+            state.blockedUntilMs >
+            now
+        ) {
+            return false
+        }
+
+        if (
+            state.blockedUntilMs >
+            0L
+        ) {
+            states.remove(
+                email.normalizedKey()
+            )
+        }
+
+        return true
+    }
+
+    fun failure(
+        email: String
+    ) {
+        val key =
+            email.normalizedKey()
+
+        val now =
+            System.currentTimeMillis()
+
+        states.compute(
+            key
+        ) {
+            _,
+            previous ->
+            val current =
+                previous
+                    ?.takeIf {
+                        it.blockedUntilMs <=
+                            now
+                    }
+
+            val failures =
+                (
+                    current?.failures
+                        ?: 0
+                    ) + 1
+
+            State(
+                failures =
+                    failures,
+                blockedUntilMs =
+                    if (
+                        failures >=
+                        8
+                    ) {
+                        now +
+                            15L *
+                            60L *
+                            1000L
+                    } else {
+                        0L
+                    }
+            )
+        }
+    }
+
+    fun success(
+        email: String
+    ) {
+        states.remove(
+            email.normalizedKey()
+        )
+    }
+
+    private fun String.normalizedKey():
+        String =
+        trim()
+            .lowercase()
+            .take(
+                320
+            )
+}
+
+private val loginAttemptGuard =
+    LoginAttemptGuard()
 
 fun Route.authRoutes(
     repository: AuthRepository,
@@ -130,9 +240,32 @@ fun Route.authRoutes(
             val request =
                 call.receive<LoginRequest>()
 
+            val email =
+                request.email
+                    .trim()
+                    .lowercase()
+
+            if (
+                !loginAttemptGuard
+                    .allowed(
+                        email
+                    )
+            ) {
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    mapOf(
+                        "error" to
+                            "login_rate_limited",
+                        "message" to
+                            "Too many failed login attempts. Try again later."
+                    )
+                )
+                return@post
+            }
+
             val result =
                 repository.findByEmail(
-                    request.email.trim()
+                    email
                 )
 
             if (
@@ -142,6 +275,11 @@ fun Route.authRoutes(
                     request.password
                 )
             ) {
+                loginAttemptGuard
+                    .failure(
+                        email
+                    )
+
                 call.respond(
                     HttpStatusCode.Unauthorized,
                     mapOf(
@@ -151,6 +289,11 @@ fun Route.authRoutes(
                 )
                 return@post
             }
+
+            loginAttemptGuard
+                .success(
+                    email
+                )
 
             call.respond(
                 issueAuth(
