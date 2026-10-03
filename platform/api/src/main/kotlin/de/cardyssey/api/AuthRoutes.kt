@@ -14,7 +14,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UpdateMeRequest(
-    val displayName: String?
+    val displayName: String?,
+    val favoritePokemon: String? = null,
+    val favoriteSet: String? = null,
+    val collectingFocus: String? = null
 )
 
 private val EMAIL_REGEX =
@@ -236,10 +239,42 @@ fun Route.authRoutes(
                     }
                     ?.take(100)
 
+            val favoritePokemon =
+                request.favoritePokemon
+                    ?.trim()
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?.take(80)
+
+            val favoriteSet =
+                request.favoriteSet
+                    ?.trim()
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?.take(120)
+
+            val collectingFocus =
+                request.collectingFocus
+                    ?.trim()
+                    ?.takeIf {
+                        it.isNotBlank()
+                    }
+                    ?.take(240)
+
             val user =
-                repository.updateDisplayName(
-                    id,
-                    displayName
+                repository.updateCollectorProfile(
+                    id =
+                        id,
+                    displayName =
+                        displayName,
+                    favoritePokemon =
+                        favoritePokemon,
+                    favoriteSet =
+                        favoriteSet,
+                    collectingFocus =
+                        collectingFocus
                 )
 
             if (user == null) {
@@ -258,7 +293,13 @@ fun Route.authRoutes(
                     avatarUrl =
                         avatarUrlFor(
                             user.avatarPath
-                        )
+                        ),
+                    favoritePokemon =
+                        user.favoritePokemon,
+                    favoriteSet =
+                        user.favoriteSet,
+                    collectingFocus =
+                        user.collectingFocus
                 )
             )
         }
@@ -297,7 +338,13 @@ fun Route.authRoutes(
                     avatarUrl =
                         avatarUrlFor(
                             user.avatarPath
-                        )
+                        ),
+                    favoritePokemon =
+                        user.favoritePokemon,
+                    favoriteSet =
+                        user.favoriteSet,
+                    collectingFocus =
+                        user.collectingFocus
                 )
             )
         }
@@ -349,7 +396,13 @@ private fun issueAuth(
                 avatarUrl =
                     avatarUrlFor(
                         user.avatarPath
-                    )
+                    ),
+                favoritePokemon =
+                    user.favoritePokemon,
+                favoriteSet =
+                    user.favoriteSet,
+                collectingFocus =
+                    user.collectingFocus
             )
     )
 }
