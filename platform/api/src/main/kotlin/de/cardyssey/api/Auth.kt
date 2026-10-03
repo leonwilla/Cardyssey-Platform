@@ -697,5 +697,112 @@ class AuthRepository(
                 statement.executeUpdate()
             }
         }
+    
+    fun deleteOwnAccount(
+        userId: UUID
+    ): Boolean {
+        var avatarPath: String? = null
+
+        val deleted =
+            dataSource.connection.use {
+                connection ->
+                connection.autoCommit = false
+
+                try {
+                    avatarPath =
+                        connection.prepareStatement(
+                            """
+                            SELECT avatar_path
+                            FROM users
+                            WHERE id = ?
+                              AND disabled_at IS NULL
+                            FOR UPDATE
+                            """.trimIndent()
+                        ).use {
+                            statement ->
+                            statement.setObject(
+                                1,
+                                userId
+                            )
+
+                            statement.executeQuery()
+                                .use {
+                                    result ->
+                                    if (
+                                        result.next()
+                                    ) {
+                                        result.getString(
+                                            "avatar_path"
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                }
+                        }
+
+                    val count =
+                        connection.prepareStatement(
+                            "DELETE FROM users WHERE id = ?"
+                        ).use {
+                            statement ->
+                            statement.setObject(
+                                1,
+                                userId
+                            )
+                            statement.executeUpdate()
+                        }
+
+                    if (count != 1) {
+                        connection.rollback()
+                        false
+                    } else {
+                        connection.commit()
+                        true
+                    }
+                } catch (
+                    error: Throwable
+                ) {
+                    runCatching {
+                        connection.rollback()
+                    }
+                    throw error
+                } finally {
+                    runCatching {
+                        connection.autoCommit =
+                            true
+                    }
+                }
+            }
+
+        if (
+            deleted &&
+            !avatarPath.isNullOrBlank() &&
+            avatarPath!!.matches(
+                Regex(
+                    "^[A-Za-z0-9._-]+$"
+                )
+            )
+        ) {
+            val directory =
+                java.io.File(
+                    System.getenv(
+                        "AVATAR_DIR"
+                    )
+                        ?.takeIf(
+                            String::isNotBlank
+                        )
+                        ?: "/data/avatars"
+                )
+
+            runCatching {
+                java.io.File(
+                    directory,
+                    avatarPath!!
+                ).delete()
+            }
+        }
+
+        return deleted
     }
+}
 }
