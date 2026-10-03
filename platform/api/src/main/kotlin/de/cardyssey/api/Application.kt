@@ -101,6 +101,11 @@ fun Application.module() {
             database
         )
 
+    val chatReactions =
+        ChatReactionRepository(
+            database
+        )
+
     val chatRepository =
         ChatRepository(
             dataSource = database,
@@ -115,13 +120,15 @@ fun Application.module() {
         GroupChatRepository(
             dataSource = database,
             friendships = friendshipRepository,
-            push = pushNotifications
+            push = pushNotifications,
+            reactions = chatReactions
         )
 
     val communityChatRepository =
         CommunityChatRepository(
             dataSource = database,
-            push = pushNotifications
+            push = pushNotifications,
+            reactions = chatReactions
         )
 
     val showcaseRepository =
