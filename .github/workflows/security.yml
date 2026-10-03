@@ -37,17 +37,11 @@ jobs:
         working-directory: platform/api
         run: gradle test classes --no-daemon --max-workers=1
 
-      - name: Audit web dependencies
+      - name: Resolve and audit web dependencies
         working-directory: web
-        shell: bash
         run: |
-          if [ -f package-lock.json ]; then
-            npm audit --omit=dev --audit-level=high
-          elif [ -f npm-shrinkwrap.json ]; then
-            npm audit --omit=dev --audit-level=high
-          else
-            echo "No npm lockfile present; dependency audit skipped."
-          fi
+          npm install --package-lock-only --ignore-scripts
+          npm audit --omit=dev --audit-level=high
 
   codeql-note:
     name: CodeQL availability
