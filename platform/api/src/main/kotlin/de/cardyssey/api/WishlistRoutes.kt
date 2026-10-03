@@ -24,7 +24,9 @@ data class WishlistResponse(
     val variantSubtype: String?,
     val foil: String?,
     val size: String?,
-    val stamps: List<String>
+    val stamps: List<String>,
+    val priority: String,
+    val targetPriceEur: Double?
 )
 
 @Serializable
@@ -41,7 +43,15 @@ data class CreateWishlistRequest(
     val variantSubtype: String? = null,
     val foil: String? = null,
     val size: String? = null,
-    val stamps: List<String> = emptyList()
+    val stamps: List<String> = emptyList(),
+    val priority: String = "MEDIUM",
+    val targetPriceEur: Double? = null
+)
+
+@Serializable
+data class UpdateWishlistPreferencesRequest(
+    val priority: String = "MEDIUM",
+    val targetPriceEur: Double? = null
 )
 
 private fun WishlistItem.response() =
@@ -59,7 +69,9 @@ private fun WishlistItem.response() =
         variantSubtype,
         foil,
         size,
-        stamps
+        stamps,
+        priority,
+        targetPriceEur
     )
 
 fun Route.wishlistRoutes(
@@ -107,7 +119,32 @@ fun Route.wishlistRoutes(
                     variantSubtype = request.variantSubtype,
                     foil = request.foil,
                     size = request.size,
-                    stamps = request.stamps
+                    stamps = request.stamps,
+                    priority =
+                        request.priority
+                            .trim()
+                            .uppercase()
+                            .takeIf {
+                                it in
+                                    setOf(
+                                        "LOW",
+                                        "MEDIUM",
+                                        "HIGH"
+                                    )
+                            }
+                            ?: return@post call.respond(
+                                HttpStatusCode.BadRequest,
+                                mapOf(
+                                    "error" to
+                                        "invalid_priority"
+                                )
+                            ),
+                    targetPriceEur =
+                        request.targetPriceEur
+                            ?.takeIf {
+                                it.isFinite() &&
+                                    it >= 0.0
+                            }
                 )
 
                 if (!repository.create(userId, item)) {
@@ -119,6 +156,51 @@ fun Route.wishlistRoutes(
 
                 call.respond(
                     HttpStatusCode.Created,
+                    item.response()
+                )
+            }
+
+            patch("/{id}") {
+                val userId =
+                    call.authenticatedUserId()
+                        ?: return@patch call.respond(
+                            HttpStatusCode.Unauthorized
+                        )
+
+                val id =
+                    call.parameters["id"]
+                        ?.let {
+                            runCatching {
+                                UUID.fromString(it)
+                            }.getOrNull()
+                        }
+                        ?: return@patch call.respond(
+                            HttpStatusCode.BadRequest
+                        )
+
+                val request =
+                    call.receive<UpdateWishlistPreferencesRequest>()
+
+                val item =
+                    repository.updatePreferences(
+                        userId =
+                            userId,
+                        id =
+                            id,
+                        priority =
+                            request.priority,
+                        targetPriceEur =
+                            request.targetPriceEur
+                    )
+                        ?: return@patch call.respond(
+                            HttpStatusCode.BadRequest,
+                            mapOf(
+                                "error" to
+                                    "invalid_wishlist_preferences"
+                            )
+                        )
+
+                call.respond(
                     item.response()
                 )
             }
