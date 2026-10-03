@@ -1,16 +1,23 @@
 package de.cardyssey.api
 
 import com.zaxxer.hikari.HikariDataSource
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondTextWriter
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.filter
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 @Serializable
@@ -37,6 +44,12 @@ data class SendChatMessageRequest(
     val body: String
 )
 
+@Serializable
+data class DirectChatEvent(
+    val type: String,
+    val message: ChatMessageResponse
+)
+
 private data class ChatMessageRecord(
     val id: UUID,
     val senderId: UUID,
@@ -52,6 +65,19 @@ class ChatRepository(
     private val dataSource: HikariDataSource,
     private val friendships: FriendshipRepository
 ) {
+    private val events =
+        MutableSharedFlow<DirectChatEvent>(
+            extraBufferCapacity = 256
+        )
+
+    fun eventFlow() =
+        events
+
+    fun currentFriendCode(
+        userId: UUID
+    ): String =
+        friendCodeFor(userId)
+
     fun threads(userId: UUID): List<ChatThreadResponse> =
         friendships
             .friends(userId)
@@ -196,17 +222,27 @@ class ChatRepository(
                         return null
                     }
 
-                    return ChatMessageResponse(
-                        id = id.toString(),
-                        senderFriendCode =
-                            friendCodeFor(userId),
-                        recipientFriendCode =
-                            target.second.friendCode,
-                        body = normalized,
-                        createdAt =
-                            result.getObject("created_at").toString(),
-                        readAt = null
+                    val response =
+                        ChatMessageResponse(
+                            id = id.toString(),
+                            senderFriendCode =
+                                friendCodeFor(userId),
+                            recipientFriendCode =
+                                target.second.friendCode,
+                            body = normalized,
+                            createdAt =
+                                result.getObject("created_at").toString(),
+                            readAt = null
+                        )
+
+                    events.tryEmit(
+                        DirectChatEvent(
+                            type = "message",
+                            message = response
+                        )
                     )
+
+                    return response
                 }
             }
         }
@@ -378,6 +414,77 @@ fun Route.chatRoutes(
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/chat") {
+            get("/events") {
+                val userId =
+                    call.authenticatedUserId()
+                        ?: return@get call.respond(
+                            HttpStatusCode.Unauthorized
+                        )
+
+                val ownFriendCode =
+                    repository.currentFriendCode(
+                        userId
+                    )
+
+                val requestedFriend =
+                    call.request
+                        .queryParameters[
+                            "friendCode"
+                        ]
+                        ?.trim()
+                        ?.takeIf(
+                            String::isNotBlank
+                        )
+
+                call.respondTextWriter(
+                    ContentType.Text.EventStream
+                ) {
+                    repository
+                        .eventFlow()
+                        .filter { event ->
+                            val message =
+                                event.message
+
+                            val relevantToUser =
+                                message.senderFriendCode ==
+                                    ownFriendCode ||
+                                    message.recipientFriendCode ==
+                                        ownFriendCode
+
+                            val otherFriend =
+                                if (
+                                    message.senderFriendCode ==
+                                        ownFriendCode
+                                ) {
+                                    message.recipientFriendCode
+                                } else {
+                                    message.senderFriendCode
+                                }
+
+                            relevantToUser &&
+                                (
+                                    requestedFriend ==
+                                        null ||
+                                        requestedFriend ==
+                                            otherFriend
+                                    )
+                        }
+                        .collect { event ->
+                            write(
+                                "event: direct\n"
+                            )
+                            write(
+                                "data: " +
+                                    Json.encodeToString(
+                                        event
+                                    ) +
+                                    "\n\n"
+                            )
+                            flush()
+                        }
+                }
+            }
+
             get("/threads") {
                 val userId =
                     call.authenticatedUserId()
