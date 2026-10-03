@@ -28,3 +28,89 @@ SELECT * FROM gaps WHERE n <= 10 ORDER BY language_code, n;
 SELECT source, status, card_count, last_error, updated_at
 FROM catalog_supplemental_sync
 WHERE source IN ('type-null/ko', 'type-null/ja', 'type-null/zh-tw') ORDER BY source;
+
+
+-- Set artwork audit for every app language. A set is considered visually
+-- covered when either a logo or a symbol is known. Card artwork can still be
+-- used by Android as a fallback, but missing branding remains visible here.
+SELECT
+    language_code,
+    COUNT(*) AS sets,
+    COUNT(*) FILTER (
+        WHERE NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NOT NULL
+           OR NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NOT NULL
+    ) AS sets_with_branding,
+    COUNT(*) FILTER (
+        WHERE NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NULL
+          AND NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NULL
+    ) AS sets_without_branding
+FROM catalog_sets_mirror
+WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
+GROUP BY language_code
+ORDER BY language_code;
+
+-- Concrete sets without logo/symbol, capped per language so this stays useful
+-- in terminal output instead of flooding the audit.
+WITH set_gaps AS (
+    SELECT
+        language_code,
+        set_id,
+        name,
+        ROW_NUMBER() OVER (
+            PARTITION BY language_code
+            ORDER BY set_id
+        ) AS n
+    FROM catalog_sets_mirror
+    WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
+      AND NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NULL
+      AND NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NULL
+)
+SELECT language_code, set_id, name
+FROM set_gaps
+WHERE n <= 20
+ORDER BY language_code, n;
+
+-- Image failures worth repairing first: a source URL exists, but the mirror
+-- still has no completed local image/hash. These are actionable download or
+-- decode gaps rather than cards for which no source is known at all.
+WITH actionable_image_gaps AS (
+    SELECT
+        language_code,
+        set_id,
+        card_id,
+        local_id,
+        name,
+        image_source_url,
+        ROW_NUMBER() OVER (
+            PARTITION BY language_code
+            ORDER BY set_id, card_id
+        ) AS n
+    FROM catalog_cards_mirror
+    WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
+      AND image_source_url IS NOT NULL
+      AND (
+          NOT image_complete
+          OR image_dhash IS NULL
+      )
+)
+SELECT
+    language_code,
+    set_id,
+    card_id,
+    local_id,
+    name,
+    image_source_url
+FROM actionable_image_gaps
+WHERE n <= 25
+ORDER BY language_code, n;
+
+-- Cards with no known source at all. These need a source/backfill strategy,
+-- not merely another mirror retry.
+SELECT
+    language_code,
+    COUNT(*) AS cards_without_image_source
+FROM catalog_cards_mirror
+WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
+  AND image_source_url IS NULL
+GROUP BY language_code
+ORDER BY language_code;
