@@ -34,6 +34,7 @@ dependencies {
     implementation("org.seleniumhq.selenium:selenium-java:4.35.0")
 
     implementation("ch.qos.logback:logback-classic:1.5.18")
+    implementation("com.google.firebase:firebase-admin:9.6.0")
 
     testImplementation(kotlin("test-junit5"))
 }
