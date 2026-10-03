@@ -200,6 +200,132 @@ fun Route.friendshipRoutes(
                 )
             }
 
+            get("/{friendCode}/showcase/profile") {
+                val userId =
+                    call.authenticatedUserId()
+                        ?: return@get call.respond(
+                            HttpStatusCode.Unauthorized
+                        )
+
+                val friendCode =
+                    call.parameters["friendCode"]
+                        ?.trim()
+                        .orEmpty()
+
+                val target =
+                    repository.findUserByFriendCode(
+                        friendCode
+                    )
+                        ?: return@get call.respond(
+                            HttpStatusCode.NotFound,
+                            mapOf(
+                                "error" to
+                                    "user_not_found"
+                            )
+                        )
+
+                val targetId =
+                    target.first
+
+                val isFriend =
+                    repository.isFriend(
+                        userId,
+                        targetId
+                    )
+
+                val privacy =
+                    privacyRepository.get(
+                        targetId
+                    )
+
+                if (
+                    !visibilityAllowed(
+                        privacy.showcaseVisibility,
+                        isFriend
+                    )
+                ) {
+                    return@get call.respond(
+                        HttpStatusCode.Forbidden,
+                        mapOf(
+                            "error" to
+                                "showcase_private"
+                        )
+                    )
+                }
+
+                call.respond(
+                    showcaseRepository.profile(
+                        showcaseUserId =
+                            targetId,
+                        viewerId =
+                            userId
+                    )
+                )
+            }
+
+            post("/{friendCode}/showcase/like") {
+                val userId =
+                    call.authenticatedUserId()
+                        ?: return@post call.respond(
+                            HttpStatusCode.Unauthorized
+                        )
+
+                val friendCode =
+                    call.parameters["friendCode"]
+                        ?.trim()
+                        .orEmpty()
+
+                val target =
+                    repository.findUserByFriendCode(
+                        friendCode
+                    )
+                        ?: return@post call.respond(
+                            HttpStatusCode.NotFound,
+                            mapOf(
+                                "error" to
+                                    "user_not_found"
+                            )
+                        )
+
+                val targetId =
+                    target.first
+
+                val isFriend =
+                    repository.isFriend(
+                        userId,
+                        targetId
+                    )
+
+                val privacy =
+                    privacyRepository.get(
+                        targetId
+                    )
+
+                if (
+                    !visibilityAllowed(
+                        privacy.showcaseVisibility,
+                        isFriend
+                    )
+                ) {
+                    return@post call.respond(
+                        HttpStatusCode.Forbidden,
+                        mapOf(
+                            "error" to
+                                "showcase_private"
+                        )
+                    )
+                }
+
+                call.respond(
+                    showcaseRepository.toggleLike(
+                        viewerId =
+                            userId,
+                        showcaseUserId =
+                            targetId
+                    )
+                )
+            }
+
             get("/{friendCode}/showcase") {
                 val userId =
                     call.authenticatedUserId()
