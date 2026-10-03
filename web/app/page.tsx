@@ -320,6 +320,8 @@ export default async function Home() {
 
         <div>
           <a href="https://shop.cardyssey.de">Shop</a>
+          <Link href="/impressum">Impressum</Link>
+          <Link href="/datenschutz">Datenschutz</Link>
           <Link href="/login">Login</Link>
         </div>
       </footer>
