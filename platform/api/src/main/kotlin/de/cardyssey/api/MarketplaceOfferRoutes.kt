@@ -52,7 +52,8 @@ data class MarketplaceOfferResponse(
 )
 
 fun Route.marketplaceOfferRoutes(
-    repository: MarketplaceOfferRepository
+    repository: MarketplaceOfferRepository,
+    push: PushNotificationService? = null
 ) {
     authenticate("auth-jwt") {
 
@@ -183,6 +184,20 @@ fun Route.marketplaceOfferRoutes(
                     )
                 }
 
+                push?.offerUpdate(
+                    recipientFriendCode =
+                        offer.sellerFriendCode,
+                    title =
+                        "Neues Angebot",
+                    body =
+                        (offer.buyerDisplayName
+                            ?: "Ein Sammler") +
+                            " bietet für " +
+                            offer.name,
+                    offerId =
+                        offer.id
+                )
+
                 call.respond(
                     HttpStatusCode.Created,
                     offerResponse(offer)
@@ -219,6 +234,18 @@ fun Route.marketplaceOfferRoutes(
                             )
                         )
 
+                push?.offerUpdate(
+                    recipientFriendCode =
+                        offer.buyerFriendCode,
+                    title =
+                        "Angebot angenommen",
+                    body =
+                        offer.name +
+                            " · dein Angebot wurde angenommen.",
+                    offerId =
+                        offer.id
+                )
+
                 call.respond(
                     offerResponse(offer)
                 )
@@ -253,6 +280,18 @@ fun Route.marketplaceOfferRoutes(
                                     "pending_offer_not_found"
                             )
                         )
+
+                push?.offerUpdate(
+                    recipientFriendCode =
+                        offer.buyerFriendCode,
+                    title =
+                        "Angebot abgelehnt",
+                    body =
+                        offer.name +
+                            " · das Angebot wurde abgelehnt.",
+                    offerId =
+                        offer.id
+                )
 
                 call.respond(
                     offerResponse(offer)
