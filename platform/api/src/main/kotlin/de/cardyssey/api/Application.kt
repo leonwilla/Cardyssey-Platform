@@ -668,7 +668,10 @@ fun Application.module() {
         )
 
         sellingRoutes(
-            sellingRepository
+            repository =
+                sellingRepository,
+            push =
+                pushNotifications
         )
 
         marketplaceRoutes(
