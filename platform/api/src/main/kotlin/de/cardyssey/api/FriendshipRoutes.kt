@@ -135,6 +135,12 @@ fun Route.friendshipRoutes(
                                     targetId
                                 )
                             ),
+                        favoritePokemon =
+                            targetUser.favoritePokemon,
+                        favoriteSet =
+                            targetUser.favoriteSet,
+                        collectingFocus =
+                            targetUser.collectingFocus,
                         isFriend =
                             isFriend,
                         canSeeShowcase =
@@ -887,6 +893,9 @@ data class FriendProfileResponse(
     val friendCode: String,
     val displayName: String?,
     val avatarUrl: String?,
+    val favoritePokemon: String? = null,
+    val favoriteSet: String? = null,
+    val collectingFocus: String? = null,
     val isFriend: Boolean,
     val canSeeShowcase: Boolean,
     val canSeeCollection: Boolean,
