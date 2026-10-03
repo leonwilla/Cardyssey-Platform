@@ -5,7 +5,10 @@ import java.util.UUID
 
 data class PublicFriendUser(
     val friendCode: String,
-    val displayName: String?
+    val displayName: String?,
+    val favoritePokemon: String? = null,
+    val favoriteSet: String? = null,
+    val collectingFocus: String? = null
 )
 
 data class FriendRequestRecord(
@@ -512,7 +515,10 @@ fun FriendshipRepository.findUserByFriendCode(
             SELECT
                 id,
                 friend_code,
-                display_name
+                display_name,
+                favorite_pokemon,
+                favorite_set,
+                collecting_focus
             FROM users
             WHERE UPPER(friend_code) = UPPER(?)
               AND disabled_at IS NULL
@@ -535,7 +541,19 @@ fun FriendshipRepository.findUserByFriendCode(
                         friendCode =
                             result.getString("friend_code"),
                         displayName =
-                            result.getString("display_name")
+                            result.getString("display_name"),
+                        favoritePokemon =
+                            result.getString(
+                                "favorite_pokemon"
+                            ),
+                        favoriteSet =
+                            result.getString(
+                                "favorite_set"
+                            ),
+                        collectingFocus =
+                            result.getString(
+                                "collecting_focus"
+                            )
                     )
                 )
             }
