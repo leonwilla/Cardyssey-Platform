@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -32,6 +33,18 @@ type WishlistItem = {
   foil?: string | null;
   size?: string | null;
   stamps: string[];
+  priority?: "LOW" | "MEDIUM" | "HIGH";
+  targetPriceEur?: number | null;
+};
+
+type Listing = {
+  id: string;
+  cardId: string;
+  languageCode: string;
+  name: string;
+  setName?: string | null;
+  localId?: string | null;
+  priceEur?: number | null;
 };
 
 function cardImage(
@@ -40,6 +53,33 @@ function cardImage(
   return base
     ? `${base.replace(/\/$/, "")}/high.webp`
     : null;
+}
+
+function money(
+  value?: number | null
+) {
+  return value == null
+    ? "—"
+    : new Intl.NumberFormat(
+        "de-DE",
+        {
+          style: "currency",
+          currency: "EUR",
+        }
+      ).format(value);
+}
+
+function priorityLabel(
+  value?: string
+) {
+  switch (value) {
+    case "HIGH":
+      return "Hohe Priorität";
+    case "LOW":
+      return "Niedrige Priorität";
+    default:
+      return "Mittlere Priorität";
+  }
 }
 
 export default function WishlistPage() {
@@ -51,16 +91,37 @@ export default function WishlistPage() {
   const [items, setItems] =
     useState<WishlistItem[]>([]);
 
+  const [marketplace, setMarketplace] =
+    useState<Listing[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
+  const [editing, setEditing] =
+    useState<WishlistItem | null>(
+      null
+    );
+
+  const [priority, setPriority] =
+    useState<
+      "LOW" | "MEDIUM" | "HIGH"
+    >("MEDIUM");
+
+  const [
+    targetPrice,
+    setTargetPrice,
+  ] = useState("");
+
   async function load() {
-    const [me, wishlist] =
+    const [me, wishlist, market] =
       await Promise.all([
         fetch("/api/auth/me", {
           cache: "no-store",
         }),
         fetch("/api/wishlist", {
+          cache: "no-store",
+        }),
+        fetch("/api/marketplace", {
           cache: "no-store",
         }),
       ]);
@@ -80,6 +141,12 @@ export default function WishlistPage() {
       );
     }
 
+    if (market.ok) {
+      setMarketplace(
+        await market.json()
+      );
+    }
+
     setLoading(false);
   }
 
@@ -87,12 +154,64 @@ export default function WishlistPage() {
     load();
   }, []);
 
+  const matches =
+    useMemo(() => {
+      const result =
+        new Map<
+          string,
+          Listing
+        >();
+
+      for (const item of items) {
+        const matching =
+          marketplace
+            .filter(
+              (listing) =>
+                listing.cardId ===
+                  item.cardId &&
+                listing.languageCode ===
+                  item.languageCode &&
+                (
+                  !item.setName ||
+                  listing.setName ===
+                    item.setName
+                ) &&
+                (
+                  !item.localId ||
+                  listing.localId ===
+                    item.localId
+                )
+            )
+            .sort(
+              (left, right) =>
+                (
+                  left.priceEur ??
+                  Number.POSITIVE_INFINITY
+                ) -
+                (
+                  right.priceEur ??
+                  Number.POSITIVE_INFINITY
+                )
+            );
+
+        if (matching[0]) {
+          result.set(
+            item.id,
+            matching[0]
+          );
+        }
+      }
+
+      return result;
+    }, [
+      items,
+      marketplace,
+    ]);
+
   async function remove(id: string) {
     const response =
       await fetch(
-        `/api/wishlist/${
-          encodeURIComponent(id)
-        }`,
+        `/api/wishlist/${encodeURIComponent(id)}`,
         {
           method: "DELETE",
         }
@@ -106,6 +225,108 @@ export default function WishlistPage() {
       );
     }
   }
+
+  function openEditor(
+    item: WishlistItem
+  ) {
+    setEditing(item);
+    setPriority(
+      item.priority ?? "MEDIUM"
+    );
+    setTargetPrice(
+      item.targetPriceEur == null
+        ? ""
+        : String(
+            item.targetPriceEur
+          ).replace(".", ",")
+    );
+  }
+
+  async function save() {
+    if (!editing) return;
+
+    const normalized =
+      targetPrice
+        .trim()
+        .replace(",", ".");
+
+    const parsed =
+      normalized
+        ? Number(normalized)
+        : null;
+
+    if (
+      parsed != null &&
+      (
+        !Number.isFinite(parsed) ||
+        parsed < 0
+      )
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/wishlist/${encodeURIComponent(editing.id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            priority,
+            targetPriceEur:
+              parsed,
+          }),
+        }
+      );
+
+    if (!response.ok) {
+      return;
+    }
+
+    const updated =
+      (await response.json()) as
+        WishlistItem;
+
+    setItems(
+      items.map((item) =>
+        item.id === updated.id
+          ? updated
+          : item
+      )
+    );
+
+    setEditing(null);
+  }
+
+  const sortedItems =
+    useMemo(
+      () =>
+        [...items].sort(
+          (left, right) => {
+            const rank = (
+              value?: string
+            ) =>
+              value === "HIGH"
+                ? 0
+                : value === "LOW"
+                  ? 2
+                  : 1;
+
+            return (
+              rank(left.priority) -
+                rank(right.priority) ||
+              left.name.localeCompare(
+                right.name,
+                "de"
+              )
+            );
+          }
+        ),
+      [items]
+    );
 
   return (
     <AppShell
@@ -121,9 +342,10 @@ export default function WishlistPage() {
           <h1>Wishlist</h1>
 
           <p className="muted">
-            Karten, die du suchst.
-            Später können andere Sammler
-            dir dafür Angebote machen.
+            Priorisiere Wunschkarten,
+            setze einen Zielpreis und
+            erkenne passende
+            Marketplace-Angebote direkt.
           </p>
         </div>
       </div>
@@ -132,14 +354,14 @@ export default function WishlistPage() {
         <div className="statusPanel">
           Wishlist wird geladen …
         </div>
-      ) : items.length === 0 ? (
+      ) : sortedItems.length === 0 ? (
         <div className="statusPanel">
           Deine Wishlist ist noch leer.
           Füge Karten über die Kartensuche hinzu.
         </div>
       ) : (
         <div className="wishlistGrid">
-          {items.map((item) => {
+          {sortedItems.map((item) => {
             const image =
               cardImage(item.imageBase);
 
@@ -152,9 +374,22 @@ export default function WishlistPage() {
               .filter(Boolean)
               .join(" · ");
 
+            const match =
+              matches.get(item.id);
+
+            const targetReached =
+              match?.priceEur != null &&
+              item.targetPriceEur != null &&
+              match.priceEur <=
+                item.targetPriceEur;
+
             return (
               <article
-                className="wishlistCard"
+                className={
+                  targetReached
+                    ? "wishlistCard wishlistHit"
+                    : "wishlistCard"
+                }
                 key={item.id}
               >
                 <div className="wishlistImage">
@@ -169,9 +404,30 @@ export default function WishlistPage() {
                 </div>
 
                 <div>
-                  <span className="eyebrowText">
-                    Gesucht
-                  </span>
+                  <div className="wishlistMetaRow">
+                    <span
+                      className={
+                        `wishlistPriority ${(
+                          item.priority ??
+                          "MEDIUM"
+                        ).toLowerCase()}`
+                      }
+                    >
+                      {priorityLabel(
+                        item.priority
+                      )}
+                    </span>
+
+                    {item.targetPriceEur !=
+                      null && (
+                      <span className="wishlistTarget">
+                        Ziel{" "}
+                        {money(
+                          item.targetPriceEur
+                        )}
+                      </span>
+                    )}
+                  </div>
 
                   <h3>{item.name}</h3>
 
@@ -193,19 +449,141 @@ export default function WishlistPage() {
                       </span>
                     )}
                   </div>
+
+                  {match && (
+                    <div
+                      className={
+                        targetReached
+                          ? "wishlistMarketHit reached"
+                          : "wishlistMarketHit"
+                      }
+                    >
+                      {targetReached
+                        ? "✓ Zielpreis erreicht · "
+                        : "Marketplace-Treffer · "}
+                      {money(
+                        match.priceEur
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <button
-                  className="ghostButton"
-                  onClick={
-                    () => remove(item.id)
-                  }
-                >
-                  Entfernen
-                </button>
+                <div className="wishlistActions">
+                  <button
+                    className="ghostButton"
+                    onClick={
+                      () =>
+                        openEditor(item)
+                    }
+                  >
+                    Bearbeiten
+                  </button>
+
+                  <button
+                    className="ghostButton"
+                    onClick={
+                      () =>
+                        remove(item.id)
+                    }
+                  >
+                    Entfernen
+                  </button>
+                </div>
               </article>
             );
           })}
+        </div>
+      )}
+
+      {editing && (
+        <div
+          className="editorBackdrop"
+          onClick={
+            () => setEditing(null)
+          }
+        >
+          <div
+            className="editorModal wishlistEditor"
+            onClick={
+              (event) =>
+                event.stopPropagation()
+            }
+          >
+            <span className="eyebrowText">
+              Wishlist
+            </span>
+
+            <h2>
+              {editing.name}
+            </h2>
+
+            <label className="editorField">
+              <span>Priorität</span>
+              <select
+                value={priority}
+                onChange={
+                  (event) =>
+                    setPriority(
+                      event.target.value as
+                        | "LOW"
+                        | "MEDIUM"
+                        | "HIGH"
+                    )
+                }
+              >
+                <option value="LOW">
+                  Niedrig
+                </option>
+                <option value="MEDIUM">
+                  Mittel
+                </option>
+                <option value="HIGH">
+                  Hoch
+                </option>
+              </select>
+            </label>
+
+            <label className="editorField">
+              <span>
+                Zielpreis in €
+              </span>
+              <input
+                inputMode="decimal"
+                value={targetPrice}
+                onChange={
+                  (event) =>
+                    setTargetPrice(
+                      event.target.value
+                    )
+                }
+                placeholder="optional"
+              />
+            </label>
+
+            <p className="muted">
+              Cardyssey markiert passende
+              Marketplace-Angebote automatisch.
+            </p>
+
+            <div className="editorActions">
+              <button
+                className="ghostButton"
+                onClick={
+                  () =>
+                    setEditing(null)
+                }
+              >
+                Abbrechen
+              </button>
+
+              <button
+                className="primaryButton"
+                onClick={save}
+              >
+                Speichern
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </AppShell>
