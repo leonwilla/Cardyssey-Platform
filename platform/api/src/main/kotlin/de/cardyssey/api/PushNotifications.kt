@@ -36,14 +36,18 @@ data class DeletePushDeviceRequest(
 data class PushPreferencesResponse(
     val directMessages: Boolean = true,
     val groupMessages: Boolean = true,
-    val communityMessages: Boolean = true
+    val communityMessages: Boolean = true,
+    val marketplaceMatches: Boolean = true,
+    val offers: Boolean = true
 )
 
 @Serializable
 data class UpdatePushPreferencesRequest(
     val directMessages: Boolean? = null,
     val groupMessages: Boolean? = null,
-    val communityMessages: Boolean? = null
+    val communityMessages: Boolean? = null,
+    val marketplaceMatches: Boolean? = null,
+    val offers: Boolean? = null
 )
 
 class PushNotificationService(
@@ -221,7 +225,9 @@ class PushNotificationService(
                         """
                         SELECT direct_messages,
                                group_messages,
-                               community_messages
+                               community_messages,
+                               marketplace_matches,
+                               offers
                         FROM push_preferences
                         WHERE user_id = ?
                         """.trimIndent()
@@ -249,6 +255,14 @@ class PushNotificationService(
                                         communityMessages =
                                             result.getBoolean(
                                                 "community_messages"
+                                            ),
+                                        marketplaceMatches =
+                                            result.getBoolean(
+                                                "marketplace_matches"
+                                            ),
+                                        offers =
+                                            result.getBoolean(
+                                                "offers"
                                             )
                                     )
                                 } else {
@@ -277,7 +291,13 @@ class PushNotificationService(
                         ?: current.groupMessages,
                 communityMessages =
                     request.communityMessages
-                        ?: current.communityMessages
+                        ?: current.communityMessages,
+                marketplaceMatches =
+                    request.marketplaceMatches
+                        ?: current.marketplaceMatches,
+                offers =
+                    request.offers
+                        ?: current.offers
             )
 
         dataSource
@@ -292,13 +312,17 @@ class PushNotificationService(
                                 direct_messages,
                                 group_messages,
                                 community_messages,
+                                marketplace_matches,
+                                offers,
                                 updated_at
                             )
-                        VALUES (?, ?, ?, ?, NOW())
+                        VALUES (?, ?, ?, ?, ?, ?, NOW())
                         ON CONFLICT (user_id) DO UPDATE SET
                             direct_messages = EXCLUDED.direct_messages,
                             group_messages = EXCLUDED.group_messages,
                             community_messages = EXCLUDED.community_messages,
+                            marketplace_matches = EXCLUDED.marketplace_matches,
+                            offers = EXCLUDED.offers,
                             updated_at = NOW()
                         """.trimIndent()
                     )
@@ -321,6 +345,16 @@ class PushNotificationService(
                         it.setBoolean(
                             4,
                             updated.communityMessages
+                        )
+
+                        it.setBoolean(
+                            5,
+                            updated.marketplaceMatches
+                        )
+
+                        it.setBoolean(
+                            6,
+                            updated.offers
                         )
 
                         it.executeUpdate()
@@ -462,6 +496,99 @@ class PushNotificationService(
         )
     }
 
+    fun wishlistMatch(
+        recipientId: UUID,
+        cardName: String,
+        listingId: UUID,
+        priceEur: Double?
+    ) {
+        if (
+            !preferences(
+                recipientId
+            ).marketplaceMatches
+        ) {
+            return
+        }
+
+        send(
+            userIds =
+                listOf(
+                    recipientId
+                ),
+            title =
+                "Wishlist-Treffer",
+            body =
+                buildString {
+                    append(
+                        cardName
+                    )
+
+                    if (
+                        priceEur != null
+                    ) {
+                        append(
+                            " · "
+                        )
+                        append(
+                            String.format(
+                                java.util.Locale.GERMANY,
+                                "%.2f €",
+                                priceEur
+                            )
+                        )
+                    }
+                },
+            data =
+                mapOf(
+                    "type" to
+                        "MARKETPLACE",
+                    "listingId" to
+                        listingId.toString()
+                )
+        )
+    }
+
+    fun offerUpdate(
+        recipientFriendCode: String,
+        title: String,
+        body: String,
+        offerId: UUID
+    ) {
+        val recipientId =
+            userIdForFriendCode(
+                recipientFriendCode
+            )
+                ?: return
+
+        if (
+            !preferences(
+                recipientId
+            ).offers
+        ) {
+            return
+        }
+
+        send(
+            userIds =
+                listOf(
+                    recipientId
+                ),
+            title =
+                title,
+            body =
+                body.take(
+                    180
+                ),
+            data =
+                mapOf(
+                    "type" to
+                        "OFFER",
+                    "offerId" to
+                        offerId.toString()
+                )
+        )
+    }
+
     fun communityMessage(
         roomId: UUID,
         senderId: UUID,
@@ -551,6 +678,41 @@ class PushNotificationService(
                 )
         )
     }
+
+    private fun userIdForFriendCode(
+        friendCode: String
+    ): UUID? =
+        dataSource.connection.use {
+            connection ->
+            connection.prepareStatement(
+                """
+                SELECT id
+                FROM users
+                WHERE friend_code = ?
+                """.trimIndent()
+            ).use {
+                statement ->
+                statement.setString(
+                    1,
+                    friendCode.trim()
+                )
+
+                statement.executeQuery()
+                    .use {
+                        result ->
+                        if (
+                            result.next()
+                        ) {
+                            result.getObject(
+                                "id",
+                                UUID::class.java
+                            )
+                        } else {
+                            null
+                        }
+                    }
+            }
+        }
 
     private fun send(
         userIds: List<UUID>,
