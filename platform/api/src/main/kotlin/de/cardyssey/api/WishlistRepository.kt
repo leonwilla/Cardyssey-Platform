@@ -17,7 +17,9 @@ data class WishlistItem(
     val variantSubtype: String?,
     val foil: String?,
     val size: String?,
-    val stamps: List<String>
+    val stamps: List<String>,
+    val priority: String,
+    val targetPriceEur: Double?
 )
 
 class WishlistRepository(
@@ -59,7 +61,15 @@ class WishlistRepository(
                                             @Suppress("UNCHECKED_CAST")
                                             (it as Array<String>).toList()
                                         }
-                                        ?: emptyList()
+                                        ?: emptyList(),
+                                    priority =
+                                        result.getString(
+                                            "priority"
+                                        ) ?: "MEDIUM",
+                                    targetPriceEur =
+                                        result.getBigDecimal(
+                                            "target_price_eur"
+                                        )?.toDouble()
                                 )
                             )
                         }
@@ -76,9 +86,10 @@ class WishlistRepository(
                     id, user_id, card_id, language_code,
                     name, set_id, set_name, local_id,
                     image_base, variant_id, variant_type,
-                    variant_subtype, foil, size, stamps
+                    variant_subtype, foil, size, stamps,
+                    priority, target_price_eur
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT DO NOTHING
                 """.trimIndent()
             ).use { statement ->
@@ -103,10 +114,119 @@ class WishlistRepository(
                         item.stamps.toTypedArray()
                     )
                 )
+                statement.setString(
+                    16,
+                    item.priority
+                )
+
+                if (
+                    item.targetPriceEur == null
+                ) {
+                    statement.setNull(
+                        17,
+                        java.sql.Types.NUMERIC
+                    )
+                } else {
+                    statement.setBigDecimal(
+                        17,
+                        java.math.BigDecimal.valueOf(
+                            item.targetPriceEur
+                        )
+                    )
+                }
 
                 statement.executeUpdate() > 0
             }
         }
+
+    fun updatePreferences(
+        userId: UUID,
+        id: UUID,
+        priority: String,
+        targetPriceEur: Double?
+    ): WishlistItem? {
+        val cleanPriority =
+            priority
+                .trim()
+                .uppercase()
+
+        if (
+            cleanPriority !in
+            setOf(
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+            )
+        ) {
+            return null
+        }
+
+        if (
+            targetPriceEur?.let {
+                !it.isFinite() ||
+                    it < 0.0
+            } == true
+        ) {
+            return null
+        }
+
+        val changed =
+            dataSource.connection.use {
+                connection ->
+                connection.prepareStatement(
+                    """
+                    UPDATE wishlist_items
+                    SET priority = ?,
+                        target_price_eur = ?
+                    WHERE id = ?
+                      AND user_id = ?
+                    """.trimIndent()
+                ).use {
+                    statement ->
+                    statement.setString(
+                        1,
+                        cleanPriority
+                    )
+
+                    if (
+                        targetPriceEur == null
+                    ) {
+                        statement.setNull(
+                            2,
+                            java.sql.Types.NUMERIC
+                        )
+                    } else {
+                        statement.setBigDecimal(
+                            2,
+                            java.math.BigDecimal.valueOf(
+                                targetPriceEur
+                            )
+                        )
+                    }
+
+                    statement.setObject(
+                        3,
+                        id
+                    )
+                    statement.setObject(
+                        4,
+                        userId
+                    )
+
+                    statement.executeUpdate() >
+                        0
+                }
+            }
+
+        if (!changed) {
+            return null
+        }
+
+        return list(userId)
+            .firstOrNull {
+                it.id == id
+            }
+    }
 
     fun delete(userId: UUID, id: UUID): Boolean =
         dataSource.connection.use { connection ->
