@@ -53,6 +53,9 @@ export default function AccountPage() {
   const [saving, setSaving] =
     useState(false);
 
+  const [deletingAccount, setDeletingAccount] =
+    useState(false);
+
   const [avatarSaving, setAvatarSaving] =
     useState(false);
 
@@ -317,6 +320,40 @@ export default function AccountPage() {
 
     router.replace("/login");
     router.refresh();
+  }
+
+  async function deleteAccount() {
+    const confirmed = window.confirm(
+      "Account dauerhaft löschen? Sammlung, Wishlist, Showcase, Marketplace-Daten, Chats und weitere mit deinem Cardyssey-Account verknüpfte Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+    );
+
+    if (!confirmed) return;
+
+    setDeletingAccount(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        "/api/auth/me",
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Account konnte nicht gelöscht werden."
+        );
+      }
+
+      router.replace("/login");
+      router.refresh();
+    } catch (e) {
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "Account konnte nicht gelöscht werden."
+      );
+      setDeletingAccount(false);
+    }
   }
 
   return (
@@ -626,6 +663,23 @@ export default function AccountPage() {
                 {saving
                   ? "Speichert …"
                   : "Profil speichern"}
+              </button>
+            </div>
+
+            <div
+              className="editorActions"
+              style={{
+                marginTop: "28px",
+              }}
+            >
+              <button
+                className="ghostButton"
+                onClick={deleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount
+                  ? "Account wird gelöscht …"
+                  : "Account dauerhaft löschen"}
               </button>
             </div>
           </section>
