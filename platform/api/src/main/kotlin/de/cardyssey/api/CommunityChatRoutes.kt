@@ -52,6 +52,10 @@ data class CommunityMessageResponse(
     val body: String,
     val objectType: String? = null,
     val objectPayload: JsonElement? = null,
+    val replyToMessageId: String? = null,
+    val replyToSenderFriendCode: String? = null,
+    val replyToBody: String? = null,
+    val reactions: List<ChatReactionResponse> = emptyList(),
     val deleted: Boolean = false,
     val createdAt: String
 )
@@ -60,7 +64,8 @@ data class CommunityMessageResponse(
 data class SendCommunityMessageRequest(
     val body: String = "",
     val objectType: String? = null,
-    val objectPayload: JsonElement? = null
+    val objectPayload: JsonElement? = null,
+    val replyToMessageId: String? = null
 )
 
 @Serializable
@@ -155,7 +160,8 @@ private class ChatSendGuard {
 
 class CommunityChatRepository(
     private val dataSource: HikariDataSource,
-    private val push: PushNotificationService? = null
+    private val push: PushNotificationService? = null,
+    private val reactions: ChatReactionRepository
 ) {
     private val events = MutableSharedFlow<CommunityEvent>(extraBufferCapacity = 256)
     private val sendGuard = ChatSendGuard()
@@ -261,10 +267,27 @@ class CommunityChatRepository(
         val result = dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
-                SELECT m.id, m.room_id, u.friend_code, u.display_name, m.body,
-                       m.object_type, m.object_payload, m.deleted_at, m.created_at
+                SELECT
+                    m.id,
+                    m.room_id,
+                    u.friend_code,
+                    u.display_name,
+                    m.body,
+                    m.object_type,
+                    m.object_payload,
+                    m.reply_to_message_id,
+                    reply_sender.friend_code AS reply_sender_friend_code,
+                    reply_message.body AS reply_body,
+                    m.deleted_at,
+                    m.created_at
                 FROM community_messages m
-                JOIN users u ON u.id = m.sender_id
+                JOIN users u
+                  ON u.id = m.sender_id
+                LEFT JOIN community_messages reply_message
+                  ON reply_message.id = m.reply_to_message_id
+                 AND reply_message.room_id = m.room_id
+                LEFT JOIN users reply_sender
+                  ON reply_sender.id = reply_message.sender_id
                 WHERE m.room_id = ?
                   AND (? IS NULL OR m.created_at < ?)
                   AND NOT EXISTS (
@@ -297,12 +320,66 @@ class CommunityChatRepository(
                                     objectPayload = if (deleted) null else rs.getString("object_payload")?.let {
                                         runCatching { Json.parseToJsonElement(it) }.getOrNull()
                                     },
+                                    replyToMessageId =
+                                        if (deleted) null else
+                                            rs.getString(
+                                                "reply_to_message_id"
+                                            ),
+                                    replyToSenderFriendCode =
+                                        if (deleted) null else
+                                            rs.getString(
+                                                "reply_sender_friend_code"
+                                            ),
+                                    replyToBody =
+                                        if (deleted) null else
+                                            rs.getString(
+                                                "reply_body"
+                                            ),
                                     deleted = deleted,
                                     createdAt = rs.getObject("created_at").toString()
                                 )
                             )
                         }
-                    }.reversed()
+                    }
+                        .reversed()
+                        .let {
+                            list ->
+                            val reactionMap =
+                                reactions.reactions(
+                                    scope =
+                                        "COMMUNITY",
+                                    messageIds =
+                                        list
+                                            .filterNot {
+                                                it.deleted
+                                            }
+                                            .map {
+                                                UUID.fromString(
+                                                    it.id
+                                                )
+                                            },
+                                    viewerId =
+                                        userId
+                                )
+
+                            list.map {
+                                message ->
+                                if (
+                                    message.deleted
+                                ) {
+                                    message
+                                } else {
+                                    message.copy(
+                                        reactions =
+                                            reactionMap[
+                                                UUID.fromString(
+                                                    message.id
+                                                )
+                                            ].orEmpty()
+                                    )
+                                }
+                            }
+                        }
                 }
             }
         }
@@ -323,13 +400,52 @@ class CommunityChatRepository(
         if (objectType != null && request.objectPayload == null) return "missing_object_payload" to null
         if (!sendGuard.allow(userId, body, objectType)) return "rate_limited" to null
 
+        val replyToMessageId =
+            request.replyToMessageId
+                ?.trim()
+                ?.takeIf(
+                    String::isNotBlank
+                )
+                ?.let {
+                    runCatching {
+                        UUID.fromString(
+                            it
+                        )
+                    }.getOrNull()
+                }
+
+        if (
+            request.replyToMessageId
+                ?.isNotBlank() == true &&
+            replyToMessageId == null
+        ) {
+            return "invalid_reply" to null
+        }
+
         return dataSource.connection.use { connection ->
+            if (
+                replyToMessageId != null &&
+                !messageBelongsToRoom(
+                    connection,
+                    replyToMessageId,
+                    roomId
+                )
+            ) {
+                return@use "invalid_reply" to null
+            }
             val id = UUID.randomUUID()
             val response = connection.prepareStatement(
                 """
-                INSERT INTO community_messages
-                    (id, room_id, sender_id, body, object_type, object_payload)
-                VALUES (?, ?, ?, ?, ?, ?::jsonb)
+                INSERT INTO community_messages (
+                    id,
+                    room_id,
+                    sender_id,
+                    body,
+                    object_type,
+                    object_payload,
+                    reply_to_message_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?::jsonb, ?)
                 RETURNING created_at
                 """.trimIndent()
             ).use { s ->
@@ -339,6 +455,10 @@ class CommunityChatRepository(
                 s.setString(4, body)
                 s.setString(5, objectType)
                 s.setString(6, request.objectPayload?.let { Json.encodeToString(it) })
+                s.setObject(
+                    7,
+                    replyToMessageId
+                )
                 s.executeQuery().use { rs ->
                     if (!rs.next()) return@use null
                     val user = userInfo(connection, userId)
@@ -350,6 +470,27 @@ class CommunityChatRepository(
                         body = body,
                         objectType = objectType,
                         objectPayload = request.objectPayload,
+                        replyToMessageId =
+                            replyToMessageId
+                                ?.toString(),
+                        replyToSenderFriendCode =
+                            replyToMessageId
+                                ?.let {
+                                    replyPreview(
+                                        connection,
+                                        it,
+                                        roomId
+                                    )?.first
+                                },
+                        replyToBody =
+                            replyToMessageId
+                                ?.let {
+                                    replyPreview(
+                                        connection,
+                                        it,
+                                        roomId
+                                    )?.second
+                                },
                         createdAt = rs.getObject("created_at").toString()
                     )
                 }
@@ -388,6 +529,117 @@ class CommunityChatRepository(
             "ok" to response
         }
     }
+
+    fun toggleReaction(
+        userId: UUID,
+        roomId: UUID,
+        messageId: UUID,
+        emoji: String
+    ): List<ChatReactionResponse>? {
+        if (!roomExists(roomId)) {
+            return null
+        }
+
+        val valid =
+            dataSource.connection.use {
+                connection ->
+                messageBelongsToRoom(
+                    connection,
+                    messageId,
+                    roomId
+                )
+            }
+
+        if (!valid) {
+            return null
+        }
+
+        return reactions.toggle(
+            scope =
+                "COMMUNITY",
+            messageId =
+                messageId,
+            userId =
+                userId,
+            emoji =
+                emoji
+        )
+    }
+
+    private fun messageBelongsToRoom(
+        connection: java.sql.Connection,
+        messageId: UUID,
+        roomId: UUID
+    ): Boolean =
+        connection.prepareStatement(
+            """
+            SELECT 1
+            FROM community_messages
+            WHERE id = ?
+              AND room_id = ?
+              AND deleted_at IS NULL
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(
+                1,
+                messageId
+            )
+            statement.setObject(
+                2,
+                roomId
+            )
+            statement.executeQuery()
+                .use {
+                    it.next()
+                }
+        }
+
+    private fun replyPreview(
+        connection: java.sql.Connection,
+        messageId: UUID,
+        roomId: UUID
+    ): Pair<String, String>? =
+        connection.prepareStatement(
+            """
+            SELECT
+                u.friend_code,
+                m.body
+            FROM community_messages m
+            JOIN users u
+              ON u.id = m.sender_id
+            WHERE m.id = ?
+              AND m.room_id = ?
+              AND m.deleted_at IS NULL
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(
+                1,
+                messageId
+            )
+            statement.setObject(
+                2,
+                roomId
+            )
+
+            statement.executeQuery()
+                .use {
+                    result ->
+                    if (
+                        result.next()
+                    ) {
+                        result.getString(
+                            "friend_code"
+                        ) to
+                            result.getString(
+                                "body"
+                            )
+                    } else {
+                        null
+                    }
+                }
+        }
 
     private fun roomName(
         roomId: UUID
@@ -780,6 +1032,72 @@ fun Route.communityChatRoutes(
                 val messages = repository.messages(userId, roomId, before, limit)
                     ?: return@get call.respond(HttpStatusCode.NotFound)
                 call.respond(messages)
+            }
+
+            post("/rooms/{roomId}/messages/{messageId}/reactions") {
+                val userId =
+                    call.authenticatedUserId()
+                        ?: return@post call.respond(
+                            HttpStatusCode.Unauthorized
+                        )
+
+                val roomId =
+                    call.parameters[
+                        "roomId"
+                    ]
+                        ?.let {
+                            runCatching {
+                                UUID.fromString(
+                                    it
+                                )
+                            }.getOrNull()
+                        }
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest
+                        )
+
+                val messageId =
+                    call.parameters[
+                        "messageId"
+                    ]
+                        ?.let {
+                            runCatching {
+                                UUID.fromString(
+                                    it
+                                )
+                            }.getOrNull()
+                        }
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest
+                        )
+
+                val request =
+                    call.receive<
+                        ToggleChatReactionRequest
+                    >()
+
+                val updated =
+                    repository.toggleReaction(
+                        userId =
+                            userId,
+                        roomId =
+                            roomId,
+                        messageId =
+                            messageId,
+                        emoji =
+                            request.emoji
+                    )
+                        ?: return@post call.respond(
+                            HttpStatusCode.BadRequest,
+                            mapOf(
+                                "error" to
+                                    "invalid_reaction"
+                            )
+                        )
+
+                call.respond(
+                    updated
+                )
             }
 
             post("/rooms/{roomId}/messages") {
