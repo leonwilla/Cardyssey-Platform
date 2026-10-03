@@ -24,6 +24,12 @@ data class TcgPriceRefreshTarget(
     val legacyVariant: String
 )
 
+data class TcgPriceStatistics(
+    val lowEur: Double?,
+    val highEur: Double?,
+    val trend30dPercent: Double?
+)
+
 class TcgPriceCacheRepository(
     private val dataSource: HikariDataSource
 ) {
@@ -195,6 +201,148 @@ class TcgPriceCacheRepository(
             }
         }
 
+    fun statistics(
+        cardId: String,
+        languageCode: String,
+        variantId: String
+    ): TcgPriceStatistics =
+        dataSource.connection.use {
+            connection ->
+            val current =
+                read(
+                    cardId =
+                        cardId,
+                    languageCode =
+                        languageCode,
+                    variantId =
+                        variantId
+                )?.baseEur
+
+            val values =
+                connection.prepareStatement(
+                    """
+                    SELECT
+                        MIN(base_eur) AS low_eur,
+                        MAX(base_eur) AS high_eur
+                    FROM tcg_price_history
+                    WHERE card_id = ?
+                      AND language_code = ?
+                      AND variant_id = ?
+                      AND captured_at >= NOW() - INTERVAL '30 days'
+                    """.trimIndent()
+                ).use {
+                    statement ->
+                    statement.setString(
+                        1,
+                        cardId
+                    )
+                    statement.setString(
+                        2,
+                        languageCode
+                    )
+                    statement.setString(
+                        3,
+                        variantId
+                    )
+
+                    statement.executeQuery()
+                        .use {
+                            result ->
+                            if (
+                                result.next()
+                            ) {
+                                result.getBigDecimal(
+                                    "low_eur"
+                                )
+                                    ?.toDouble() to
+                                    result.getBigDecimal(
+                                        "high_eur"
+                                    )
+                                        ?.toDouble()
+                            } else {
+                                null to null
+                            }
+                        }
+                }
+
+            val baseline =
+                connection.prepareStatement(
+                    """
+                    SELECT base_eur
+                    FROM tcg_price_history
+                    WHERE card_id = ?
+                      AND language_code = ?
+                      AND variant_id = ?
+                      AND captured_at <= NOW() - INTERVAL '30 days'
+                    ORDER BY captured_at DESC
+                    LIMIT 1
+                    """.trimIndent()
+                ).use {
+                    statement ->
+                    statement.setString(
+                        1,
+                        cardId
+                    )
+                    statement.setString(
+                        2,
+                        languageCode
+                    )
+                    statement.setString(
+                        3,
+                        variantId
+                    )
+
+                    statement.executeQuery()
+                        .use {
+                            result ->
+                            if (
+                                result.next()
+                            ) {
+                                result.getBigDecimal(
+                                    "base_eur"
+                                )
+                                    ?.toDouble()
+                            } else {
+                                null
+                            }
+                        }
+                }
+
+            val trend =
+                if (
+                    current != null &&
+                    baseline != null &&
+                    baseline > 0.0
+                ) {
+                    (
+                        (
+                            current -
+                                baseline
+                            ) /
+                            baseline *
+                            100.0
+                        )
+                        .let {
+                            kotlin.math.round(
+                                it * 10.0
+                            ) / 10.0
+                        }
+                } else {
+                    null
+                }
+
+            TcgPriceStatistics(
+                lowEur =
+                    values.first
+                        ?: current,
+                highEur =
+                    values.second
+                        ?: current,
+                trend30dPercent =
+                    trend
+            )
+        }
+
     fun write(
         target: TcgPriceRefreshTarget,
         source: String?,
@@ -272,6 +420,47 @@ class TcgPriceCacheRepository(
                 )
 
                 statement.executeUpdate()
+            }
+
+            if (
+                normalized != null
+            ) {
+                connection.prepareStatement(
+                    """
+                    INSERT INTO tcg_price_history (
+                        card_id,
+                        language_code,
+                        variant_id,
+                        source,
+                        base_eur,
+                        captured_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                    """.trimIndent()
+                ).use {
+                    statement ->
+                    statement.setString(
+                        1,
+                        target.cardId
+                    )
+                    statement.setString(
+                        2,
+                        target.languageCode
+                    )
+                    statement.setString(
+                        3,
+                        target.variantId
+                    )
+                    statement.setString(
+                        4,
+                        source
+                    )
+                    statement.setDouble(
+                        5,
+                        normalized
+                    )
+                    statement.executeUpdate()
+                }
             }
         }
     }
@@ -1001,6 +1190,33 @@ class CachedTcgPricingService(
                 true,
             exactVariantMatch =
                 true,
+            rangeLowEur =
+                cache.statistics(
+                    cardId =
+                        details.id,
+                    languageCode =
+                        details.languageCode,
+                    variantId =
+                        selected.id
+                ).lowEur,
+            rangeHighEur =
+                cache.statistics(
+                    cardId =
+                        details.id,
+                    languageCode =
+                        details.languageCode,
+                    variantId =
+                        selected.id
+                ).highEur,
+            trend30dPercent =
+                cache.statistics(
+                    cardId =
+                        details.id,
+                    languageCode =
+                        details.languageCode,
+                    variantId =
+                        selected.id
+                ).trend30dPercent,
             updatedAtMs =
                 updatedAtMs
         )
