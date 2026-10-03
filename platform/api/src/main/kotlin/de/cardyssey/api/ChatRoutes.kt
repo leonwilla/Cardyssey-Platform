@@ -80,7 +80,8 @@ class ChatRepository(
     private val dataSource: HikariDataSource,
     private val friendships: FriendshipRepository,
     private val push: PushNotificationService? = null,
-    private val reactions: ChatReactionRepository
+    private val reactions: ChatReactionRepository =
+        ChatReactionRepository(dataSource)
 ) {
     private val events =
         MutableSharedFlow<DirectChatEvent>(
