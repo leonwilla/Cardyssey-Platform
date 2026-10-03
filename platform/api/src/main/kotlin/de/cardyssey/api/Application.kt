@@ -96,10 +96,16 @@ fun Application.module() {
     val appearanceRepository =
         AppearanceRepository(database)
 
+    val pushNotifications =
+        PushNotificationService(
+            database
+        )
+
     val chatRepository =
         ChatRepository(
             dataSource = database,
-            friendships = friendshipRepository
+            friendships = friendshipRepository,
+            push = pushNotifications
         )
 
     val chatModerationRepository =
@@ -108,12 +114,14 @@ fun Application.module() {
     val groupChatRepository =
         GroupChatRepository(
             dataSource = database,
-            friendships = friendshipRepository
+            friendships = friendshipRepository,
+            push = pushNotifications
         )
 
     val communityChatRepository =
         CommunityChatRepository(
-            dataSource = database
+            dataSource = database,
+            push = pushNotifications
         )
 
     val showcaseRepository =
@@ -626,6 +634,10 @@ fun Application.module() {
 
         appearanceRoutes(
             appearanceRepository
+        )
+
+        pushNotificationRoutes(
+            pushNotifications
         )
 
         chatRoutes(
