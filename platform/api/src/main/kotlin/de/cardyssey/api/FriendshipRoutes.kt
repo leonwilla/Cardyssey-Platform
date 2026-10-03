@@ -316,13 +316,23 @@ fun Route.friendshipRoutes(
                     )
                 }
 
-                call.respond(
+                val profile =
                     showcaseRepository.toggleLike(
                         viewerId =
                             userId,
                         showcaseUserId =
                             targetId
                     )
+                        ?: return@post call.respond(
+                            HttpStatusCode.NotFound,
+                            mapOf(
+                                "error" to
+                                    "showcase_not_found"
+                            )
+                        )
+
+                call.respond(
+                    profile
                 )
             }
 
@@ -636,7 +646,11 @@ fun Route.friendshipRoutes(
                                 variantSubtype = it.variantSubtype,
                                 foil = it.foil,
                                 size = it.size,
-                                stamps = it.stamps
+                                stamps = it.stamps,
+                                priority =
+                                    it.priority,
+                                targetPriceEur =
+                                    it.targetPriceEur
                             )
                         }
                 )
