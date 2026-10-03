@@ -7,6 +7,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
@@ -445,6 +446,22 @@ fun Route.authRoutes(
                         user.collectingFocus
                 )
             )
+        }
+
+
+        delete("/api/v1/me") {
+            val id = call.authenticatedUserId()
+            if (id == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@delete
+            }
+
+            if (!repository.deleteOwnAccount(id)) {
+                call.respond(HttpStatusCode.NotFound)
+                return@delete
+            }
+
+            call.respond(HttpStatusCode.NoContent)
         }
 
 
