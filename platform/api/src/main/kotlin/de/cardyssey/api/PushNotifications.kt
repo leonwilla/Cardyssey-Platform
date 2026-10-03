@@ -496,6 +496,110 @@ class PushNotificationService(
         )
     }
 
+    fun wishlistMatchesForListing(
+        sellerId: UUID,
+        listingId: UUID,
+        cardId: String,
+        languageCode: String,
+        cardName: String,
+        priceEur: Double?
+    ) {
+        val recipients =
+            dataSource.connection.use {
+                connection ->
+                connection.prepareStatement(
+                    """
+                    SELECT DISTINCT user_id
+                    FROM wishlist_items
+                    WHERE card_id = ?
+                      AND language_code = ?
+                      AND user_id <> ?
+                      AND (
+                            target_price_eur IS NULL
+                            OR ? IS NULL
+                            OR ? <= target_price_eur
+                          )
+                    """.trimIndent()
+                ).use {
+                    statement ->
+                    statement.setString(
+                        1,
+                        cardId
+                    )
+                    statement.setString(
+                        2,
+                        languageCode
+                    )
+                    statement.setObject(
+                        3,
+                        sellerId
+                    )
+
+                    if (
+                        priceEur == null
+                    ) {
+                        statement.setNull(
+                            4,
+                            java.sql.Types.NUMERIC
+                        )
+                        statement.setNull(
+                            5,
+                            java.sql.Types.NUMERIC
+                        )
+                    } else {
+                        statement.setDouble(
+                            4,
+                            priceEur
+                        )
+                        statement.setDouble(
+                            5,
+                            priceEur
+                        )
+                    }
+
+                    statement.executeQuery()
+                        .use {
+                            result ->
+                            buildList {
+                                while (
+                                    result.next()
+                                ) {
+                                    val userId =
+                                        result.getObject(
+                                            "user_id",
+                                            UUID::class.java
+                                        )
+
+                                    if (
+                                        preferences(
+                                            userId
+                                        ).marketplaceMatches
+                                    ) {
+                                        add(
+                                            userId
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
+
+        recipients.forEach {
+            recipientId ->
+            wishlistMatch(
+                recipientId =
+                    recipientId,
+                cardName =
+                    cardName,
+                listingId =
+                    listingId,
+                priceEur =
+                    priceEur
+            )
+        }
+    }
+
     fun wishlistMatch(
         recipientId: UUID,
         cardName: String,
