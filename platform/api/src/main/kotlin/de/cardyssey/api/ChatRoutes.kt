@@ -63,7 +63,8 @@ private data class ChatMessageRecord(
 
 class ChatRepository(
     private val dataSource: HikariDataSource,
-    private val friendships: FriendshipRepository
+    private val friendships: FriendshipRepository,
+    private val push: PushNotificationService? = null
 ) {
     private val events =
         MutableSharedFlow<DirectChatEvent>(
@@ -242,6 +243,19 @@ class ChatRepository(
                         )
                     )
 
+                    push?.directMessage(
+                        recipientId =
+                            target.first,
+                        senderFriendCode =
+                            response.senderFriendCode,
+                        senderName =
+                            displayNameFor(
+                                userId
+                            ),
+                        body =
+                            normalized
+                    )
+
                     return response
                 }
             }
@@ -357,6 +371,30 @@ class ChatRepository(
             }
         }
     }
+
+    private fun displayNameFor(
+        userId: UUID
+    ): String? =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT display_name FROM users WHERE id = ?"
+            ).use { statement ->
+                statement.setObject(
+                    1,
+                    userId
+                )
+
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        result.getString(
+                            "display_name"
+                        )
+                    } else {
+                        null
+                    }
+                }
+            }
+        }
 
     private fun friendCodeFor(userId: UUID): String {
         dataSource.connection.use { connection ->
