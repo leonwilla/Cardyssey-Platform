@@ -164,7 +164,8 @@ private class ChatSendGuard {
 class CommunityChatRepository(
     private val dataSource: HikariDataSource,
     private val push: PushNotificationService? = null,
-    private val reactions: ChatReactionRepository
+    private val reactions: ChatReactionRepository =
+        ChatReactionRepository(dataSource)
 ) {
     private val events = MutableSharedFlow<CommunityEvent>(extraBufferCapacity = 256)
     private val sendGuard = ChatSendGuard()
