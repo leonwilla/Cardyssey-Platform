@@ -679,7 +679,10 @@ fun Application.module() {
         )
 
         marketplaceOfferRoutes(
-            marketplaceOfferRepository
+            repository =
+                marketplaceOfferRepository,
+            push =
+                pushNotifications
         )
 
         cardCatalogRoutes(
