@@ -1,5 +1,6 @@
 import {
   authenticatedBackendFetch,
+  clearAuthCookies,
   readBackendJson,
 } from "@/lib/server/cardyssey-api";
 
@@ -52,6 +53,27 @@ export async function PUT(
 
   return Response.json(
     data,
+    { status: response.status }
+  );
+}
+
+
+export async function DELETE() {
+  const response = await authenticatedBackendFetch(
+    "/api/v1/me",
+    { method: "DELETE" }
+  );
+
+  if (response.ok) {
+    await clearAuthCookies();
+  }
+
+  if (response.status === 204) {
+    return new Response(null, { status: 204 });
+  }
+
+  return Response.json(
+    await readBackendJson(response),
     { status: response.status }
   );
 }
