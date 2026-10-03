@@ -1159,8 +1159,18 @@ class CachedTcgPricingService(
         details: CatalogCardDetails,
         selected: CatalogVariant,
         condition: PricingCondition
-    ): CardPriceQuoteResponse =
-        CardPriceQuoteResponse(
+    ): CardPriceQuoteResponse {
+        val statistics =
+            cache.statistics(
+                cardId =
+                    details.id,
+                languageCode =
+                    details.languageCode,
+                variantId =
+                    selected.id
+            )
+
+        return CardPriceQuoteResponse(
             cardId =
                 details.id,
             languageCode =
@@ -1191,35 +1201,15 @@ class CachedTcgPricingService(
             exactVariantMatch =
                 true,
             rangeLowEur =
-                cache.statistics(
-                    cardId =
-                        details.id,
-                    languageCode =
-                        details.languageCode,
-                    variantId =
-                        selected.id
-                ).lowEur,
+                statistics.lowEur,
             rangeHighEur =
-                cache.statistics(
-                    cardId =
-                        details.id,
-                    languageCode =
-                        details.languageCode,
-                    variantId =
-                        selected.id
-                ).highEur,
+                statistics.highEur,
             trend30dPercent =
-                cache.statistics(
-                    cardId =
-                        details.id,
-                    languageCode =
-                        details.languageCode,
-                    variantId =
-                        selected.id
-                ).trend30dPercent,
+                statistics.trend30dPercent,
             updatedAtMs =
                 updatedAtMs
         )
+    }
 
     private fun emptyQuote(
         details: CatalogCardDetails,
