@@ -11,6 +11,10 @@ function secure(
     "nosniff"
   );
   response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=63072000; includeSubDomains"
+  );
+  response.headers.set(
     "Referrer-Policy",
     "strict-origin-when-cross-origin"
   );
@@ -42,7 +46,9 @@ function secure(
       "media-src 'self' blob:",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      process.env.NODE_ENV === "development"
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
       "connect-src 'self' https:",
       "upgrade-insecure-requests",
     ].join("; ")
