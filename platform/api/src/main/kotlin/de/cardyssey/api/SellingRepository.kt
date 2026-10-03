@@ -137,6 +137,136 @@ class SellingRepository(
             "ACTIVE"
         )
 
+    fun activeListingForCollection(
+        userId: UUID,
+        collectionItemId: UUID
+    ): MarketplaceListing? =
+        dataSource.connection.use {
+            connection ->
+            connection.prepareStatement(
+                """
+                SELECT
+                    s.id,
+                    u.friend_code,
+                    u.display_name,
+                    c.card_id,
+                    c.language_code,
+                    c.name,
+                    c.set_name,
+                    c.local_id,
+                    c.image_base,
+                    c.legacy_variant,
+                    c.condition,
+                    LEAST(
+                        s.quantity,
+                        c.quantity
+                    ) AS available_quantity,
+                    s.price_eur,
+                    s.negotiable
+                FROM sale_listings s
+                JOIN collection_items c
+                  ON c.id = s.collection_item_id
+                JOIN users u
+                  ON u.id = s.user_id
+                WHERE s.user_id = ?
+                  AND s.collection_item_id = ?
+                  AND s.status = 'ACTIVE'
+                  AND c.deleted_at IS NULL
+                ORDER BY s.updated_at DESC
+                LIMIT 1
+                """.trimIndent()
+            ).use {
+                statement ->
+                statement.setObject(
+                    1,
+                    userId
+                )
+                statement.setObject(
+                    2,
+                    collectionItemId
+                )
+
+                statement.executeQuery()
+                    .use {
+                        result ->
+                        if (
+                            !result.next()
+                        ) {
+                            null
+                        } else {
+                            val rawPrice =
+                                result.getDouble(
+                                    "price_eur"
+                                )
+
+                            MarketplaceListing(
+                                id =
+                                    result.getObject(
+                                        "id",
+                                        UUID::class.java
+                                    ),
+                                sellerFriendCode =
+                                    result.getString(
+                                        "friend_code"
+                                    ),
+                                sellerDisplayName =
+                                    result.getString(
+                                        "display_name"
+                                    ),
+                                cardId =
+                                    result.getString(
+                                        "card_id"
+                                    ),
+                                languageCode =
+                                    result.getString(
+                                        "language_code"
+                                    ),
+                                name =
+                                    result.getString(
+                                        "name"
+                                    ),
+                                setName =
+                                    result.getString(
+                                        "set_name"
+                                    ),
+                                localId =
+                                    result.getString(
+                                        "local_id"
+                                    ),
+                                imageBase =
+                                    result.getString(
+                                        "image_base"
+                                    ),
+                                variant =
+                                    result.getString(
+                                        "legacy_variant"
+                                    ),
+                                condition =
+                                    result.getString(
+                                        "condition"
+                                    ),
+                                quantity =
+                                    result.getInt(
+                                        "available_quantity"
+                                    ),
+                                priceEur =
+                                    if (
+                                        result.wasNull()
+                                    ) {
+                                        null
+                                    } else {
+                                        rawPrice
+                                    },
+                                negotiable =
+                                    result.getBoolean(
+                                        "negotiable"
+                                    )
+                            )
+                        }
+                    }
+            }
+        }
+
     fun update(
         userId: UUID,
         listingId: UUID,
