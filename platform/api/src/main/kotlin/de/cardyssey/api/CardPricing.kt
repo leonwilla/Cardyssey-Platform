@@ -42,6 +42,7 @@ data class CardPriceQuoteResponse(
     val sampleCount: Int? = null,
     val rangeLowEur: Double? = null,
     val rangeHighEur: Double? = null,
+    val trend30dPercent: Double? = null,
     val updatedAtMs: Long? = null,
     val recentSales: List<EbayRecentSaleResponse> = emptyList()
 )
