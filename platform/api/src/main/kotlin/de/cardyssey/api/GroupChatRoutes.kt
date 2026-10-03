@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import java.awt.RenderingHints
@@ -250,6 +249,10 @@ data class GroupChatMessageResponse(
     val body: String,
     val objectType: String? = null,
     val objectPayload: JsonElement? = null,
+    val replyToMessageId: String? = null,
+    val replyToSenderFriendCode: String? = null,
+    val replyToBody: String? = null,
+    val reactions: List<ChatReactionResponse> = emptyList(),
     val createdAt: String
 )
 
@@ -303,7 +306,13 @@ data class UpdateGroupMemberRoleRequest(val role: String)
 data class SendGroupChatMessageRequest(
     val body: String = "",
     val objectType: String? = null,
-    val objectPayload: JsonElement? = null
+    val objectPayload: JsonElement? = null,
+    val replyToMessageId: String? = null
+)
+
+@Serializable
+data class ToggleChatReactionRequest(
+    val emoji: String
 )
 
 @Serializable
@@ -316,7 +325,8 @@ data class GroupChatEvent(
 class GroupChatRepository(
     private val dataSource: HikariDataSource,
     private val friendships: FriendshipRepository,
-    private val push: PushNotificationService? = null
+    private val push: PushNotificationService? = null,
+    private val reactions: ChatReactionRepository
 ) {
     private val events =
         MutableSharedFlow<GroupChatEvent>(
@@ -598,10 +608,25 @@ class GroupChatRepository(
         val messages = dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
-                SELECT m.id, u.friend_code, u.display_name, m.body, m.object_type,
-                       m.object_payload, m.created_at
+                SELECT
+                    m.id,
+                    u.friend_code,
+                    u.display_name,
+                    m.body,
+                    m.object_type,
+                    m.object_payload,
+                    m.reply_to_message_id,
+                    reply_sender.friend_code AS reply_sender_friend_code,
+                    reply_message.body AS reply_body,
+                    m.created_at
                 FROM chat_group_messages m
-                JOIN users u ON u.id = m.sender_id
+                JOIN users u
+                  ON u.id = m.sender_id
+                LEFT JOIN chat_group_messages reply_message
+                  ON reply_message.id = m.reply_to_message_id
+                 AND reply_message.group_id = m.group_id
+                LEFT JOIN users reply_sender
+                  ON reply_sender.id = reply_message.sender_id
                 WHERE m.group_id = ?
                   AND (? IS NULL OR m.created_at < ?)
                 ORDER BY m.created_at DESC, m.id DESC
@@ -614,8 +639,40 @@ class GroupChatRepository(
                 s.setInt(4, safeLimit)
                 s.executeQuery().use { result ->
                     buildList {
-                        while (result.next()) add(result.toGroupMessage())
-                    }.reversed()
+                        while (result.next()) {
+                            add(
+                                result.toGroupMessage()
+                            )
+                        }
+                    }
+                        .reversed()
+                        .let {
+                            list ->
+                            val reactionMap =
+                                reactions.reactions(
+                                    scope = "GROUP",
+                                    messageIds =
+                                        list.map {
+                                            UUID.fromString(
+                                                it.id
+                                            )
+                                        },
+                                    viewerId =
+                                        userId
+                                )
+
+                            list.map {
+                                message ->
+                                message.copy(
+                                    reactions =
+                                        reactionMap[
+                                            UUID.fromString(
+                                                message.id
+                                            )
+                                        ].orEmpty()
+                                )
+                            }
+                        }
                 }
             }
         }
@@ -631,13 +688,48 @@ class GroupChatRepository(
         if (clean.length > 2000 || (clean.isBlank() && objectType == null)) return null
         if (objectType != null && (objectType !in allowedObjectTypes || request.objectPayload == null)) return null
 
+        val replyToMessageId =
+            request.replyToMessageId
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let {
+                    runCatching {
+                        UUID.fromString(it)
+                    }.getOrNull()
+                }
+
+        if (
+            request.replyToMessageId
+                ?.isNotBlank() == true &&
+            replyToMessageId == null
+        ) {
+            return null
+        }
+
         return dataSource.connection.use { connection ->
+            if (
+                replyToMessageId != null &&
+                !messageBelongsToGroup(
+                    connection,
+                    replyToMessageId,
+                    groupId
+                )
+            ) {
+                return@use null
+            }
             val id = UUID.randomUUID()
             val response = connection.prepareStatement(
                 """
-                INSERT INTO chat_group_messages
-                    (id, group_id, sender_id, body, object_type, object_payload)
-                VALUES (?, ?, ?, ?, ?, ?::jsonb)
+                INSERT INTO chat_group_messages (
+                    id,
+                    group_id,
+                    sender_id,
+                    body,
+                    object_type,
+                    object_payload,
+                    reply_to_message_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?::jsonb, ?)
                 RETURNING created_at
                 """.trimIndent()
             ).use { s ->
@@ -647,6 +739,10 @@ class GroupChatRepository(
                 s.setString(4, clean)
                 s.setString(5, objectType)
                 s.setString(6, request.objectPayload?.let { Json.encodeToString(it) })
+                s.setObject(
+                    7,
+                    replyToMessageId
+                )
                 s.executeQuery().use { result ->
                     if (!result.next()) return null
                     GroupChatMessageResponse(
@@ -656,6 +752,27 @@ class GroupChatRepository(
                         body = clean,
                         objectType = objectType,
                         objectPayload = request.objectPayload,
+                        replyToMessageId =
+                            replyToMessageId
+                                ?.toString(),
+                        replyToSenderFriendCode =
+                            replyToMessageId
+                                ?.let {
+                                    replyPreview(
+                                        connection,
+                                        it,
+                                        groupId
+                                    )?.first
+                                },
+                        replyToBody =
+                            replyToMessageId
+                                ?.let {
+                                    replyPreview(
+                                        connection,
+                                        it,
+                                        groupId
+                                    )?.second
+                                },
                         createdAt = result.getObject("created_at").toString()
                     )
                 }
@@ -692,6 +809,100 @@ class GroupChatRepository(
         }
     }
 
+    fun toggleReaction(
+        userId: UUID,
+        groupId: UUID,
+        messageId: UUID,
+        emoji: String
+    ): List<ChatReactionResponse>? {
+        if (
+            memberRole(
+                userId,
+                groupId
+            ) == null
+        ) {
+            return null
+        }
+
+        val valid =
+            dataSource.connection.use {
+                connection ->
+                messageBelongsToGroup(
+                    connection,
+                    messageId,
+                    groupId
+                )
+            }
+
+        if (!valid) {
+            return null
+        }
+
+        return reactions.toggle(
+            scope = "GROUP",
+            messageId = messageId,
+            userId = userId,
+            emoji = emoji
+        )
+    }
+
+    private fun messageBelongsToGroup(
+        connection: java.sql.Connection,
+        messageId: UUID,
+        groupId: UUID
+    ): Boolean =
+        connection.prepareStatement(
+            """
+            SELECT 1
+            FROM chat_group_messages
+            WHERE id = ?
+              AND group_id = ?
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(1, messageId)
+            statement.setObject(2, groupId)
+            statement.executeQuery()
+                .use {
+                    it.next()
+                }
+        }
+
+    private fun replyPreview(
+        connection: java.sql.Connection,
+        messageId: UUID,
+        groupId: UUID
+    ): Pair<String, String>? =
+        connection.prepareStatement(
+            """
+            SELECT u.friend_code, m.body
+            FROM chat_group_messages m
+            JOIN users u
+              ON u.id = m.sender_id
+            WHERE m.id = ?
+              AND m.group_id = ?
+            """.trimIndent()
+        ).use {
+            statement ->
+            statement.setObject(1, messageId)
+            statement.setObject(2, groupId)
+
+            statement.executeQuery()
+                .use {
+                    result ->
+                    if (result.next()) {
+                        result.getString(
+                            "friend_code"
+                        ) to
+                            result.getString(
+                                "body"
+                            )
+                    } else {
+                        null
+                    }
+                }
+        }
+
     private fun groupName(
         groupId: UUID
     ): String =
@@ -720,10 +931,25 @@ class GroupChatRepository(
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
-                SELECT m.id, u.friend_code, u.display_name, m.body, m.object_type,
-                       m.object_payload, m.created_at
+                SELECT
+                    m.id,
+                    u.friend_code,
+                    u.display_name,
+                    m.body,
+                    m.object_type,
+                    m.object_payload,
+                    m.reply_to_message_id,
+                    reply_sender.friend_code AS reply_sender_friend_code,
+                    reply_message.body AS reply_body,
+                    m.created_at
                 FROM chat_group_messages m
-                JOIN users u ON u.id = m.sender_id
+                JOIN users u
+                  ON u.id = m.sender_id
+                LEFT JOIN chat_group_messages reply_message
+                  ON reply_message.id = m.reply_to_message_id
+                 AND reply_message.group_id = m.group_id
+                LEFT JOIN users reply_sender
+                  ON reply_sender.id = reply_message.sender_id
                 WHERE m.group_id = ?
                 ORDER BY m.created_at DESC
                 LIMIT 1
@@ -788,6 +1014,18 @@ class GroupChatRepository(
             objectPayload = getString("object_payload")?.let {
                 runCatching { Json.parseToJsonElement(it) }.getOrNull()
             },
+            replyToMessageId =
+                getString(
+                    "reply_to_message_id"
+                ),
+            replyToSenderFriendCode =
+                getString(
+                    "reply_sender_friend_code"
+                ),
+            replyToBody =
+                getString(
+                    "reply_body"
+                ),
             createdAt = getObject("created_at").toString()
         )
 }
@@ -854,8 +1092,8 @@ fun Route.groupChatRoutes(repository: GroupChatRepository) {
                                 (groupFilter == null || event.groupId == groupFilter)
                         }
                         .collect { event ->
-                            write("event: group\\n")
-                            write("data: " + Json.encodeToString(event) + "\\n\\n")
+                            write("event: group\n")
+                            write("data: " + Json.encodeToString(event) + "\n\n")
                             flush()
                         }
                 }
@@ -1035,6 +1273,60 @@ fun Route.groupChatRoutes(repository: GroupChatRepository) {
                 }
 
                 route("/messages") {
+                    post("/{messageId}/reactions") {
+                        val userId =
+                            call.authenticatedUserId()
+                                ?: return@post call.respond(
+                                    HttpStatusCode.Unauthorized
+                                )
+
+                        val groupId =
+                            call.parameters[
+                                "groupId"
+                            ]
+                                ?.toUuid()
+                                ?: return@post call.respond(
+                                    HttpStatusCode.BadRequest
+                                )
+
+                        val messageId =
+                            call.parameters[
+                                "messageId"
+                            ]
+                                ?.toUuid()
+                                ?: return@post call.respond(
+                                    HttpStatusCode.BadRequest
+                                )
+
+                        val request =
+                            call.receive<
+                                ToggleChatReactionRequest
+                            >()
+
+                        val updated =
+                            repository.toggleReaction(
+                                userId =
+                                    userId,
+                                groupId =
+                                    groupId,
+                                messageId =
+                                    messageId,
+                                emoji =
+                                    request.emoji
+                            )
+                                ?: return@post call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf(
+                                        "error" to
+                                            "invalid_reaction"
+                                    )
+                                )
+
+                        call.respond(
+                            updated
+                        )
+                    }
+
                     get {
                         val userId = call.authenticatedUserId()
                             ?: return@get call.respond(HttpStatusCode.Unauthorized)
