@@ -697,7 +697,8 @@ class AuthRepository(
                 statement.executeUpdate()
             }
         }
-    
+    }
+
     fun deleteOwnAccount(
         userId: UUID
     ): Boolean {
@@ -804,5 +805,4 @@ class AuthRepository(
 
         return deleted
     }
-}
 }
