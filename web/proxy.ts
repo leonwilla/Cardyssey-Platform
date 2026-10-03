@@ -3,25 +3,76 @@ import {
   NextResponse,
 } from "next/server";
 
+function secure(
+  response: NextResponse
+) {
+  response.headers.set(
+    "X-Content-Type-Options",
+    "nosniff"
+  );
+  response.headers.set(
+    "Referrer-Policy",
+    "strict-origin-when-cross-origin"
+  );
+  response.headers.set(
+    "X-Frame-Options",
+    "DENY"
+  );
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(self), microphone=(), geolocation=()"
+  );
+  response.headers.set(
+    "Cross-Origin-Opener-Policy",
+    "same-origin"
+  );
+  response.headers.set(
+    "Cross-Origin-Resource-Policy",
+    "same-site"
+  );
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "object-src 'none'",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' blob:",
+      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "connect-src 'self' https:",
+      "upgrade-insecure-requests",
+    ].join("; ")
+  );
+
+  return response;
+}
+
 export function proxy(
   request: NextRequest
 ) {
   const pathname =
     request.nextUrl.pathname;
 
-  // Öffentlich bleiben:
-  // Login/Register-UI, APIs, Next Assets und APK-Download.
-  if (
+  const isPublic =
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/impressum" ||
+    pathname === "/datenschutz" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/downloads/") ||
     pathname === "/favicon.ico" ||
-    pathname.includes(".")
-  ) {
-    return NextResponse.next();
+    pathname.includes(".");
+
+  if (isPublic) {
+    return secure(
+      NextResponse.next()
+    );
   }
 
   const access =
@@ -41,12 +92,16 @@ export function proxy(
     loginUrl.pathname = "/login";
     loginUrl.search = "";
 
-    return NextResponse.redirect(
-      loginUrl
+    return secure(
+      NextResponse.redirect(
+        loginUrl
+      )
     );
   }
 
-  return NextResponse.next();
+  return secure(
+    NextResponse.next()
+  );
 }
 
 export const config = {
