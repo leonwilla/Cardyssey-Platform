@@ -7,12 +7,14 @@ import io.ktor.server.application.call
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondTextWriter
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
@@ -22,9 +24,223 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.File
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
+import javax.imageio.ImageIO
+import kotlin.math.max
+
+private const val MAX_GROUP_IMAGE_BYTES =
+    5 * 1024 * 1024
+
+private const val GROUP_IMAGE_SIZE =
+    768
+
+private fun groupImageUrlFor(
+    fileName: String
+): String {
+    val base =
+        System.getenv(
+            "PUBLIC_API_URL"
+        )
+            ?.trim()
+            ?.removeSuffix("/")
+            ?.takeIf(
+                String::isNotBlank
+            )
+
+    val path =
+        "/api/v1/chat/group-images/$fileName"
+
+    return if (base == null) {
+        path
+    } else {
+        "$base$path"
+    }
+}
+
+private class GroupImageStorage {
+    private val directory =
+        File(
+            System.getenv(
+                "GROUP_IMAGE_DIR"
+            )
+                ?.takeIf(
+                    String::isNotBlank
+                )
+                ?: "/data/group-images"
+        )
+
+    init {
+        directory.mkdirs()
+    }
+
+    fun save(
+        groupId: UUID,
+        bytes: ByteArray
+    ): String {
+        require(
+            bytes.isNotEmpty() &&
+                bytes.size <=
+                    MAX_GROUP_IMAGE_BYTES
+        ) {
+            "invalid_group_image_size"
+        }
+
+        val source =
+            ImageIO.read(
+                ByteArrayInputStream(
+                    bytes
+                )
+            )
+                ?: error(
+                    "invalid_group_image"
+                )
+
+        require(
+            source.width > 0 &&
+                source.height > 0 &&
+                source.width <= 12000 &&
+                source.height <= 12000
+        ) {
+            "invalid_group_image_dimensions"
+        }
+
+        val target =
+            BufferedImage(
+                GROUP_IMAGE_SIZE,
+                GROUP_IMAGE_SIZE,
+                BufferedImage.TYPE_INT_RGB
+            )
+
+        val graphics =
+            target.createGraphics()
+
+        try {
+            graphics.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BICUBIC
+            )
+
+            graphics.setRenderingHint(
+                RenderingHints.KEY_RENDERING,
+                RenderingHints.VALUE_RENDER_QUALITY
+            )
+
+            val scale =
+                max(
+                    GROUP_IMAGE_SIZE.toDouble() /
+                        source.width.toDouble(),
+                    GROUP_IMAGE_SIZE.toDouble() /
+                        source.height.toDouble()
+                )
+
+            val width =
+                (
+                    source.width *
+                        scale
+                ).toInt()
+
+            val height =
+                (
+                    source.height *
+                        scale
+                ).toInt()
+
+            graphics.drawImage(
+                source,
+                (
+                    GROUP_IMAGE_SIZE -
+                        width
+                    ) / 2,
+                (
+                    GROUP_IMAGE_SIZE -
+                        height
+                    ) / 2,
+                width,
+                height,
+                null
+            )
+        } finally {
+            graphics.dispose()
+        }
+
+        val fileName =
+            "${groupId}_${UUID.randomUUID()}.jpg"
+
+        val file =
+            File(
+                directory,
+                fileName
+            )
+
+        check(
+            ImageIO.write(
+                target,
+                "jpg",
+                file
+            )
+        ) {
+            "group_image_encode_failed"
+        }
+
+        return fileName
+    }
+
+    fun resolve(
+        fileName: String
+    ): File? {
+        if (
+            !fileName.matches(
+                Regex(
+                    "^[A-Za-z0-9._-]+\\.jpg$"
+                )
+            )
+        ) {
+            return null
+        }
+
+        return File(
+            directory,
+            fileName
+        ).takeIf(
+            File::isFile
+        )
+    }
+
+    fun deleteUrl(
+        url: String?
+    ) {
+        val fileName =
+            url
+                ?.substringAfterLast(
+                    "/api/v1/chat/group-images/",
+                    ""
+                )
+                ?.takeIf(
+                    String::isNotBlank
+                )
+                ?: return
+
+        resolve(
+            fileName
+        )
+            ?.delete()
+    }
+
+    fun deleteFile(
+        fileName: String
+    ) {
+        resolve(
+            fileName
+        )
+            ?.delete()
+    }
+}
 
 @Serializable
 data class GroupChatMessageResponse(
@@ -535,6 +751,33 @@ class GroupChatRepository(
 }
 
 fun Route.groupChatRoutes(repository: GroupChatRepository) {
+    val imageStorage =
+        GroupImageStorage()
+
+    get(
+        "/api/v1/chat/group-images/{fileName}"
+    ) {
+        val file =
+            call.parameters[
+                "fileName"
+            ]
+                ?.let(
+                    imageStorage::resolve
+                )
+
+        if (file == null) {
+            call.respond(
+                HttpStatusCode.NotFound
+            )
+
+            return@get
+        }
+
+        call.respondFile(
+            file
+        )
+    }
+
     authenticate("auth-jwt") {
         route("/api/v1/chat/groups") {
             get {
@@ -594,6 +837,120 @@ fun Route.groupChatRoutes(repository: GroupChatRepository) {
                         ?: return@patch call.respond(HttpStatusCode.BadRequest)
                     val ok = repository.update(userId, groupId, call.receive<UpdateGroupChatRequest>())
                     call.respond(if (ok) HttpStatusCode.NoContent else HttpStatusCode.Forbidden)
+                }
+
+                put("/image") {
+                    val userId =
+                        call.authenticatedUserId()
+                            ?: return@put call.respond(
+                                HttpStatusCode.Unauthorized
+                            )
+
+                    val groupId =
+                        call.parameters[
+                            "groupId"
+                        ]
+                            ?.toUuid()
+                            ?: return@put call.respond(
+                                HttpStatusCode.BadRequest
+                            )
+
+                    val detail =
+                        repository.detail(
+                            userId,
+                            groupId
+                        )
+                            ?: return@put call.respond(
+                                HttpStatusCode.Forbidden
+                            )
+
+                    if (
+                        detail.role !in
+                        setOf(
+                            "OWNER",
+                            "ADMIN"
+                        )
+                    ) {
+                        return@put call.respond(
+                            HttpStatusCode.Forbidden
+                        )
+                    }
+
+                    val bytes =
+                        call.receive<ByteArray>()
+
+                    if (
+                        bytes.isEmpty() ||
+                        bytes.size >
+                            MAX_GROUP_IMAGE_BYTES
+                    ) {
+                        return@put call.respond(
+                            HttpStatusCode.BadRequest,
+                            mapOf(
+                                "error" to
+                                    "invalid_group_image_size"
+                            )
+                        )
+                    }
+
+                    val fileName =
+                        runCatching {
+                            imageStorage.save(
+                                groupId,
+                                bytes
+                            )
+                        }.getOrElse {
+                            return@put call.respond(
+                                HttpStatusCode.BadRequest,
+                                mapOf(
+                                    "error" to
+                                        (
+                                            it.message
+                                                ?: "invalid_group_image"
+                                            )
+                                )
+                            )
+                        }
+
+                    val imageUrl =
+                        groupImageUrlFor(
+                            fileName
+                        )
+
+                    val updated =
+                        repository.update(
+                            userId,
+                            groupId,
+                            UpdateGroupChatRequest(
+                                imageUrl =
+                                    imageUrl
+                            )
+                        )
+
+                    if (!updated) {
+                        imageStorage.deleteFile(
+                            fileName
+                        )
+
+                        return@put call.respond(
+                            HttpStatusCode.Forbidden
+                        )
+                    }
+
+                    imageStorage.deleteUrl(
+                        detail.imageUrl
+                    )
+
+                    call.respond(
+                        repository.detail(
+                            userId,
+                            groupId
+                        )
+                            ?: detail.copy(
+                                imageUrl =
+                                    imageUrl
+                            )
+                    )
                 }
 
                 delete("/leave") {
