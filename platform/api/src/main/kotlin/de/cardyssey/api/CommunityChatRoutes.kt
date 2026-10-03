@@ -154,7 +154,8 @@ private class ChatSendGuard {
 }
 
 class CommunityChatRepository(
-    private val dataSource: HikariDataSource
+    private val dataSource: HikariDataSource,
+    private val push: PushNotificationService? = null
 ) {
     private val events = MutableSharedFlow<CommunityEvent>(extraBufferCapacity = 256)
     private val sendGuard = ChatSendGuard()
@@ -360,11 +361,57 @@ class CommunityChatRepository(
                     s.setObject(1, roomId)
                     s.executeUpdate()
                 }
-                events.tryEmit(CommunityEvent("MESSAGE_CREATED", roomId.toString(), response))
+                events.tryEmit(
+                    CommunityEvent(
+                        "MESSAGE_CREATED",
+                        roomId.toString(),
+                        response
+                    )
+                )
+
+                push?.communityMessage(
+                    roomId =
+                        roomId,
+                    senderId =
+                        userId,
+                    roomName =
+                        roomName(
+                            roomId
+                        ),
+                    senderName =
+                        response.senderDisplayName
+                            ?: response.senderFriendCode,
+                    body =
+                        response.body
+                )
             }
             "ok" to response
         }
     }
+
+    private fun roomName(
+        roomId: UUID
+    ): String =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT name FROM community_rooms WHERE id = ?"
+            ).use { statement ->
+                statement.setObject(
+                    1,
+                    roomId
+                )
+
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        result.getString(
+                            "name"
+                        )
+                    } else {
+                        "Cardyssey Community"
+                    }
+                }
+            }
+        }
 
     fun report(userId: UUID, messageId: UUID, reason: String): Boolean {
         val clean = reason.trim().take(300)
