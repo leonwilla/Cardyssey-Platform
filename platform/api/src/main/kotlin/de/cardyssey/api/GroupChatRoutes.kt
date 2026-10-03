@@ -315,7 +315,8 @@ data class GroupChatEvent(
 
 class GroupChatRepository(
     private val dataSource: HikariDataSource,
-    private val friendships: FriendshipRepository
+    private val friendships: FriendshipRepository,
+    private val push: PushNotificationService? = null
 ) {
     private val events =
         MutableSharedFlow<GroupChatEvent>(
@@ -670,9 +671,50 @@ class GroupChatRepository(
                     message = response
                 )
             )
+
+            push?.groupMessage(
+                groupId =
+                    groupId,
+                senderId =
+                    userId,
+                groupName =
+                    groupName(
+                        groupId
+                    ),
+                senderName =
+                    response.senderDisplayName
+                        ?: response.senderFriendCode,
+                body =
+                    response.body
+            )
+
             response
         }
     }
+
+    private fun groupName(
+        groupId: UUID
+    ): String =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT name FROM chat_groups WHERE id = ?"
+            ).use { statement ->
+                statement.setObject(
+                    1,
+                    groupId
+                )
+
+                statement.executeQuery().use { result ->
+                    if (result.next()) {
+                        result.getString(
+                            "name"
+                        )
+                    } else {
+                        "Cardyssey Gruppe"
+                    }
+                }
+            }
+        }
 
     private fun latestMessage(groupId: UUID): GroupChatMessageResponse? =
         dataSource.connection.use { connection ->
