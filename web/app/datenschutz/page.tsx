@@ -117,9 +117,12 @@ export default function DatenschutzPage() {
             wie sie für die jeweiligen Funktionen, gesetzliche
             Pflichten, Missbrauchsprävention oder die Durchsetzung
             und Abwehr von Ansprüchen erforderlich sind.
-            Accountbezogene Daten können bei einer später
-            bereitgestellten Account-Löschung entsprechend den
-            gesetzlichen Vorgaben entfernt oder anonymisiert werden.
+            Nutzer können ihren Cardyssey-Account in den
+            Account-Einstellungen selbst dauerhaft löschen.
+            Accountbezogene Daten und unmittelbar verknüpfte Inhalte
+            werden dabei entfernt, soweit keine gesetzlichen
+            Aufbewahrungspflichten oder zwingenden berechtigten
+            Gründe einer Löschung entgegenstehen.
           </p>
         </section>
 
