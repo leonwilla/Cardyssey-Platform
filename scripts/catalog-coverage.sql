@@ -37,12 +37,12 @@ SELECT
     language_code,
     COUNT(*) AS sets,
     COUNT(*) FILTER (
-        WHERE NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NOT NULL
-           OR NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NOT NULL
+        WHERE NULLIF(TRIM(COALESCE(logo_source_url, '')), '') IS NOT NULL
+           OR NULLIF(TRIM(COALESCE(symbol_source_url, '')), '') IS NOT NULL
     ) AS sets_with_branding,
     COUNT(*) FILTER (
-        WHERE NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NULL
-          AND NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NULL
+        WHERE NULLIF(TRIM(COALESCE(logo_source_url, '')), '') IS NULL
+          AND NULLIF(TRIM(COALESCE(symbol_source_url, '')), '') IS NULL
     ) AS sets_without_branding
 FROM catalog_sets_mirror
 WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
@@ -62,8 +62,8 @@ WITH set_gaps AS (
         ) AS n
     FROM catalog_sets_mirror
     WHERE language_code IN ('de', 'en', 'ko', 'ja', 'zh-tw', 'zh-cn')
-      AND NULLIF(TRIM(COALESCE(logo_base, '')), '') IS NULL
-      AND NULLIF(TRIM(COALESCE(symbol_base, '')), '') IS NULL
+      AND NULLIF(TRIM(COALESCE(logo_source_url, '')), '') IS NULL
+      AND NULLIF(TRIM(COALESCE(symbol_source_url, '')), '') IS NULL
 )
 SELECT language_code, set_id, name
 FROM set_gaps
