@@ -18,23 +18,20 @@ export default function DatenschutzPage() {
         <span className="legalEyebrow">Rechtliches</span>
         <h1>Datenschutzerklärung</h1>
 
-        {!operator.complete && (
-          <div className="legalWarning">
-            Die vollständigen Verantwortlichen- und Hostingangaben
-            müssen vor Veröffentlichung mit den tatsächlichen
-            Betreiber- und Hostingdaten ergänzt werden.
-          </div>
-        )}
+        <div className="legalWarning">
+          Die Hosting- und Infrastrukturangaben werden vor der
+          öffentlichen Veröffentlichung noch anhand des produktiven
+          Cardyssey-Setups ergänzt.
+        </div>
 
         <section>
           <h2>1. Verantwortlicher</h2>
           <p>
-            Verantwortlich für Cardyssey ist {operator.name}
-            {operator.email ? (
-              <>. Kontakt: <a href={`mailto:${operator.email}`}>{operator.email}</a>.</>
-            ) : (
-              "."
-            )}
+            Verantwortlich für Cardyssey ist {operator.name},
+            {operator.street && <> {operator.street},</>}
+            {operator.postalCity && <> {operator.postalCity},</>}
+            {" "}{operator.country}. Kontakt:{" "}
+            <a href={`mailto:${operator.email}`}>{operator.email}</a>.
           </p>
         </section>
 
