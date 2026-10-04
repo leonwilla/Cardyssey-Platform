@@ -10,15 +10,15 @@ export type LegalOperator = {
 export function legalOperator(): LegalOperator {
   const name =
     process.env.LEGAL_OPERATOR_NAME?.trim() ||
-    "Cardyssey";
+    "Leon Willamowski";
 
   const street =
     process.env.LEGAL_OPERATOR_STREET?.trim() ||
-    "";
+    "Feldstiege 4a";
 
   const postalCity =
     process.env.LEGAL_OPERATOR_POSTAL_CITY?.trim() ||
-    "";
+    "48161 Münster";
 
   const country =
     process.env.LEGAL_OPERATOR_COUNTRY?.trim() ||
@@ -26,7 +26,7 @@ export function legalOperator(): LegalOperator {
 
   const email =
     process.env.LEGAL_CONTACT_EMAIL?.trim() ||
-    "";
+    "willamowski.sell@gmail.com";
 
   return {
     name,
