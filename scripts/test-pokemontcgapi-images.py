@@ -37,6 +37,14 @@ class MatchingTests(unittest.TestCase):
         ]
         self.assertEqual(fallback.set_candidates(local, remote), [])
 
+    def test_image_relation_is_preferred_over_direct_upstream(self):
+        card = {
+            "image_url": "https://upstream.example/card.jpg",
+            "images": [{"face": "FRONT", "size": "NORMAL",
+                        "url": "https://img.pokemontcgapi.com/media/cards/x/1-normal.webp?e=1&s=x"}],
+        }
+        self.assertEqual(fallback.image_url(card), card["images"][0]["url"])
+
     def test_only_expected_image_host_is_accepted(self):
         good = "https://img.pokemontcgapi.com/media/cards/x/1-normal.webp?sig=x"
         self.assertEqual(fallback.verified_image(good), good)
