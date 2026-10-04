@@ -18,7 +18,22 @@ LEFT JOIN LATERAL (
       AND UPPER(set_id) = UPPER(p->'details'->>'setId')
       AND COALESCE(NULLIF(LTRIM(local_id, '0'), ''), '0') =
           COALESCE(NULLIF(LTRIM(p->'details'->>'localId', '0'), ''), '0')
-      AND name = p->'details'->>'name'
+      -- Set + printed collector number is the stable print identity here.
+      -- Localized names can differ between catalog sources (spacing, forms,
+      -- punctuation and translations), so require the name only when the
+      -- number is not unique inside the set.
+      AND (
+          name = p->'details'->>'name'
+          OR (
+              SELECT COUNT(*)
+              FROM catalog_cards_mirror same_print
+              WHERE same_print.language_code = p->'details'->>'languageCode'
+                AND UPPER(same_print.set_id) = UPPER(p->'details'->>'setId')
+                AND COALESCE(NULLIF(LTRIM(same_print.local_id, '0'), ''), '0') =
+                    COALESCE(NULLIF(LTRIM(p->'details'->>'localId', '0'), ''), '0')
+                AND LEFT(same_print.card_id, 9) <> 'official_'
+          ) = 1
+      )
       AND (p->>'allowMatch')::boolean
       AND LEFT(card_id, 9) <> 'official_'
     HAVING COUNT(*) = 1
