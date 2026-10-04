@@ -31,7 +31,7 @@ class CatalogImageHasher {
 
         val url =
             if (
-                listOf(".jpg", ".jpeg", ".png")
+                listOf(".jpg", ".jpeg", ".png", ".webp")
                     .any(path::endsWith)
             ) {
                 imageBase
@@ -43,7 +43,7 @@ class CatalogImageHasher {
             HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
-                .header("Accept", "image/jpeg,image/*")
+                .header("Accept", "image/jpeg,image/webp,image/*")
                 .header("User-Agent", "Cardyssey-CatalogMirror/1.0")
                 .GET()
                 .build()
