@@ -741,6 +741,92 @@ class AuthRepository(
                                 }
                         }
 
+                    /*
+                     * Account deletion must behave like leaving owned groups:
+                     * keep conversations for the remaining members and transfer
+                     * ownership to an admin/member. Only owner-only groups are
+                     * allowed to disappear through the existing FK cascade.
+                     */
+                    val ownedGroups =
+                        connection.prepareStatement(
+                            """
+                            SELECT id
+                            FROM chat_groups
+                            WHERE owner_id = ?
+                            FOR UPDATE
+                            """.trimIndent()
+                        ).use { statement ->
+                            statement.setObject(1, userId)
+                            statement.executeQuery().use { result ->
+                                buildList {
+                                    while (result.next()) {
+                                        add(result.getObject("id", UUID::class.java))
+                                    }
+                                }
+                            }
+                        }
+
+                    ownedGroups.forEach { groupId ->
+                        val nextOwner =
+                            connection.prepareStatement(
+                                """
+                                SELECT user_id
+                                FROM chat_group_members
+                                WHERE group_id = ?
+                                  AND user_id <> ?
+                                ORDER BY CASE role WHEN 'ADMIN' THEN 0 ELSE 1 END,
+                                         joined_at ASC
+                                LIMIT 1
+                                FOR UPDATE
+                                """.trimIndent()
+                            ).use { statement ->
+                                statement.setObject(1, groupId)
+                                statement.setObject(2, userId)
+                                statement.executeQuery().use { result ->
+                                    if (result.next()) {
+                                        result.getObject("user_id", UUID::class.java)
+                                    } else {
+                                        null
+                                    }
+                                }
+                            }
+
+                        if (nextOwner != null) {
+                            connection.prepareStatement(
+                                """
+                                UPDATE chat_group_members
+                                SET role = CASE
+                                    WHEN user_id = ? THEN 'OWNER'
+                                    WHEN user_id = ? THEN 'MEMBER'
+                                    ELSE role
+                                END
+                                WHERE group_id = ?
+                                  AND user_id IN (?, ?)
+                                """.trimIndent()
+                            ).use { statement ->
+                                statement.setObject(1, nextOwner)
+                                statement.setObject(2, userId)
+                                statement.setObject(3, groupId)
+                                statement.setObject(4, nextOwner)
+                                statement.setObject(5, userId)
+                                statement.executeUpdate()
+                            }
+
+                            connection.prepareStatement(
+                                """
+                                UPDATE chat_groups
+                                SET owner_id = ?,
+                                    updated_at = NOW()
+                                WHERE id = ?
+                                """.trimIndent()
+                            ).use { statement ->
+                                statement.setObject(1, nextOwner)
+                                statement.setObject(2, groupId)
+                                statement.executeUpdate()
+                            }
+                        }
+                    }
+
                     val count =
                         connection.prepareStatement(
                             "DELETE FROM users WHERE id = ?"
