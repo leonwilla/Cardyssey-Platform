@@ -11,7 +11,7 @@ Safety rules:
 import argparse, json, subprocess, urllib.request
 
 MANIFEST = "https://raw.githubusercontent.com/flibustier/pokemon-tcg-pocket-database/main/dist/cards.no-image.min.json"
-IMAGE_BASE = "https://raw.githubusercontent.com/flibustier/pokemon-tcg-pocket-database/main/cards-by-set"
+IMAGE_BASE = "https://limitlesstcg.nyc3.cdn.digitaloceanspaces.com/pocket"
 
 def db(sql):
     p = subprocess.run(
@@ -54,7 +54,8 @@ def main():
         if key not in manifest: continue
         # URL path is documented by the dataset and derived only after an exact
         # manifest match, so unrelated TCG sets cannot be pulled accidentally.
-        url=f"{IMAGE_BASE}/{manifest[key]['set']}/{norm_number(manifest[key]['number'])}.webp"
+        number=int(norm_number(manifest[key]["number"]))
+        url=f"{IMAGE_BASE}/{manifest[key]['set']}/{manifest[key]['set']}_{number:03d}_EN.webp"
         matches.append((card_id,url,set_id,local_id))
     if args.apply:
         for card_id,url,_,_ in matches:
