@@ -66,13 +66,14 @@ def number(value):
 
 
 def image_url(card):
-    direct = card.get("image_url")
-    if direct:
-        return direct
+    # Prefer the API's signed mirror rendition. A card-level image_url can point
+    # at the original upstream host, while images[] exposes the normalized mirror.
     images = card.get("images") or []
     normal = [row.get("url") for row in images
               if row.get("face") == "FRONT" and row.get("size") == "NORMAL" and row.get("url")]
-    return normal[0] if len(normal) == 1 else None
+    if len(normal) == 1:
+        return normal[0]
+    return card.get("image_url")
 
 
 def verified_image(url):
@@ -192,7 +193,12 @@ def sync_language(language, key, apply):
             for candidate in candidates:
                 url = image_url(candidate)
                 if url:
-                    usable.append((candidate, verified_image(url)))
+                    try:
+                        usable.append((candidate, verified_image(url)))
+                    except ValueError:
+                        # Never let an unexpected upstream image host abort the
+                        # full dry-run/import. Only the verified mirror is stored.
+                        continue
             # Number must identify exactly one image in the already-verified set.
             if len(usable) == 1:
                 matches.append((local["card_id"], usable[0][1]))
