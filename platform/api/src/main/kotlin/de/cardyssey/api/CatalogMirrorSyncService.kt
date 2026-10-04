@@ -36,6 +36,17 @@ class CatalogMirrorSyncService(
         while (true) {
             val completed =
                 runCatching {
+                    // Supplemental image sources can be imported independently of TCGdex.
+                    // Drain one existing image batch per language before the slower full
+                    // source index so a restart never strands fresh artwork for hours.
+                    if (imagesEnabled) {
+                        imageCursors.clear()
+                        for (language in languages.distinct()) {
+                            runCatching { syncImagesBatch(language) }
+                                .onFailure { error -> recordFailure(language, error) }
+                        }
+                        imageCursors.clear()
+                    }
                     runAllLanguages()
                 }
                     .onFailure { error ->
