@@ -40,13 +40,13 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Generate API clients
         working-directory: .
         run: bash scripts/generate-clients.sh
       - name: Install dependencies
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          npm ci
+        run: npm ci
       - name: Build web
         env:
           CARDYSSEY_API_URL: http://127.0.0.1:8081
