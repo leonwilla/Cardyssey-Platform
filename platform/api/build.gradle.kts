@@ -35,7 +35,7 @@ dependencies {
 
     implementation("ch.qos.logback:logback-classic:1.5.18")
     implementation("com.google.firebase:firebase-admin:9.6.0")
-    implementation("com.twelvemonkeys.imageio:imageio-webp:3.12.0")
+    implementation("com.twelvemonkeys.imageio:imageio-webp:3.14.0")
 
     testImplementation(kotlin("test-junit5"))
 }

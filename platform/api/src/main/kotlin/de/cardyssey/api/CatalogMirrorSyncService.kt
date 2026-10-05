@@ -252,6 +252,7 @@ class CatalogMirrorSyncService(
 
         if (pending.isEmpty()) return false
 
+        var completedAny = false
         for (item in pending) {
             imageCursors[language] = item.cardId
             val source =
@@ -288,11 +289,18 @@ class CatalogMirrorSyncService(
                 hash = downloaded.first,
                 byteCount = downloaded.second
             )
-
+            completedAny = true
             delay(50L)
         }
 
-        return true
+        // A full broken batch may still have valid rows behind it. Keep advancing
+        // in that case; once the final partial batch is reached, stop and retry
+        // unresolved sources on the next scheduled/full pass.
+        val mayHaveMore = pending.size >= imageBatchSize
+        if (!completedAny && !mayHaveMore) {
+            imageCursors.remove(language)
+        }
+        return completedAny || mayHaveMore
     }
 
 }

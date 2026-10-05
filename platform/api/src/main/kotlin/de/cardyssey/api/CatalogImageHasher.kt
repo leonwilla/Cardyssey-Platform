@@ -30,13 +30,13 @@ class CatalogImageHasher {
             imageBase.substringBefore("?").lowercase()
 
         val url =
-            if (
+            when {
                 listOf(".jpg", ".jpeg", ".png", ".webp")
-                    .any(path::endsWith)
-            ) {
-                imageBase
-            } else {
-                imageBase.removeSuffix("/") + "/low.jpg"
+                    .any(path::endsWith) -> imageBase
+                path.startsWith("https://assets.tcgdex.net/") ->
+                    imageBase.removeSuffix("/") + "/high.webp"
+                else ->
+                    imageBase.removeSuffix("/") + "/low.jpg"
             }
 
         val request =
@@ -93,7 +93,7 @@ class CatalogImageHasher {
 
         val hash =
             differenceHash(
-                normalizeCard(decoded)
+                normalizeCard(rgb)
             )
 
         Files.createDirectories(destination.parent)
@@ -129,6 +129,10 @@ class CatalogImageHasher {
     }
 
     private fun normalizeCard(source: BufferedImage): BufferedImage {
+        require(source.width > 0 && source.height > 0) {
+            "Catalog image has invalid dimensions: " + source.width + "x" + source.height
+        }
+
         val targetRatio = 63.0 / 88.0
         val sourceRatio = source.width.toDouble() / source.height.toDouble()
 
@@ -137,21 +141,42 @@ class CatalogImageHasher {
 
         if (sourceRatio > targetRatio) {
             cropHeight = source.height
-            cropWidth = (cropHeight * targetRatio).toInt()
+            cropWidth = (cropHeight * targetRatio).toInt().coerceIn(1, source.width)
         } else {
             cropWidth = source.width
-            cropHeight = (cropWidth / targetRatio).toInt()
+            cropHeight = (cropWidth / targetRatio).toInt().coerceIn(1, source.height)
         }
 
         val left = ((source.width - cropWidth) / 2).coerceAtLeast(0)
         val top = ((source.height - cropHeight) / 2).coerceAtLeast(0)
 
-        return source.getSubimage(
-            left,
-            top,
-            cropWidth.coerceAtMost(source.width - left),
-            cropHeight.coerceAtMost(source.height - top)
-        )
+        // Render the crop into a fresh raster instead of returning getSubimage().
+        // Some ImageIO/WebP decoders expose rasters with offsets/strides that can
+        // later throw "Coordinate out of bounds" during perceptual hashing.
+        val normalized =
+            BufferedImage(
+                cropWidth,
+                cropHeight,
+                BufferedImage.TYPE_INT_RGB
+            )
+        val graphics = normalized.createGraphics()
+        try {
+            graphics.drawImage(
+                source,
+                0,
+                0,
+                cropWidth,
+                cropHeight,
+                left,
+                top,
+                left + cropWidth,
+                top + cropHeight,
+                null
+            )
+        } finally {
+            graphics.dispose()
+        }
+        return normalized
     }
 
     private fun differenceHash(source: BufferedImage): Long {
