@@ -1637,10 +1637,8 @@ class CardCatalogService(
         card: JsonObject,
         language: String
     ): List<CatalogVariant> {
-        if (
-            language.lowercase() !=
-                "en"
-        ) {
+        val supportedLanguage = language.lowercase()
+        if (supportedLanguage !in setOf("de", "en")) {
             return emptyList()
         }
 
@@ -1665,7 +1663,36 @@ class CardCatalogService(
                 ?.trim()
                 ?.lowercase()
 
+        // German SV01 Felori 013/198 also exists as a Holo printing and
+        // as the stamped Grass/leaf-symbol reverse printing. Upstream currently
+        // exposes only Normal + Reverse for this German card.
         if (
+            supportedLanguage == "de" &&
+            setId == "sv01" &&
+            localId == "13"
+        ) {
+            return listOf(
+                CatalogVariant(
+                    id = "curated:de:sv01:013:holo",
+                    type = "Holo",
+                    size = "standard",
+                    legacyVariant = "HOLO",
+                    tcgDexEur = null
+                ),
+                CatalogVariant(
+                    id = "curated:de:sv01:013:grass-stamp",
+                    type = "Reverse",
+                    foil = "Grass symbol",
+                    size = "standard",
+                    stamps = listOf("grass-symbol"),
+                    legacyVariant = "REVERSE",
+                    tcgDexEur = null
+                )
+            )
+        }
+
+        if (
+            supportedLanguage == "en" &&
             setId ==
                 "sv02" &&
             localId ==
