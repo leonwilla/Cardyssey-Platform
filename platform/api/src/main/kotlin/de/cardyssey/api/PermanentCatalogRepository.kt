@@ -156,16 +156,30 @@ class PermanentCatalogRepository(
                     name = EXCLUDED.name,
                     rarity = COALESCE(EXCLUDED.rarity, catalog_cards_mirror.rarity),
                     image_complete = CASE
+                        WHEN catalog_cards_mirror.image_source_url ~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                          AND EXCLUDED.image_source_url IS NOT NULL
+                          AND EXCLUDED.image_source_url !~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                        THEN catalog_cards_mirror.image_complete
                         WHEN EXCLUDED.image_source_url IS NOT NULL
                           AND EXCLUDED.image_source_url IS DISTINCT FROM catalog_cards_mirror.image_source_url
                         THEN FALSE ELSE catalog_cards_mirror.image_complete
                     END,
                     image_dhash = CASE
+                        WHEN catalog_cards_mirror.image_source_url ~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                          AND EXCLUDED.image_source_url IS NOT NULL
+                          AND EXCLUDED.image_source_url !~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                        THEN catalog_cards_mirror.image_dhash
                         WHEN EXCLUDED.image_source_url IS NOT NULL
                           AND EXCLUDED.image_source_url IS DISTINCT FROM catalog_cards_mirror.image_source_url
                         THEN NULL ELSE catalog_cards_mirror.image_dhash
                     END,
-                    image_source_url = COALESCE(EXCLUDED.image_source_url, catalog_cards_mirror.image_source_url),
+                    image_source_url = CASE
+                        WHEN catalog_cards_mirror.image_source_url ~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                          AND EXCLUDED.image_source_url IS NOT NULL
+                          AND EXCLUDED.image_source_url !~* '[.](jpg|jpeg|png|webp)([?].*)?$'
+                        THEN catalog_cards_mirror.image_source_url
+                        ELSE COALESCE(EXCLUDED.image_source_url, catalog_cards_mirror.image_source_url)
+                    END,
                     variants = CASE
                         WHEN EXCLUDED.details_complete THEN EXCLUDED.variants
                         ELSE catalog_cards_mirror.variants
