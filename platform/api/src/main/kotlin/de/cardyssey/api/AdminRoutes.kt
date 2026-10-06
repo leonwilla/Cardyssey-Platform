@@ -96,6 +96,40 @@ fun Route.adminRoutes(
                 call.respond(detail)
             }
 
+            get("/users/{id}/duplicates") {
+                if (!call.requireAdmin(roles)) {
+                    return@get
+                }
+
+                val userId =
+                    call.parameters["id"]
+                        ?.let {
+                            runCatching {
+                                UUID.fromString(it)
+                            }.getOrNull()
+                        }
+
+                if (userId == null) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        mapOf("error" to "invalid_user_id")
+                    )
+                    return@get
+                }
+
+                if (admin.user(userId) == null) {
+                    call.respond(
+                        HttpStatusCode.NotFound,
+                        mapOf("error" to "user_not_found")
+                    )
+                    return@get
+                }
+
+                call.respond(
+                    admin.duplicates(userId)
+                )
+            }
+
             delete("/users/{id}") {
                 val actorUserId = call.authenticatedUserId()
 

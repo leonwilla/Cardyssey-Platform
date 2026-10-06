@@ -48,6 +48,18 @@ data class AdminCollectionItemResponse(
 )
 
 @Serializable
+data class AdminDuplicateCardResponse(
+    val cardId: String,
+    val languageCode: String,
+    val name: String,
+    val setName: String?,
+    val localId: String?,
+    val variantKey: String,
+    val variant: String,
+    val quantity: Int
+)
+
+@Serializable
 data class AdminWishlistItemResponse(
     val id: String,
     val cardId: String,
@@ -321,6 +333,104 @@ class AdminRepository(
                                     quantity = quantity,
                                     valuedUnitEur = valued,
                                     positionValueEur = valued?.times(quantity)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    fun duplicates(
+        userId: UUID
+    ): List<AdminDuplicateCardResponse> =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                WITH grouped AS (
+                    SELECT
+                        c.card_id,
+                        c.language_code,
+                        CASE
+                            WHEN COALESCE(c.variant_subtype, '') <> ''
+                              OR COALESCE(c.variant_foil, '') <> ''
+                              OR (
+                                    COALESCE(c.variant_size, '') <> ''
+                                    AND LOWER(c.variant_size) <> 'standard'
+                                 )
+                              OR jsonb_array_length(COALESCE(c.variant_stamps, '[]'::jsonb)) > 0
+                            THEN COALESCE(
+                                NULLIF(c.variant_id, ''),
+                                NULLIF(c.variant_identity, ''),
+                                UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL'))
+                            )
+                            ELSE UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL'))
+                        END AS duplicate_key,
+                        UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL')) AS legacy_variant,
+                        SUM(c.quantity) AS quantity
+                    FROM collection_items c
+                    WHERE c.user_id = ?
+                      AND c.deleted_at IS NULL
+                    GROUP BY
+                        c.card_id,
+                        c.language_code,
+                        CASE
+                            WHEN COALESCE(c.variant_subtype, '') <> ''
+                              OR COALESCE(c.variant_foil, '') <> ''
+                              OR (
+                                    COALESCE(c.variant_size, '') <> ''
+                                    AND LOWER(c.variant_size) <> 'standard'
+                                 )
+                              OR jsonb_array_length(COALESCE(c.variant_stamps, '[]'::jsonb)) > 0
+                            THEN COALESCE(
+                                NULLIF(c.variant_id, ''),
+                                NULLIF(c.variant_identity, ''),
+                                UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL'))
+                            )
+                            ELSE UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL'))
+                        END,
+                        UPPER(COALESCE(NULLIF(c.legacy_variant, ''), 'NORMAL'))
+                    HAVING SUM(c.quantity) > 1
+                )
+                SELECT
+                    g.card_id,
+                    g.language_code,
+                    COALESCE(m.name, g.card_id) AS name,
+                    COALESCE(s.name, m.set_id) AS set_name,
+                    m.local_id,
+                    g.duplicate_key,
+                    g.legacy_variant,
+                    g.quantity
+                FROM grouped g
+                LEFT JOIN catalog_cards_mirror m
+                  ON m.card_id = g.card_id
+                 AND m.language_code = g.language_code
+                LEFT JOIN catalog_sets_mirror s
+                  ON s.set_id = m.set_id
+                 AND s.language_code = g.language_code
+                ORDER BY
+                    g.quantity DESC,
+                    COALESCE(s.name, m.set_id, ''),
+                    COALESCE(m.local_id, ''),
+                    COALESCE(m.name, g.card_id),
+                    g.legacy_variant
+                """.trimIndent()
+            ).use { statement ->
+                statement.setObject(1, userId)
+
+                statement.executeQuery().use { result ->
+                    buildList {
+                        while (result.next()) {
+                            add(
+                                AdminDuplicateCardResponse(
+                                    cardId = result.getString("card_id"),
+                                    languageCode = result.getString("language_code"),
+                                    name = result.getString("name"),
+                                    setName = result.getString("set_name"),
+                                    localId = result.getString("local_id"),
+                                    variantKey = result.getString("duplicate_key"),
+                                    variant = result.getString("legacy_variant"),
+                                    quantity = result.getInt("quantity")
                                 )
                             )
                         }

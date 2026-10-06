@@ -58,6 +58,17 @@ type CollectionItem = {
   positionValueEur?: number | null;
 };
 
+type DuplicateCard = {
+  cardId: string;
+  languageCode: string;
+  name: string;
+  setName?: string | null;
+  localId?: string | null;
+  variantKey: string;
+  variant: string;
+  quantity: number;
+};
+
 type WishlistItem = {
   id: string;
   cardId: string;
@@ -179,6 +190,10 @@ export default function AdminPage() {
     useState(false);
   const [deletingId, setDeletingId] =
     useState<string | null>(null);
+  const [duplicates, setDuplicates] =
+    useState<DuplicateCard[] | null>(null);
+  const [duplicatesLoading, setDuplicatesLoading] =
+    useState(false);
   const [message, setMessage] =
     useState<string | null>(null);
 
@@ -331,6 +346,7 @@ export default function AdminPage() {
   async function loadUser(id: string) {
     setDetailLoading(true);
     setMessage(null);
+    setDuplicates(null);
 
     try {
       const response =
@@ -432,6 +448,37 @@ export default function AdminPage() {
       );
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function loadDuplicates(userId: string) {
+    setDuplicatesLoading(true);
+    setMessage(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/users/${encodeURIComponent(userId)}/duplicates`,
+          { cache: "no-store" }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Doppelte Karten konnten nicht ausgewertet werden."
+        );
+      }
+
+      setDuplicates(
+        await response.json() as DuplicateCard[]
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Doppelte Karten konnten nicht ausgewertet werden."
+      );
+    } finally {
+      setDuplicatesLoading(false);
     }
   }
 
@@ -826,6 +873,78 @@ export default function AdminPage() {
                       <span className="chip">
                         {detail.user.pendingOffers} offene Angebote
                       </span>
+                    </div>
+
+                    <div className="sectionBlock">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          gap: "12px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div>
+                          <h3 style={{ marginBottom: "4px" }}>
+                            Doppelte Karten
+                          </h3>
+                          <div className="muted">
+                            Gleiche Karte, Sprache und physische Variante werden zusammengezählt.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="ghostButton"
+                          disabled={duplicatesLoading}
+                          onClick={() =>
+                            void loadDuplicates(detail.user.id)
+                          }
+                        >
+                          {duplicatesLoading
+                            ? "Wird ausgewertet …"
+                            : "Duplikate auswerten"}
+                        </button>
+                      </div>
+
+                      {duplicates && (
+                        <div
+                          style={{
+                            display: "grid",
+                            gap: "8px",
+                            marginTop: "14px",
+                          }}
+                        >
+                          <div className="muted">
+                            {duplicates.length} doppelte Kartenpositionen gefunden
+                          </div>
+                          {duplicates.map((item) => (
+                            <div
+                              key={`${item.cardId}:${item.languageCode}:${item.variantKey}`}
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr auto",
+                                gap: "12px",
+                                padding: "9px 0",
+                                borderBottom: "1px solid rgba(38,58,85,.45)",
+                              }}
+                            >
+                              <div>
+                                <strong>{item.name}</strong>
+                                <div className="muted">
+                                  {item.setName || "—"} · {item.localId || item.cardId} · {item.languageCode.toUpperCase()} · {item.variant}
+                                </div>
+                              </div>
+                              <strong>× {item.quantity}</strong>
+                            </div>
+                          ))}
+                          {duplicates.length === 0 && (
+                            <span className="muted">
+                              Keine doppelten Karten gefunden.
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="sectionBlock">
