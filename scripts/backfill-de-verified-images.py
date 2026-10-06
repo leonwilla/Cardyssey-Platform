@@ -70,7 +70,8 @@ def main():
     existing=set(db("""SELECT card_id FROM catalog_cards_mirror
                        WHERE language_code='de'
                          AND image_complete=FALSE
-                         AND image_source_url IS NULL""").splitlines())
+                         AND (image_source_url IS NULL
+                              OR image_source_url LIKE 'https://assets.tcgdex.net/%')""").splitlines())
     matches=[(cid,url) for cid,url in SOURCES.items() if cid in existing and image_ok(url)]
     print(f"verified={len(matches)} applied={args.apply}")
     if not args.apply:
@@ -84,7 +85,8 @@ def main():
                    source_updated_at=NOW()
                WHERE language_code='de'
                  AND card_id='{q(cid)}'
-                 AND image_source_url IS NULL;""")
+                 AND (image_source_url IS NULL
+                      OR image_source_url LIKE 'https://assets.tcgdex.net/%');""")
 
 if __name__=="__main__":
     main()
