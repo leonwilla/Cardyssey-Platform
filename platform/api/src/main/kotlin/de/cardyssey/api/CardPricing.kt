@@ -170,6 +170,16 @@ private class TcgDexCentralPricingProvider :
         val identity =
             selected.priceIdentity
 
+        val cardLevelEur =
+            if (variants.size == 1) {
+                cardLevelCardmarketEur(
+                    raw = raw,
+                    variant = variant
+                )
+            } else {
+                null
+            }
+
         val cardmarketEur =
             selected.eur
                 ?.takeIf {
@@ -181,6 +191,7 @@ private class TcgDexCentralPricingProvider :
                         it.isFinite() &&
                             it > 0.0
                     }
+                ?: cardLevelEur
 
         val tcgPlayerEur =
             if (cardmarketEur == null) {
@@ -235,6 +246,58 @@ private class TcgDexCentralPricingProvider :
             baseEur =
                 eur
         )
+    }
+
+    private fun cardLevelCardmarketEur(
+        raw: JsonObject,
+        variant: CatalogVariant
+    ): Double? {
+        val cardmarket =
+            raw["pricing"]
+                ?.asObject()
+                ?.get("cardmarket")
+                ?.asObject()
+                ?: return null
+
+        val holoLike =
+            variant.legacyVariant.equals("HOLO", ignoreCase = true) ||
+                variant.legacyVariant.equals("REVERSE", ignoreCase = true) ||
+                !variant.foil.isNullOrBlank()
+
+        val keys =
+            if (holoLike) {
+                listOf(
+                    "trend-holo",
+                    "avg1-holo",
+                    "avg7-holo",
+                    "avg30-holo",
+                    "avg-holo",
+                    "low-holo",
+                    "trend",
+                    "avg1",
+                    "avg7",
+                    "avg30",
+                    "avg",
+                    "low"
+                )
+            } else {
+                listOf(
+                    "trend",
+                    "avg1",
+                    "avg7",
+                    "avg30",
+                    "avg",
+                    "low"
+                )
+            }
+
+        return keys.firstNotNullOfOrNull { key ->
+            cardmarket.double(key)
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+        }
     }
 
     private var cachedUsdToEur: Double? = null
