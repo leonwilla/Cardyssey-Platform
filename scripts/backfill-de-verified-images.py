@@ -8,6 +8,10 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    # 30th RGB Mew are global English-only printings even inside the localized DE set.
+    "30th-B": "https://cdn.pokedexia.com/cards/me/30C/cards/30c-b/rgb-mu47iptp-high.webp?v=1789569586314",
+    "30th-G": "https://cdn.pokedexia.com/cards/me/30C/cards/30c-g/rgb-mu47l29o-high.webp?v=1789569685866",
+    "30th-R": "https://cdn.pokedexia.com/cards/me/30C/cards/30c-r/rgb-mu47n3k1-high.webp?v=1789569780779",
     "tk-ex-latia-5": "https://i.ebayimg.com/images/g/nrkAAeSwR3Jo92Rr/s-l1600.webp",
     "tk-ex-latio-10": "https://i.ebayimg.com/images/g/3-AAAeSwrA1psWtw/s-l1600.webp",
     "tk-ex-latio-8": "https://i.ebayimg.com/images/g/RrkAAOSwMhFfcgLo/s-l1600.jpg",
