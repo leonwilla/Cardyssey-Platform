@@ -8,6 +8,14 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    "sve-017": "https://sleevee.de/media/a3/62/f1/1755569765/836249.jpg?ts=1755569765",
+    "sve-018": "https://sleevee.de/media/cf/84/60/1755569765/836250.jpg?ts=1755569765",
+    "sve-019": "https://sleevee.de/media/e5/55/1a/1755569766/836251.jpg?ts=1755569766",
+    "sve-020": "https://sleevee.de/media/60/1c/6c/1755569766/836252.jpg?ts=1755569766",
+    "sve-021": "https://sleevee.de/media/68/ce/e8/1755569767/836253.jpg?ts=1755569767",
+    "sve-022": "https://sleevee.de/media/fc/2b/6a/1755569767/836254.jpg?ts=1755569767",
+    "sve-023": "https://sleevee.de/media/45/09/2d/1755569768/836255.jpg?ts=1755569768",
+    "sve-024": "https://sleevee.de/media/5b/26/63/1755569768/836256.jpg?ts=1755569768",
     "exu-!": "https://media.bisafans.de/0394d67/sammelkarten/sets/ex-verborgene-maechte/ausrufezeichen-28.jpg",
     "ecard2-50a": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
     "ecard2-50b": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
