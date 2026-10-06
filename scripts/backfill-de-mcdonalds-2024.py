@@ -6,6 +6,8 @@ Exact Cardyssey card IDs only. Sources are German product scans from Battle Bear
 import argparse, subprocess, urllib.request
 
 SOURCES = {
+    "2024sv-4": "https://cdn.shopify.com/s/files/1/0767/2220/9110/files/802826.jpg?v=1788872773",
+    "2024sv-7": "https://cdn.shopify.com/s/files/1/0767/2220/9110/files/802829.jpg?v=1788872804",
     "2024sv-1": "https://www.battle-bear-sb.de/cdn/shop/files/802823_34fd9f7a-2969-4822-96d0-5f7b2b5c0d8a.jpg?v=1769514737&width=2048",
     "2024sv-2": "https://www.battle-bear-sb.de/cdn/shop/files/802824.jpg?v=1751979866&width=2048",
     "2024sv-3": "https://www.battle-bear-sb.de/cdn/shop/files/802825.jpg?v=1751979853&width=2048",
