@@ -130,6 +130,19 @@ function collectionSortStorageKey(
   return `cardyssey.collection.sort.${userId}`;
 }
 
+type CollectionFilterName =
+  | "language"
+  | "set"
+  | "variant"
+  | "condition";
+
+function collectionFilterStorageKey(
+  userId: string,
+  name: CollectionFilterName
+) {
+  return `cardyssey.collection.filter.${name}.${userId}`;
+}
+
 export default function CollectionPage() {
 
   const router =
@@ -144,6 +157,21 @@ export default function CollectionPage() {
     useState<CollectionSort>(
       "VALUE_DESC"
     );
+
+  const [query, setQuery] =
+    useState("");
+
+  const [languageFilter, setLanguageFilter] =
+    useState("");
+
+  const [setFilter, setSetFilter] =
+    useState("");
+
+  const [variantFilter, setVariantFilter] =
+    useState("");
+
+  const [conditionFilter, setConditionFilter] =
+    useState("");
 
   const [items, setItems] =
     useState<PortfolioItem[]>([]);
@@ -209,6 +237,30 @@ export default function CollectionPage() {
           user.id
         ),
         nextSort
+      );
+    }
+  }
+
+  function persistFilter(
+    name: CollectionFilterName,
+    value: string
+  ) {
+    if (!user) return;
+
+    const key =
+      collectionFilterStorageKey(
+        user.id,
+        name
+      );
+
+    if (value) {
+      window.localStorage.setItem(
+        key,
+        value
+      );
+    } else {
+      window.localStorage.removeItem(
+        key
       );
     }
   }
@@ -354,6 +406,39 @@ export default function CollectionPage() {
               savedSort
             );
           }
+
+          setLanguageFilter(
+            window.localStorage.getItem(
+              collectionFilterStorageKey(
+                currentUser.id,
+                "language"
+              )
+            ) || ""
+          );
+          setSetFilter(
+            window.localStorage.getItem(
+              collectionFilterStorageKey(
+                currentUser.id,
+                "set"
+              )
+            ) || ""
+          );
+          setVariantFilter(
+            window.localStorage.getItem(
+              collectionFilterStorageKey(
+                currentUser.id,
+                "variant"
+              )
+            ) || ""
+          );
+          setConditionFilter(
+            window.localStorage.getItem(
+              collectionFilterStorageKey(
+                currentUser.id,
+                "condition"
+              )
+            ) || ""
+          );
         }
 
         const collectionResponse =
@@ -776,6 +861,143 @@ export default function CollectionPage() {
       ebayLiveUnitEur,
     ]);
 
+  const languageOptions =
+    useMemo(
+      () =>
+        [...new Set(
+          items.map(
+            (item) =>
+              item.languageCode
+          )
+        )].sort(),
+      [items]
+    );
+
+  const setOptions =
+    useMemo(() => {
+      const values =
+        new Map<string, string>();
+
+      items
+        .filter(
+          (item) =>
+            !languageFilter ||
+            item.languageCode ===
+              languageFilter
+        )
+        .forEach((item) => {
+          const id =
+            item.setId || "";
+          if (id) {
+            values.set(
+              id,
+              item.setName ||
+                id
+            );
+          }
+        });
+
+      return [...values.entries()]
+        .sort(
+          (left, right) =>
+            left[1].localeCompare(
+              right[1],
+              "de",
+              {
+                numeric: true,
+                sensitivity: "base",
+              }
+            )
+        );
+    }, [
+      items,
+      languageFilter,
+    ]);
+
+  const variantOptions =
+    useMemo(
+      () =>
+        [...new Set(
+          items
+            .map(
+              (item) =>
+                item.variant
+            )
+            .filter(Boolean)
+        )].sort(),
+      [items]
+    );
+
+  const conditionOptions =
+    useMemo(
+      () =>
+        [...new Set(
+          items
+            .map(
+              (item) =>
+                item.condition
+            )
+            .filter(Boolean)
+        )].sort(),
+      [items]
+    );
+
+  const filteredItems =
+    useMemo(() => {
+      const normalizedQuery =
+        query.trim().toLocaleLowerCase(
+          "de"
+        );
+
+      return items.filter(
+        (item) => {
+          const matchesQuery =
+            !normalizedQuery ||
+            [
+              item.name,
+              item.setName,
+              item.setId,
+              item.localId,
+              item.cardId,
+            ]
+              .filter(Boolean)
+              .some(
+                (value) =>
+                  String(value)
+                    .toLocaleLowerCase(
+                      "de"
+                    )
+                    .includes(
+                      normalizedQuery
+                    )
+              );
+
+          return (
+            matchesQuery &&
+            (!languageFilter ||
+              item.languageCode ===
+                languageFilter) &&
+            (!setFilter ||
+              item.setId ===
+                setFilter) &&
+            (!variantFilter ||
+              item.variant ===
+                variantFilter) &&
+            (!conditionFilter ||
+              item.condition ===
+                conditionFilter)
+          );
+        }
+      );
+    }, [
+      items,
+      query,
+      languageFilter,
+      setFilter,
+      variantFilter,
+      conditionFilter,
+    ]);
+
   const sortedItems =
     useMemo(() => {
       const collator =
@@ -844,7 +1066,7 @@ export default function CollectionPage() {
           : left - right;
       }
 
-      return items
+      return filteredItems
         .map(
           (item, index) => ({
             item,
@@ -940,7 +1162,7 @@ export default function CollectionPage() {
           ({ item }) => item
         );
     }, [
-      items,
+      filteredItems,
       market,
       ebayLiveUnitEur,
       sort,
@@ -1125,6 +1347,151 @@ export default function CollectionPage() {
                 </div>
 
                 <div className="collectionToolbar">
+                  <label className="collectionSortControl collectionSearchControl">
+                    <span>Suche</span>
+                    <input
+                      type="search"
+                      placeholder="Name, Set oder Nummer"
+                      value={query}
+                      onChange={(event) =>
+                        setQuery(
+                          event.target.value
+                        )
+                      }
+                    />
+                  </label>
+
+                  <label className="collectionSortControl">
+                    <span>Sprache</span>
+                    <select
+                      value={languageFilter}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value;
+                        setLanguageFilter(
+                          value
+                        );
+                        persistFilter(
+                          "language",
+                          value
+                        );
+                        setSetFilter("");
+                        persistFilter(
+                          "set",
+                          ""
+                        );
+                      }}
+                    >
+                      <option value="">
+                        Alle
+                      </option>
+                      {languageOptions.map(
+                        (language) => (
+                          <option
+                            key={language}
+                            value={language}
+                          >
+                            {language.toUpperCase()}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+
+                  <label className="collectionSortControl">
+                    <span>Set</span>
+                    <select
+                      value={setFilter}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value;
+                        setSetFilter(value);
+                        persistFilter(
+                          "set",
+                          value
+                        );
+                      }}
+                    >
+                      <option value="">
+                        Alle
+                      </option>
+                      {setOptions.map(
+                        ([id, name]) => (
+                          <option
+                            key={id}
+                            value={id}
+                          >
+                            {name}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+
+                  <label className="collectionSortControl">
+                    <span>Variante</span>
+                    <select
+                      value={variantFilter}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value;
+                        setVariantFilter(
+                          value
+                        );
+                        persistFilter(
+                          "variant",
+                          value
+                        );
+                      }}
+                    >
+                      <option value="">
+                        Alle
+                      </option>
+                      {variantOptions.map(
+                        (variant) => (
+                          <option
+                            key={variant}
+                            value={variant}
+                          >
+                            {variant}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+
+                  <label className="collectionSortControl">
+                    <span>Zustand</span>
+                    <select
+                      value={conditionFilter}
+                      onChange={(event) => {
+                        const value =
+                          event.target.value;
+                        setConditionFilter(
+                          value
+                        );
+                        persistFilter(
+                          "condition",
+                          value
+                        );
+                      }}
+                    >
+                      <option value="">
+                        Alle
+                      </option>
+                      {conditionOptions.map(
+                        (condition) => (
+                          <option
+                            key={condition}
+                            value={condition}
+                          >
+                            {condition}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+
                   <label className="collectionSortControl">
                     <span>
                       Sortierung
@@ -1163,8 +1530,42 @@ export default function CollectionPage() {
                     </select>
                   </label>
 
+                  {(query ||
+                    languageFilter ||
+                    setFilter ||
+                    variantFilter ||
+                    conditionFilter) && (
+                    <button
+                      type="button"
+                      className="ghostButton"
+                      onClick={() => {
+                        setQuery("");
+                        setLanguageFilter("");
+                        setSetFilter("");
+                        setVariantFilter("");
+                        setConditionFilter("");
+                        (
+                          [
+                            "language",
+                            "set",
+                            "variant",
+                            "condition",
+                          ] as CollectionFilterName[]
+                        ).forEach(
+                          (name) =>
+                            persistFilter(
+                              name,
+                              ""
+                            )
+                        );
+                      }}
+                    >
+                      Filter zurücksetzen
+                    </button>
+                  )}
+
                   <span className="syncBadge">
-                    ● Server verbunden
+                    {sortedItems.length}/{items.length} Einträge · ● Server verbunden
                   </span>
                 </div>
               </div>
@@ -1174,6 +1575,11 @@ export default function CollectionPage() {
                 <div className="statusPanel">
                   Deine Sammlung
                   ist noch leer.
+                </div>
+              ) : sortedItems.length ===
+                0 ? (
+                <div className="statusPanel">
+                  Keine Karten für die aktuellen Filter gefunden.
                 </div>
               ) : (
                 <div className="cardGrid">

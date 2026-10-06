@@ -20,7 +20,8 @@
   font-weight:800;
 }
 
-.collectionSortControl select{
+.collectionSortControl select,
+.collectionSortControl input{
   min-height:42px;
   min-width:220px;
   padding:0 36px 0 12px;
@@ -34,7 +35,8 @@
   cursor:pointer;
 }
 
-.collectionSortControl select:focus{
+.collectionSortControl select:focus,
+.collectionSortControl input:focus{
   border-color:rgba(85,221,246,.65);
   box-shadow:0 0 0 3px rgba(85,221,246,.07);
 }
@@ -48,7 +50,8 @@
 
   .collectionToolbar,
   .collectionSortControl,
-  .collectionSortControl select{
+  .collectionSortControl select,
+  .collectionSortControl input{
     width:100%;
   }
 
