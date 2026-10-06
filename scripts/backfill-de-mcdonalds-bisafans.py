@@ -9,6 +9,7 @@ import subprocess
 import urllib.request
 
 BASES = {
+    "2011bw": "https://media.bisafans.de/0394d67/sammelkarten/sets/promos-specials/sw-mcdonalds-2011",
     "2019sm": "https://media.bisafans.de/0394d67/sammelkarten/sets/promos-specials/sm-mcdonalds-2019",
     "2021swsh": "https://media.bisafans.de/0394d67/thumbs/h700/sammelkarten/sets/promos-specials/swsh-mcdonalds-2021",
     "2023sv": "https://media.bisafans.de/0394d67/thumbs/h700/sammelkarten/sets/promos-specials/sv-mcdonalds-2023",
@@ -43,7 +44,7 @@ def main():
                WHERE language_code='de'
                  AND image_complete=FALSE
                  AND image_source_url IS NULL
-                 AND set_id IN ('2019sm','2021swsh','2023sv')
+                 AND set_id IN ('2011bw','2019sm','2021swsh','2023sv')
                ORDER BY set_id,local_id""").splitlines()
     matches=[]
     for line in rows:
