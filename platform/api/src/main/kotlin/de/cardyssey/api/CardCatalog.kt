@@ -18,9 +18,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
+import java.net.URLEncoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
@@ -1356,10 +1358,20 @@ class CardCatalogService(
     ): JsonObject? =
         runCatching {
             fetchObject(
-                "$BASE/$language/cards/$cardId",
+                "$BASE/$language/cards/${encodePathSegment(cardId)}",
                 forceRemote = forceRemote
             )
         }.getOrNull()
+
+    private fun encodePathSegment(
+        value: String
+    ): String =
+        URLEncoder
+            .encode(
+                value,
+                StandardCharsets.UTF_8
+            )
+            .replace("+", "%20")
 
     private fun parseVariants(
         card: JsonObject,
