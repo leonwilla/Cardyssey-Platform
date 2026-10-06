@@ -176,7 +176,7 @@ export default function SellingPage() {
       parsedPrice != null &&
       (
         !Number.isFinite(parsedPrice) ||
-        parsedPrice < 0
+        parsedPrice <= 0
       )
     ) {
       setMessage(
