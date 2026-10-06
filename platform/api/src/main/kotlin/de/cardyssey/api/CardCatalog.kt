@@ -848,6 +848,13 @@ class CardCatalogService(
                         }
                 )
             }
+            .let { sets ->
+                if (language == "zh-cn") {
+                    sets.filter { it.id.equals("CSMPiC", ignoreCase = true) }
+                } else {
+                    sets
+                }
+            }
 
         if (result.isNotEmpty()) {
             setSummaryCache[
@@ -1216,6 +1223,16 @@ class CardCatalogService(
                     )
                 }
                 .orEmpty()
+                .let { cards ->
+                    // TCGdex currently labels Taiwan/traditional SV data as zh-cn.
+                    // Until a verified Simplified-Chinese source is configured,
+                    // only keep the genuine Simplified-Chinese CSMPiC set.
+                    if (language == "zh-cn") {
+                        cards.filter { it.id.startsWith("CSMPiC-", ignoreCase = true) }
+                    } else {
+                        cards
+                    }
+                }
 
         val result =
             if (
@@ -1298,6 +1315,13 @@ class CardCatalogService(
                 }
                 ?.toMap()
                 .orEmpty()
+                .let { sets ->
+                    if (language == "zh-cn") {
+                        sets.filterKeys { it.equals("CSMPiC", ignoreCase = true) }
+                    } else {
+                        sets
+                    }
+                }
 
         val result =
             if (
