@@ -15,6 +15,9 @@ SOURCES = {
         "https://www.pokemonkarte.de/wp-content/uploads/"
         "Tropical-Tidal-Wave-18-HeartGold-SoulSilver-Promos.png"
     ),
+    "30th-G": "https://www.pokemonkarte.de/wp-content/uploads/tcg_30th_celebration_g.jpg",
+    "30th-R": "https://www.pokemonkarte.de/wp-content/uploads/tcg_30th_celebration_r.jpg",
+    "30th-B": "https://www.pokemonkarte.de/wp-content/uploads/tcg_30th_celebration_b.jpg",
 }
 
 def db(sql: str) -> str:
