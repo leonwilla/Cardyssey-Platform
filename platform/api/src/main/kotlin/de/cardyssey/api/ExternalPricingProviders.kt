@@ -34,6 +34,18 @@ internal class JustTcgCentralPricingProvider(
     ): CentralProviderQuote? {
         if (apiKey.isBlank()) return null
 
+        if (
+            variant.stamps.isNotEmpty() ||
+            !variant.subtype.isNullOrBlank() ||
+            !variant.foil.isNullOrBlank() ||
+            (
+                !variant.size.isNullOrBlank() &&
+                !variant.size.equals("standard", ignoreCase = true)
+            )
+        ) {
+            return null
+        }
+
         val market = marketForLanguage(card.languageCode) ?: return null
         val query = card.name.trim().takeIf(String::isNotBlank) ?: return null
         val url = "https://api.justtcg.com/v1/cards" +

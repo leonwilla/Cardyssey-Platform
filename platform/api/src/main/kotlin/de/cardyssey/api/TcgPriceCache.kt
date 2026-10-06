@@ -530,6 +530,15 @@ class TcgPriceCacheRepository(
                     WHEN 'PRICE_FOUND' THEN 3
                     ELSE 0
                 END,
+                CASE c.language_code
+                    WHEN 'de' THEN 0
+                    WHEN 'en' THEN 1
+                    WHEN 'ja' THEN 2
+                    WHEN 'ko' THEN 3
+                    WHEN 'zh-tw' THEN 4
+                    WHEN 'zh-cn' THEN 5
+                    ELSE 9
+                END,
                 p.updated_at NULLS FIRST,
                 c.language_code,
                 c.card_id,
@@ -987,8 +996,18 @@ class CachedTcgPricingService(
             }
         }
 
+        val fallbackEligible =
+            selected.stamps.isEmpty() &&
+                selected.subtype.isNullOrBlank() &&
+                selected.foil.isNullOrBlank() &&
+                (
+                    selected.size.isNullOrBlank() ||
+                        selected.size.equals("standard", ignoreCase = true)
+                    )
+
         if (
             resolved?.baseEur == null &&
+            fallbackEligible &&
             claimFallbackSlot()
         ) {
             val fallback =
