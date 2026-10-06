@@ -497,11 +497,39 @@ class TcgPriceCacheRepository(
               AND c.language_code IN ($placeholders)
               AND COALESCE(v.value ->> 'id', '') <> ''
               AND COALESCE(v.value ->> 'legacyVariant', '') <> ''
+              /*
+               * Pocket sets are digital and do not have a physical TCG market.
+               * Skipping them keeps Cardmarket/TCGPlayer/JustTCG quota focused
+               * on cards that can actually receive a physical market value.
+               */
+              AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
               AND (
                     p.next_attempt_at IS NULL
                     OR p.next_attempt_at <= NOW()
                   )
             ORDER BY
+                /*
+                 * Fill cards that still have no usable value before refreshing
+                 * already-priced variants. This is especially important for
+                 * the limited JustTCG fallback budget.
+                 */
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM tcg_price_cache priced
+                        WHERE priced.card_id = c.card_id
+                          AND priced.language_code = c.language_code
+                          AND priced.resolution_status = 'PRICE_FOUND'
+                    ) THEN 1
+                    ELSE 0
+                END,
+                CASE p.resolution_status
+                    WHEN 'NO_PRICE' THEN 0
+                    WHEN 'PROVIDER_ERROR' THEN 1
+                    WHEN 'NO_VARIANT_MATCH' THEN 2
+                    WHEN 'PRICE_FOUND' THEN 3
+                    ELSE 0
+                END,
                 p.updated_at NULLS FIRST,
                 c.language_code,
                 c.card_id,

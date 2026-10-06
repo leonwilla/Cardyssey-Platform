@@ -49,11 +49,16 @@ internal class JustTcgCentralPricingProvider(
         val expectedName = normalizeText(card.name)
         val expectedSet = normalizeText(card.setName)
 
-        val candidate = cards.mapNotNull { it as? JsonObject }
-            .mapNotNull { raw ->
-                val number = raw.string("number") ?: return@mapNotNull null
-                if (normalizeNumber(number) != expectedNumber) return@mapNotNull null
+        val numberedCards =
+            cards.mapNotNull { it as? JsonObject }
+                .filter { raw ->
+                    val number = raw.string("number")
+                        ?: return@filter false
+                    normalizeNumber(number) == expectedNumber
+                }
 
+        val strictCandidates =
+            numberedCards.filter { raw ->
                 val name = normalizeText(raw.string("name").orEmpty())
                 val setName = normalizeText(raw.string("set_name").orEmpty())
                 val nameMatches =
@@ -65,10 +70,24 @@ internal class JustTcgCentralPricingProvider(
                         setName == expectedSet ||
                         setName.contains(expectedSet) ||
                         expectedSet.contains(setName)
-                if (!nameMatches || !setMatches) return@mapNotNull null
-                raw
+                nameMatches && setMatches
             }
-            .firstOrNull() ?: return null
+
+        val candidate =
+            strictCandidates.singleOrNull()
+                ?: numberedCards
+                    .filter { raw ->
+                        normalizeText(raw.string("name").orEmpty()) ==
+                            expectedName
+                    }
+                    /*
+                     * Localized German set names can differ from JustTCG's set
+                     * title. Exact card name + exact card number is still safe
+                     * when it resolves to one unique candidate in the provider
+                     * response. Ambiguous results remain intentionally rejected.
+                     */
+                    .singleOrNull()
+                ?: return null
 
         val variants = candidate["variants"] as? JsonArray ?: return null
         val expectedLanguage =
