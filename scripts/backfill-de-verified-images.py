@@ -8,6 +8,14 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    "ecard2-50a": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
+    "ecard2-50b": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
+    "ecard2-74a": "https://www.pokemonkarte.de/wp-content/uploads/Drowzee-Aquapolis.jpg",
+    "ecard2-74b": "https://www.pokemonkarte.de/wp-content/uploads/Drowzee-Aquapolis.jpg",
+    "ecard2-95a": "https://www.pokemonkarte.de/wp-content/uploads/Mr.-Mime-Aquapolis.jpg",
+    "ecard2-95b": "https://www.pokemonkarte.de/wp-content/uploads/Mr.-Mime-Aquapolis.jpg",
+    "ecard2-103a": "https://www.pokemonkarte.de/wp-content/uploads/Porygon-Aquapolis.jpg",
+    "ecard2-103b": "https://www.pokemonkarte.de/wp-content/uploads/Porygon-Aquapolis.jpg",
     "mep-078": "https://cdn.pokedexia.com/cards/me/MEP/cards/de/mep-078-high.webp?v=1781538081484",
     "2023sv-1": "https://www.tradingtoys.de/cdn/shop/files/felori-m23de-001-015-mcdonalds-promo-2023-holo-kaufen-1-917.webp?v=1787074371",
     "2023sv-3": "https://www.tradingtoys.de/cdn/shop/files/kwaks-m23de-003-015-mcdonalds-promo-2023-holo-kaufen-1-708.webp?v=1787074705",
