@@ -8,6 +8,7 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    "tk-ex-latia-3": "https://img.ricardostatic.ch/images/565417a0-81a0-4baf-908c-e3a2f79800a7/t_1800x1350/enekoro-pokemon-310-ex-trainer-kit-latiaslatios-2004",
     "tk-ex-latia-4": "https://img.ricardostatic.ch/images/945a1beb-10d8-4b6a-92e6-5bf75f8cc515/t_1800x1350/pokemon-latias-410-holo-ex-trainer-kit-de",
     "tk-ex-latio-4": "https://img.ricardostatic.ch/images/cdba4645-a1d1-41f6-a4e0-a41a4385c543/t_1800x1350/magnetilo-pokemon-410-ex-trainer-kit-latiaslatios-2004",
     "tk-ex-latio-2": "https://img.kleinanzeigen.de/api/v1/prod-ads/images/0a/0ad003ce-2d6d-41d0-9c36-45a3578fe480?rule=$_59.AUTO",
