@@ -8,6 +8,11 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    "tk-ex-latia-1": "https://img.ricardostatic.ch/images/9292728a-bffd-4dd0-a00e-ad1f88e9ec5d/t_1800x1350/pokemon-kindwurm-ex-trainer-kit-latias-110-deutsch",
+    "tk-ex-latia-6": "https://img.ricardostatic.ch/images/2fef34d5-1953-452c-ae8c-32699105506d/t_1800x1350/pokemon-eneco-ex-trainer-kit-latias-610-deutsch",
+    "tk-ex-latio-1": "https://img.ricardostatic.ch/images/594ffb8c-7d90-494d-b1a6-482d97f6c953/t_1800x1350/pokemon-frizelbliz-ex-trainer-kit-latios-110-deutsch",
+    "tk-ex-latio-6": "https://img.ricardostatic.ch/images/e89b97eb-084f-4c78-8efe-22f3aba738c9/t_1800x1350/pokemon-pikachu-610-ex-trainer-kit-latios-ab-fr-1",
+    "tk-ex-latio-7": "https://img.ricardostatic.ch/images/68e13ccd-2de8-45a0-8c2d-4f283885be7d/t_1800x1350/pokemon-zigzachs-ex-trainer-kit-latios-710-deutsch",
     "sve-017": "https://sleevee.de/media/a3/62/f1/1755569765/836249.jpg?ts=1755569765",
     "sve-018": "https://sleevee.de/media/cf/84/60/1755569765/836250.jpg?ts=1755569765",
     "sve-019": "https://sleevee.de/media/e5/55/1a/1755569766/836251.jpg?ts=1755569766",
