@@ -11,6 +11,7 @@ import argparse
 import subprocess
 
 SOURCES = {
+    "dc1-1": "https://cdn.pokedexia.com/cards/xy/dc1-en/cards/dc1-1-v2-high.webp",
     "hgssp-HGSS18": (
         "https://www.pokemonkarte.de/wp-content/uploads/"
         "Tropical-Tidal-Wave-18-HeartGold-SoulSilver-Promos.png"
