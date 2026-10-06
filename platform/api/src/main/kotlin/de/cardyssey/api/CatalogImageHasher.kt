@@ -33,6 +33,8 @@ class CatalogImageHasher {
             when {
                 listOf(".jpg", ".jpeg", ".png", ".webp")
                     .any(path::endsWith) -> imageBase
+                path.startsWith("https://img.ricardostatic.ch/") ||
+                    path.startsWith("https://img.kleinanzeigen.de/") -> imageBase
                 path.startsWith("https://assets.tcgdex.net/") ->
                     imageBase.removeSuffix("/") + "/high.webp"
                 else ->
