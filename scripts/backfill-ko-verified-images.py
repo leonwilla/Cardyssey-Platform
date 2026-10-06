@@ -3,6 +3,8 @@
 import argparse, subprocess, urllib.request
 
 SOURCES = {
+    "official_ko_edbe7028c127b59a1e83ca83":
+        "https://k-tcgpanda.com/cardimg/XY/XY-P/%EB%B0%94%EC%98%A4%ED%94%84_XY-P_126_KOR.png",
     "official_ko_16df4fdbdd0295c50414886d":
         "https://cdn6966.templcdn.com/wp-content/uploads/2021/07/KR_043BW.jpg",
     "official_ko_7b4fab2b675e6f123d646e71":
