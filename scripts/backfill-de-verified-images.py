@@ -8,6 +8,7 @@ import subprocess
 import urllib.request
 
 SOURCES = {
+    "exu-!": "https://media.bisafans.de/0394d67/sammelkarten/sets/ex-verborgene-maechte/ausrufezeichen-28.jpg",
     "ecard2-50a": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
     "ecard2-50b": "https://www.pokemonkarte.de/wp-content/uploads/Golduck-Aquapolis.jpg",
     "ecard2-74a": "https://www.pokemonkarte.de/wp-content/uploads/Drowzee-Aquapolis.jpg",
