@@ -603,8 +603,20 @@ class TcgPriceCacheRepository(
                 """
                 SELECT
                     COUNT(*) AS total,
-                    COUNT(base_eur) AS priced
-                FROM tcg_price_cache
+                    COUNT(*) FILTER (
+                        WHERE p.resolution_status = 'PRICE_FOUND'
+                          AND p.base_eur IS NOT NULL
+                    ) AS priced
+                FROM catalog_cards_mirror c
+                CROSS JOIN LATERAL
+                    jsonb_array_elements(c.variants) AS v(value)
+                LEFT JOIN tcg_price_cache p
+                  ON p.card_id = c.card_id
+                 AND p.language_code = c.language_code
+                 AND p.variant_id = v.value ->> 'id'
+                WHERE c.details_complete = TRUE
+                  AND COALESCE(v.value ->> 'id', '') <> ''
+                  AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
                 """.trimIndent()
             ).use { statement ->
                 statement.executeQuery().use { result ->
