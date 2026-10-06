@@ -18,6 +18,7 @@ import {
 } from "@/components/AppShell";
 
 import type {
+  PortfolioItem,
   User,
 } from "@/lib/types";
 
@@ -26,6 +27,12 @@ type Message = {
   senderFriendCode: string;
   recipientFriendCode: string;
   body: string;
+  objectType?: string | null;
+  objectPayload?: unknown;
+  replyToMessageId?: string | null;
+  replyToSenderFriendCode?: string | null;
+  replyToBody?: string | null;
+  reactions?: ChatReaction[];
   createdAt: string;
   readAt?: string | null;
 };
@@ -200,6 +207,22 @@ export default function ChatPage() {
 
   const [showGroupSettings, setShowGroupSettings] =
     useState(false);
+
+  const [replyingTo, setReplyingTo] =
+    useState<{
+      id: string;
+      sender: string;
+      body: string;
+    } | null>(null);
+
+  const [shareOpen, setShareOpen] =
+    useState(false);
+
+  const [shareLoading, setShareLoading] =
+    useState(false);
+
+  const [shareCards, setShareCards] =
+    useState<PortfolioItem[]>([]);
 
   const loadThreads =
     useCallback(async () => {
@@ -409,6 +432,8 @@ export default function ChatPage() {
 
     setShowGroupSettings(false);
     setDraft("");
+    setReplyingTo(null);
+    setShareOpen(false);
 
     if (selection.kind === "friend") {
       setGroupDetail(null);
@@ -488,6 +513,8 @@ export default function ChatPage() {
               },
               body: JSON.stringify({
                 body: draft,
+                replyToMessageId:
+                  replyingTo?.id ?? null,
               }),
             }
           )
@@ -502,6 +529,8 @@ export default function ChatPage() {
                 },
                 body: JSON.stringify({
                   body: draft,
+                  replyToMessageId:
+                    replyingTo?.id ?? null,
                 }),
               }
             )
@@ -515,6 +544,8 @@ export default function ChatPage() {
                 },
                 body: JSON.stringify({
                   body: draft,
+                  replyToMessageId:
+                    replyingTo?.id ?? null,
                 }),
               }
             );
@@ -527,6 +558,7 @@ export default function ChatPage() {
     }
 
     setDraft("");
+    setReplyingTo(null);
 
     if (selection.kind === "friend") {
       await loadFriendMessages(
@@ -576,6 +608,142 @@ export default function ChatPage() {
         ? "Nachricht wurde an die Moderation gemeldet."
         : "Meldung konnte nicht gesendet werden."
     );
+  }
+
+  async function toggleDirectReaction(
+    messageId: string,
+    emoji: string
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "friend"
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/${encodeURIComponent(selection.id)}/messages/${encodeURIComponent(messageId)}/reactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            emoji,
+          }),
+        }
+      );
+
+    if (response.ok) {
+      await loadFriendMessages(
+        selection.id
+      );
+    }
+  }
+
+  async function openSharePicker() {
+    if (!selection) {
+      return;
+    }
+
+    setShareLoading(true);
+    setShareOpen(true);
+
+    try {
+      const response =
+        await fetch(
+          "/api/collection",
+          { cache: "no-store" }
+        );
+
+      if (!response.ok) {
+        throw new Error();
+      }
+
+      setShareCards(
+        await response.json() as PortfolioItem[]
+      );
+    } catch {
+      setStatus(
+        "Sammlung konnte zum Teilen nicht geladen werden."
+      );
+      setShareOpen(false);
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function shareCard(
+    item: PortfolioItem
+  ) {
+    if (!selection) {
+      return;
+    }
+
+    const payload = {
+      cardId: item.cardId,
+      name: item.name,
+      setId: item.setId,
+      setName: item.setName,
+      localId: item.localId,
+      imageUrl: item.imageBase,
+      languageCode: item.languageCode,
+      variant: item.variant,
+      condition: item.condition,
+      quantity: item.quantity,
+    };
+
+    const target =
+      selection.kind === "friend"
+        ? `/api/chat/${encodeURIComponent(selection.id)}/messages`
+        : selection.kind === "group"
+          ? `/api/chat/groups/${encodeURIComponent(selection.id)}/messages`
+          : `/api/chat/community/rooms/${encodeURIComponent(selection.id)}/messages`;
+
+    const response =
+      await fetch(
+        target,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            body: "",
+            objectType: "CARD",
+            objectPayload: payload,
+            replyToMessageId:
+              replyingTo?.id ?? null,
+          }),
+        }
+      );
+
+    if (!response.ok) {
+      setStatus(
+        "Karte konnte nicht geteilt werden."
+      );
+      return;
+    }
+
+    setShareOpen(false);
+    setReplyingTo(null);
+
+    if (selection.kind === "friend") {
+      await loadFriendMessages(
+        selection.id
+      );
+    } else if (selection.kind === "group") {
+      await loadGroupMessages(
+        selection.id
+      );
+    } else {
+      await loadCommunityMessages(
+        selection.id
+      );
+    }
   }
 
   async function createGroup() {
@@ -1094,6 +1262,127 @@ export default function ChatPage() {
       ]
     );
 
+  function ComposerExtras() {
+    return (
+      <>
+        {replyingTo && (
+          <div
+            className="statusPanel"
+            style={{
+              margin: "0 12px 8px",
+              padding: "10px 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+            }}
+          >
+            <div>
+              <strong>
+                Antwort an {replyingTo.sender}
+              </strong>
+              <div className="muted">
+                {replyingTo.body || "Geteilter Inhalt"}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="ghostButton"
+              onClick={() =>
+                setReplyingTo(null)
+              }
+            >
+              Abbrechen
+            </button>
+          </div>
+        )}
+
+        {shareOpen && (
+          <div
+            className="statusPanel"
+            style={{
+              margin: "0 12px 8px",
+              padding: "12px",
+              maxHeight: "280px",
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              <strong>
+                Karte aus deiner Sammlung teilen
+              </strong>
+              <button
+                type="button"
+                className="ghostButton"
+                onClick={() =>
+                  setShareOpen(false)
+                }
+              >
+                Schließen
+              </button>
+            </div>
+
+            {shareLoading ? (
+              <div className="muted">
+                Sammlung wird geladen …
+              </div>
+            ) : shareCards.length === 0 ? (
+              <div className="muted">
+                Keine Karten in der Sammlung.
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gap: "7px",
+                }}
+              >
+                {shareCards
+                  .slice(0, 150)
+                  .map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className="chatThread"
+                      onClick={() =>
+                        void shareCard(item)
+                      }
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                      }}
+                    >
+                      <span className="chatAvatar">
+                        {initials(item.name)}
+                      </span>
+                      <span className="chatThreadText">
+                        <strong>
+                          {item.name}
+                        </strong>
+                        <small>
+                          {item.setName || item.setId || "—"} · {item.localId || item.cardId} · {item.languageCode.toUpperCase()} · {item.variant}
+                        </small>
+                      </span>
+                      <b>
+                        ×{item.quantity}
+                      </b>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <AppShell
       active="/chat"
@@ -1350,9 +1639,80 @@ export default function ChatPage() {
                             : "chatMessage"
                         }
                       >
+                        {message.replyToMessageId && (
+                          <div
+                            className="muted"
+                            style={{
+                              borderLeft:
+                                "2px solid var(--cyan)",
+                              paddingLeft: "8px",
+                              marginBottom: "6px",
+                              fontSize: "12px",
+                            }}
+                          >
+                            Antwort auf {message.replyToSenderFriendCode || "Nachricht"} · {message.replyToBody || "Geteilter Inhalt"}
+                          </div>
+                        )}
+
                         <p>
                           {message.body}
                         </p>
+
+                        {message.objectType && (
+                          <div
+                            className="chip"
+                            style={{ marginTop: "6px" }}
+                          >
+                            Geteilter Inhalt · {message.objectType}
+                          </div>
+                        )}
+
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "5px",
+                            flexWrap: "wrap",
+                            marginTop: "7px",
+                          }}
+                        >
+                          {["❤️", "👍", "🔥", "😂", "😮"].map(
+                            (emoji) => {
+                              const reaction =
+                                message.reactions?.find(
+                                  (item) =>
+                                    item.emoji === emoji
+                                );
+
+                              return (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  className="ghostButton"
+                                  style={{
+                                    minHeight: "30px",
+                                    padding: "0 8px",
+                                    opacity:
+                                      reaction?.reactedByMe
+                                        ? 1
+                                        : 0.75,
+                                  }}
+                                  onClick={() =>
+                                    void toggleDirectReaction(
+                                      message.id,
+                                      emoji
+                                    )
+                                  }
+                                >
+                                  {emoji}
+                                  {reaction?.count
+                                    ? ` ${reaction.count}`
+                                    : ""}
+                                </button>
+                              );
+                            }
+                          )}
+                        </div>
+
                         <footer>
                           <time>
                             {time(
@@ -1362,11 +1722,28 @@ export default function ChatPage() {
                           <button
                             type="button"
                             onClick={() =>
-                              report(message)
+                              setReplyingTo({
+                                id: message.id,
+                                sender:
+                                  message.senderFriendCode,
+                                body:
+                                  message.body ||
+                                  "Geteilter Inhalt",
+                              })
                             }
                           >
-                            Melden
+                            Antworten
                           </button>
+                          {!own && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                report(message)
+                              }
+                            >
+                              Melden
+                            </button>
+                          )}
                         </footer>
                       </article>
                     );
@@ -1379,6 +1756,8 @@ export default function ChatPage() {
                   {status}
                 </div>
               )}
+
+              <ComposerExtras />
 
               <form
                 className="chatComposer"
@@ -1394,6 +1773,16 @@ export default function ChatPage() {
                     )
                   }
                 />
+
+                <button
+                  type="button"
+                  className="ghostButton"
+                  onClick={() =>
+                    void openSharePicker()
+                  }
+                >
+                  Karte teilen
+                </button>
 
                 <button
                   className="primaryButton"
@@ -1660,6 +2049,22 @@ export default function ChatPage() {
                                 message.senderFriendCode}
                             </strong>
                           )}
+
+                          {message.replyToMessageId && (
+                            <div
+                              className="muted"
+                              style={{
+                                borderLeft:
+                                  "2px solid var(--cyan)",
+                                paddingLeft: "8px",
+                                margin: "6px 0",
+                                fontSize: "12px",
+                              }}
+                            >
+                              Antwort auf {message.replyToSenderFriendCode || "Nachricht"} · {message.replyToBody || "Geteilter Inhalt"}
+                            </div>
+                          )}
+
                           <p>
                             {message.body}
                           </p>
@@ -1727,6 +2132,22 @@ export default function ChatPage() {
                                 message.createdAt
                               )}
                             </time>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReplyingTo({
+                                  id: message.id,
+                                  sender:
+                                    message.senderDisplayName ||
+                                    message.senderFriendCode,
+                                  body:
+                                    message.body ||
+                                    "Geteilter Inhalt",
+                                })
+                              }
+                            >
+                              Antworten
+                            </button>
                           </footer>
                         </article>
                       );
@@ -1740,6 +2161,8 @@ export default function ChatPage() {
                   {status}
                 </div>
               )}
+
+              <ComposerExtras />
 
               <form
                 className="chatComposer"
@@ -1755,6 +2178,16 @@ export default function ChatPage() {
                     )
                   }
                 />
+
+                <button
+                  type="button"
+                  className="ghostButton"
+                  onClick={() =>
+                    void openSharePicker()
+                  }
+                >
+                  Karte teilen
+                </button>
 
                 <button
                   className="primaryButton"
@@ -1808,6 +2241,21 @@ export default function ChatPage() {
                               {message.senderDisplayName ||
                                 message.senderFriendCode}
                             </strong>
+                          )}
+
+                          {message.replyToMessageId && (
+                            <div
+                              className="muted"
+                              style={{
+                                borderLeft:
+                                  "2px solid var(--cyan)",
+                                paddingLeft: "8px",
+                                margin: "6px 0",
+                                fontSize: "12px",
+                              }}
+                            >
+                              Antwort auf {message.replyToSenderFriendCode || "Nachricht"} · {message.replyToBody || "Geteilter Inhalt"}
+                            </div>
                           )}
 
                           {message.deleted ? (
@@ -1880,6 +2328,23 @@ export default function ChatPage() {
                               )}
                             </time>
 
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setReplyingTo({
+                                  id: message.id,
+                                  sender:
+                                    message.senderDisplayName ||
+                                    message.senderFriendCode,
+                                  body:
+                                    message.body ||
+                                    "Geteilter Inhalt",
+                                })
+                              }
+                            >
+                              Antworten
+                            </button>
+
                             {!own && (
                               <>
                                 <button
@@ -1918,6 +2383,8 @@ export default function ChatPage() {
                 </div>
               )}
 
+              <ComposerExtras />
+
               <form
                 className="chatComposer"
                 onSubmit={send}
@@ -1932,6 +2399,16 @@ export default function ChatPage() {
                     )
                   }
                 />
+
+                <button
+                  type="button"
+                  className="ghostButton"
+                  onClick={() =>
+                    void openSharePicker()
+                  }
+                >
+                  Karte teilen
+                </button>
 
                 <button
                   className="primaryButton"
