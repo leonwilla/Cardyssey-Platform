@@ -116,6 +116,15 @@ ALIASES={
     "dp1":1430,
     "ex1":1393,
     "ex3":1376,
+    "ex7":1428,
+    "np":1423,
+    "bog":1455,
+    "miscp":2374,
+    "tk-hs-g":1540,
+    "tk-xy-latio":1536,
+    "tk-xy-w":1533,
+    "tk-xy-n":1532,
+    "tk-xy-su":1796,
 }
 
 set_to_gid={}
@@ -183,6 +192,13 @@ for idx,(gid,items) in enumerate(sorted(by_group.items()),1):
         if len(candidates)>1:
             exact=[p for p in candidates if name_key(p.get("name"))==name_key(t["en_name"])]
             candidates=exact
+        if len(candidates)>1:
+            non_staff=[
+                p for p in candidates
+                if "[staff]" not in str(p.get("name") or "").lower()
+            ]
+            if len(non_staff)==1:
+                candidates=non_staff
         if len(candidates)!=1:
             continue
         product=candidates[0]
