@@ -5,7 +5,7 @@ Safety:
 - English only.
 - Existing rows only.
 - Exact card_id mapping only.
-- Never overwrites an existing source.
+- Replaces only missing sources or known-broken TCGdex placeholder URLs.
 """
 import argparse
 import subprocess
@@ -32,7 +32,9 @@ def main():
     p.add_argument("--apply", action="store_true")
     args = p.parse_args()
     rows = db("""SELECT card_id FROM catalog_cards_mirror
-                 WHERE language_code='en' AND image_source_url IS NULL
+                 WHERE language_code='en'
+                   AND (image_source_url IS NULL
+                        OR image_source_url LIKE 'https://assets.tcgdex.net/%')
                  ORDER BY card_id""").splitlines()
     matches = [(cid, SOURCES[cid]) for cid in rows if cid in SOURCES]
     print(f"matches={len(matches)} applied={args.apply}")
@@ -47,7 +49,8 @@ def main():
                    source_updated_at=NOW()
                WHERE language_code='en'
                  AND card_id='{q(cid)}'
-                 AND image_source_url IS NULL;""")
+                 AND (image_source_url IS NULL
+                      OR image_source_url LIKE 'https://assets.tcgdex.net/%');""")
 
 if __name__ == "__main__":
     main()
