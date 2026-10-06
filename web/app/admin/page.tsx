@@ -451,6 +451,42 @@ export default function AdminPage() {
     }
   }
 
+  async function copyDuplicates() {
+    if (!duplicates) return;
+
+    const rows = [
+      ["Menge", "Name", "Set", "Nummer", "Sprache", "Variante", "Card-ID"],
+      ...duplicates.map((item) => [
+        String(item.quantity),
+        item.name,
+        item.setName || "",
+        item.localId || "",
+        item.languageCode.toUpperCase(),
+        item.variant,
+        item.cardId,
+      ]),
+    ];
+
+    const text = rows
+      .map((row) =>
+        row
+          .map((value) => String(value).replace(/\t|\r?\n/g, " "))
+          .join("\t")
+      )
+      .join("\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage(
+        duplicates.length === 1
+          ? "1 doppelte Kartenposition wurde kopiert."
+          : `${duplicates.length} doppelte Kartenpositionen wurden kopiert.`
+      );
+    } catch {
+      setMessage("Die Liste konnte nicht in die Zwischenablage kopiert werden.");
+    }
+  }
+
   async function loadDuplicates(userId: string) {
     setDuplicatesLoading(true);
     setMessage(null);
@@ -597,9 +633,20 @@ export default function AdminPage() {
                 style={{
                   display: "flex",
                   justifyContent: "flex-end",
+                  gap: "10px",
+                  flexWrap: "wrap",
                   marginBottom: "14px",
                 }}
               >
+                {duplicates && (
+                  <button
+                    type="button"
+                    className="ghostButton"
+                    onClick={() => void copyDuplicates()}
+                  >
+                    Liste kopieren
+                  </button>
+                )}
                 <button
                   type="button"
                   className="primaryButton"
@@ -916,18 +963,35 @@ export default function AdminPage() {
                             Gleiche Karte, Sprache und physische Variante werden zusammengezählt.
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className="ghostButton"
-                          disabled={duplicatesLoading}
-                          onClick={() =>
-                            void loadDuplicates(detail.user.id)
-                          }
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "8px",
+                            flexWrap: "wrap",
+                          }}
                         >
-                          {duplicatesLoading
-                            ? "Wird ausgewertet …"
-                            : "Duplikate auswerten"}
-                        </button>
+                          {duplicates && (
+                            <button
+                              type="button"
+                              className="ghostButton"
+                              onClick={() => void copyDuplicates()}
+                            >
+                              Liste kopieren
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="ghostButton"
+                            disabled={duplicatesLoading}
+                            onClick={() =>
+                              void loadDuplicates(detail.user.id)
+                            }
+                          >
+                            {duplicatesLoading
+                              ? "Wird ausgewertet …"
+                              : "Duplikate auswerten"}
+                          </button>
+                        </div>
                       </div>
 
                       {duplicates && (
