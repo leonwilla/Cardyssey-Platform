@@ -33,6 +33,35 @@ type ProgressFilter =
   | "unstarted"
   | "complete";
 
+type SetLanguage =
+  | "de"
+  | "en"
+  | "ja"
+  | "ko"
+  | "zh-cn"
+  | "zh-tw";
+
+const setLanguages: {
+  code: SetLanguage;
+  label: string;
+}[] = [
+  { code: "de", label: "Deutsch" },
+  { code: "en", label: "Englisch" },
+  { code: "ja", label: "Japanisch" },
+  { code: "ko", label: "Koreanisch" },
+  { code: "zh-cn", label: "Chinesisch (vereinfacht)" },
+  { code: "zh-tw", label: "Chinesisch (traditionell)" },
+];
+
+function isSetLanguage(
+  value: string | null
+): value is SetLanguage {
+  return setLanguages.some(
+    (language) =>
+      language.code === value
+  );
+}
+
 type SetSort =
   | "owned-first"
   | "progress-desc"
@@ -172,6 +201,9 @@ export default function SetsPage() {
   const [query, setQuery] =
     useState("");
 
+  const [language, setLanguage] =
+    useState<SetLanguage>("de");
+
   const [progressFilter, setProgressFilter] =
     useState<ProgressFilter>("all");
 
@@ -186,7 +218,6 @@ export default function SetsPage() {
         const [
           me,
           collection,
-          sets,
         ] = await Promise.all([
           fetch("/api/auth/me", {
             cache: "no-store",
@@ -194,12 +225,6 @@ export default function SetsPage() {
           fetch("/api/collection", {
             cache: "no-store",
           }),
-          fetch(
-            "/api/sets?language=de",
-            {
-              cache: "no-store",
-            }
-          ),
         ]);
 
         if (me.status === 401) {
@@ -210,7 +235,25 @@ export default function SetsPage() {
         if (cancelled) return;
 
         if (me.ok) {
-          setUser(await me.json());
+          const currentUser =
+            (await me.json()) as User;
+
+          setUser(currentUser);
+
+          const savedLanguage =
+            window.localStorage.getItem(
+              `cardyssey.sets.language.${currentUser.id}`
+            );
+
+          if (
+            isSetLanguage(
+              savedLanguage
+            )
+          ) {
+            setLanguage(
+              savedLanguage
+            );
+          }
         }
 
         if (collection.ok) {
@@ -219,14 +262,6 @@ export default function SetsPage() {
           );
         }
 
-        if (sets.ok) {
-          setCatalog(
-            await sets.json()
-          );
-          setCatalogError(false);
-        } else {
-          setCatalogError(true);
-        }
       } catch {
         if (!cancelled) {
           setCatalogError(true);
@@ -245,6 +280,57 @@ export default function SetsPage() {
     };
   }, [router]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCatalog() {
+      try {
+        const response =
+          await fetch(
+            `/api/sets?language=${encodeURIComponent(language)}`,
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setCatalogError(true);
+          return;
+        }
+
+        setCatalog(
+          await response.json()
+        );
+        setCatalogError(false);
+      } catch {
+        if (!cancelled) {
+          setCatalogError(true);
+        }
+      }
+    }
+
+    loadCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  function selectLanguage(
+    nextLanguage: SetLanguage
+  ) {
+    setLanguage(nextLanguage);
+
+    if (user) {
+      window.localStorage.setItem(
+        `cardyssey.sets.language.${user.id}`,
+        nextLanguage
+      );
+    }
+  }
+
   const sets = useMemo<SetProgress[]>(
     () => {
       const ownedBySet =
@@ -257,6 +343,13 @@ export default function SetsPage() {
         new Map<string, string>();
 
       for (const item of items) {
+        if (
+          item.languageCode !==
+          language
+        ) {
+          continue;
+        }
+
         if (!item.setId) continue;
 
         if (
@@ -320,7 +413,7 @@ export default function SetsPage() {
 
       return [...result.values()];
     },
-    [catalog, items]
+    [catalog, items, language]
   );
 
   const counts = useMemo(() => {
@@ -517,6 +610,30 @@ export default function SetsPage() {
           />
 
           <label className={styles.sortWrap}>
+            <span>Sprache</span>
+            <select
+              value={language}
+              onChange={(event) =>
+                selectLanguage(
+                  event.target
+                    .value as SetLanguage
+                )
+              }
+            >
+              {setLanguages.map(
+                (option) => (
+                  <option
+                    key={option.code}
+                    value={option.code}
+                  >
+                    {option.label}
+                  </option>
+                )
+              )}
+            </select>
+          </label>
+
+          <label className={styles.sortWrap}>
             <span>Sortieren</span>
             <select
               value={sort}
@@ -633,7 +750,7 @@ export default function SetsPage() {
                   router.push(
                     `/sets/${encodeURIComponent(
                       set.id
-                    )}`
+                    )}?language=${encodeURIComponent(language)}`
                   )
                 }
               >

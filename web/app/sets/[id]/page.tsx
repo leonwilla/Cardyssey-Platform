@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import type { PortfolioItem, User } from "@/lib/types";
 
@@ -23,6 +23,15 @@ type SetDetails = {
 export default function SetDetailsPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedLanguage =
+    searchParams.get("language") || "de";
+  const language =
+    ["de", "en", "ja", "ko", "zh-cn", "zh-tw"].includes(
+      requestedLanguage
+    )
+      ? requestedLanguage
+      : "de";
 
   const [user, setUser] = useState<User | null>(null);
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -37,7 +46,7 @@ export default function SetDetailsPage() {
       const [me, collection, details] = await Promise.all([
         fetch("/api/auth/me", { cache: "no-store" }),
         fetch("/api/collection", { cache: "no-store" }),
-        fetch(`/api/sets/${encodeURIComponent(id)}?language=de`, {
+        fetch(`/api/sets/${encodeURIComponent(id)}?language=${encodeURIComponent(language)}`, {
           cache: "no-store",
         }),
       ]);
@@ -63,7 +72,9 @@ export default function SetDetailsPage() {
         setFallback(false);
       } else {
         const matching = collectionItems.filter(
-          (item) => item.setId === id
+          (item) =>
+            item.setId === id &&
+            item.languageCode === language
         );
 
         const first = matching[0];
@@ -98,11 +109,19 @@ export default function SetDetailsPage() {
     }
 
     load();
-  }, [params.id, router]);
+  }, [params.id, router, language]);
 
   const owned = useMemo(
-    () => new Set(items.map((item) => item.cardId)),
-    [items]
+    () =>
+      new Set(
+        items
+          .filter(
+            (item) =>
+              item.languageCode === language
+          )
+          .map((item) => item.cardId)
+      ),
+    [items, language]
   );
 
   if (loading) {
@@ -181,7 +200,7 @@ export default function SetDetailsPage() {
                 router.push(
                   `/collection?addCard=${encodeURIComponent(
                     card.id
-                  )}&language=de`
+                  )}&language=${encodeURIComponent(language)}`
                 )
               }
               aria-label={`${card.name} zur Sammlung hinzufügen`}
