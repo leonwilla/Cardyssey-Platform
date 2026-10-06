@@ -593,6 +593,29 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginBottom: "14px",
+                }}
+              >
+                <button
+                  type="button"
+                  className="primaryButton"
+                  disabled={duplicatesLoading}
+                  onClick={async () => {
+                    if (!user?.id) return;
+                    await loadUser(user.id);
+                    await loadDuplicates(user.id);
+                  }}
+                >
+                  {duplicatesLoading
+                    ? "Duplikate werden ausgewertet …"
+                    : "Meine Duplikate auswerten"}
+                </button>
+              </div>
+
               <div className="statsGrid">
                 <div className="statCard">
                   <span>Backend</span>

@@ -4,6 +4,8 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -35,6 +37,112 @@ type Thread = {
   unreadCount: number;
 };
 
+type GroupMessage = {
+  id: string;
+  senderFriendCode: string;
+  senderDisplayName?: string | null;
+  body: string;
+  objectType?: string | null;
+  objectPayload?: unknown;
+  replyToMessageId?: string | null;
+  replyToSenderFriendCode?: string | null;
+  replyToBody?: string | null;
+  reactions?: ChatReaction[];
+  createdAt: string;
+};
+
+type GroupSummary = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  memberCount: number;
+  role: string;
+  lastMessage?: GroupMessage | null;
+  unreadCount: number;
+};
+
+type GroupMember = {
+  friendCode: string;
+  displayName?: string | null;
+  role: string;
+};
+
+type GroupDetail = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+  role: string;
+  members: GroupMember[];
+};
+
+type ChatReaction = {
+  emoji: string;
+  count: number;
+  reactedByMe: boolean;
+};
+
+type CommunityMessage = {
+  id: string;
+  roomId: string;
+  senderFriendCode: string;
+  senderDisplayName?: string | null;
+  body: string;
+  objectType?: string | null;
+  objectPayload?: unknown;
+  replyToMessageId?: string | null;
+  replyToSenderFriendCode?: string | null;
+  replyToBody?: string | null;
+  reactions?: ChatReaction[];
+  deleted?: boolean;
+  createdAt: string;
+};
+
+type CommunityRoom = {
+  id: string;
+  slug: string;
+  name: string;
+  roomType: string;
+  languageCode: string;
+  setId?: string | null;
+  setName?: string | null;
+  unreadCount: number;
+  lastActivityAt?: string | null;
+  lastMessagePreview?: string | null;
+  lastSenderDisplayName?: string | null;
+};
+
+type ChatSelection =
+  | {
+      kind: "friend";
+      id: string;
+    }
+  | {
+      kind: "group";
+      id: string;
+    }
+  | {
+      kind: "community";
+      id: string;
+    };
+
+function groupImageSrc(
+  value?: string | null
+) {
+  if (!value) return null;
+
+  const prefix =
+    "/api/v1/chat/group-images/";
+
+  if (value.startsWith(prefix)) {
+    return value.replace(
+      prefix,
+      "/api/chat/group-images/"
+    );
+  }
+
+  return value;
+}
+
 function time(value: string) {
   return new Intl.DateTimeFormat(
     "de-DE",
@@ -45,8 +153,17 @@ function time(value: string) {
   ).format(new Date(value));
 }
 
+function initials(value?: string | null) {
+  return (value || "?")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+}
+
 export default function ChatPage() {
   const router = useRouter();
+  const imageInputRef =
+    useRef<HTMLInputElement | null>(null);
 
   const [user, setUser] =
     useState<User | null>(null);
@@ -54,17 +171,35 @@ export default function ChatPage() {
   const [threads, setThreads] =
     useState<Thread[]>([]);
 
-  const [selected, setSelected] =
-    useState<string | null>(null);
+  const [groups, setGroups] =
+    useState<GroupSummary[]>([]);
+
+  const [rooms, setRooms] =
+    useState<CommunityRoom[]>([]);
+
+  const [selection, setSelection] =
+    useState<ChatSelection | null>(null);
 
   const [messages, setMessages] =
     useState<Message[]>([]);
+
+  const [groupMessages, setGroupMessages] =
+    useState<GroupMessage[]>([]);
+
+  const [communityMessages, setCommunityMessages] =
+    useState<CommunityMessage[]>([]);
+
+  const [groupDetail, setGroupDetail] =
+    useState<GroupDetail | null>(null);
 
   const [draft, setDraft] =
     useState("");
 
   const [status, setStatus] =
     useState<string | null>(null);
+
+  const [showGroupSettings, setShowGroupSettings] =
+    useState(false);
 
   const loadThreads =
     useCallback(async () => {
@@ -79,27 +214,46 @@ export default function ChatPage() {
           await response.json();
 
         setThreads(loaded);
+      }
+    }, []);
 
-        setSelected((current) =>
-          current ??
-          loaded[0]?.friendCode ??
-          null
+  const loadGroups =
+    useCallback(async () => {
+      const response =
+        await fetch(
+          "/api/chat/groups",
+          { cache: "no-store" }
+        );
+
+      if (response.ok) {
+        const loaded =
+          await response.json() as GroupSummary[];
+
+        setGroups(loaded);
+      }
+    }, []);
+
+  const loadRooms =
+    useCallback(async () => {
+      const response =
+        await fetch(
+          "/api/chat/community/rooms",
+          { cache: "no-store" }
+        );
+
+      if (response.ok) {
+        setRooms(
+          await response.json()
         );
       }
     }, []);
 
-  const loadMessages =
+  const loadFriendMessages =
     useCallback(
-      async (
-        friendCode: string
-      ) => {
+      async (friendCode: string) => {
         const response =
           await fetch(
-            `/api/chat/${
-              encodeURIComponent(
-                friendCode
-              )
-            }/messages`,
+            `/api/chat/${encodeURIComponent(friendCode)}/messages`,
             { cache: "no-store" }
           );
 
@@ -114,6 +268,64 @@ export default function ChatPage() {
       [loadThreads]
     );
 
+  const loadGroupDetail =
+    useCallback(
+      async (groupId: string) => {
+        const response =
+          await fetch(
+            `/api/chat/groups/${encodeURIComponent(groupId)}`,
+            { cache: "no-store" }
+          );
+
+        if (response.ok) {
+          setGroupDetail(
+            await response.json()
+          );
+        }
+      },
+      []
+    );
+
+  const loadGroupMessages =
+    useCallback(
+      async (groupId: string) => {
+        const response =
+          await fetch(
+            `/api/chat/groups/${encodeURIComponent(groupId)}/messages?limit=80`,
+            { cache: "no-store" }
+          );
+
+        if (response.ok) {
+          setGroupMessages(
+            await response.json()
+          );
+          setStatus(null);
+          void loadGroups();
+        }
+      },
+      [loadGroups]
+    );
+
+  const loadCommunityMessages =
+    useCallback(
+      async (roomId: string) => {
+        const response =
+          await fetch(
+            `/api/chat/community/rooms/${encodeURIComponent(roomId)}/messages?limit=80`,
+            { cache: "no-store" }
+          );
+
+        if (response.ok) {
+          setCommunityMessages(
+            await response.json()
+          );
+          setStatus(null);
+          void loadRooms();
+        }
+      },
+      [loadRooms]
+    );
+
   useEffect(() => {
     const initialFriend =
       new URLSearchParams(
@@ -121,7 +333,10 @@ export default function ChatPage() {
       ).get("friend");
 
     if (initialFriend) {
-      setSelected(initialFriend);
+      setSelection({
+        kind: "friend",
+        id: initialFriend,
+      });
     }
 
     fetch("/api/auth/me", {
@@ -138,28 +353,116 @@ export default function ChatPage() {
           : null;
       })
       .then((loaded) => {
-        if (loaded) setUser(loaded);
+        if (loaded) {
+          setUser(loaded);
+        }
       });
 
     void loadThreads();
-  }, [loadThreads, router]);
+    void loadGroups();
+    void loadRooms();
+  }, [
+    loadGroups,
+    loadRooms,
+    loadThreads,
+    router,
+  ]);
 
   useEffect(() => {
-    if (!selected) return;
+    if (selection) {
+      return;
+    }
 
-    void loadMessages(selected);
+    if (groups.length > 0) {
+      setSelection({
+        kind: "group",
+        id: groups[0].id,
+      });
+      return;
+    }
+
+    if (rooms.length > 0) {
+      setSelection({
+        kind: "community",
+        id: rooms[0].id,
+      });
+      return;
+    }
+
+    if (threads.length > 0) {
+      setSelection({
+        kind: "friend",
+        id: threads[0].friendCode,
+      });
+    }
+  }, [
+    groups,
+    rooms,
+    selection,
+    threads,
+  ]);
+
+  useEffect(() => {
+    if (!selection) {
+      return;
+    }
+
+    setShowGroupSettings(false);
+    setDraft("");
+
+    if (selection.kind === "friend") {
+      setGroupDetail(null);
+      void loadFriendMessages(selection.id);
+
+      const interval =
+        window.setInterval(
+          () => {
+            void loadFriendMessages(selection.id);
+          },
+          5000
+        );
+
+      return () =>
+        window.clearInterval(interval);
+    }
+
+    if (selection.kind === "group") {
+      void loadGroupMessages(selection.id);
+      void loadGroupDetail(selection.id);
+
+      const interval =
+        window.setInterval(
+          () => {
+            void loadGroupMessages(selection.id);
+            void loadGroupDetail(selection.id);
+          },
+          5000
+        );
+
+      return () =>
+        window.clearInterval(interval);
+    }
+
+    setGroupDetail(null);
+    void loadCommunityMessages(selection.id);
 
     const interval =
       window.setInterval(
         () => {
-          void loadMessages(selected);
+          void loadCommunityMessages(selection.id);
         },
         5000
       );
 
     return () =>
       window.clearInterval(interval);
-  }, [loadMessages, selected]);
+  }, [
+    loadCommunityMessages,
+    loadFriendMessages,
+    loadGroupDetail,
+    loadGroupMessages,
+    selection,
+  ]);
 
   async function send(
     event: FormEvent
@@ -167,28 +470,54 @@ export default function ChatPage() {
     event.preventDefault();
 
     if (
-      !selected ||
+      !selection ||
       !draft.trim()
     ) {
       return;
     }
 
     const response =
-      await fetch(
-        `/api/chat/${
-          encodeURIComponent(selected)
-        }/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            body: draft,
-          }),
-        }
-      );
+      selection.kind === "friend"
+        ? await fetch(
+            `/api/chat/${encodeURIComponent(selection.id)}/messages`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                body: draft,
+              }),
+            }
+          )
+        : selection.kind === "group"
+          ? await fetch(
+              `/api/chat/groups/${encodeURIComponent(selection.id)}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  body: draft,
+                }),
+              }
+            )
+          : await fetch(
+              `/api/chat/community/rooms/${encodeURIComponent(selection.id)}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  body: draft,
+                }),
+              }
+            );
 
     if (!response.ok) {
       setStatus(
@@ -198,7 +527,20 @@ export default function ChatPage() {
     }
 
     setDraft("");
-    await loadMessages(selected);
+
+    if (selection.kind === "friend") {
+      await loadFriendMessages(
+        selection.id
+      );
+    } else if (selection.kind === "group") {
+      await loadGroupMessages(
+        selection.id
+      );
+    } else {
+      await loadCommunityMessages(
+        selection.id
+      );
+    }
   }
 
   async function report(
@@ -210,13 +552,13 @@ export default function ChatPage() {
         "Unangemessener Inhalt"
       );
 
-    if (reason === null) return;
+    if (reason === null) {
+      return;
+    }
 
     const response =
       await fetch(
-        `/api/chat/messages/${
-          encodeURIComponent(message.id)
-        }/report`,
+        `/api/chat/messages/${encodeURIComponent(message.id)}/report`,
         {
           method: "POST",
           headers: {
@@ -236,10 +578,520 @@ export default function ChatPage() {
     );
   }
 
+  async function createGroup() {
+    const name =
+      window.prompt(
+        "Name der neuen Gruppe:",
+        "Meine Gruppe"
+      )
+        ?.trim();
+
+    if (!name) {
+      return;
+    }
+
+    const memberInput =
+      window.prompt(
+        "Freundes-Codes der Mitglieder, durch Komma getrennt. Leer lassen geht auch.",
+        ""
+      );
+
+    if (memberInput === null) {
+      return;
+    }
+
+    const memberFriendCodes =
+      memberInput
+        .split(",")
+        .map((value) =>
+          value.trim()
+        )
+        .filter(Boolean);
+
+    const response =
+      await fetch(
+        "/api/chat/groups",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            memberFriendCodes,
+          }),
+        }
+      );
+
+    if (!response.ok) {
+      setStatus(
+        "Gruppe konnte nicht erstellt werden. Prüfe die Freundes-Codes."
+      );
+      return;
+    }
+
+    const group =
+      await response.json() as GroupSummary;
+
+    await loadGroups();
+
+    setSelection({
+      kind: "group",
+      id: group.id,
+    });
+
+    setStatus(
+      "Gruppe wurde erstellt."
+    );
+  }
+
+  async function renameGroup() {
+    if (
+      !selection ||
+      selection.kind !== "group" ||
+      !groupDetail
+    ) {
+      return;
+    }
+
+    const name =
+      window.prompt(
+        "Neuer Gruppenname:",
+        groupDetail.name
+      )
+        ?.trim();
+
+    if (!name) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            name,
+          }),
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Gruppenname geändert."
+        : "Gruppenname konnte nicht geändert werden."
+    );
+
+    if (response.ok) {
+      await Promise.all([
+        loadGroups(),
+        loadGroupDetail(selection.id),
+      ]);
+    }
+  }
+
+  async function addMember() {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    const friendCode =
+      window.prompt(
+        "Freundes-Code hinzufügen:"
+      )
+        ?.trim();
+
+    if (!friendCode) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/members`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            friendCode,
+          }),
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Mitglied hinzugefügt."
+        : "Mitglied konnte nicht hinzugefügt werden."
+    );
+
+    if (response.ok) {
+      await Promise.all([
+        loadGroups(),
+        loadGroupDetail(selection.id),
+      ]);
+    }
+  }
+
+  async function updateRole(
+    member: GroupMember,
+    role: "ADMIN" | "MEMBER"
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/members/${encodeURIComponent(member.friendCode)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            role,
+          }),
+        }
+      );
+
+    if (!response.ok) {
+      setStatus(
+        "Rolle konnte nicht geändert werden."
+      );
+      return;
+    }
+
+    await loadGroupDetail(
+      selection.id
+    );
+  }
+
+  async function removeMember(
+    member: GroupMember
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `${member.displayName || member.friendCode} aus der Gruppe entfernen?`
+      )
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/members/${encodeURIComponent(member.friendCode)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Mitglied entfernt."
+        : "Mitglied konnte nicht entfernt werden."
+    );
+
+    if (response.ok) {
+      await Promise.all([
+        loadGroups(),
+        loadGroupDetail(selection.id),
+      ]);
+    }
+  }
+
+  async function leaveGroup() {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Gruppe wirklich verlassen?"
+      )
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/leave`,
+        {
+          method: "DELETE",
+        }
+      );
+
+    if (!response.ok) {
+      setStatus(
+        "Gruppe konnte nicht verlassen werden."
+      );
+      return;
+    }
+
+    setSelection(null);
+    setGroupDetail(null);
+    setGroupMessages([]);
+    await loadGroups();
+  }
+
+  async function reportCommunityMessage(
+    message: CommunityMessage
+  ) {
+    const reason =
+      window.prompt(
+        "Warum möchtest du diese Nachricht melden?",
+        "Unangemessener Inhalt"
+      );
+
+    if (reason === null) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/community/messages/${encodeURIComponent(message.id)}/report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            reason,
+          }),
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Nachricht wurde gemeldet."
+        : "Meldung konnte nicht gesendet werden."
+    );
+  }
+
+  async function blockCommunityUser(
+    friendCode: string
+  ) {
+    if (
+      !window.confirm(
+        `${friendCode} blockieren?`
+      )
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        "/api/chat/community/blocks",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            friendCode,
+          }),
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Nutzer wurde blockiert."
+        : "Nutzer konnte nicht blockiert werden."
+    );
+
+    if (
+      response.ok &&
+      selection?.kind === "community"
+    ) {
+      await loadCommunityMessages(
+        selection.id
+      );
+    }
+  }
+
+  async function toggleCommunityReaction(
+    messageId: string,
+    emoji: string
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "community"
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/community/rooms/${encodeURIComponent(selection.id)}/messages/${encodeURIComponent(messageId)}/reactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            emoji,
+          }),
+        }
+      );
+
+    if (response.ok) {
+      await loadCommunityMessages(
+        selection.id
+      );
+    }
+  }
+
+  async function toggleGroupReaction(
+    messageId: string,
+    emoji: string
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/messages/${encodeURIComponent(messageId)}/reactions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            emoji,
+          }),
+        }
+      );
+
+    if (response.ok) {
+      await loadGroupMessages(
+        selection.id
+      );
+    }
+  }
+
+  async function uploadGroupImage(
+    file: File
+  ) {
+    if (
+      !selection ||
+      selection.kind !== "group"
+    ) {
+      return;
+    }
+
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setStatus(
+        "Gruppenbild ist zu groß."
+      );
+      return;
+    }
+
+    const response =
+      await fetch(
+        `/api/chat/groups/${encodeURIComponent(selection.id)}/image`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type":
+              file.type ||
+              "application/octet-stream",
+          },
+          body: file,
+        }
+      );
+
+    setStatus(
+      response.ok
+        ? "Gruppenbild aktualisiert."
+        : "Gruppenbild konnte nicht aktualisiert werden."
+    );
+
+    if (response.ok) {
+      await Promise.all([
+        loadGroups(),
+        loadGroupDetail(selection.id),
+      ]);
+    }
+  }
+
   const activeThread =
-    threads.find(
-      (thread) =>
-        thread.friendCode === selected
+    useMemo(
+      () =>
+        selection?.kind === "friend"
+          ? threads.find(
+              (thread) =>
+                thread.friendCode ===
+                selection.id
+            )
+          : null,
+      [
+        selection,
+        threads,
+      ]
+    );
+
+  const activeGroup =
+    useMemo(
+      () =>
+        selection?.kind === "group"
+          ? groups.find(
+              (group) =>
+                group.id === selection.id
+            )
+          : null,
+      [
+        groups,
+        selection,
+      ]
+    );
+
+  const activeRoom =
+    useMemo(
+      () =>
+        selection?.kind === "community"
+          ? rooms.find(
+              (room) =>
+                room.id === selection.id
+            )
+          : null,
+      [
+        rooms,
+        selection,
+      ]
     );
 
   return (
@@ -253,18 +1105,94 @@ export default function ChatPage() {
             Nachrichten
           </span>
 
-          <h1>Freundeschat</h1>
+          <h1>Chats & Gruppen</h1>
 
           <p>
-            Private Nachrichten sind nur
-            zwischen bestätigten Freunden
-            möglich.
+            Freundeschats und Gruppen laufen
+            jetzt auf Web und Android über
+            denselben Cardyssey-Stand.
           </p>
         </div>
+
+        <button
+          type="button"
+          className="primaryButton"
+          onClick={() =>
+            void createGroup()
+          }
+        >
+          + Neue Gruppe
+        </button>
       </section>
 
       <div className="chatLayout">
         <aside className="chatThreadList">
+          <div className="chatListHead">
+            <strong>Gruppen</strong>
+            <span>
+              {groups.length}
+            </span>
+          </div>
+
+          {groups.length === 0 ? (
+            <p className="muted">
+              Noch keine Gruppen.
+            </p>
+          ) : (
+            groups.map((group) => (
+              <button
+                type="button"
+                key={group.id}
+                className={
+                  selection?.kind === "group" &&
+                  selection.id === group.id
+                    ? "chatThread active"
+                    : "chatThread"
+                }
+                onClick={() =>
+                  setSelection({
+                    kind: "group",
+                    id: group.id,
+                  })
+                }
+              >
+                <span className="chatAvatar">
+                  {group.imageUrl ? (
+                    <img
+                      src={groupImageSrc(group.imageUrl) ?? undefined}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        borderRadius: "inherit",
+                      }}
+                    />
+                  ) : (
+                    initials(group.name)
+                  )}
+                </span>
+
+                <span className="chatThreadText">
+                  <strong>
+                    {group.name}
+                  </strong>
+                  <small>
+                    {group.lastMessage
+                      ?.body ||
+                      `${group.memberCount} Mitglieder`}
+                  </small>
+                </span>
+
+                {group.unreadCount > 0 && (
+                  <b className="chatUnread">
+                    {group.unreadCount}
+                  </b>
+                )}
+              </button>
+            ))
+          )}
+
           <div className="chatListHead">
             <strong>Freunde</strong>
             <span>
@@ -275,7 +1203,7 @@ export default function ChatPage() {
           {threads.length === 0 ? (
             <p className="muted">
               Füge zuerst einen Freund hinzu,
-              um einen Chat zu beginnen.
+              um einen privaten Chat zu beginnen.
             </p>
           ) : (
             threads.map((thread) => (
@@ -283,22 +1211,24 @@ export default function ChatPage() {
                 type="button"
                 key={thread.friendCode}
                 className={
-                  selected ===
-                  thread.friendCode
+                  selection?.kind === "friend" &&
+                  selection.id ===
+                    thread.friendCode
                     ? "chatThread active"
                     : "chatThread"
                 }
                 onClick={() =>
-                  setSelected(
-                    thread.friendCode
-                  )
+                  setSelection({
+                    kind: "friend",
+                    id: thread.friendCode,
+                  })
                 }
               >
                 <span className="chatAvatar">
-                  {(thread.displayName ??
-                    thread.friendCode)
-                    .charAt(0)
-                    .toUpperCase()}
+                  {initials(
+                    thread.displayName ??
+                      thread.friendCode
+                  )}
                 </span>
 
                 <span className="chatThreadText">
@@ -322,37 +1252,70 @@ export default function ChatPage() {
             ))
           )}
 
-          <div
-            className="globalChatPreview"
-            aria-disabled="true"
-          >
-            <span>Global · Vorschau</span>
-            <strong>
-              Cardyssey Lounge
-            </strong>
-            <small>
-              Die globale Community-Umgebung ist
-              vorbereitet. Schreiben bleibt
-              gesperrt, bis die Schutzfunktionen
-              vollständig aktiv sind.
-            </small>
-            <div className="globalChatSafety">
-              <b>Melden</b>
-              <b>Blockieren</b>
-              <b>Spam-Schutz</b>
-            </div>
-            <button type="button" disabled>
-              Lounge noch geschlossen
-            </button>
+          <div className="chatListHead">
+            <strong>Community</strong>
+            <span>
+              {rooms.length}
+            </span>
           </div>
+
+          {rooms.length === 0 ? (
+            <p className="muted">
+              Noch keine Community-Räume verfügbar.
+            </p>
+          ) : (
+            rooms.map((room) => (
+              <button
+                type="button"
+                key={room.id}
+                className={
+                  selection?.kind === "community" &&
+                  selection.id === room.id
+                    ? "chatThread active"
+                    : "chatThread"
+                }
+                onClick={() =>
+                  setSelection({
+                    kind: "community",
+                    id: room.id,
+                  })
+                }
+              >
+                <span className="chatAvatar">
+                  #
+                </span>
+
+                <span className="chatThreadText">
+                  <strong>
+                    {room.name}
+                  </strong>
+                  <small>
+                    {room.lastMessagePreview ??
+                      (
+                        room.roomType === "SET"
+                          ? room.setName
+                          : room.languageCode.toUpperCase()
+                      ) ??
+                      "Community"}
+                  </small>
+                </span>
+
+                {room.unreadCount > 0 && (
+                  <b className="chatUnread">
+                    {room.unreadCount}
+                  </b>
+                )}
+              </button>
+            ))
+          )}
         </aside>
 
         <section className="chatRoom">
-          {!selected ? (
+          {!selection ? (
             <div className="chatEmpty">
-              Wähle einen Freund aus.
+              Wähle einen Chat oder eine Gruppe.
             </div>
-          ) : (
+          ) : selection.kind === "friend" ? (
             <>
               <header className="chatRoomHead">
                 <div>
@@ -362,7 +1325,7 @@ export default function ChatPage() {
                   <strong>
                     {activeThread
                       ?.displayName ??
-                      selected}
+                      selection.id}
                   </strong>
                 </div>
               </header>
@@ -387,7 +1350,9 @@ export default function ChatPage() {
                             : "chatMessage"
                         }
                       >
-                        <p>{message.body}</p>
+                        <p>
+                          {message.body}
+                        </p>
                         <footer>
                           <time>
                             {time(
@@ -423,6 +1388,544 @@ export default function ChatPage() {
                   value={draft}
                   maxLength={2000}
                   placeholder="Nachricht schreiben …"
+                  onChange={(event) =>
+                    setDraft(
+                      event.target.value
+                    )
+                  }
+                />
+
+                <button
+                  className="primaryButton"
+                  type="submit"
+                  disabled={!draft.trim()}
+                >
+                  Senden
+                </button>
+              </form>
+            </>
+          ) : selection.kind === "group" ? (
+            <>
+              <header className="chatRoomHead">
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                  }}
+                >
+                  <span className="chatAvatar">
+                    {activeGroup?.imageUrl ? (
+                      <img
+                        src={groupImageSrc(activeGroup.imageUrl) ?? undefined}
+                        alt=""
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderRadius: "inherit",
+                        }}
+                      />
+                    ) : (
+                      initials(
+                        activeGroup?.name
+                      )
+                    )}
+                  </span>
+                  <div>
+                    <span>
+                      Gruppe · {activeGroup?.memberCount ?? 0} Mitglieder
+                    </span>
+                    <strong>
+                      {activeGroup?.name ??
+                        groupDetail?.name ??
+                        "Gruppe"}
+                    </strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ghostButton"
+                  onClick={() =>
+                    setShowGroupSettings(
+                      (current) =>
+                        !current
+                    )
+                  }
+                >
+                  Verwalten
+                </button>
+              </header>
+
+              {showGroupSettings && groupDetail && (
+                <div
+                  className="statusPanel"
+                  style={{
+                    margin: "12px",
+                    display: "grid",
+                    gap: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {(groupDetail.role === "OWNER" ||
+                      groupDetail.role === "ADMIN") && (
+                      <>
+                        <button
+                          type="button"
+                          className="ghostButton"
+                          onClick={() =>
+                            void renameGroup()
+                          }
+                        >
+                          Namen ändern
+                        </button>
+                        <button
+                          type="button"
+                          className="ghostButton"
+                          onClick={() =>
+                            void addMember()
+                          }
+                        >
+                          Freund hinzufügen
+                        </button>
+                        <button
+                          type="button"
+                          className="ghostButton"
+                          onClick={() =>
+                            imageInputRef.current?.click()
+                          }
+                        >
+                          Gruppenbild
+                        </button>
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(event) => {
+                            const file =
+                              event.target.files?.[0];
+
+                            if (file) {
+                              void uploadGroupImage(
+                                file
+                              );
+                            }
+
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      className="ghostButton"
+                      style={{
+                        color: "var(--pink)",
+                      }}
+                      onClick={() =>
+                        void leaveGroup()
+                      }
+                    >
+                      Gruppe verlassen
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "8px",
+                    }}
+                  >
+                    {groupDetail.members.map(
+                      (member) => (
+                        <div
+                          key={member.friendCode}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            padding: "8px 0",
+                            borderBottom:
+                              "1px solid rgba(38,58,85,.45)",
+                          }}
+                        >
+                          <div>
+                            <strong>
+                              {member.displayName ||
+                                member.friendCode}
+                            </strong>
+                            <div className="muted">
+                              {member.friendCode} · {member.role}
+                            </div>
+                          </div>
+
+                          {groupDetail.role === "OWNER" &&
+                            member.role !== "OWNER" && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "6px",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="ghostButton"
+                                  onClick={() =>
+                                    void updateRole(
+                                      member,
+                                      member.role === "ADMIN"
+                                        ? "MEMBER"
+                                        : "ADMIN"
+                                    )
+                                  }
+                                >
+                                  {member.role === "ADMIN"
+                                    ? "Admin entfernen"
+                                    : "Zum Admin"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ghostButton"
+                                  onClick={() =>
+                                    void removeMember(
+                                      member
+                                    )
+                                  }
+                                >
+                                  Entfernen
+                                </button>
+                              </div>
+                            )}
+
+                          {groupDetail.role === "ADMIN" &&
+                            member.role === "MEMBER" && (
+                              <button
+                                type="button"
+                                className="ghostButton"
+                                onClick={() =>
+                                  void removeMember(
+                                    member
+                                  )
+                                }
+                              >
+                                Entfernen
+                              </button>
+                            )}
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="chatMessages">
+                {groupMessages.length === 0 ? (
+                  <div className="chatEmpty">
+                    Noch keine Gruppennachrichten.
+                  </div>
+                ) : (
+                  groupMessages.map(
+                    (message) => {
+                      const own =
+                        message.senderFriendCode ===
+                        user?.friendCode;
+
+                      return (
+                        <article
+                          key={message.id}
+                          className={
+                            own
+                              ? "chatMessage own"
+                              : "chatMessage"
+                          }
+                        >
+                          {!own && (
+                            <strong
+                              style={{
+                                fontSize: "12px",
+                              }}
+                            >
+                              {message.senderDisplayName ||
+                                message.senderFriendCode}
+                            </strong>
+                          )}
+                          <p>
+                            {message.body}
+                          </p>
+
+                          {message.objectType && (
+                            <div
+                              className="chip"
+                              style={{
+                                marginTop: "6px",
+                              }}
+                            >
+                              Geteilter Inhalt · {message.objectType}
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "5px",
+                              flexWrap: "wrap",
+                              marginTop: "7px",
+                            }}
+                          >
+                            {["❤️", "👍", "🔥", "😂", "😮"].map(
+                              (emoji) => {
+                                const reaction =
+                                  message.reactions?.find(
+                                    (item) =>
+                                      item.emoji === emoji
+                                  );
+
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className="ghostButton"
+                                    style={{
+                                      minHeight: "30px",
+                                      padding: "0 8px",
+                                      opacity:
+                                        reaction?.reactedByMe
+                                          ? 1
+                                          : 0.75,
+                                    }}
+                                    onClick={() =>
+                                      void toggleGroupReaction(
+                                        message.id,
+                                        emoji
+                                      )
+                                    }
+                                  >
+                                    {emoji}
+                                    {reaction?.count
+                                      ? ` ${reaction.count}`
+                                      : ""}
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          <footer>
+                            <time>
+                              {time(
+                                message.createdAt
+                              )}
+                            </time>
+                          </footer>
+                        </article>
+                      );
+                    }
+                  )
+                )}
+              </div>
+
+              {status && (
+                <div className="chatStatus">
+                  {status}
+                </div>
+              )}
+
+              <form
+                className="chatComposer"
+                onSubmit={send}
+              >
+                <textarea
+                  value={draft}
+                  maxLength={2000}
+                  placeholder="Nachricht an die Gruppe …"
+                  onChange={(event) =>
+                    setDraft(
+                      event.target.value
+                    )
+                  }
+                />
+
+                <button
+                  className="primaryButton"
+                  type="submit"
+                  disabled={!draft.trim()}
+                >
+                  Senden
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <header className="chatRoomHead">
+                <div>
+                  <span>
+                    Community · {activeRoom?.languageCode.toUpperCase() ?? "GLOBAL"}
+                  </span>
+                  <strong>
+                    {activeRoom?.name ?? "Community"}
+                  </strong>
+                </div>
+              </header>
+
+              <div className="chatMessages">
+                {communityMessages.length === 0 ? (
+                  <div className="chatEmpty">
+                    Noch keine Nachrichten in diesem Raum.
+                  </div>
+                ) : (
+                  communityMessages.map(
+                    (message) => {
+                      const own =
+                        message.senderFriendCode ===
+                        user?.friendCode;
+
+                      return (
+                        <article
+                          key={message.id}
+                          className={
+                            own
+                              ? "chatMessage own"
+                              : "chatMessage"
+                          }
+                        >
+                          {!own && (
+                            <strong
+                              style={{
+                                fontSize: "12px",
+                              }}
+                            >
+                              {message.senderDisplayName ||
+                                message.senderFriendCode}
+                            </strong>
+                          )}
+
+                          {message.deleted ? (
+                            <p className="muted">
+                              Nachricht entfernt.
+                            </p>
+                          ) : (
+                            <p>{message.body}</p>
+                          )}
+
+                          {message.objectType && (
+                            <div
+                              className="chip"
+                              style={{ marginTop: "6px" }}
+                            >
+                              Geteilter Inhalt · {message.objectType}
+                            </div>
+                          )}
+
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "5px",
+                              flexWrap: "wrap",
+                              marginTop: "7px",
+                            }}
+                          >
+                            {["❤️", "👍", "🔥", "😂", "😮"].map(
+                              (emoji) => {
+                                const reaction =
+                                  message.reactions?.find(
+                                    (item) =>
+                                      item.emoji === emoji
+                                  );
+
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className="ghostButton"
+                                    style={{
+                                      minHeight: "30px",
+                                      padding: "0 8px",
+                                      opacity:
+                                        reaction?.reactedByMe
+                                          ? 1
+                                          : 0.75,
+                                    }}
+                                    onClick={() =>
+                                      void toggleCommunityReaction(
+                                        message.id,
+                                        emoji
+                                      )
+                                    }
+                                  >
+                                    {emoji}
+                                    {reaction?.count
+                                      ? ` ${reaction.count}`
+                                      : ""}
+                                  </button>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          <footer>
+                            <time>
+                              {time(
+                                message.createdAt
+                              )}
+                            </time>
+
+                            {!own && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void reportCommunityMessage(
+                                      message
+                                    )
+                                  }
+                                >
+                                  Melden
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void blockCommunityUser(
+                                      message.senderFriendCode
+                                    )
+                                  }
+                                >
+                                  Blockieren
+                                </button>
+                              </>
+                            )}
+                          </footer>
+                        </article>
+                      );
+                    }
+                  )
+                )}
+              </div>
+
+              {status && (
+                <div className="chatStatus">
+                  {status}
+                </div>
+              )}
+
+              <form
+                className="chatComposer"
+                onSubmit={send}
+              >
+                <textarea
+                  value={draft}
+                  maxLength={2000}
+                  placeholder="Nachricht an die Community …"
                   onChange={(event) =>
                     setDraft(
                       event.target.value
