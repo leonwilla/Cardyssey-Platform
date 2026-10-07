@@ -1728,15 +1728,27 @@ class CardCatalogService(
             localId in setOf("BW13", "BW25", "BW33", "BW34", "BW80")
         ) {
             val result =
-                mutableListOf(
+                mutableListOf<CatalogVariant>()
+
+            if (localId == "BW80") {
+                result +=
                     CatalogVariant(
-                        id = "curated:en:bwp:$localId:cosmos-holo",
+                        id = "curated:en:bwp:BW80:holo",
                         type = "Holo",
-                        foil = "cosmos",
                         size = "standard",
                         legacyVariant = "HOLO",
                         tcgDexEur = null
                     )
+            }
+
+            result +=
+                CatalogVariant(
+                    id = "curated:en:bwp:$localId:cosmos-holo",
+                    type = "Holo",
+                    foil = "cosmos",
+                    size = "standard",
+                    legacyVariant = "HOLO",
+                    tcgDexEur = null
                 )
 
             if (localId in setOf("BW13", "BW25", "BW34")) {
