@@ -220,6 +220,30 @@ for idx,(gid,items) in enumerate(sorted(by_group.items()),1):
             if len(printing)==1:
                 candidates=printing
         if len(candidates)>1:
+            priced_candidates=[]
+            for candidate in candidates:
+                rows=price_by.get(int(candidate.get("productId") or 0),[])
+                matching=[
+                    row for row in rows
+                    if subtype_matches(
+                        row.get("subTypeName"),
+                        t["legacy"],
+                        t["variant"]
+                    )
+                    and isinstance(
+                        row.get("marketPrice")
+                            if isinstance(row.get("marketPrice"),(int,float))
+                            and math.isfinite(row.get("marketPrice"))
+                            and row.get("marketPrice")>0
+                            else row.get("midPrice"),
+                        (int,float)
+                    )
+                ]
+                if len(matching)==1:
+                    priced_candidates.append(candidate)
+            if len(priced_candidates)==1:
+                candidates=priced_candidates
+        if len(candidates)>1:
             non_staff=[
                 p for p in candidates
                 if "[staff]" not in str(p.get("name") or "").lower()
