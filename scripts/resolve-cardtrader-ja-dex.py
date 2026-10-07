@@ -114,11 +114,41 @@ for r in rows:
     if len(cand)!=1:
         if len(cand)>1: ambiguous+=1
         continue
-    resolved.append({**r,"dex_id":int(did),"blueprint_id":int(cand[0]["id"])})
+    blueprint=cand[0]
+    cmids=[]
+    for value in blueprint.get("card_market_ids") or []:
+        try: cmids.append(int(value))
+        except (TypeError,ValueError): pass
+    resolved.append({
+        **r,
+        "dex_id":int(did),
+        "blueprint_id":int(blueprint["id"]),
+        "cardmarket_id":cmids[0] if len(cmids)==1 else None,
+    })
 
 print(f"ja_dex_resolved={len(resolved)} ambiguous={ambiguous}",flush=True)
 for sid in SET_CODE:
     print(f"ja_dex_set={sid} resolved={sum(1 for r in resolved if r['set_id']==sid)}",flush=True)
+
+identity_rows=[r for r in resolved if r["cardmarket_id"] is not None]
+if identity_rows:
+    values=[]
+    for r in identity_rows:
+        values.append(
+            f"('{q(r['card_id'])}','ja','{q(r['variant_id'])}',"
+            f"{r['cardmarket_id']},{r['blueprint_id']},{r['expansion_id']},'ja-dex')"
+        )
+    db(
+        "INSERT INTO cardtrader_variant_identity_cache"
+        "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
+        + ",".join(values)
+        + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
+          "cardmarket_product_id=EXCLUDED.cardmarket_product_id,"
+          "blueprint_id=EXCLUDED.blueprint_id,"
+          "expansion_id=EXCLUDED.expansion_id,"
+          "method=EXCLUDED.method,updated_at=NOW()"
+    )
+print(f"ja_dex_variant_identities={len(identity_rows)}",flush=True)
 
 updates=[]
 reasons={"no_products":0,"language":0,"condition":0,"reverse":0,"price":0}

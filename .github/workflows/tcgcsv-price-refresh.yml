@@ -49,3 +49,6 @@ jobs:
 
       - name: Resolve Traditional Chinese special printings
         run: python3 scripts/resolve-cardtrader-zhtw-specials.py
+
+      - name: Bridge exact CardTrader identities to Cardmarket
+        run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py

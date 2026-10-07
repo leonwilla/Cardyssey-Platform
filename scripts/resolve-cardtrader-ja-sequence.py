@@ -52,8 +52,38 @@ ORDER BY c.local_id::int""")
         bp=bps[pos-1]
         rarity=str((bp.get("fixed_properties") or {}).get("pokemon_rarity") or "").lower()
         if ("holo" in rarity)!=(legacy=="HOLO"): continue
-        rows.append({"card_id":cid,"local_id":local_id,"name":name,"variant_id":vid,"legacy":legacy,"blueprint_id":int(bp["id"]),"blueprint_name":str(bp.get("name") or "")})
+        cmids=[]
+        for value in bp.get("card_market_ids") or []:
+            try: cmids.append(int(value))
+            except (TypeError,ValueError): pass
+        rows.append({
+            "card_id":cid,"local_id":local_id,"name":name,
+            "variant_id":vid,"legacy":legacy,
+            "blueprint_id":int(bp["id"]),
+            "blueprint_name":str(bp.get("name") or ""),
+            "cardmarket_id":cmids[0] if len(cmids)==1 else None,
+        })
     print(f"sequence_set={setid} resolved={len(rows)} expansion={eid}",flush=True)
+
+    identity_rows=[r for r in rows if r["cardmarket_id"] is not None]
+    if identity_rows:
+        values=[]
+        for r in identity_rows:
+            values.append(
+                f"('{q(r['card_id'])}','ja','{q(r['variant_id'])}',"
+                f"{r['cardmarket_id']},{r['blueprint_id']},{eid},'ja-sequence')"
+            )
+        db(
+            "INSERT INTO cardtrader_variant_identity_cache"
+            "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
+            + ",".join(values)
+            + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
+              "cardmarket_product_id=EXCLUDED.cardmarket_product_id,"
+              "blueprint_id=EXCLUDED.blueprint_id,"
+              "expansion_id=EXCLUDED.expansion_id,"
+              "method=EXCLUDED.method,updated_at=NOW()"
+        )
+    print(f"sequence_set={setid} variant_identities={len(identity_rows)}",flush=True)
 
     payload=get(f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),40)
     before=len(updates)
