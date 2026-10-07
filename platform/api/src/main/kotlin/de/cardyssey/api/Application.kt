@@ -250,6 +250,11 @@ fun Application.module() {
             ?.trim()
             ?.takeIf(String::isNotBlank)
 
+    val pkmnPricesApiKey =
+        System.getenv("PKMNPRICES_API_KEY")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
+
     val ebayDirectEnabled =
         System.getenv("EBAY_DIRECT_ENABLED")
             ?.trim()
@@ -292,7 +297,9 @@ fun Application.module() {
         CardPricingService(
             catalog = cardCatalog,
             justTcgApiKey =
-                justTcgApiKey
+                justTcgApiKey,
+            pkmnPricesApiKey =
+                pkmnPricesApiKey
         )
 
     val tcgPriceCacheTtlHours =

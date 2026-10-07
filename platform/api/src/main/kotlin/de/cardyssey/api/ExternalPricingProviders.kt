@@ -703,3 +703,559 @@ private fun median(values: List<Double>): Double {
         sorted[middle]
     }
 }
+
+internal class PkmnPricesCentralPricingProvider(
+    private val apiKey: String
+) : CentralPricingProvider {
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val http = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NORMAL)
+        .build()
+
+    @Volatile
+    private var retryAtMs = 0L
+
+    override suspend fun quote(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): CentralProviderQuote? {
+        if (apiKey.isBlank()) return null
+        if (System.currentTimeMillis() < retryAtMs) return null
+
+        val providerLanguage =
+            when (card.languageCode.lowercase(Locale.ROOT)) {
+                "de" -> "German"
+                "en" -> "English"
+                "ja" -> "Japanese"
+                else -> return null
+            }
+
+        val searchUrl =
+            "https://api.pkmnprices.com/v1/cards" +
+                "?name=" + encode(card.name) +
+                "&number=" + encode(card.localId) +
+                "&language=" + encode(providerLanguage) +
+                "&per_page=100"
+
+        val search = getJson(searchUrl) ?: return null
+        val cards = search["data"] as? JsonArray ?: return null
+        val expectedName = normalizeText(card.name)
+        val expectedSet = normalizeText(card.setName)
+        val expectedNumber = normalizeNumber(card.localId)
+
+        val numbered =
+            cards.mapNotNull { it as? JsonObject }
+                .filter {
+                    normalizeNumber(it.string("number").orEmpty()) ==
+                        expectedNumber
+                }
+
+        val strict =
+            numbered.filter { raw ->
+                val name = normalizeText(raw.string("name").orEmpty())
+                val setName =
+                    (raw["set"] as? JsonObject)
+                        ?.string("name")
+                        ?.let(::normalizeText)
+                        .orEmpty()
+
+                val nameMatches =
+                    name == expectedName ||
+                        name.contains(expectedName) ||
+                        expectedName.contains(name)
+
+                val setMatches =
+                    expectedSet.isBlank() ||
+                        setName == expectedSet ||
+                        setName.contains(expectedSet) ||
+                        expectedSet.contains(setName)
+
+                nameMatches && setMatches
+            }
+
+        val candidate =
+            strict.singleOrNull()
+                ?: numbered
+                    .filter {
+                        normalizeText(it.string("name").orEmpty()) ==
+                            expectedName
+                    }
+                    .singleOrNull()
+                ?: return null
+
+        val providerId = candidate.string("id") ?: return null
+        val details =
+            getJson(
+                "https://api.pkmnprices.com/v1/cards/" +
+                    encode(providerId) +
+                    "?currency=eur"
+            ) ?: return null
+
+        val prices = details["prices"] as? JsonArray ?: return null
+        val eurValues =
+            prices.mapNotNull { it as? JsonObject }
+                .filter {
+                    normalizeText(it.string("source").orEmpty()) ==
+                        "cardmarket"
+                }
+                .filter {
+                    normalizeText(it.string("currency").orEmpty()) ==
+                        "eur"
+                }
+                .filter {
+                    val condition =
+                        normalizeText(it.string("condition").orEmpty())
+                    condition == "near mint" || condition == "mint"
+                }
+                .filter {
+                    printingMatches(
+                        providerPrinting = it.string("variant"),
+                        variant = variant
+                    )
+                }
+                .mapNotNull { it.double("market_price") }
+                .filter { it.isFinite() && it > 0.0 }
+
+        if (eurValues.isEmpty()) return null
+
+        val eur = median(eurValues)
+        val baseEur = eur / PricingCondition.NEAR_MINT.factor
+
+        return baseEur
+            .takeIf { it.isFinite() && it > 0.0 }
+            ?.let {
+                CentralProviderQuote(
+                    source = "PKMNPRICES_CARDMARKET",
+                    baseEur = it
+                )
+            }
+    }
+
+    private fun printingMatches(
+        providerPrinting: String?,
+        variant: CatalogVariant
+    ): Boolean {
+        val printing = normalizeText(providerPrinting.orEmpty())
+        if (printing.isBlank()) return false
+
+        val foil = normalizeText(variant.foil.orEmpty())
+        if (foil.isNotBlank()) {
+            val foilMatches =
+                when {
+                    "cosmos" in foil ->
+                        "cosmos" in printing
+                    "cracked" in foil && "ice" in foil ->
+                        "cracked" in printing && "ice" in printing
+                    "master" in foil ->
+                        "master" in printing && "ball" in printing
+                    "poke" in foil || "poki" in foil ->
+                        ("poke" in printing || "poki" in printing) &&
+                            "ball" in printing
+                    else ->
+                        printing.contains(foil)
+                }
+            if (!foilMatches) return false
+        }
+
+        if (!variant.subtype.isNullOrBlank()) {
+            val subtype = normalizeText(variant.subtype)
+            if (!printing.contains(subtype)) return false
+        }
+
+        if (variant.stamps.isNotEmpty()) {
+            val allStampsMatch =
+                variant.stamps.all { stamp ->
+                    val normalized = normalizeText(stamp)
+                    when {
+                        "1st edition" in normalized ||
+                            "first edition" in normalized ->
+                            "1st edition" in printing ||
+                                "first edition" in printing
+                        "pre release" in normalized ||
+                            "prerelease" in normalized ->
+                            "pre release" in printing ||
+                                "prerelease" in printing
+                        else ->
+                            printing.contains(normalized)
+                    }
+                }
+            if (!allStampsMatch) return false
+        }
+
+        if (
+            !variant.foil.isNullOrBlank() ||
+            !variant.subtype.isNullOrBlank() ||
+            variant.stamps.isNotEmpty()
+        ) {
+            return true
+        }
+
+        return when (variant.legacyVariant.uppercase(Locale.ROOT)) {
+            "REVERSE" ->
+                "reverse" in printing
+            "HOLO" ->
+                "holo" in printing && "reverse" !in printing
+            "NORMAL" ->
+                ("normal" in printing || "non holo" in printing) &&
+                    "reverse" !in printing
+            else ->
+                false
+        }
+    }
+
+    private suspend fun getJson(url: String): JsonObject? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request =
+                    HttpRequest.newBuilder(URI.create(url))
+                        .timeout(Duration.ofSeconds(20))
+                        .header("Accept", "application/json")
+                        .header("X-API-Key", apiKey)
+                        .GET()
+                        .build()
+
+                val response =
+                    http.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                    )
+
+                when {
+                    response.statusCode() in 200..299 ->
+                        json.parseToJsonElement(response.body()).jsonObject
+
+                    response.statusCode() == 429 -> {
+                        retryAtMs =
+                            System.currentTimeMillis() +
+                                60L * 60L * 1000L
+                        println(
+                            "PkmnPrices paused for 1h: rate limit reached"
+                        )
+                        null
+                    }
+
+                    response.statusCode() == 401 ||
+                        response.statusCode() == 403 -> {
+                        retryAtMs =
+                            System.currentTimeMillis() +
+                                24L * 60L * 60L * 1000L
+                        println(
+                            "PkmnPrices paused for 24h: HTTP " +
+                                response.statusCode()
+                        )
+                        null
+                    }
+
+                    response.statusCode() >= 500 ->
+                        throw IllegalStateException(
+                            "PkmnPrices unavailable: HTTP " +
+                                response.statusCode()
+                        )
+
+                    else ->
+                        null
+                }
+            }.getOrElse { error ->
+                if (
+                    error is IllegalStateException &&
+                    error.message?.startsWith("PkmnPrices ") == true
+                ) {
+                    throw error
+                }
+                null
+            }
+        }
+}
+
+internal class PokemonTcgIoCentralPricingProvider :
+    CentralPricingProvider {
+
+    private val json = Json { ignoreUnknownKeys = true }
+    private val http =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
+
+    private val paceLock = Any()
+
+    @Volatile
+    private var nextRequestAtMs = 0L
+
+    @Volatile
+    private var fxCachedAtMs = 0L
+
+    @Volatile
+    private var usdEurRate: Double? = null
+
+    override suspend fun quote(
+        card: CatalogCardDetails,
+        variant: CatalogVariant
+    ): CentralProviderQuote? {
+        if (!card.languageCode.equals("en", ignoreCase = true)) return null
+
+        if (
+            variant.stamps.isNotEmpty() ||
+            !variant.subtype.isNullOrBlank() ||
+            !variant.foil.isNullOrBlank() ||
+            (!variant.size.isNullOrBlank() &&
+                !variant.size.equals("standard", ignoreCase = true))
+        ) {
+            return null
+        }
+
+        val direct =
+            getJson(
+                "https://api.pokemontcg.io/v2/cards/" +
+                    encode(card.id)
+            )
+                ?.get("data") as? JsonObject
+
+        val raw =
+            direct
+                ?.takeIf {
+                    exactMatches(
+                        raw = it,
+                        card = card
+                    )
+                }
+                ?: searchExact(card)
+                ?: return null
+
+        val cardmarket =
+            (raw["cardmarket"] as? JsonObject)
+                ?.get("prices") as? JsonObject
+
+        val cardmarketEur =
+            when (variant.legacyVariant.uppercase(Locale.ROOT)) {
+                "NORMAL" ->
+                    firstPositive(
+                        cardmarket,
+                        "trendPrice",
+                        "avg7",
+                        "avg30",
+                        "averageSellPrice",
+                        "avg1"
+                    )
+                "REVERSE" ->
+                    firstPositive(
+                        cardmarket,
+                        "reverseHoloTrend",
+                        "reverseHoloAvg7",
+                        "reverseHoloAvg30",
+                        "reverseHoloSell",
+                        "reverseHoloAvg1"
+                    )
+                else -> null
+            }
+
+        if (cardmarketEur != null) {
+            return CentralProviderQuote(
+                source = "POKEMONTCGIO_CARDMARKET",
+                baseEur =
+                    cardmarketEur /
+                        PricingCondition.NEAR_MINT.factor
+            )
+        }
+
+        val tcgplayerPrices =
+            (raw["tcgplayer"] as? JsonObject)
+                ?.get("prices") as? JsonObject
+                ?: return null
+
+        val priceKey =
+            when (variant.legacyVariant.uppercase(Locale.ROOT)) {
+                "NORMAL" -> "normal"
+                "HOLO" -> "holofoil"
+                "REVERSE" -> "reverseHolofoil"
+                else -> return null
+            }
+
+        val priceObject =
+            tcgplayerPrices[priceKey] as? JsonObject
+                ?: return null
+
+        val usd =
+            firstPositive(
+                priceObject,
+                "market",
+                "mid",
+                "low"
+            ) ?: return null
+
+        val rate = usdToEurRate() ?: return null
+        val eur = usd * rate
+
+        return CentralProviderQuote(
+            source = "POKEMONTCGIO_TCGPLAYER",
+            baseEur =
+                eur /
+                    PricingCondition.NEAR_MINT.factor
+        )
+    }
+
+    private suspend fun searchExact(
+        card: CatalogCardDetails
+    ): JsonObject? {
+        val query =
+            "number:" + card.localId +
+                " name:" + card.name
+
+        val root =
+            getJson(
+                "https://api.pokemontcg.io/v2/cards" +
+                    "?q=" + encode(query) +
+                    "&pageSize=50"
+            ) ?: return null
+
+        val rows =
+            root["data"] as? JsonArray
+                ?: return null
+
+        return rows
+            .mapNotNull { it as? JsonObject }
+            .filter {
+                exactMatches(
+                    raw = it,
+                    card = card
+                )
+            }
+            .singleOrNull()
+    }
+
+    private fun exactMatches(
+        raw: JsonObject,
+        card: CatalogCardDetails
+    ): Boolean =
+        normalizeNumber(raw.string("number").orEmpty()) ==
+            normalizeNumber(card.localId) &&
+            normalizeText(raw.string("name").orEmpty()) ==
+                normalizeText(card.name)
+
+    private suspend fun usdToEurRate(): Double? {
+        val now = System.currentTimeMillis()
+        val cached = usdEurRate
+
+        if (
+            cached != null &&
+            now - fxCachedAtMs <
+                6L * 60L * 60L * 1000L
+        ) {
+            return cached
+        }
+
+        val root =
+            getJsonUnpaced(
+                "https://api.frankfurter.dev/v2/rate/USD/EUR"
+            ) ?: return cached
+
+        val rate =
+            root.double("rate")
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+                ?: return cached
+
+        usdEurRate = rate
+        fxCachedAtMs = now
+        return rate
+    }
+
+    private suspend fun getJson(
+        url: String
+    ): JsonObject? =
+        withContext(Dispatchers.IO) {
+            pace()
+
+            runCatching {
+                val request =
+                    HttpRequest.newBuilder(URI.create(url))
+                        .timeout(Duration.ofSeconds(20))
+                        .header("Accept", "application/json")
+                        .GET()
+                        .build()
+
+                val response =
+                    http.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                    )
+
+                when {
+                    response.statusCode() in 200..299 ->
+                        json.parseToJsonElement(
+                            response.body()
+                        ).jsonObject
+                    response.statusCode() == 404 ->
+                        null
+                    response.statusCode() == 429 ->
+                        null
+                    response.statusCode() >= 500 ->
+                        null
+                    else ->
+                        null
+                }
+            }.getOrNull()
+        }
+
+    private suspend fun getJsonUnpaced(
+        url: String
+    ): JsonObject? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val request =
+                    HttpRequest.newBuilder(URI.create(url))
+                        .timeout(Duration.ofSeconds(15))
+                        .header("Accept", "application/json")
+                        .GET()
+                        .build()
+
+                val response =
+                    http.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                    )
+
+                if (response.statusCode() !in 200..299) {
+                    return@runCatching null
+                }
+
+                json.parseToJsonElement(
+                    response.body()
+                ).jsonObject
+            }.getOrNull()
+        }
+
+    private fun pace() {
+        synchronized(paceLock) {
+            val now = System.currentTimeMillis()
+            val waitMs =
+                (nextRequestAtMs - now)
+                    .coerceAtLeast(0L)
+
+            if (waitMs > 0L) {
+                Thread.sleep(waitMs)
+            }
+
+            nextRequestAtMs =
+                System.currentTimeMillis() +
+                    2100L
+        }
+    }
+
+    private fun firstPositive(
+        raw: JsonObject?,
+        vararg keys: String
+    ): Double? =
+        keys.firstNotNullOfOrNull { key ->
+            raw
+                ?.double(key)
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+        }
+}

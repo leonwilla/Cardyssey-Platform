@@ -941,12 +941,20 @@ private class TcgDexCentralPricingProvider :
 
 class CardPricingService(
     private val catalog: CardCatalogService,
-    justTcgApiKey: String? = null
+    justTcgApiKey: String? = null,
+    pkmnPricesApiKey: String? = null
 ) {
     private val providers:
         List<CentralPricingProvider> =
         buildList {
             add(TcgDexCentralPricingProvider())
+            add(PokemonTcgIoCentralPricingProvider())
+            pkmnPricesApiKey
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let {
+                    add(PkmnPricesCentralPricingProvider(it))
+                }
             justTcgApiKey
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
@@ -1021,8 +1029,13 @@ class CardPricingService(
                         ) {
                             it
                         } else {
+                            /*
+                             * TCGdex and PokemonTCG.io are the free primary
+                             * providers. Paid/quota-limited providers stay
+                             * behind the explicit fallback budget.
+                             */
                             it.take(
-                                1
+                                2
                             )
                         }
                     }
