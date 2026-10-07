@@ -63,6 +63,20 @@ MAPPINGS=[
     {"card":"pl2-20","foil":["cosmos","kosmos"],"gid":1840,"pid":125052,"subtype":"Holofoil"},
     {"card":"pl3-15","foil":["cosmos","kosmos"],"gid":1840,"pid":95826,"subtype":"Holofoil"},
     {"card":"pl3-35","foil":["cosmos","kosmos"],"gid":1840,"pid":125074,"subtype":"Holofoil"},
+
+    # Pokemon League crosshatch printings. TCGplayer exposes these under the
+    # Reverse Holofoil price subtype even though the physical Cardyssey variant
+    # is modelled as a League Holo.
+    {"card":"dp4-15","foil":["league"],"gid":1539,"pid":164289,"subtype":"Reverse Holofoil"},
+    {"card":"dp4-98","foil":["league"],"gid":1539,"pid":123192,"subtype":"Reverse Holofoil"},
+    {"card":"dp5-88","foil":["league"],"gid":1539,"pid":164286,"subtype":"Reverse Holofoil"},
+    {"card":"dp6-19","foil":["league"],"gid":1539,"pid":162456,"subtype":"Reverse Holofoil"},
+    {"card":"dp6-43","foil":["league"],"gid":1539,"pid":145871,"subtype":"Reverse Holofoil"},
+
+    # Battle Academy 2024 holo printings represented as SV promo cards upstream.
+    {"card":"svp-105","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556445,"subtype":"Holofoil"},
+    {"card":"svp-106","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556443,"subtype":"Holofoil"},
+    {"card":"svp-110","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556444,"subtype":"Holofoil"},
     {"card":"dp6-131","foil":["cosmos","kosmos"],"gid":2374,"pid":123195,"subtype":"Holofoil"},
     {"card":"ex9-82","stamp":["professor-program","professorenprogramm"],"gid":2332,"pid":176630,"subtype":"Holofoil"},
     {"card":"hgss1-26","foil":["cosmos","kosmos"],"gid":1840,"pid":125041,"subtype":"Holofoil"},
