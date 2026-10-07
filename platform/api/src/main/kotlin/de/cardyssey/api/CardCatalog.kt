@@ -1535,6 +1535,16 @@ class CardCatalogService(
                     language
             )
 
+        if (
+            curated.isNotEmpty() &&
+            curatedVariantsReplaceUpstream(
+                card = card,
+                language = language
+            )
+        ) {
+            return curated.distinctBy { it.id }
+        }
+
         if (detailed.isNotEmpty()) {
             return (
                 detailed +
@@ -1682,6 +1692,29 @@ class CardCatalogService(
             }
     }
 
+    private fun curatedVariantsReplaceUpstream(
+        card: JsonObject,
+        language: String
+    ): Boolean {
+        if (language.lowercase() != "en") return false
+
+        val localId =
+            card.string("localId")
+                ?.trim()
+                ?.trimStart('0')
+                ?.ifBlank { "0" }
+
+        val setId =
+            card["set"]
+                ?.asObject()
+                ?.string("id")
+                ?.trim()
+                ?.lowercase()
+
+        return setId == "bwp" &&
+            localId in setOf("BW29", "BW30", "BW31")
+    }
+
     /*
      * Curated physical printings that are documented but still missing from
      * the upstream variant metadata. Keep these tightly scoped by language,
@@ -1716,6 +1749,41 @@ class CardCatalogService(
                 )
                 ?.trim()
                 ?.lowercase()
+
+        /*
+         * English Victory Cup trophy cards exist as distinct Battle Road
+         * season/placement printings. Upstream collapses each collector number
+         * to one generated Normal variant, so replace that placeholder with the
+         * documented physical Holo printings.
+         */
+        if (
+            supportedLanguage == "en" &&
+            setId == "bwp" &&
+            localId in setOf("BW29", "BW30", "BW31")
+        ) {
+            val placement =
+                when (localId) {
+                    "BW31" -> "first-place"
+                    "BW30" -> "second-place"
+                    else -> "third-place"
+                }
+
+            return listOf(
+                "battle-road-autumn-2011",
+                "battle-road-autumn-2012",
+                "battle-road-spring-2012",
+                "battle-road-spring-2013"
+            ).map { season ->
+                CatalogVariant(
+                    id = "curated:en:bwp:$localId:$season:$placement",
+                    type = "Holo",
+                    size = "standard",
+                    stamps = listOf(season, placement),
+                    legacyVariant = "HOLO",
+                    tcgDexEur = null
+                )
+            }
+        }
 
         /*
          * English Black & White promos with documented deck/tin holo

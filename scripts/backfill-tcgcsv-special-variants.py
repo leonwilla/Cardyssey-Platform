@@ -77,6 +77,26 @@ MAPPINGS=[
     {"card":"svp-105","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556445,"subtype":"Holofoil"},
     {"card":"svp-106","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556443,"subtype":"Holofoil"},
     {"card":"svp-110","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556444,"subtype":"Holofoil"},
+
+    # Victory Cup Battle Road trophy printings. BW29/BW30/BW31 represent
+    # 3rd/2nd/1st place respectively, with separate season printings.
+    {"card":"bwp-BW29","variant_id":"curated:en:bwp:BW29:battle-road-autumn-2011:third-place","gid":1407,"pid":90355,"subtype":"Holofoil"},
+    {"card":"bwp-BW29","variant_id":"curated:en:bwp:BW29:battle-road-autumn-2012:third-place","gid":1407,"pid":96862,"subtype":"Holofoil"},
+    {"card":"bwp-BW29","variant_id":"curated:en:bwp:BW29:battle-road-spring-2012:third-place","gid":1407,"pid":96863,"subtype":"Holofoil"},
+    {"card":"bwp-BW29","variant_id":"curated:en:bwp:BW29:battle-road-spring-2013:third-place","gid":1407,"pid":96868,"subtype":"Holofoil"},
+    {"card":"bwp-BW30","variant_id":"curated:en:bwp:BW30:battle-road-autumn-2012:second-place","gid":1407,"pid":96861,"subtype":"Holofoil"},
+    {"card":"bwp-BW30","variant_id":"curated:en:bwp:BW30:battle-road-spring-2012:second-place","gid":1407,"pid":96864,"subtype":"Holofoil"},
+    {"card":"bwp-BW30","variant_id":"curated:en:bwp:BW30:battle-road-spring-2013:second-place","gid":1407,"pid":96867,"subtype":"Holofoil"},
+    {"card":"bwp-BW31","variant_id":"curated:en:bwp:BW31:battle-road-autumn-2011:first-place","gid":1407,"pid":90353,"subtype":"Holofoil"},
+    {"card":"bwp-BW31","variant_id":"curated:en:bwp:BW31:battle-road-autumn-2012:first-place","gid":1407,"pid":96860,"subtype":"Holofoil"},
+    {"card":"bwp-BW31","variant_id":"curated:en:bwp:BW31:battle-road-spring-2012:first-place","gid":1407,"pid":96865,"subtype":"Holofoil"},
+    {"card":"bwp-BW31","variant_id":"curated:en:bwp:BW31:battle-road-spring-2013:first-place","gid":1407,"pid":96866,"subtype":"Holofoil"},
+
+    # XY Sylveon/Noivern Trainer Kit numbered normal printings.
+    {"card":"tk-xy-n-14","variant_id":"generated","gid":1532,"pid":98009,"subtype":"Normal"},
+    {"card":"tk-xy-n-21","variant_id":"generated","gid":1532,"pid":98019,"subtype":"Normal"},
+    {"card":"tk-xy-sy-23","variant_id":"generated","gid":1532,"pid":97988,"subtype":"Normal"},
+    {"card":"tk-xy-sy-26","variant_id":"generated","gid":1532,"pid":97991,"subtype":"Normal"},
     {"card":"dp6-131","foil":["cosmos","kosmos"],"gid":2374,"pid":123195,"subtype":"Holofoil"},
     {"card":"ex9-82","stamp":["professor-program","professorenprogramm"],"gid":2332,"pid":176630,"subtype":"Holofoil"},
     {"card":"hgss1-26","foil":["cosmos","kosmos"],"gid":1840,"pid":125041,"subtype":"Holofoil"},
