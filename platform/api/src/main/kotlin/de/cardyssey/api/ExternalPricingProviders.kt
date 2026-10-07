@@ -29,13 +29,14 @@ internal class JustTcgCentralPricingProvider(
         .build()
 
     @Volatile
-    private var requestLimitExceeded = false
+    private var requestLimitRetryAtMs = 0L
 
     override suspend fun quote(
         card: CatalogCardDetails,
         variant: CatalogVariant
     ): CentralProviderQuote? {
-        if (apiKey.isBlank() || requestLimitExceeded) return null
+        if (apiKey.isBlank()) return null
+        if (System.currentTimeMillis() < requestLimitRetryAtMs) return null
 
         if (
             variant.stamps.isNotEmpty() ||
@@ -235,8 +236,10 @@ internal class JustTcgCentralPricingProvider(
 
             when {
                 providerCode == "REQUEST_LIMIT_EXCEEDED" -> {
-                    requestLimitExceeded = true
-                    println("JustTCG disabled until API restart: request limit exceeded")
+                    requestLimitRetryAtMs =
+                        System.currentTimeMillis() +
+                            24L * 60L * 60L * 1000L
+                    println("JustTCG paused for 24h: request limit exceeded")
                     null
                 }
 
