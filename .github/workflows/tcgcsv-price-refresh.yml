@@ -29,5 +29,11 @@ jobs:
       - name: Refresh CardTrader marketplace prices
         run: python3 scripts/resolve-cardtrader-semantic.py
 
+      - name: Resolve classic Japanese printings
+        run: python3 scripts/resolve-cardtrader-ja-classic.py
+
+      - name: Resolve Japanese reverse printings
+        run: python3 scripts/resolve-cardtrader-ja-reverse.py
+
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
