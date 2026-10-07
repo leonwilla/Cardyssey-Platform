@@ -32,26 +32,95 @@ def main():
                           AND t.local_id=c.local_id
                           AND t.name=c.name
                       )""") or "0")
-    print(f"mislabeled_candidates={total} exact_zh_tw_twins={exact} applied={args.apply}")
+    stale_prices=int(db("""SELECT count(*)
+                           FROM tcg_price_cache p
+                           LEFT JOIN catalog_cards_mirror c
+                             ON c.language_code='zh-cn' AND c.card_id=p.card_id
+                           WHERE p.language_code='zh-cn'
+                             AND c.card_id IS NULL""") or "0")
+    stale_with_tw=int(db("""SELECT count(*)
+                            FROM tcg_price_cache p
+                            LEFT JOIN catalog_cards_mirror c
+                              ON c.language_code='zh-cn' AND c.card_id=p.card_id
+                            WHERE p.language_code='zh-cn'
+                              AND c.card_id IS NULL
+                              AND EXISTS (
+                                SELECT 1 FROM catalog_cards_mirror t
+                                WHERE t.language_code='zh-tw'
+                                  AND t.card_id=p.card_id
+                              )""") or "0")
+
+    print(
+        f"mislabeled_candidates={total} exact_zh_tw_twins={exact} "
+        f"stale_price_rows={stale_prices} stale_price_twins={stale_with_tw} "
+        f"applied={args.apply}"
+    )
     if total != exact:
-        raise SystemExit("refusing cleanup: not every candidate has an exact zh-tw twin")
-    if not args.apply or total == 0:
+        raise SystemExit("refusing cleanup: not every catalog candidate has an exact zh-tw twin")
+    if stale_prices != stale_with_tw:
+        raise SystemExit("refusing cleanup: not every stale zh-cn price has a zh-tw twin")
+    if not args.apply:
         return
 
-    deleted=db("""DELETE FROM catalog_cards_mirror c
-                  WHERE c.language_code='zh-cn'
-                    AND c.set_id<>'CSMPiC'
-                    AND EXISTS (
-                      SELECT 1 FROM catalog_cards_mirror t
-                      WHERE t.language_code='zh-tw'
-                        AND t.set_id=c.set_id
-                        AND t.local_id=c.local_id
-                        AND t.name=c.name
-                    )
-                  RETURNING c.card_id;""").splitlines()
-    if len(deleted) != total:
-        raise SystemExit(f"cleanup mismatch: expected {total}, deleted {len(deleted)}")
-    print(f"deleted={len(deleted)}")
+    deleted=[]
+    if total:
+        deleted=db("""DELETE FROM catalog_cards_mirror c
+                      WHERE c.language_code='zh-cn'
+                        AND c.set_id<>'CSMPiC'
+                        AND EXISTS (
+                          SELECT 1 FROM catalog_cards_mirror t
+                          WHERE t.language_code='zh-tw'
+                            AND t.set_id=c.set_id
+                            AND t.local_id=c.local_id
+                            AND t.name=c.name
+                        )
+                      RETURNING c.card_id;""").splitlines()
+        if len(deleted) != total:
+            raise SystemExit(f"cleanup mismatch: expected {total}, deleted {len(deleted)}")
+
+    stale_history=int(db("""SELECT count(*)
+                            FROM tcg_price_history h
+                            WHERE h.language_code='zh-cn'
+                              AND NOT EXISTS (
+                                SELECT 1 FROM catalog_cards_mirror c
+                                WHERE c.language_code='zh-cn'
+                                  AND c.card_id=h.card_id
+                              )
+                              AND EXISTS (
+                                SELECT 1 FROM catalog_cards_mirror t
+                                WHERE t.language_code='zh-tw'
+                                  AND t.card_id=h.card_id
+                              )""") or "0")
+
+    db("""DELETE FROM tcg_price_history h
+          WHERE h.language_code='zh-cn'
+            AND NOT EXISTS (
+              SELECT 1 FROM catalog_cards_mirror c
+              WHERE c.language_code='zh-cn'
+                AND c.card_id=h.card_id
+            )
+            AND EXISTS (
+              SELECT 1 FROM catalog_cards_mirror t
+              WHERE t.language_code='zh-tw'
+                AND t.card_id=h.card_id
+            );""")
+    db("""DELETE FROM tcg_price_cache p
+          WHERE p.language_code='zh-cn'
+            AND NOT EXISTS (
+              SELECT 1 FROM catalog_cards_mirror c
+              WHERE c.language_code='zh-cn'
+                AND c.card_id=p.card_id
+            )
+            AND EXISTS (
+              SELECT 1 FROM catalog_cards_mirror t
+              WHERE t.language_code='zh-tw'
+                AND t.card_id=p.card_id
+            );""")
+    print(
+        f"deleted_catalog_rows={len(deleted)} "
+        f"deleted_price_rows={stale_prices} "
+        f"deleted_history_rows={stale_history}"
+    )
 
 if __name__=="__main__":
     main()
