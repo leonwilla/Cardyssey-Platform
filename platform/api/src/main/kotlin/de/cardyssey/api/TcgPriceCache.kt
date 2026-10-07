@@ -465,6 +465,39 @@ class TcgPriceCacheRepository(
         }
     }
 
+    fun deferExistingPrice(
+        target: TcgPriceRefreshTarget,
+        failureDetail: String?,
+        retryAfterHours: Long
+    ): Boolean =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                UPDATE tcg_price_cache
+                SET legacy_variant = ?,
+                    failure_detail = ?,
+                    next_attempt_at =
+                        NOW() + (? * INTERVAL '1 hour')
+                WHERE card_id = ?
+                  AND language_code = ?
+                  AND variant_id = ?
+                  AND resolution_status = 'PRICE_FOUND'
+                  AND base_eur IS NOT NULL
+                """.trimIndent()
+            ).use { statement ->
+                statement.setString(1, target.legacyVariant)
+                statement.setString(2, failureDetail)
+                statement.setLong(
+                    3,
+                    retryAfterHours.coerceAtLeast(1L)
+                )
+                statement.setString(4, target.cardId)
+                statement.setString(5, target.languageCode)
+                statement.setString(6, target.variantId)
+                statement.executeUpdate() > 0
+            }
+        }
+
     fun dueTargets(
         languages: List<String>,
         ttlHours: Long,
@@ -810,49 +843,26 @@ class CachedTcgPricingService(
             details.getOrNull()
 
         if (detailsValue == null) {
-            cache.write(
-                target =
-                    target,
-                source =
-                    null,
-                baseEur =
-                    null,
-                resolutionStatus =
-                    if (
-                        details.isFailure
-                    ) {
-                        "PROVIDER_ERROR"
-                    } else {
-                        "NO_VARIANT_MATCH"
-                    },
-                failureDetail =
-                    details.exceptionOrNull()
-                        ?.message,
-                retryAfterHours =
-                    if (
-                        details.isFailure
-                    ) {
-                        providerErrorRetryHours
-                    } else {
-                        missingRetryHours
-                    }
-            )
+            val status =
+                if (details.isFailure) {
+                    "PROVIDER_ERROR"
+                } else {
+                    "NO_VARIANT_MATCH"
+                }
+            val retryHours =
+                if (details.isFailure) {
+                    providerErrorRetryHours
+                } else {
+                    missingRetryHours
+                }
 
-            logResolution(
-                target =
-                    target,
-                status =
-                    if (
-                        details.isFailure
-                    ) {
-                        "PROVIDER_ERROR"
-                    } else {
-                        "NO_VARIANT_MATCH"
-                    },
-                source =
-                    null,
-                price =
-                    null
+            recordUnresolved(
+                target = target,
+                status = status,
+                failureDetail =
+                    details.exceptionOrNull()?.message
+                        ?: "Card details unavailable during refresh",
+                retryAfterHours = retryHours
             )
             return
         }
@@ -874,30 +884,12 @@ class CachedTcgPricingService(
                     .singleOrNull()
 
         if (selected == null) {
-            cache.write(
-                target =
-                    target,
-                source =
-                    null,
-                baseEur =
-                    null,
-                resolutionStatus =
-                    "NO_VARIANT_MATCH",
+            recordUnresolved(
+                target = target,
+                status = "NO_VARIANT_MATCH",
                 failureDetail =
                     "No exact or unique legacy-family variant in current catalog details",
-                retryAfterHours =
-                    missingRetryHours
-            )
-
-            logResolution(
-                target =
-                    target,
-                status =
-                    "NO_VARIANT_MATCH",
-                source =
-                    null,
-                price =
-                    null
+                retryAfterHours = missingRetryHours
             )
             return
         }
@@ -921,31 +913,13 @@ class CachedTcgPricingService(
             }
 
         if (primaryResult.isFailure) {
-            cache.write(
-                target =
-                    target,
-                source =
-                    null,
-                baseEur =
-                    null,
-                resolutionStatus =
-                    "PROVIDER_ERROR",
+            recordUnresolved(
+                target = target,
+                status = "PROVIDER_ERROR",
                 failureDetail =
-                    primaryResult.exceptionOrNull()
-                        ?.message,
-                retryAfterHours =
-                    providerErrorRetryHours
-            )
-
-            logResolution(
-                target =
-                    target,
-                status =
-                    "PROVIDER_ERROR",
-                source =
-                    null,
-                price =
-                    null
+                    primaryResult.exceptionOrNull()?.message
+                        ?: "Primary pricing provider failed",
+                retryAfterHours = providerErrorRetryHours
             )
             return
         }
@@ -1053,31 +1027,13 @@ class CachedTcgPricingService(
                 }
 
             if (fallback.isFailure) {
-                cache.write(
-                    target =
-                        target,
-                    source =
-                        null,
-                    baseEur =
-                        null,
-                    resolutionStatus =
-                        "PROVIDER_ERROR",
+                recordUnresolved(
+                    target = target,
+                    status = "PROVIDER_ERROR",
                     failureDetail =
-                        fallback.exceptionOrNull()
-                            ?.message,
-                    retryAfterHours =
-                        providerErrorRetryHours
-                )
-
-                logResolution(
-                    target =
-                        target,
-                    status =
-                        "PROVIDER_ERROR",
-                    source =
-                        null,
-                    price =
-                        null
+                        fallback.exceptionOrNull()?.message
+                            ?: "Fallback pricing provider failed",
+                    retryAfterHours = providerErrorRetryHours
                 )
                 return
             }
@@ -1093,45 +1049,67 @@ class CachedTcgPricingService(
                         it > 0.0
                 }
 
-        val status =
-            if (
-                price != null
-            ) {
-                "PRICE_FOUND"
-            } else {
-                "NO_PRICE"
-            }
+        if (price != null) {
+            cache.write(
+                target = target,
+                source = resolved?.source,
+                baseEur = price,
+                resolutionStatus = "PRICE_FOUND",
+                failureDetail = null,
+                retryAfterHours = cacheTtlHours
+            )
 
-        cache.write(
-            target =
-                target,
-            source =
-                resolved?.source,
-            baseEur =
-                price,
-            resolutionStatus =
-                status,
-            failureDetail =
-                null,
-            retryAfterHours =
-                if (
-                    price != null
-                ) {
-                    cacheTtlHours
-                } else {
-                    missingRetryHours
-                }
-        )
+            logResolution(
+                target = target,
+                status = "PRICE_FOUND",
+                source = resolved?.source,
+                price = price
+            )
+        } else {
+            recordUnresolved(
+                target = target,
+                status = "NO_PRICE",
+                failureDetail =
+                    "No current provider price during refresh",
+                retryAfterHours = missingRetryHours
+            )
+        }
+    }
+
+    private fun recordUnresolved(
+        target: TcgPriceRefreshTarget,
+        status: String,
+        failureDetail: String?,
+        retryAfterHours: Long
+    ) {
+        val preserved =
+            cache.deferExistingPrice(
+                target = target,
+                failureDetail = failureDetail,
+                retryAfterHours = retryAfterHours
+            )
+
+        if (!preserved) {
+            cache.write(
+                target = target,
+                source = null,
+                baseEur = null,
+                resolutionStatus = status,
+                failureDetail = failureDetail,
+                retryAfterHours = retryAfterHours
+            )
+        }
 
         logResolution(
-            target =
-                target,
+            target = target,
             status =
-                status,
-            source =
-                resolved?.source,
-            price =
-                price
+                if (preserved) {
+                    "PRICE_FOUND_STALE"
+                } else {
+                    status
+                },
+            source = null,
+            price = null
         )
     }
 
