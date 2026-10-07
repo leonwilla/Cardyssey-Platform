@@ -25,6 +25,7 @@ SET_CODE={
     "E1":"ec1","E2":"ec2","E3":"ec3","E4":"ec4","E5":"ec5",
     "PCG1":"fol","PCG2":"cbs","PCG3":"rgsb","PCG4":"gsso",
     "PCG5":"mif","PCG6":"hrt","PCG7":"hof","PCG8":"mic","PCG9":"odffe",
+    "VS1":"pvs","web1":"pwe",
 }
 expansions=[e for e in get(f"{BASE}/expansions") if int(e.get("game_id") or 0)==5]
 by_code={str(e.get("code") or "").lower():e for e in expansions}
@@ -56,6 +57,10 @@ for line in raw.splitlines():
         expected_first=False
     elif setid=="PMCG1" and subtype=="no-rarity":
         code="1epnr"
+        expected_first=False
+    elif setid in ("VS1","web1") and not stamps and not subtype:
+        # Nearly every plain card has a matching 1st-edition variant in our
+        # catalog, so the plain printing is the non-1st-edition counterpart.
         expected_first=False
     else:
         continue
