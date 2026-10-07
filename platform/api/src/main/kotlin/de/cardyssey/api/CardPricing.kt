@@ -171,19 +171,31 @@ private class TcgDexCentralPricingProvider :
             selected.priceIdentity
 
         val cardLevelEur =
-            if (
-                variants.size == 1 ||
+            when {
+                variants.size == 1 ->
+                    cardLevelCardmarketEur(
+                        raw = raw,
+                        variant = variant
+                    )
+
                 isUniquePlainStandardNormal(
                     raw = raw,
                     variant = variant
-                )
-            ) {
-                cardLevelCardmarketEur(
+                ) ->
+                    cardLevelCardmarketEur(
+                        raw = raw,
+                        variant = variant
+                    )
+
+                isUniquePlainStandardHoloLike(
                     raw = raw,
                     variant = variant
-                )
-            } else {
-                null
+                ) ->
+                    cardLevelHoloCardmarketEur(
+                        raw = raw
+                    )
+
+                else -> null
             }
 
         val sharedUniqueHoloEur =
@@ -311,6 +323,86 @@ private class TcgDexCentralPricingProvider :
 
         return plainNormal.size == 1 &&
             plainNormal.single().string("variantId") == variant.id
+    }
+
+    private fun isUniquePlainStandardHoloLike(
+        raw: JsonObject,
+        variant: CatalogVariant
+    ): Boolean {
+        if (
+            !(
+                variant.legacyVariant.equals("HOLO", ignoreCase = true) ||
+                    variant.legacyVariant.equals("REVERSE", ignoreCase = true)
+            ) ||
+            variant.stamps.isNotEmpty() ||
+            !variant.subtype.isNullOrBlank() ||
+            !variant.foil.isNullOrBlank() ||
+            (
+                !variant.size.isNullOrBlank() &&
+                    !variant.size.equals("standard", ignoreCase = true)
+            )
+        ) {
+            return false
+        }
+
+        val detailed =
+            raw["variants_detailed"]
+                ?.asArray()
+                .orEmpty()
+                .mapNotNull {
+                    it as? JsonObject
+                }
+
+        val plainHoloLike =
+            detailed.filter { candidate ->
+                val type =
+                    candidate.string("type")
+                        ?.trim()
+                        ?.lowercase()
+                        .orEmpty()
+
+                (type == "holo" || type == "reverse") &&
+                    candidate.string("subtype").isNullOrBlank() &&
+                    candidate.string("foil").isNullOrBlank() &&
+                    candidate["stamp"]
+                        ?.asArray()
+                        .orEmpty()
+                        .isEmpty() &&
+                    (
+                        candidate.string("size").isNullOrBlank() ||
+                            candidate.string("size")
+                                .equals("standard", ignoreCase = true)
+                    )
+            }
+
+        return plainHoloLike.size == 1 &&
+            plainHoloLike.single().string("variantId") == variant.id
+    }
+
+    private fun cardLevelHoloCardmarketEur(
+        raw: JsonObject
+    ): Double? {
+        val cardmarket =
+            raw["pricing"]
+                ?.asObject()
+                ?.get("cardmarket")
+                ?.asObject()
+                ?: return null
+
+        return listOf(
+            "trend-holo",
+            "avg1-holo",
+            "avg7-holo",
+            "avg30-holo",
+            "avg-holo",
+            "low-holo"
+        ).firstNotNullOfOrNull { key ->
+            cardmarket.double(key)
+                ?.takeIf {
+                    it.isFinite() &&
+                        it > 0.0
+                }
+        }
     }
 
     private fun uniqueSharedHoloFamilyEur(
