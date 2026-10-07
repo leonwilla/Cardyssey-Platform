@@ -43,3 +43,6 @@ jobs:
 
       - name: Resolve safe western leftovers
         run: python3 scripts/resolve-cardtrader-western-safe.py
+
+      - name: Resolve Traditional Chinese special printings
+        run: python3 scripts/resolve-cardtrader-zhtw-specials.py
