@@ -50,7 +50,7 @@ for line in raw.splitlines():
     if norm(code) and norm(code) in by_code: matches+=by_code[norm(code)]
     if norm(enname) and norm(enname) in by_name: matches+=by_name[norm(enname)]
     if norm(setname) and norm(setname) in by_name: matches+=by_name[norm(setname)]
-    if lang in ("zh-cn","zh-tw") and norm(setid) and norm(setid) in by_code:
+    if lang in ("ja","zh-cn","zh-tw") and norm(setid) and norm(setid) in by_code:
         matches+=by_code[norm(setid)]
     uniq={e["id"]:e for e in matches}
     if len(uniq)!=1: continue
@@ -117,7 +117,17 @@ for r in rows:
     for x in b.get("card_market_ids") or []:
         try: cmids.append(int(x))
         except Exception: pass
-    resolved.append({**r,"blueprint_id":int(b["id"]),"blueprint_name":str(b.get("name") or ""),"cardmarket_id":cmids[0] if len(cmids)==1 else None})
+    resolved.append({
+        **r,
+        "blueprint_id":int(b["id"]),
+        "blueprint_name":str(b.get("name") or ""),
+        "cardmarket_id":cmids[0] if len(cmids)==1 else None,
+        "tcg_player_id":(
+            int(b["tcg_player_id"])
+            if b.get("tcg_player_id") is not None
+            else None
+        ),
+    })
 print(f"semantic_blueprints_resolved={len(resolved)} ambiguous={ambiguous}",flush=True)
 for lang in ["de","en","ja","zh-cn","zh-tw"]:
     print(f"semantic_lang={lang} resolved={sum(1 for r in resolved if r['language']==lang)}",flush=True)
@@ -171,12 +181,88 @@ for gi,(eid,group) in enumerate(sorted(groups.items()),1):
 
 print("semantic_reasons="+json.dumps(reason_totals,separators=(",",":")),flush=True)
 print(f"semantic_price_updates={len(updates)}",flush=True)
-if updates:
+
+# English fallback: exact CardTrader blueprint identities often expose the
+# TCGplayer product id even when CardTrader has no current marketplace listing.
+# Reuse that exact id against the free TCGCSV feed.
+TCGCSV_GROUPS={
+    "dpp":1421,
+    "mep":24451,
+    "bwp":1407,
+    "basep":1418,
+    "tk-xy-b":1533,
+    "tk-xy-w":1533,
+}
+tcg_updates=[]
+already={(r["card_id"],r["language"],r["variant_id"]) for r,_,_,_ in updates}
+
+def public_json(url):
+    req=urllib.request.Request(
+        url,
+        headers={"Accept":"application/json","User-Agent":"Cardyssey-semantic-tcgcsv"},
+    )
+    with urllib.request.urlopen(req,timeout=20) as response:
+        return json.load(response)
+
+try:
+    usd_eur=float(public_json("https://api.frankfurter.dev/v2/rate/USD/EUR").get("rate"))
+except Exception:
+    usd_eur=0.0
+
+price_groups={}
+for r in resolved:
+    gid=TCGCSV_GROUPS.get(r["set_id"])
+    if r["language"]!="en" or gid is None or r["tcg_player_id"] is None:
+        continue
+    price_groups.setdefault(gid,[]).append(r)
+
+for gid,items in price_groups.items():
+    try:
+        entries=public_json(f"https://tcgcsv.com/tcgplayer/3/{gid}/prices").get("results") or []
+    except Exception:
+        continue
+    by_product={}
+    for entry in entries:
+        try: pid=int(entry.get("productId") or 0)
+        except (TypeError,ValueError): continue
+        by_product.setdefault(pid,[]).append(entry)
+    for r in items:
+        key=(r["card_id"],r["language"],r["variant_id"])
+        if key in already or usd_eur<=0:
+            continue
+        expected={
+            "NORMAL":"normal",
+            "HOLO":"holofoil",
+            "REVERSE":"reverseholofoil",
+        }.get(r["legacy"])
+        candidates=[
+            e for e in by_product.get(r["tcg_player_id"],[])
+            if norm(e.get("subTypeName"))==expected
+        ]
+        if len(candidates)!=1:
+            continue
+        entry=candidates[0]
+        usd=entry.get("marketPrice")
+        if not isinstance(usd,(int,float)) or usd<=0:
+            usd=entry.get("midPrice")
+        if not isinstance(usd,(int,float)) or usd<=0:
+            continue
+        base=round((float(usd)*usd_eur)/NM_FACTOR,4)
+        tcg_updates.append((r,base,str(entry.get("subTypeName") or "")))
+
+print(f"semantic_tcgcsv_updates={len(tcg_updates)}",flush=True)
+
+if updates or tcg_updates:
     sql=["BEGIN;"]
     for r,base,listing,count in updates:
         detail=f"CardTrader semantic blueprint {r['blueprint_id']}; median cheapest NM EUR {listing:.4f}; listings {count}"
         sql.append(f"UPDATE tcg_price_cache SET source='CARDTRADER_MARKETPLACE',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='{q(r['language'])}' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
         sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','{q(r['language'])}','{q(r['variant_id'])}','CARDTRADER_MARKETPLACE',{base:.4f},NOW());")
+    for r,base,subtype in tcg_updates:
+        detail=f"TCGplayer product {r['tcg_player_id']}; {subtype}; via CardTrader semantic blueprint {r['blueprint_id']}"
+        sql.append(f"UPDATE tcg_price_cache SET source='TCGCSV_TCGPLAYER',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='{q(r['language'])}' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
+        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','{q(r['language'])}','{q(r['variant_id'])}','TCGCSV_TCGPLAYER',{base:.4f},NOW());")
     sql.append("COMMIT;")
     subprocess.run(["docker","exec","-i","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-v","ON_ERROR_STOP=1","-q"],input="\n".join(sql),text=True,check=True)
-    print(f"semantic_applied={len(updates)}",flush=True)
+    print(f"semantic_applied_cardtrader={len(updates)}",flush=True)
+    print(f"semantic_applied_tcgcsv={len(tcg_updates)}",flush=True)
