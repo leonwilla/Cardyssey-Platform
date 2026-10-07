@@ -180,6 +180,16 @@ private class TcgDexCentralPricingProvider :
                 null
             }
 
+        val sharedUniqueHoloEur =
+            if (selected.eur == null) {
+                uniqueSharedHoloFamilyEur(
+                    raw = raw,
+                    variant = variant
+                )
+            } else {
+                null
+            }
+
         val cardmarketEur =
             selected.eur
                 ?.takeIf {
@@ -191,6 +201,7 @@ private class TcgDexCentralPricingProvider :
                         it.isFinite() &&
                             it > 0.0
                     }
+                ?: sharedUniqueHoloEur
                 ?: cardLevelEur
 
         val tcgPlayerEur =
@@ -231,6 +242,8 @@ private class TcgDexCentralPricingProvider :
             source =
                 if (tcgPlayerEur != null) {
                     "TCGDEX_TCGPLAYER"
+                } else if (sharedUniqueHoloEur != null) {
+                    "TCGDEX_SHARED_HOLO"
                 } else {
                     when {
                         identity == null ->
@@ -246,6 +259,116 @@ private class TcgDexCentralPricingProvider :
             baseEur =
                 eur
         )
+    }
+
+    private fun uniqueSharedHoloFamilyEur(
+        raw: JsonObject,
+        variant: CatalogVariant
+    ): Double? {
+        if (
+            !variant.legacyVariant.equals("HOLO", ignoreCase = true) &&
+            !variant.legacyVariant.equals("REVERSE", ignoreCase = true)
+        ) {
+            return null
+        }
+
+        if (
+            variant.stamps.isNotEmpty() ||
+            !variant.subtype.isNullOrBlank() ||
+            !variant.foil.isNullOrBlank() ||
+            (
+                !variant.size.isNullOrBlank() &&
+                    !variant.size.equals("standard", ignoreCase = true)
+            )
+        ) {
+            return null
+        }
+
+        val detailed =
+            raw["variants_detailed"]
+                ?.asArray()
+                .orEmpty()
+                .mapNotNull {
+                    it as? JsonObject
+                }
+
+        val holoLike =
+            detailed.filter { candidate ->
+                val type =
+                    candidate.string("type")
+                        ?.trim()
+                        ?.lowercase()
+                        .orEmpty()
+
+                type == "reverse" ||
+                    type == "holo" ||
+                    !candidate.string("foil").isNullOrBlank()
+            }
+
+        if (holoLike.size != 1) {
+            return null
+        }
+
+        val only =
+            holoLike.single()
+
+        if (
+            only.string("variantId") != variant.id ||
+            !only.string("subtype").isNullOrBlank() ||
+            !only.string("foil").isNullOrBlank() ||
+            only["stamp"]
+                ?.asArray()
+                .orEmpty()
+                .isNotEmpty() ||
+            (
+                !only.string("size").isNullOrBlank() &&
+                    !only.string("size")
+                        .equals("standard", ignoreCase = true)
+            )
+        ) {
+            return null
+        }
+
+        val candidates =
+            detailed.mapNotNull { candidate ->
+                val cardmarket =
+                    candidate["pricing"]
+                        ?.asObject()
+                        ?.get("cardmarket")
+                        ?.asObject()
+                        ?: return@mapNotNull null
+
+                val price =
+                    listOf(
+                        "trend-holo",
+                        "avg1-holo",
+                        "avg7-holo",
+                        "avg30-holo",
+                        "avg-holo",
+                        "low-holo"
+                    ).firstNotNullOfOrNull { key ->
+                        cardmarket.double(key)
+                            ?.takeIf {
+                                it.isFinite() &&
+                                    it > 0.0
+                            }
+                    } ?: return@mapNotNull null
+
+                val productId =
+                    cardmarket.string("idProduct")
+                        ?.trim()
+                        ?.takeIf(String::isNotBlank)
+                        ?: return@mapNotNull null
+
+                productId to price
+            }
+                .distinctBy {
+                    it.first
+                }
+
+        return candidates
+            .singleOrNull()
+            ?.second
     }
 
     private fun cardLevelCardmarketEur(
