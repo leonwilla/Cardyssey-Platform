@@ -63,6 +63,19 @@ def subtype_matches(subtype,legacy,v):
     if legacy=="FIRST_EDITION": return "1st edition" in s
     return False
 
+def product_printing_matches(name, legacy):
+    text=str(name or "").lower()
+    legacy=legacy.upper()
+    if "reverse holofoil" in text or "reverse holo" in text:
+        kind="REVERSE"
+    elif "non-holo" in text or "non holo" in text:
+        kind="NORMAL"
+    elif "holofoil" in text or re.search(r"\(holo\)", text):
+        kind="HOLO"
+    else:
+        return False
+    return kind == legacy
+
 def set_key(name):
     value=str(name or "").lower()
     value=re.sub(r"^(ex|sm|xy)\s*[-:]\s*","",value)
@@ -186,6 +199,13 @@ for idx,(gid,items) in enumerate(sorted(by_group.items()),1):
         if len(candidates)>1:
             exact=[p for p in candidates if name_key(p.get("name"))==name_key(t["en_name"])]
             candidates=exact
+        if len(candidates)>1:
+            printing=[
+                p for p in candidates
+                if product_printing_matches(p.get("name"), t["legacy"])
+            ]
+            if len(printing)==1:
+                candidates=printing
         if len(candidates)!=1:
             continue
         product=candidates[0]
