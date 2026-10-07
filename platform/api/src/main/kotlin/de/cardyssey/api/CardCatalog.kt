@@ -45,7 +45,9 @@ data class CatalogVariant(
     val size: String? = null,
     val stamps: List<String> = emptyList(),
     val legacyVariant: String,
-    val tcgDexEur: Double? = null
+    val tcgDexEur: Double? = null,
+    val tcgPlayerId: String? = null,
+    val cardmarketProductId: String? = null
 )
 
 @Serializable
@@ -1467,6 +1469,10 @@ class CardCatalogService(
                                     ":"
                                 )
 
+                    val thirdParty =
+                        raw["thirdParty"]
+                            ?.asObject()
+
                     CatalogVariant(
                         id =
                             id,
@@ -1502,7 +1508,19 @@ class CardCatalogService(
                             exactVariantPrice(
                                 raw,
                                 type
-                            )
+                            ),
+
+                        tcgPlayerId =
+                            thirdParty
+                                ?.get("tcgplayer")
+                                ?.asPrimitive()
+                                ?.content,
+
+                        cardmarketProductId =
+                            thirdParty
+                                ?.get("cardmarket")
+                                ?.asPrimitive()
+                                ?.content
                     )
                 }
                 .distinctBy {

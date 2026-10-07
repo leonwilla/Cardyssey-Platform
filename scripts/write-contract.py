@@ -1286,7 +1286,13 @@ schemas = {
                     string(),
 
                 "tcgDexEur":
-                    number(nullable=True)
+                    number(nullable=True),
+
+                "tcgPlayerId":
+                    string(nullable=True),
+
+                "cardmarketProductId":
+                    string(nullable=True)
             },
             [
                 "id",

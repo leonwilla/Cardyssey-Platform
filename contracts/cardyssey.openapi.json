@@ -5696,6 +5696,14 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "tcgPlayerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "cardmarketProductId": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
