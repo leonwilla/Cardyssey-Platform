@@ -25,6 +25,8 @@ def card_num(s):
     if n.isdigit(): return n.lstrip("0") or "0"
     m=re.fullmatch(r"([a-z]+)0*([0-9]+)",n)
     if m: return f"{m.group(1)}{int(m.group(2))}"
+    m=re.fullmatch(r"0*([0-9]+)([a-z]+)",n)
+    if m: return f"{int(m.group(1))}{m.group(2)}"
     return n
 
 def numeric_tail(s):
