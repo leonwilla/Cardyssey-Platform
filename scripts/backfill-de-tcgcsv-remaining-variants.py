@@ -40,7 +40,10 @@ def product_num(product):
 
 def name_key(s):
     s=re.sub(r"\s*\([^)]*\)\s*$","",str(s or ""))
-    s=re.sub(r"\s*-\s*\d+\s*$","",s)
+    # TCGplayer commonly appends collector numbers such as
+    # "- 107a/122" or "- SWSH296". Number matching already establishes
+    # identity, so remove that decoration before name disambiguation.
+    s=re.sub(r"\s*-\s*[A-Za-z0-9?!._-]+(?:/[A-Za-z0-9?!._-]+)?\s*$","",s)
     return norm(s)
 
 def first_edition(v):
