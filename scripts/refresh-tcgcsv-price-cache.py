@@ -27,12 +27,12 @@ def db(sql):
         check=True, capture_output=True, text=True,
     ).stdout.strip()
 
-def fetch_json(url, attempts=3):
+def fetch_json(url, attempts=2):
     last = None
     for attempt in range(attempts):
         try:
             req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=30) as response:
+            with urllib.request.urlopen(req, timeout=15) as response:
                 return json.load(response)
         except Exception as error:
             last = error
