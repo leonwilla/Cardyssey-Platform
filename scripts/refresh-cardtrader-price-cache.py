@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh unresolved DE/EN prices from CardTrader's official marketplace API.
+"""Refresh unresolved Cardyssey prices from CardTrader's official marketplace API.
 
 No scraping is used. The job is optional and exits successfully when no
 CARDTRADER_API_TOKEN is configured.
@@ -111,7 +111,7 @@ SELECT p.card_id,p.language_code,p.variant_id,p.legacy_variant,
 FROM tcg_price_cache p
 JOIN catalog_cards_mirror c
   ON c.card_id=p.card_id AND c.language_code=p.language_code
-WHERE p.language_code IN ('de','en')
+WHERE p.language_code IN ('de','en','ja','ko','zh-cn','zh-tw')
   AND (
     p.resolution_status='NO_PRICE'
     OR p.source='CARDTRADER_MARKETPLACE'
@@ -255,6 +255,17 @@ for row in targets:
         row["blueprint_id"] = candidates[0]
 
 
+def cardtrader_language(language):
+    return {
+        "de": "de",
+        "en": "en",
+        "ja": "jp",
+        "ko": "kr",
+        "zh-cn": "zh-CN",
+        "zh-tw": "zh-TW",
+    }.get(language)
+
+
 def listing_matches(row, product):
     if product.get("graded"):
         return False
@@ -264,12 +275,16 @@ def listing_matches(row, product):
     if condition not in ("near mint", "mint", "nm"):
         return False
 
+    expected_language = cardtrader_language(row["language"])
+    if expected_language is None:
+        return False
+
     language = str(
         properties.get("pokemon_language")
         or properties.get("language")
         or ""
     ).strip().lower()
-    if language and language != row["language"]:
+    if language and language != expected_language.lower():
         return False
 
     reverse_value = None
@@ -292,9 +307,13 @@ def marketplace_price(row):
     if blueprint_id is None:
         return None
 
+    provider_language = cardtrader_language(row["language"])
+    if provider_language is None:
+        return None
+
     params = {
         "blueprint_id": str(blueprint_id),
-        "language": row["language"],
+        "language": provider_language,
     }
     if row["legacy"] == "NORMAL":
         params["foil"] = "false"
