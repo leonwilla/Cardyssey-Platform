@@ -132,12 +132,16 @@ for line in db("SELECT set_id,name FROM catalog_cards_mirror WHERE language_code
     if "\t" not in line:
         continue
     sid,name=line.split("\t",1)
-    key=norm(name)
+    key=semantic_name(name)
     if key:
         set_cards[sid].append(key)
 
 exp_names={
-    eid:collections.Counter(norm(p.get("name")) for p in plist if norm(p.get("name")))
+    eid:collections.Counter(
+        semantic_name(p.get("name"))
+        for p in plist
+        if semantic_name(p.get("name"))
+    )
     for eid,plist in by_exp.items()
 }
 set_map={}
