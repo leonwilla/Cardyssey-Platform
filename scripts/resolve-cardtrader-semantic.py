@@ -50,6 +50,8 @@ for line in raw.splitlines():
     if norm(code) and norm(code) in by_code: matches+=by_code[norm(code)]
     if norm(enname) and norm(enname) in by_name: matches+=by_name[norm(enname)]
     if norm(setname) and norm(setname) in by_name: matches+=by_name[norm(setname)]
+    if lang in ("zh-cn","zh-tw") and norm(setid) and norm(setid) in by_code:
+        matches+=by_code[norm(setid)]
     uniq={e["id"]:e for e in matches}
     if len(uniq)!=1: continue
     e=next(iter(uniq.values()))
@@ -64,6 +66,30 @@ blueprints={}
 with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
     for eid,bps in pool.map(load_bp,eids): blueprints[eid]=bps
 print(f"semantic_expansions_loaded={len(blueprints)}",flush=True)
+
+langmap={"de":"de","en":"en","ja":"jp","zh-cn":"zh-CN","zh-tw":"zh-TW"}
+supported_languages={}
+expansion_by_id={int(e["id"]):e for e in exp}
+for eid,bps in blueprints.items():
+    values=set()
+    for b in bps:
+        for prop in b.get("editable_properties") or []:
+            if prop.get("name")=="pokemon_language":
+                values.update(str(x) for x in prop.get("possible_values") or [])
+    expansion=expansion_by_id.get(eid,{})
+    expansion_name=str(expansion.get("name") or "").lower()
+    expansion_code=str(expansion.get("code") or "").lower()
+    if "simplified chinese" in expansion_name or expansion_code=="csmpic":
+        values.add("zh-CN")
+    if "traditional chinese" in expansion_name:
+        values.add("zh-TW")
+    supported_languages[eid]=values
+
+rows=[
+    r for r in rows
+    if langmap.get(r["language"]) in supported_languages.get(r["expansion_id"],set())
+]
+print(f"semantic_language_supported={len(rows)}",flush=True)
 
 indexes={}
 for eid,bps in blueprints.items():
@@ -107,7 +133,6 @@ if cache:
     db("INSERT INTO cardtrader_identity_cache(card_id,language_code,cardmarket_product_id,blueprint_id,expansion_id) VALUES "+",".join(vals)+
        " ON CONFLICT(card_id,language_code) DO UPDATE SET cardmarket_product_id=COALESCE(EXCLUDED.cardmarket_product_id,cardtrader_identity_cache.cardmarket_product_id),blueprint_id=EXCLUDED.blueprint_id,expansion_id=EXCLUDED.expansion_id,updated_at=NOW()")
 
-langmap={"de":"de","en":"en","ja":"jp","zh-cn":"zh-CN","zh-tw":"zh-TW"}
 groups={}
 for r in resolved: groups.setdefault(r["expansion_id"],[]).append(r)
 updates=[]
