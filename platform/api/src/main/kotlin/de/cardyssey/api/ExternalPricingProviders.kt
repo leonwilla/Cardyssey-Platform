@@ -222,9 +222,30 @@ internal class JustTcgCentralPricingProvider(
                 builder.header(headerName, headerValue)
             }
             val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() !in 200..299) return@runCatching null
-            json.parseToJsonElement(response.body()).jsonObject
-        }.getOrNull()
+            when {
+                response.statusCode() in 200..299 ->
+                    json.parseToJsonElement(response.body()).jsonObject
+
+                response.statusCode() == 429 ->
+                    throw IllegalStateException("JustTCG rate limit reached")
+
+                response.statusCode() >= 500 ->
+                    throw IllegalStateException(
+                        "JustTCG provider unavailable: HTTP ${response.statusCode()}"
+                    )
+
+                else ->
+                    null
+            }
+        }.getOrElse { error ->
+            if (
+                error is IllegalStateException &&
+                error.message?.startsWith("JustTCG ") == true
+            ) {
+                throw error
+            }
+            null
+        }
     }
 }
 
