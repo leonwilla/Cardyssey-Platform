@@ -16,6 +16,7 @@ import java.util.UUID
 fun Route.adminRoutes(
     roles: RoleRepository,
     admin: AdminRepository,
+    priceMonitor: AdminPriceMonitorRepository,
     userManagement: AdminUserManagementRepository,
     registrationSettings: RegistrationSettingsRepository,
     justTcgConfigured: Boolean,
@@ -48,6 +49,19 @@ fun Route.adminRoutes(
                 }
 
                 call.respond(admin.overview())
+            }
+
+            get("/price-monitor") {
+                if (!call.requireAdmin(roles)) {
+                    return@get
+                }
+
+                call.respond(
+                    priceMonitor.openCases(
+                        language = call.request.queryParameters["language"],
+                        status = call.request.queryParameters["status"]
+                    )
+                )
             }
 
             get("/users") {

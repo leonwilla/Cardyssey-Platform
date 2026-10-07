@@ -78,6 +78,9 @@ fun Application.module() {
     val adminRepository =
         AdminRepository(database)
 
+    val adminPriceMonitorRepository =
+        AdminPriceMonitorRepository(database)
+
     val adminUserManagementRepository =
         AdminUserManagementRepository(database)
 
@@ -617,6 +620,7 @@ fun Application.module() {
         adminRoutes(
             roles = roleRepository,
             admin = adminRepository,
+            priceMonitor = adminPriceMonitorRepository,
             userManagement =
                 adminUserManagementRepository,
             registrationSettings =

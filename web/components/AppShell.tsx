@@ -348,6 +348,20 @@ export function AppShell({
               </Link>
 
               <Link
+                href="/admin/prices"
+                className={
+                  active === "/admin/prices"
+                    ? "navItem active adminNavItem"
+                    : "navItem adminNavItem"
+                }
+              >
+                <span className="navIcon">
+                  <NavGlyph name="marketplace" />
+                </span>
+                <span>Preis-Monitoring</span>
+              </Link>
+
+              <Link
                 href="/admin/chat"
                 className={
                   active === "/admin/chat"
