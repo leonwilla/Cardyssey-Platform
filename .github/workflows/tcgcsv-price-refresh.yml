@@ -25,3 +25,6 @@ jobs:
 
       - name: Refresh verified Cardmarket prices
         run: python3 scripts/refresh-cardmarket-price-cache.py
+
+      - name: Refresh CardTrader marketplace prices
+        run: python3 scripts/refresh-cardtrader-price-cache.py
