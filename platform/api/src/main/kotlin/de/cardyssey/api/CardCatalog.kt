@@ -1717,6 +1717,43 @@ class CardCatalogService(
                 ?.trim()
                 ?.lowercase()
 
+        /*
+         * English Black & White promos with documented deck/tin holo
+         * printings that upstream TCGdex currently collapses to one generated
+         * Normal variant. TCGplayer exposes these as distinct products.
+         */
+        if (
+            supportedLanguage == "en" &&
+            setId == "bwp" &&
+            localId in setOf("BW13", "BW25", "BW33", "BW34")
+        ) {
+            val result =
+                mutableListOf(
+                    CatalogVariant(
+                        id = "curated:en:bwp:$localId:cosmos-holo",
+                        type = "Holo",
+                        foil = "cosmos",
+                        size = "standard",
+                        legacyVariant = "HOLO",
+                        tcgDexEur = null
+                    )
+                )
+
+            if (localId in setOf("BW13", "BW25", "BW34")) {
+                result +=
+                    CatalogVariant(
+                        id = "curated:en:bwp:$localId:cracked-ice-holo",
+                        type = "Holo",
+                        foil = "cracked-ice",
+                        size = "standard",
+                        legacyVariant = "HOLO",
+                        tcgDexEur = null
+                    )
+            }
+
+            return result
+        }
+
         // German SV01 Felori 013/198 also exists as a Holo printing and
         // as the stamped Grass/leaf-symbol reverse printing. Upstream currently
         // exposes only Normal + Reverse for this German card.

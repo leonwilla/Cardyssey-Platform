@@ -65,6 +65,15 @@ def subtype_matches(subtype,legacy,v):
     if legacy=="FIRST_EDITION": return "1st edition" in s
     return False
 
+def product_physical_variant_matches(name, variant):
+    text=str(name or "").lower()
+    foil=str(variant.get("foil") or "").lower().replace("_","-")
+    if foil in ("cosmos","kosmos"):
+        return "cosmos holo" in text
+    if foil in ("cracked-ice","cracked ice"):
+        return "cracked ice holo" in text
+    return True
+
 def product_printing_matches(name, legacy):
     text=str(name or "").lower()
     legacy=legacy.upper()
@@ -205,6 +214,10 @@ for idx,(gid,items) in enumerate(sorted(by_group.items()),1):
             printing=[
                 p for p in candidates
                 if product_printing_matches(p.get("name"), t["legacy"])
+                and product_physical_variant_matches(
+                    p.get("name"),
+                    t["variant"]
+                )
             ]
             if len(printing)==1:
                 candidates=printing
@@ -235,6 +248,11 @@ for idx,(gid,items) in enumerate(sorted(by_group.items()),1):
         if len(candidates)!=1:
             continue
         product=candidates[0]
+        if not product_physical_variant_matches(
+            product.get("name"),
+            t["variant"]
+        ):
+            continue
         pprices=price_by.get(int(product["productId"]),[])
         v=t["variant"]; legacy=t["legacy"]
         matches=[x for x in pprices if subtype_matches(x.get("subTypeName"),legacy,v)]
