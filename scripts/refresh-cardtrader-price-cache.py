@@ -172,10 +172,14 @@ needed_cardmarket = set()
 for row in targets:
     match = stored_pattern.search(row["failure"] or "")
     if match:
-        row["blueprint_id"] = int(match.group(1))
+        # Re-resolve the blueprint weekly so we also recover its expansion id
+        # for batched marketplace calls.
+        row["blueprint_id"] = None
+        row["expansion_id"] = None
         row["cardmarket_id"] = int(match.group(2))
     else:
         row["blueprint_id"] = None
+        row["expansion_id"] = None
         row["cardmarket_id"] = None
 
 missing_identity = [
@@ -233,7 +237,10 @@ if needed_cardmarket:
                     pass
             for product_id in needed_cardmarket & normalized_ids:
                 blueprint_by_cardmarket.setdefault(product_id, []).append(
-                    int(blueprint["id"])
+                    (
+                        int(blueprint["id"]),
+                        int(blueprint.get("expansion_id") or expansion_id),
+                    )
                 )
         remaining = needed_cardmarket - set(blueprint_by_cardmarket)
         if index % 25 == 0:
@@ -252,7 +259,7 @@ for row in targets:
     product_id = row["cardmarket_id"]
     candidates = blueprint_by_cardmarket.get(product_id, [])
     if len(candidates) == 1:
-        row["blueprint_id"] = candidates[0]
+        row["blueprint_id"], row["expansion_id"] = candidates[0]
 
 
 def cardtrader_language(language):
@@ -302,31 +309,15 @@ def listing_matches(row, product):
     return True
 
 
-def marketplace_price(row):
-    blueprint_id = row["blueprint_id"]
-    if blueprint_id is None:
-        return None
-
-    provider_language = cardtrader_language(row["language"])
-    if provider_language is None:
-        return None
-
-    params = {
-        "blueprint_id": str(blueprint_id),
-        "language": provider_language,
-    }
+def foil_filter(row):
     if row["legacy"] == "NORMAL":
-        params["foil"] = "false"
-    elif row["legacy"] in ("HOLO", "REVERSE"):
-        params["foil"] = "true"
+        return "false"
+    if row["legacy"] in ("HOLO", "REVERSE"):
+        return "true"
+    return None
 
-    url = f"{BASE}/marketplace/products?" + urllib.parse.urlencode(params)
-    try:
-        payload = get_json(url, timeout=30)
-    except Exception:
-        return None
 
-    products = payload.get(str(blueprint_id), []) if isinstance(payload, dict) else []
+def price_from_products(row, products):
     values = []
     for product in products:
         if not listing_matches(row, product):
@@ -354,16 +345,58 @@ def marketplace_price(row):
     return round(statistics.median(sample), 4), len(values)
 
 
+# One marketplace call can return all blueprints of an expansion. Grouping here
+# keeps the weekly refresh fast even when thousands of Asian cards are due.
+market_groups = {}
+for row in targets:
+    if (
+        row["blueprint_id"] is None
+        or row["expansion_id"] is None
+        or row["cardmarket_id"] is None
+    ):
+        continue
+
+    provider_language = cardtrader_language(row["language"])
+    foil = foil_filter(row)
+    if provider_language is None or foil is None:
+        continue
+
+    key = (row["expansion_id"], provider_language, foil)
+    market_groups.setdefault(key, []).append(row)
+
 updates = []
-for index, row in enumerate(targets, 1):
-    if row["blueprint_id"] is None or row["cardmarket_id"] is None:
-        continue
-    result = marketplace_price(row)
-    if result is None:
-        continue
-    listing_eur, sample_count = result
-    base_eur = round(listing_eur / NM_FACTOR, 4)
-    updates.append((row, base_eur, listing_eur, sample_count))
+for index, (key, rows) in enumerate(sorted(market_groups.items()), 1):
+    expansion_id, provider_language, foil = key
+    params = {
+        "expansion_id": str(expansion_id),
+        "language": provider_language,
+        "foil": foil,
+    }
+    url = f"{BASE}/marketplace/products?" + urllib.parse.urlencode(params)
+
+    try:
+        payload = get_json(url, timeout=45)
+    except Exception:
+        payload = {}
+
+    if isinstance(payload, dict):
+        for row in rows:
+            products = payload.get(str(row["blueprint_id"]), [])
+            result = price_from_products(row, products)
+            if result is None:
+                continue
+            listing_eur, sample_count = result
+            base_eur = round(listing_eur / NM_FACTOR, 4)
+            updates.append((row, base_eur, listing_eur, sample_count))
+
+    if index % 25 == 0:
+        print(
+            f"cardtrader_market_groups={index}/{len(market_groups)} "
+            f"updates={len(updates)}",
+            flush=True,
+        )
+
+    # Marketplace documentation recommends at most one call per second.
     time.sleep(1.05)
 
 print(
