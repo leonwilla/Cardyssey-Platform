@@ -19,3 +19,6 @@ jobs:
 
       - name: Refresh verified TCGCSV prices
         run: python3 scripts/refresh-tcgcsv-price-cache.py
+
+      - name: Refresh verified Cardmarket prices
+        run: python3 scripts/refresh-cardmarket-price-cache.py
