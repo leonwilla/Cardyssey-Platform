@@ -41,6 +41,12 @@ def norm(value):
     s=re.sub(r"\s*\([^)]*\)\s*$","",s)
     return re.sub(r"[^a-z0-9]+","",s)
 
+def norm_full(value):
+    s=str(value or "").lower().replace("’","'")
+    for a,b in (("é","e"),("è","e"),("á","a"),("ö","o"),("ü","u"),("ä","a")):
+        s=s.replace(a,b)
+    return re.sub(r"[^a-z0-9]+","",s)
+
 def variant_is_holo(legacy, variant):
     typ=str(variant.get("type") or "").lower()
     return (
@@ -233,6 +239,19 @@ for row in pending:
             p for p in by_exp[eid]
             if norm(p.get("name"))==norm(row["en_name"])
         ]
+        if len(candidates)>1 and card:
+            attacks=[
+                str(a.get("name") or "")
+                for a in (card.get("attacks") or [])
+                if str(a.get("name") or "").strip()
+            ]
+            if attacks:
+                attack_matches=[
+                    p for p in candidates
+                    if all(norm_full(attack) in norm_full(p.get("name")) for attack in attacks)
+                ]
+                if len(attack_matches)==1:
+                    candidates=attack_matches
         if len(candidates)==1:
             candidate=candidates[0]
             if (
