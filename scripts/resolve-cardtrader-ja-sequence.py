@@ -60,12 +60,11 @@ ORDER BY c.local_id::int""")
     for r in rows:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products: reason_totals["no_products"]+=1
-        values=[]
+        nm_values=[]
+        sp_values=[]
         for p in products:
             if p.get("graded"): reason_totals["graded"]+=1; continue
             props=p.get("properties_hash") or {}
-            cond=str(props.get("condition") or "").strip().lower()
-            if cond not in ("near mint","mint","nm"): reason_totals["condition"]+=1; continue
             lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
             if lang and lang!="jp": reason_totals["language"]+=1; continue
             rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
@@ -75,12 +74,27 @@ ORDER BY c.local_id::int""")
                 reason_totals["price"]+=1; continue
             try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
             except Exception: reason_totals["price"]+=1; continue
-            values.append(unit)
+            cond=str(props.get("condition") or "").strip().lower()
+            if cond in ("near mint","mint","nm"):
+                nm_values.append(unit)
+            elif cond=="slightly played":
+                sp_values.append(unit)
+            else:
+                reason_totals["condition"]+=1
+        values=nm_values
+        factor=NM_FACTOR
+        source="CARDTRADER_MARKETPLACE"
+        condition_label="NM"
+        if not values and len(sp_values)>=3:
+            values=sp_values
+            factor=0.80
+            source="CARDTRADER_SP_INFERRED"
+            condition_label="SP_INFERRED"
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)
-            base=round(listing/NM_FACTOR,4)
-            updates.append((setid,r,base,listing,len(values)))
+            base=round(listing/factor,4)
+            updates.append((setid,r,base,listing,len(values),source,condition_label))
     print(f"sequence_set={setid} updates={len(updates)-before}",flush=True)
 
 print("sequence_reasons="+json.dumps(reason_totals,separators=(",",":")),flush=True)
@@ -88,10 +102,10 @@ print(f"sequence_updates={len(updates)}",flush=True)
 
 if updates:
     sql=["BEGIN;"]
-    for setid,r,base,listing,count in updates:
-        detail=f"CardTrader Japanese sequence {setid} blueprint {r['blueprint_id']}; median cheapest NM EUR {listing:.4f}; listings {count}"
-        sql.append(f"UPDATE tcg_price_cache SET source='CARDTRADER_MARKETPLACE',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='ja' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
-        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','ja','{q(r['variant_id'])}','CARDTRADER_MARKETPLACE',{base:.4f},NOW());")
+    for setid,r,base,listing,count,source,condition_label in updates:
+        detail=f"CardTrader Japanese sequence {setid} blueprint {r['blueprint_id']}; condition={condition_label}; median listing EUR {listing:.4f}; listings {count}"
+        sql.append(f"UPDATE tcg_price_cache SET source='{source}',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='ja' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
+        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','ja','{q(r['variant_id'])}','{source}',{base:.4f},NOW());")
     sql.append("COMMIT;")
     subprocess.run(["docker","exec","-i","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-v","ON_ERROR_STOP=1","-q"],input="\n".join(sql),text=True,check=True)
     print(f"sequence_applied={len(updates)}",flush=True)

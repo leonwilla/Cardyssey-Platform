@@ -109,12 +109,11 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
     for r in [x for x in resolved if x["expansion_id"]==eid]:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products: reasons["no_products"]+=1
-        values=[]
+        nm_values=[]
+        sp_values=[]
         for p in products:
             if p.get("graded"): reasons["graded"]+=1; continue
             props=p.get("properties_hash") or {}
-            cond=str(props.get("condition") or "").strip().lower()
-            if cond not in ("near mint","mint","nm"): reasons["condition"]+=1; continue
             lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
             if lang and lang!="jp": reasons["language"]+=1; continue
             if r["expansion_code"]!="1epnr":
@@ -128,12 +127,27 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
                 reasons["price"]+=1; continue
             try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
             except Exception: reasons["price"]+=1; continue
-            values.append(unit)
+            cond=str(props.get("condition") or "").strip().lower()
+            if cond in ("near mint","mint","nm"):
+                nm_values.append(unit)
+            elif cond=="slightly played":
+                sp_values.append(unit)
+            else:
+                reasons["condition"]+=1
+        values=nm_values
+        factor=NM_FACTOR
+        source="CARDTRADER_MARKETPLACE"
+        condition_label="NM"
+        if not values and len(sp_values)>=3:
+            values=sp_values
+            factor=0.80
+            source="CARDTRADER_SP_INFERRED"
+            condition_label="SP_INFERRED"
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)
-            base=round(listing/NM_FACTOR,4)
-            updates.append((r,base,listing,len(values)))
+            base=round(listing/factor,4)
+            updates.append((r,base,listing,len(values),source,condition_label))
     print(f"classic_market={gi}/{len(set(x['expansion_id'] for x in resolved))} updates={len(updates)}",flush=True)
 
 print("classic_reasons="+json.dumps(reasons,separators=(",",":")),flush=True)
@@ -141,10 +155,10 @@ print(f"classic_updates={len(updates)}",flush=True)
 
 if updates:
     sql=["BEGIN;"]
-    for r,base,listing,count in updates:
-        detail=f"CardTrader classic {r['expansion_code']} blueprint {r['blueprint_id']}; first_edition={r['expected_first']}; median cheapest NM EUR {listing:.4f}; listings {count}"
-        sql.append(f"UPDATE tcg_price_cache SET source='CARDTRADER_MARKETPLACE',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='ja' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
-        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','ja','{q(r['variant_id'])}','CARDTRADER_MARKETPLACE',{base:.4f},NOW());")
+    for r,base,listing,count,source,condition_label in updates:
+        detail=f"CardTrader classic {r['expansion_code']} blueprint {r['blueprint_id']}; first_edition={r['expected_first']}; condition={condition_label}; median listing EUR {listing:.4f}; listings {count}"
+        sql.append(f"UPDATE tcg_price_cache SET source='{source}',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='ja' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
+        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','ja','{q(r['variant_id'])}','{source}',{base:.4f},NOW());")
     sql.append("COMMIT;")
     subprocess.run(["docker","exec","-i","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-v","ON_ERROR_STOP=1","-q"],input="\n".join(sql),text=True,check=True)
     print(f"classic_applied={len(updates)}",flush=True)
