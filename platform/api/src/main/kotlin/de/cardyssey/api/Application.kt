@@ -360,7 +360,7 @@ fun Application.module() {
                     ?.coerceAtLeast(
                         1L
                     )
-                    ?: 24L,
+                    ?: 168L,
             providerErrorRetryHours =
                 System.getenv(
                     "TCG_PRICE_ERROR_RETRY_HOURS"
