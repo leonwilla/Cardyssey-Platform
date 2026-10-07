@@ -530,6 +530,18 @@ class TcgPriceCacheRepository(
                     WHEN 'PRICE_FOUND' THEN 3
                     ELSE 0
                 END,
+                /*
+                 * Interleave languages inside the same priority bucket so the
+                 * global JustTCG daily budget cannot be consumed by German or
+                 * English leftovers before Japanese/Chinese cards are reached.
+                 */
+                ROW_NUMBER() OVER (
+                    PARTITION BY c.language_code
+                    ORDER BY
+                        p.updated_at NULLS FIRST,
+                        c.card_id,
+                        v.value ->> 'id'
+                ),
                 CASE c.language_code
                     WHEN 'de' THEN 0
                     WHEN 'en' THEN 1
