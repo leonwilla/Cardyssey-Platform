@@ -1725,7 +1725,7 @@ class CardCatalogService(
         if (
             supportedLanguage == "en" &&
             setId == "bwp" &&
-            localId in setOf("BW13", "BW25", "BW33", "BW34")
+            localId in setOf("BW13", "BW25", "BW33", "BW34", "BW80")
         ) {
             val result =
                 mutableListOf(
@@ -1752,6 +1752,23 @@ class CardCatalogService(
             }
 
             return result
+        }
+
+        if (
+            supportedLanguage == "en" &&
+            setId == "smp" &&
+            localId == "SM184"
+        ) {
+            return listOf(
+                CatalogVariant(
+                    id = "curated:en:smp:SM184:cosmos-holo",
+                    type = "Holo",
+                    foil = "cosmos",
+                    size = "standard",
+                    legacyVariant = "HOLO",
+                    tcgDexEur = null
+                )
+            )
         }
 
         // German SV01 Felori 013/198 also exists as a Holo printing and
