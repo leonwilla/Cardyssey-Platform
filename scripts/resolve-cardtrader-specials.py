@@ -128,12 +128,11 @@ for gi,(eid,group) in enumerate(sorted(groups.items()),1):
     for r in group:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products:reasons["no_products"]+=1
-        values=[]
+        nm_values=[]
+        sp_values=[]
         for p in products:
             if p.get("graded"):continue
             props=p.get("properties_hash") or {}
-            cond=str(props.get("condition") or "").strip().lower()
-            if cond not in ("near mint","mint","nm"):reasons["condition"]+=1;continue
             actual=str(props.get("pokemon_language") or props.get("language") or "").strip()
             if actual and actual.lower()!=langmap[r["language"]].lower():reasons["language"]+=1;continue
             price=p.get("price") or {};cents=price.get("cents")
@@ -141,11 +140,26 @@ for gi,(eid,group) in enumerate(sorted(groups.items()),1):
                 reasons["price"]+=1;continue
             try:unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
             except Exception:continue
-            values.append(unit)
+            cond=str(props.get("condition") or "").strip().lower()
+            if cond in ("near mint","mint","nm"):
+                nm_values.append(unit)
+            elif cond=="slightly played":
+                sp_values.append(unit)
+            else:
+                reasons["condition"]+=1
+        values=nm_values
+        factor=NM_FACTOR
+        source="CARDTRADER_MARKETPLACE"
+        condition_label="NM"
+        if not values and len(sp_values)>=3:
+            values=sp_values
+            factor=0.80
+            source="CARDTRADER_SP_INFERRED"
+            condition_label="SP_INFERRED"
         if values:
             values.sort();sample=values[:min(7,len(values))]
-            listing=round(statistics.median(sample),4);base=round(listing/NM_FACTOR,4)
-            updates.append((r,base,listing,len(values)))
+            listing=round(statistics.median(sample),4);base=round(listing/factor,4)
+            updates.append((r,base,listing,len(values),source,condition_label))
     print(f"special_market={gi}/{len(groups)} updates={len(updates)}",flush=True)
 print("special_reasons="+json.dumps(reasons,separators=(",",":")),flush=True)
 print(f"special_price_updates={len(updates)}",flush=True)
@@ -155,7 +169,7 @@ print(f"special_price_updates={len(updates)}",flush=True)
 # free TCGCSV feed for English copies only.
 TCGCSV_GROUPS={"dpp":1421,"np":1423,"bwp":1407,"basep":1418}
 tcg_updates=[]
-already={(r["card_id"],r["language"],r["variant_id"]) for r,_,_,_ in updates}
+already={(r["card_id"],r["language"],r["variant_id"]) for r,_,_,_,_,_ in updates}
 
 def public_json(url):
     req=urllib.request.Request(url,headers={"Accept":"application/json","User-Agent":"Cardyssey-special-tcgcsv"})
@@ -208,10 +222,10 @@ print(f"special_tcgcsv_updates={len(tcg_updates)}",flush=True)
 
 if updates or tcg_updates:
     sql=["BEGIN;"]
-    for r,base,listing,count in updates:
-        detail=f"CardTrader special blueprint {r['blueprint_id']}; {r['version']}; median cheapest NM EUR {listing:.4f}; listings {count}"
-        sql.append(f"UPDATE tcg_price_cache SET source='CARDTRADER_MARKETPLACE',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='{q(r['language'])}' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
-        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','{q(r['language'])}','{q(r['variant_id'])}','CARDTRADER_MARKETPLACE',{base:.4f},NOW());")
+    for r,base,listing,count,source,condition_label in updates:
+        detail=f"CardTrader special blueprint {r['blueprint_id']}; {r['version']}; condition={condition_label}; median listing EUR {listing:.4f}; listings {count}"
+        sql.append(f"UPDATE tcg_price_cache SET source='{source}',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='{q(r['language'])}' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
+        sql.append(f"INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at) VALUES('{q(r['card_id'])}','{q(r['language'])}','{q(r['variant_id'])}','{source}',{base:.4f},NOW());")
     for r,base,subtype in tcg_updates:
         detail=f"TCGplayer product {r['tcg_player_id']}; {subtype}; via CardTrader special blueprint {r['blueprint_id']}"
         sql.append(f"UPDATE tcg_price_cache SET source='TCGCSV_TCGPLAYER',base_eur={base:.4f},updated_at=NOW(),resolution_status='PRICE_FOUND',failure_detail='{q(detail)}',next_attempt_at=NOW()+INTERVAL '7 days' WHERE card_id='{q(r['card_id'])}' AND language_code='{q(r['language'])}' AND variant_id='{q(r['variant_id'])}' AND resolution_status='NO_PRICE';")
