@@ -475,7 +475,12 @@ class TcgPriceCacheRepository(
                 """
                 UPDATE tcg_price_cache
                 SET legacy_variant = ?,
-                    failure_detail = ?,
+                    failure_detail =
+                        CASE
+                            WHEN source = 'TCGCSV_TCGPLAYER'
+                                THEN failure_detail
+                            ELSE ?
+                        END,
                     next_attempt_at =
                         NOW() + (? * INTERVAL '1 hour')
                 WHERE card_id = ?
