@@ -171,7 +171,13 @@ private class TcgDexCentralPricingProvider :
             selected.priceIdentity
 
         val cardLevelEur =
-            if (variants.size == 1) {
+            if (
+                variants.size == 1 ||
+                isUniquePlainStandardNormal(
+                    raw = raw,
+                    variant = variant
+                )
+            ) {
                 cardLevelCardmarketEur(
                     raw = raw,
                     variant = variant
@@ -259,6 +265,52 @@ private class TcgDexCentralPricingProvider :
             baseEur =
                 eur
         )
+    }
+
+    private fun isUniquePlainStandardNormal(
+        raw: JsonObject,
+        variant: CatalogVariant
+    ): Boolean {
+        if (
+            !variant.legacyVariant.equals("NORMAL", ignoreCase = true) ||
+            variant.stamps.isNotEmpty() ||
+            !variant.subtype.isNullOrBlank() ||
+            !variant.foil.isNullOrBlank() ||
+            (
+                !variant.size.isNullOrBlank() &&
+                    !variant.size.equals("standard", ignoreCase = true)
+            )
+        ) {
+            return false
+        }
+
+        val detailed =
+            raw["variants_detailed"]
+                ?.asArray()
+                .orEmpty()
+                .mapNotNull {
+                    it as? JsonObject
+                }
+
+        val plainNormal =
+            detailed.filter { candidate ->
+                candidate.string("type")
+                    .equals("normal", ignoreCase = true) &&
+                    candidate.string("subtype").isNullOrBlank() &&
+                    candidate.string("foil").isNullOrBlank() &&
+                    candidate["stamp"]
+                        ?.asArray()
+                        .orEmpty()
+                        .isEmpty() &&
+                    (
+                        candidate.string("size").isNullOrBlank() ||
+                            candidate.string("size")
+                                .equals("standard", ignoreCase = true)
+                    )
+            }
+
+        return plainNormal.size == 1 &&
+            plainNormal.single().string("variantId") == variant.id
     }
 
     private fun uniqueSharedHoloFamilyEur(

@@ -28,11 +28,14 @@ internal class JustTcgCentralPricingProvider(
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
+    @Volatile
+    private var requestLimitExceeded = false
+
     override suspend fun quote(
         card: CatalogCardDetails,
         variant: CatalogVariant
     ): CentralProviderQuote? {
-        if (apiKey.isBlank()) return null
+        if (apiKey.isBlank() || requestLimitExceeded) return null
 
         if (
             variant.stamps.isNotEmpty() ||
@@ -222,9 +225,23 @@ internal class JustTcgCentralPricingProvider(
                 builder.header(headerName, headerValue)
             }
             val response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+            val body = response.body()
+            val providerCode =
+                runCatching {
+                    json.parseToJsonElement(body)
+                        .jsonObject
+                        .string("code")
+                }.getOrNull()
+
             when {
+                providerCode == "REQUEST_LIMIT_EXCEEDED" -> {
+                    requestLimitExceeded = true
+                    println("JustTCG disabled until API restart: request limit exceeded")
+                    null
+                }
+
                 response.statusCode() in 200..299 ->
-                    json.parseToJsonElement(response.body()).jsonObject
+                    json.parseToJsonElement(body).jsonObject
 
                 response.statusCode() == 429 ->
                     throw IllegalStateException("JustTCG rate limit reached")
