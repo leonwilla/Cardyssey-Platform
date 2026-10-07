@@ -41,6 +41,19 @@ def norm(value):
     s=re.sub(r"\s*\([^)]*\)\s*$","",s)
     return re.sub(r"[^a-z0-9]+","",s)
 
+def semantic_name(value):
+    s=str(value or "").lower().replace("’","'")
+    # Cardmarket spells legacy rarity/Delta markers out while TCGdex often
+    # uses the printed symbols. Normalize both representations.
+    s=s.replace("☆"," gold star ").replace("★"," gold star ")
+    s=re.sub(r"δ\s*delta\s*species", " delta species ", s)
+    s=s.replace("δ"," delta species ")
+    s=re.sub(r"gold\s+star", "goldstar", s)
+    s=re.sub(r"delta\s+species", "deltaspecies", s)
+    s=re.sub(r"\[[^\]]*\]","",s)
+    s=re.sub(r"\s*\([^)]*\)\s*$","",s)
+    return re.sub(r"[^a-z0-9]+","",s)
+
 def norm_full(value):
     s=str(value or "").lower().replace("’","'")
     for a,b in (("é","e"),("è","e"),("á","a"),("ö","o"),("ü","u"),("ä","a")):
@@ -237,7 +250,10 @@ for row in pending:
         eid=set_map[row["set_id"]]
         candidates=[
             p for p in by_exp[eid]
-            if norm(p.get("name"))==norm(row["en_name"])
+            if (
+                norm(p.get("name"))==norm(row["en_name"])
+                or semantic_name(p.get("name"))==semantic_name(row["en_name"])
+            )
         ]
         if len(candidates)>1 and card:
             attacks=[
