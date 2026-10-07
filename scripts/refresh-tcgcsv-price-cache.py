@@ -83,7 +83,10 @@ ORDER BY p.language_code,c.set_id,p.card_id,p.variant_id
 """)
 
 rows = []
-detail_re = re.compile(r"^TCGplayer product (\d+);\s*(.*)$", re.I)
+detail_re = re.compile(
+    r"^TCGplayer product (\d+);\s*([^;]+?)(?:;\s*group\s+(\d+))?$",
+    re.I,
+)
 for line in raw.splitlines():
     parts = line.split("\t", 5)
     if len(parts) != 6:
@@ -98,6 +101,7 @@ for line in raw.splitlines():
         "variant_id": variant_id,
         "product_id": int(match.group(1)),
         "subtype": match.group(2).strip(),
+        "group_id": int(match.group(3)) if match.group(3) else None,
         "set_id": set_id,
         "set_name": set_name,
     })
@@ -135,7 +139,7 @@ for row in rows:
 
 by_group = {}
 for row in rows:
-    gid = set_to_gid.get(row["set_id"])
+    gid = row.get("group_id") or set_to_gid.get(row["set_id"])
     if gid is not None:
         by_group.setdefault(gid, []).append(row)
 
@@ -207,7 +211,11 @@ for item in updates:
 UPDATE tcg_price_cache
 SET base_eur={item['base_eur']:.4f},
     updated_at=NOW(),
-    failure_detail='TCGplayer product {item['product_id']}; {q(item['subtype'])}',
+    failure_detail='TCGplayer product {item['product_id']}; {q(item['subtype'])}' ||
+    CASE
+      WHEN {str(item.get('group_id') is not None).upper()} THEN '; group {item.get('group_id') or 0}'
+      ELSE ''
+    END,
     next_attempt_at=NOW()+INTERVAL '168 hours'
 WHERE card_id='{q(item['card_id'])}'
   AND language_code='{q(item['language'])}'

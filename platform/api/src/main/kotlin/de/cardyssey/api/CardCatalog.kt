@@ -1783,6 +1783,27 @@ class CardCatalogService(
             )
         }
 
+        /*
+         * Burning Shadows deck/challenge-box printings. Upstream currently
+         * exposes only the Cracked Ice version, while TCGplayer documents a
+         * second Water Web Holo physical printing for both cards.
+         */
+        if (
+            setId == "sm3" &&
+            localId in setOf("28", "76")
+        ) {
+            return listOf(
+                CatalogVariant(
+                    id = "curated:$supportedLanguage:sm3:$localId:water-web-holo",
+                    type = "Holo",
+                    foil = "water-web",
+                    size = "standard",
+                    legacyVariant = "HOLO",
+                    tcgDexEur = null
+                )
+            )
+        }
+
         // German SV01 Felori 013/198 also exists as a Holo printing and
         // as the stamped Grass/leaf-symbol reverse printing. Upstream currently
         // exposes only Normal + Reverse for this German card.

@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Backfill verified special TCGplayer variants
+        run: python3 scripts/backfill-tcgcsv-special-variants.py
+
       - name: Refresh verified TCGCSV prices
         run: python3 scripts/refresh-tcgcsv-price-cache.py
 
