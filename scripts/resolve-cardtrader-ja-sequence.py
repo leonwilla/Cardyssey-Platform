@@ -17,7 +17,15 @@ def db(sql):
     return subprocess.run(["docker","exec","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-At","-F","\t","-c",sql],check=True,capture_output=True,text=True).stdout.strip()
 def q(v): return str(v).replace("'","''")
 
-SET_CODE={"PMCG2":"jun","PMCG5":"gls","neo1":"gstnw","neo2":"ctr"}
+SET_CODE={
+    "PMCG2":"jun",
+    "PMCG4":"rog",
+    "PMCG5":"gls",
+    "PMCG6":"gcd",
+    "neo1":"gstnw",
+    "neo2":"ctr",
+    "neo3":"awl",
+}
 expansions=[e for e in get(f"{BASE}/expansions") if int(e.get("game_id") or 0)==5]
 by_code={str(e.get("code") or "").lower():e for e in expansions}
 
