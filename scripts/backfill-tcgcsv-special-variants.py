@@ -78,6 +78,10 @@ MAPPINGS=[
     {"card":"svp-106","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556443,"subtype":"Holofoil"},
     {"card":"svp-110","variant_id":"jr7oetx1mqug9","gid":23520,"pid":556444,"subtype":"Holofoil"},
 
+    # Exact variant-level TCGplayer identities exposed by TCGdex.
+    {"card":"basep-4","variant_id":"3a83wf50ts0izkobrpvrjbdwt","gid":1418,"pid":88066,"subtype":"Normal"},
+    {"card":"np-36","variant_id":"15i9grynje65aa1e83ryxy8ize5tmacb","gid":1453,"pid":97703,"subtype":"Normal"},
+
     # Victory Cup Battle Road trophy printings. BW29/BW30/BW31 represent
     # 3rd/2nd/1st place respectively, with separate season printings.
     {"card":"bwp-BW29","variant_id":"curated:en:bwp:BW29:battle-road-autumn-2011:third-place","gid":1407,"pid":90355,"subtype":"Holofoil"},
