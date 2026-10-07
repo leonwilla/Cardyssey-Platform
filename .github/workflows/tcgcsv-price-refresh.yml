@@ -38,6 +38,9 @@ jobs:
       - name: Resolve classic Japanese sequence sets
         run: python3 scripts/resolve-cardtrader-ja-sequence.py
 
+      - name: Resolve Japanese Pokédex identities
+        run: python3 scripts/resolve-cardtrader-ja-dex.py
+
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
 
