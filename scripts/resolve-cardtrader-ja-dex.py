@@ -150,12 +150,46 @@ if identity_rows:
     )
 print(f"ja_dex_variant_identities={len(identity_rows)}",flush=True)
 
+def condition_calibration(payload):
+    ratios={"slightly played":[],"moderately played":[],"played":[]}
+    for products in payload.values() if isinstance(payload,dict) else []:
+        by_condition={}
+        for p in products:
+            if p.get("graded"): continue
+            props=p.get("properties_hash") or {}
+            lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
+            if lang and lang!="jp": continue
+            rv=next((x for k,x in props.items() if "reverse" in str(k).lower()),None)
+            if str(rv).lower() in ("true","1","yes"): continue
+            price=p.get("price") or {}; cents=price.get("cents")
+            if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
+            try: unit=float(cents)/100/max(1,int(p.get("bundle_size") or 1))
+            except Exception: continue
+            cond=str(props.get("condition") or "").strip().lower()
+            by_condition.setdefault(cond,[]).append(unit)
+        nm=(by_condition.get("near mint") or [])+(by_condition.get("mint") or [])
+        if not nm: continue
+        nm=sorted(nm); nm_med=statistics.median(nm[:min(7,len(nm))])
+        for cond in ratios:
+            vals=by_condition.get(cond) or []
+            if not vals: continue
+            vals=sorted(vals); lower=statistics.median(vals[:min(7,len(vals))])
+            if lower<=0: continue
+            ratio=nm_med/lower
+            if 1.0<=ratio<=8.0: ratios[cond].append(ratio)
+    return {
+        cond:(statistics.median(vals),len(vals))
+        for cond,vals in ratios.items()
+        if len(vals)>=5
+    }
+
+calibrations={eid:condition_calibration(payload) for eid,payload in markets.items()}
 updates=[]
 reasons={"no_products":0,"language":0,"condition":0,"reverse":0,"price":0}
 for r in resolved:
     products=markets[r["expansion_id"]].get(str(r["blueprint_id"]),[]) if isinstance(markets[r["expansion_id"]],dict) else []
     if not products: reasons["no_products"]+=1
-    nm=[];sp=[]
+    nm=[];sp=[];mp=[];played=[]
     for p in products:
         if p.get("graded"): continue
         props=p.get("properties_hash") or {}
@@ -171,14 +205,23 @@ for r in resolved:
         cond=str(props.get("condition") or "").strip().lower()
         if cond in ("near mint","mint","nm"):nm.append(unit)
         elif cond=="slightly played":sp.append(unit)
+        elif cond=="moderately played":mp.append(unit)
+        elif cond=="played":played.append(unit)
         else:reasons["condition"]+=1
-    vals=nm;factor=NM_FACTOR;source="CARDTRADER_MARKETPLACE";label="NM"
-    if not vals and len(sp)>=3:
-        vals=sp;factor=0.80;source="CARDTRADER_SP_INFERRED";label="SP_INFERRED"
+    vals=nm;factor=NM_FACTOR;source="CARDTRADER_MARKETPLACE";label="NM";ratio=1.0
+    cal=calibrations.get(r["expansion_id"],{})
+    if not vals and len(sp)>=2 and "slightly played" in cal:
+        vals=sp;ratio=cal["slightly played"][0];source="CARDTRADER_SP_INFERRED";label=f"SP_INFERRED x{ratio:.3f} ncal={cal['slightly played'][1]}"
+    elif not vals and len(sp)>=3:
+        vals=sp;factor=0.80;source="CARDTRADER_SP_INFERRED";label="SP_INFERRED_FIXED"
+    elif not vals and len(mp)>=3 and "moderately played" in cal:
+        vals=mp;ratio=cal["moderately played"][0];source="CARDTRADER_MP_INFERRED";label=f"MP_INFERRED x{ratio:.3f} ncal={cal['moderately played'][1]}"
+    elif not vals and len(played)>=3 and "played" in cal:
+        vals=played;ratio=cal["played"][0];source="CARDTRADER_PLAYED_INFERRED";label=f"PLAYED_INFERRED x{ratio:.3f} ncal={cal['played'][1]}"
     if vals:
         vals.sort();sample=vals[:min(7,len(vals))]
         listing=round(statistics.median(sample),4)
-        base=round(listing/factor,4)
+        base=round((listing*ratio)/factor,4)
         detail=f"CardTrader Japanese dex match {r['set_id']} dex={r['dex_id']} blueprint {r['blueprint_id']}; condition={label}; listings={len(vals)}"
         updates.append((r,base,source,detail))
 
