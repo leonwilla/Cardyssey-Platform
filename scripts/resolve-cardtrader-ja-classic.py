@@ -204,11 +204,44 @@ def condition_calibration(payload):
         if len(vals)>=5
     }
 
+def edition_calibration(payload):
+    """Median NM first-edition/unlimited ratio from cards having both."""
+    ratios=[]
+    for products in payload.values() if isinstance(payload,dict) else []:
+        editions={True:[],False:[]}
+        for p in products:
+            if p.get("graded"): continue
+            props=p.get("properties_hash") or {}
+            lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
+            if lang and lang!="jp": continue
+            rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
+            if str(rv).lower() in ("true","1","yes"): continue
+            cond=str(props.get("condition") or "").strip().lower()
+            if cond not in ("near mint","mint","nm"): continue
+            price=p.get("price") or {}; cents=price.get("cents")
+            if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
+            try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
+            except Exception: continue
+            is_first=str(props.get("first_edition")).lower() in ("true","1","yes")
+            editions[is_first].append(unit)
+        if editions[True] and editions[False]:
+            first=sorted(editions[True]); unlimited=sorted(editions[False])
+            first_med=statistics.median(first[:min(7,len(first))])
+            unlimited_med=statistics.median(unlimited[:min(7,len(unlimited))])
+            if unlimited_med<=0: continue
+            ratio=first_med/unlimited_med
+            if 0.25<=ratio<=8.0:
+                ratios.append(ratio)
+    if len(ratios)<5:
+        return None
+    return statistics.median(ratios),len(ratios)
+
 for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
     try: payload=get(f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),40)
     except Exception as e:
         print(f"classic_market_error expansion={eid} error={e!r}",flush=True); continue
     calibration=condition_calibration(payload)
+    edition_cal=edition_calibration(payload)
     for r in [x for x in resolved if x["expansion_id"]==eid]:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products: reasons["no_products"]+=1
@@ -243,6 +276,26 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
                 played_values.append(unit)
             else:
                 reasons["condition"]+=1
+
+        opposite_nm=[]
+        if edition_cal is not None and r["expansion_code"]!="1epnr":
+            for p in products:
+                if p.get("graded"): continue
+                props=p.get("properties_hash") or {}
+                lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
+                if lang and lang!="jp": continue
+                rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
+                if str(rv).lower() in ("true","1","yes"): continue
+                is_first=str(props.get("first_edition")).lower() in ("true","1","yes")
+                if is_first==r["expected_first"]: continue
+                cond=str(props.get("condition") or "").strip().lower()
+                if cond not in ("near mint","mint","nm"): continue
+                price=p.get("price") or {}; cents=price.get("cents")
+                if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
+                try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
+                except Exception: continue
+                opposite_nm.append(unit)
+
         values=nm_values
         factor=NM_FACTOR
         source="CARDTRADER_MARKETPLACE"
@@ -270,6 +323,16 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
             factor=NM_FACTOR
             source="CARDTRADER_PLAYED_INFERRED"
             condition_label=f"PLAYED_INFERRED x{condition_ratio:.3f} ncal={calibration['played'][1]}"
+        elif not values and len(opposite_nm)>=2 and edition_cal is not None:
+            values=opposite_nm
+            edition_ratio,edition_n=edition_cal
+            condition_ratio=edition_ratio if r["expected_first"] else (1.0/edition_ratio)
+            factor=NM_FACTOR
+            source="CARDTRADER_EDITION_INFERRED"
+            condition_label=(
+                f"EDITION_INFERRED {'1ST' if r['expected_first'] else 'UNLIMITED'} "
+                f"x{condition_ratio:.3f} ncal={edition_n}"
+            )
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)
