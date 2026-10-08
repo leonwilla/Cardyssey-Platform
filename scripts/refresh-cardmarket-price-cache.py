@@ -110,10 +110,14 @@ parser=argparse.ArgumentParser()
 parser.add_argument("--dry-run",action="store_true")
 args=parser.parse_args()
 
+print("cardmarket_download=products_start",flush=True)
 products_payload=requests.get(PRODUCT_URL,headers=UA,timeout=45)
 products_payload.raise_for_status()
+print(f"cardmarket_download=products_done bytes={len(products_payload.content)}",flush=True)
+print("cardmarket_download=prices_start",flush=True)
 price_payload=requests.get(PRICE_URL,headers=UA,timeout=45)
 price_payload.raise_for_status()
+print(f"cardmarket_download=prices_done bytes={len(price_payload.content)}",flush=True)
 products=products_payload.json().get("products") or []
 price_rows=price_payload.json().get("priceGuides") or []
 prices={str(x.get("idProduct")):x for x in price_rows}
@@ -222,8 +226,10 @@ def fetch_card(key):
 
 cards={}
 with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
-    for key,payload in pool.map(fetch_card,card_keys):
+    for index,(key,payload) in enumerate(pool.map(fetch_card,card_keys),1):
         cards[key]=payload
+        if index%250==0 or index==len(card_keys):
+            print(f"cardmarket_identity={index}/{len(card_keys)}",flush=True)
 
 resolved_keys={(u[0]["card_id"],u[0]["language"],u[0]["variant_id"]) for u in updates}
 for row in pending:
@@ -250,7 +256,9 @@ for row in pending:
                 method="tcgdex-cardmarket-id"
 
     # Fallback: high-confidence set mapping + exact EN card name.
-    if guide is None and row["set_id"] in set_map:
+    # This name-based path is intentionally limited to Western languages.
+    # Asian cards use only TCGdex's exact Cardmarket product identity.
+    if guide is None and row["language"] in ("de","en") and row["set_id"] in set_map:
         eid=set_map[row["set_id"]]
         candidates=[
             p for p in by_exp[eid]
