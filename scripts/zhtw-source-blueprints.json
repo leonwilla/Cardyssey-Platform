@@ -1,0 +1,362 @@
+{
+  "official_ja_0de07ca022b5e87276c36ac8": {
+    "expansion_id": 4075,
+    "blueprint_id": 321584,
+    "distance": 38,
+    "margin": 397,
+    "name": "Energy Retrieval",
+    "version": "012/023"
+  },
+  "official_ja_0df5b1f63f7de956bc22e002": {
+    "expansion_id": 4075,
+    "blueprint_id": 321575,
+    "distance": 37,
+    "margin": 586,
+    "name": "Raichu",
+    "version": "002/023"
+  },
+  "official_ja_185dd7129505a43bf12fc045": {
+    "expansion_id": 3998,
+    "blueprint_id": 321546,
+    "distance": 40,
+    "margin": 435,
+    "name": "Krabby",
+    "version": "003/023"
+  },
+  "official_ja_1b4a22084f6f9f2da976f67c": {
+    "expansion_id": 3974,
+    "blueprint_id": 315373,
+    "distance": 43,
+    "margin": 409,
+    "name": "Durant",
+    "version": "SA 005/023"
+  },
+  "official_ja_1c42567e0a23ed73c93f7975": {
+    "expansion_id": 3974,
+    "blueprint_id": 315370,
+    "distance": 60,
+    "margin": 373,
+    "name": "Roselia",
+    "version": "SA 002/023"
+  },
+  "official_ja_27bfef5465caf85459567de6": {
+    "expansion_id": 3974,
+    "blueprint_id": 315374,
+    "distance": 44,
+    "margin": 423,
+    "name": "Grookey",
+    "version": "SA 006/023"
+  },
+  "official_ja_2c1f5a9f82db863e98447744": {
+    "expansion_id": 3998,
+    "blueprint_id": 321563,
+    "distance": 40,
+    "margin": 363,
+    "name": "Inteleon",
+    "version": "009/023"
+  },
+  "official_ja_311228ff286e135582672561": {
+    "expansion_id": 3974,
+    "blueprint_id": 315371,
+    "distance": 59,
+    "margin": 565,
+    "name": "Cottonee",
+    "version": "SA 003/023"
+  },
+  "official_ja_3486bcb59a64dbe168ad7c31": {
+    "expansion_id": 3975,
+    "blueprint_id": 321454,
+    "distance": 38,
+    "margin": 475,
+    "name": "Sizzlipede",
+    "version": "009/023"
+  },
+  "official_ja_42d2b2136553e7364ce30d80": {
+    "expansion_id": 4076,
+    "blueprint_id": 321602,
+    "distance": 58,
+    "margin": 395,
+    "name": "Rhyhorn",
+    "version": "003/024"
+  },
+  "official_ja_4765310de8d0ad5c29477e18": {
+    "expansion_id": 3974,
+    "blueprint_id": 315372,
+    "distance": 42,
+    "margin": 349,
+    "name": "Whimsicott",
+    "version": "SA 004/023"
+  },
+  "official_ja_4d3ade9da3f41be5c7a7c5fc": {
+    "expansion_id": 3998,
+    "blueprint_id": 321552,
+    "distance": 36,
+    "margin": 457,
+    "name": "Shellder",
+    "version": "001/023"
+  },
+  "official_ja_53fc37adea9f6a4e67b69341": {
+    "expansion_id": 4075,
+    "blueprint_id": 321583,
+    "distance": 30,
+    "margin": 378,
+    "name": "Joltik",
+    "version": "004/023"
+  },
+  "official_ja_572de8ac85ec038640e3ee03": {
+    "expansion_id": 3998,
+    "blueprint_id": 321547,
+    "distance": 51,
+    "margin": 360,
+    "name": "Lapras",
+    "version": "005/023"
+  },
+  "official_ja_5a68775c180d7435989c1215": {
+    "expansion_id": 4076,
+    "blueprint_id": 321609,
+    "distance": 49,
+    "margin": 421,
+    "name": "Mudsdale",
+    "version": "007/024"
+  },
+  "official_ja_66e8fff3def8389aed2c65cd": {
+    "expansion_id": 4656,
+    "blueprint_id": 312662,
+    "distance": 24,
+    "margin": 475,
+    "name": "Nickit",
+    "version": "sC | 005/020"
+  },
+  "official_ja_6f221c5857edeccde5fa83a9": {
+    "expansion_id": 4075,
+    "blueprint_id": 321569,
+    "distance": 66,
+    "margin": 435,
+    "name": "Wooloo",
+    "version": "011/023"
+  },
+  "official_ja_700ddd608b9c210e6d152d7a": {
+    "expansion_id": 4656,
+    "blueprint_id": 312658,
+    "distance": 57,
+    "margin": 465,
+    "name": "Hydreigon",
+    "version": "sC | 004/020"
+  },
+  "official_ja_712ce0209db83b7ea8827410": {
+    "expansion_id": 4075,
+    "blueprint_id": 321586,
+    "distance": 36,
+    "margin": 452,
+    "name": "Galvantula",
+    "version": "005/023"
+  },
+  "official_ja_71a6d440490cfa18dd5be261": {
+    "expansion_id": 3998,
+    "blueprint_id": 321566,
+    "distance": 36,
+    "margin": 537,
+    "name": "Goldeen",
+    "version": "004/023"
+  },
+  "official_ja_74babad9676b1a532f9c0478": {
+    "expansion_id": 4656,
+    "blueprint_id": 312657,
+    "distance": 53,
+    "margin": 417,
+    "name": "Zweilous",
+    "version": "sC | 003/020"
+  },
+  "official_ja_751541d4b5d006025c1fbfe2": {
+    "expansion_id": 3975,
+    "blueprint_id": 321457,
+    "distance": 36,
+    "margin": 393,
+    "name": "Ninetales",
+    "version": "002/023"
+  },
+  "official_ja_7758ca3acacea07bd78f1055": {
+    "expansion_id": 3974,
+    "blueprint_id": 315377,
+    "distance": 50,
+    "margin": 519,
+    "name": "Blipbug",
+    "version": "SA 009/023"
+  },
+  "official_ja_81c436bcb50931321fb41486": {
+    "expansion_id": 3975,
+    "blueprint_id": 321458,
+    "distance": 56,
+    "margin": 434,
+    "name": "Minccino",
+    "version": "010/023"
+  },
+  "official_ja_83a4390586b2a84c23464217": {
+    "expansion_id": 3974,
+    "blueprint_id": 315378,
+    "distance": 33,
+    "margin": 372,
+    "name": "Snorlax",
+    "version": "SA 010/023"
+  },
+  "official_ja_87dd38bf389656ecdaa213eb": {
+    "expansion_id": 4076,
+    "blueprint_id": 321598,
+    "distance": 28,
+    "margin": 470,
+    "name": "Stonjourner",
+    "version": "011/024"
+  },
+  "official_ja_944a9fbc5018dad08d7b4a35": {
+    "expansion_id": 3975,
+    "blueprint_id": 321451,
+    "distance": 55,
+    "margin": 451,
+    "name": "Turtonator",
+    "version": "005/023"
+  },
+  "official_ja_9626f5def8f4662acbd00c1d": {
+    "expansion_id": 4075,
+    "blueprint_id": 321590,
+    "distance": 53,
+    "margin": 413,
+    "name": "Boltund",
+    "version": "008/023"
+  },
+  "official_ja_972d2d10a22f8ad7476a9951": {
+    "expansion_id": 4076,
+    "blueprint_id": 321601,
+    "distance": 50,
+    "margin": 685,
+    "name": "Regirock V",
+    "version": "005/024"
+  },
+  "official_ja_a74dd164916f427dec03e808": {
+    "expansion_id": 4076,
+    "blueprint_id": 321608,
+    "distance": 64,
+    "margin": 498,
+    "name": "Mudbray",
+    "version": "006/024"
+  },
+  "official_ja_ad1b40f240642cb6880d7599": {
+    "expansion_id": 4076,
+    "blueprint_id": 321593,
+    "distance": 50,
+    "margin": 335,
+    "name": "Diglett",
+    "version": "001/024"
+  },
+  "official_ja_ae5f117b9f5781dffefb1fdf": {
+    "expansion_id": 3974,
+    "blueprint_id": 315375,
+    "distance": 55,
+    "margin": 479,
+    "name": "Thwackey",
+    "version": "SA 007/023"
+  },
+  "official_ja_b4db5088bb0c29903f2862e6": {
+    "expansion_id": 3974,
+    "blueprint_id": 315376,
+    "distance": 49,
+    "margin": 413,
+    "name": "Rillaboom",
+    "version": "SA 008/023"
+  },
+  "official_ja_c8f62e1cb5748b4b391b3d26": {
+    "expansion_id": 3998,
+    "blueprint_id": 321561,
+    "distance": 42,
+    "margin": 473,
+    "name": "Cramorant",
+    "version": "010/023"
+  },
+  "official_ja_cf093aede5fa85ae6f4685d9": {
+    "expansion_id": 4075,
+    "blueprint_id": 321573,
+    "distance": 60,
+    "margin": 651,
+    "name": "Tapu Koko V",
+    "version": "006/023"
+  },
+  "official_ja_d3930e336828588b3a42187a": {
+    "expansion_id": 3975,
+    "blueprint_id": 321469,
+    "distance": 38,
+    "margin": 499,
+    "name": "Vulpix",
+    "version": "001/023"
+  },
+  "official_ja_d3fef8728a36d88b7cad5969": {
+    "expansion_id": 4076,
+    "blueprint_id": 321594,
+    "distance": 40,
+    "margin": 545,
+    "name": "Dugtrio",
+    "version": "002/024"
+  },
+  "official_ja_da196cbfead6fb0916ae4543": {
+    "expansion_id": 4075,
+    "blueprint_id": 321588,
+    "distance": 52,
+    "margin": 501,
+    "name": "Drampa",
+    "version": "010/023"
+  },
+  "official_ja_db619a09dcdbc3951af38547": {
+    "expansion_id": 3998,
+    "blueprint_id": 321562,
+    "distance": 56,
+    "margin": 368,
+    "name": "Cloyster",
+    "version": "002/023"
+  },
+  "official_ja_de4edf5b2f4f5cb93fa97c74": {
+    "expansion_id": 4656,
+    "blueprint_id": 312659,
+    "distance": 34,
+    "margin": 484,
+    "name": "Lugia",
+    "version": "sC | 008/020"
+  },
+  "official_ja_e006b8531cbe8805112d66a1": {
+    "expansion_id": 4076,
+    "blueprint_id": 321595,
+    "distance": 42,
+    "margin": 329,
+    "name": "Clobbopus",
+    "version": "010/024"
+  },
+  "official_ja_e8f0545bd0827d012548745e": {
+    "expansion_id": 4075,
+    "blueprint_id": 321589,
+    "distance": 67,
+    "margin": 491,
+    "name": "Chinchou",
+    "version": "003/023"
+  },
+  "official_ja_fa06937b96524d4e1eb3a309": {
+    "expansion_id": 4076,
+    "blueprint_id": 321592,
+    "distance": 31,
+    "margin": 482,
+    "name": "Baltoy",
+    "version": "004/024"
+  },
+  "official_ja_faf940e6d00dac82ce538dce": {
+    "expansion_id": 4656,
+    "blueprint_id": 312655,
+    "distance": 30,
+    "margin": 532,
+    "name": "Absol",
+    "version": "sC | 001/020"
+  },
+  "official_ja_fde600beefb7bc856ab3b581": {
+    "expansion_id": 3975,
+    "blueprint_id": 321456,
+    "distance": 46,
+    "margin": 427,
+    "name": "Heatmor",
+    "version": "004/023"
+  }
+}

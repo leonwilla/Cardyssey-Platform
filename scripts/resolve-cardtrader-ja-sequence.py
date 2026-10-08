@@ -42,7 +42,7 @@ updates=[]
 reason_totals={"no_products":0,"graded":0,"condition":0,"language":0,"reverse":0,"price":0}
 
 def condition_calibration(payload):
-    ratios={"moderately played":[],"played":[]}
+    ratios={"slightly played":[],"moderately played":[],"played":[]}
     for products in payload.values() if isinstance(payload,dict) else []:
         by_condition={}
         for p in products:
@@ -168,11 +168,16 @@ ORDER BY c.local_id::int""")
         source="CARDTRADER_MARKETPLACE"
         condition_label="NM"
         condition_ratio=1.0
-        if not values and len(sp_values)>=3:
+        if not values and len(sp_values)>=2 and "slightly played" in calibration:
+            values=sp_values
+            condition_ratio=calibration["slightly played"][0]
+            source="CARDTRADER_SP_INFERRED"
+            condition_label=f"SP_INFERRED x{condition_ratio:.3f} ncal={calibration['slightly played'][1]}"
+        elif not values and len(sp_values)>=3:
             values=sp_values
             factor=0.80
             source="CARDTRADER_SP_INFERRED"
-            condition_label="SP_INFERRED"
+            condition_label="SP_INFERRED_FIXED"
         elif not values and len(mp_values)>=3 and "moderately played" in calibration:
             values=mp_values
             condition_ratio=calibration["moderately played"][0]

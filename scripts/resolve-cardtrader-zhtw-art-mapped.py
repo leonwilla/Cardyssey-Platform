@@ -14,6 +14,7 @@ NM_FACTOR=0.92
 SP_FACTOR=0.80
 ROOT=Path(__file__).resolve().parent
 MAPPING_FILE=ROOT/"zhtw-art-identities.json"
+SOURCE_BLUEPRINT_FILE=ROOT/"zhtw-source-blueprints.json"
 TOKEN=""
 for line in Path("/home/tv/cardshop/platform/.env").read_text().splitlines():
     if line.startswith("CARDTRADER_API_TOKEN="):
@@ -46,7 +47,15 @@ if not MAPPING_FILE.exists():
     raise SystemExit(0)
 
 mappings=json.loads(MAPPING_FILE.read_text())
-print(f"zhtw_art_mappings={len(mappings)}",flush=True)
+source_blueprints=(
+    json.loads(SOURCE_BLUEPRINT_FILE.read_text())
+    if SOURCE_BLUEPRINT_FILE.exists()
+    else {}
+)
+print(
+    f"zhtw_art_mappings={len(mappings)} source_blueprints={len(source_blueprints)}",
+    flush=True,
+)
 
 # Only keep mappings whose exact target variant is still unresolved.
 open_raw=db("""SELECT card_id,variant_id
@@ -67,6 +76,10 @@ source_sets=sorted({m["source_set"] for m in rows})
 blueprints={}
 indexes={}
 for sid in source_sets:
+    # Aggregated Japanese starter-deck sets such as SA/SCS are split across
+    # several CardTrader expansions and are resolved per exact source artwork.
+    if sid in ("SA","SCS"):
+        continue
     source_code=SOURCE_CODE_ALIASES.get(sid,sid)
     exp=by_code.get(str(source_code).lower())
     if not exp:
@@ -88,6 +101,14 @@ for sid in source_sets:
 resolved=[]
 ambiguous=0
 for m in rows:
+    source_override=source_blueprints.get(str(m.get("source_card_id") or ""))
+    if source_override:
+        resolved.append({
+            **m,
+            "blueprint_id":int(source_override["blueprint_id"]),
+            "expansion_id":int(source_override["expansion_id"]),
+        })
+        continue
     cand=indexes.get(m["source_set"],{}).get(num(m["source_local_id"]),[])
     if len(cand)!=1:
         if len(cand)>1: ambiguous+=1
