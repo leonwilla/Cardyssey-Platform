@@ -4,7 +4,7 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.serialization.Serializable
 import java.time.OffsetDateTime
 
-@Serializable data class AdminPriceMonitorItem(val cardId:String,val languageCode:String,val setName:String,val cardName:String,val cardNumber:String,val variantId:String,val variant:String,val lastPriceEur:Double?,val source:String?,val lastSuccessfulSync:String?,val currentStatus:String)
+@Serializable data class AdminPriceMonitorItem(val cardId:String,val languageCode:String,val setName:String,val cardName:String,val cardNumber:String,val variantId:String,val variant:String,val lastPriceEur:Double?,val source:String?,val lastSuccessfulSync:String?,val currentStatus:String,val failureDetail:String?,val nextAttemptAt:String?,val identityMethod:String?)
 @Serializable data class AdminPriceMonitorCounts(val total:Long,val stale:Long,val noPrice:Long,val providerError:Long)
 @Serializable data class AdminPriceMonitorResponse(val counts:AdminPriceMonitorCounts,val items:List<AdminPriceMonitorItem>)
 
@@ -22,12 +22,16 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  WHERE c.details_complete=TRUE AND COALESCE(v.value->>'id','')<>'' AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
 ), monitored AS (
  SELECT v.*,last_success.base_eur AS last_price_eur,last_success.source AS last_source,last_success.captured_at AS last_successful_sync,
+        p.failure_detail,p.next_attempt_at,
+        COALESCE(vi.method,CASE WHEN ci.card_id IS NOT NULL THEN 'card-level' END) AS identity_method,
  CASE WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='NO_PRICE' THEN 'NO_PRICE'
       WHEN last_success.captured_at IS NULL OR last_success.captured_at < NOW()-INTERVAL '8 days' THEN 'STALE'
       ELSE NULL END AS monitor_status
  FROM variants v
  LEFT JOIN tcg_price_cache p ON p.card_id=v.card_id AND p.language_code=v.language_code AND p.variant_id=v.variant_id
+ LEFT JOIN cardtrader_variant_identity_cache vi ON vi.card_id=v.card_id AND vi.language_code=v.language_code AND vi.variant_id=v.variant_id
+ LEFT JOIN cardtrader_identity_cache ci ON ci.card_id=v.card_id AND ci.language_code=v.language_code
  LEFT JOIN LATERAL (
   SELECT h.base_eur,h.source,h.captured_at FROM tcg_price_history h
   WHERE h.card_id=v.card_id AND h.language_code=v.language_code AND h.variant_id=v.variant_id
@@ -42,7 +46,7 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
     st.executeQuery().use{r->check(r.next());AdminPriceMonitorCounts(r.getLong("total"),r.getLong("stale"),r.getLong("no_price"),r.getLong("provider_error"))}
    }
    val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY language_code,set_name,card_name,card_id,variant_id")}
-   val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status")))}}}
+   val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status"),r.getString("failure_detail"),r.getObject("next_attempt_at",OffsetDateTime::class.java)?.toString(),r.getString("identity_method")))}}}
    AdminPriceMonitorResponse(counts,items)
   }
  }

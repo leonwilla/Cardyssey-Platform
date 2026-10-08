@@ -8,7 +8,8 @@ import type { User } from "@/lib/types";
 type PriceCase = {
   cardId:string; languageCode:string; setName:string; cardName:string; cardNumber:string;
   variantId:string; variant:string; lastPriceEur?:number|null; source?:string|null;
-  lastSuccessfulSync?:string|null; currentStatus:string;
+  lastSuccessfulSync?:string|null; currentStatus:string; failureDetail?:string|null;
+  nextAttemptAt?:string|null; identityMethod?:string|null;
 };
 type ResponseData = {
   counts:{total:number;stale:number;noPrice:number;providerError:number};
@@ -53,7 +54,7 @@ export default function PriceMonitorPage(){
   finally{setLoading(false);}
  }
  const copyText=useMemo(()=>data?.items.map((item,index)=>
-  `${index+1}. [${item.currentStatus}] ${item.languageCode.toUpperCase()} | ${item.setName} | ${item.cardName} | #${item.cardNumber} | ${item.variant} | letzter Preis: ${euro(item.lastPriceEur)} | Quelle: ${item.source??"—"} | letzter erfolgreicher Sync: ${item.lastSuccessfulSync??"nie"} | cardId=${item.cardId} | variantId=${item.variantId}`
+  `${index+1}. [${item.currentStatus}] ${item.languageCode.toUpperCase()} | ${item.setName} | ${item.cardName} | #${item.cardNumber} | ${item.variant} | letzter Preis: ${euro(item.lastPriceEur)} | Quelle: ${item.source??"—"} | letzter erfolgreicher Sync: ${item.lastSuccessfulSync??"nie"} | Grund: ${item.failureDetail??"—"} | Identity: ${item.identityMethod??"keine"} | nächster Versuch: ${item.nextAttemptAt??"—"} | cardId=${item.cardId} | variantId=${item.variantId}`
  ).join("\n")??"",[data]);
  async function copyList(){await navigator.clipboard.writeText(`Cardyssey offene Preisfälle (${data?.items.length??0})\nFilter: Sprache=${language||"alle"}, Status=${status||"alle"}\n\n${copyText}`);setMessage(`${data?.items.length??0} Preisfälle kopiert.`);}
 
@@ -76,10 +77,10 @@ export default function PriceMonitorPage(){
    </div>
    {loading?<div className="statusPanel">Preisfälle werden geladen …</div>:
     <div style={{overflowX:"auto",maxHeight:"68vh",overflowY:"auto"}}>
-     <table style={{width:"100%",borderCollapse:"collapse",minWidth:1100}}>
-      <thead style={{position:"sticky",top:0,background:"var(--panel)",zIndex:1}}><tr>{["Sprache","Set","Name","Nr.","Variante","Letzter Preis","Quelle","Letzter Erfolg","Status"].map(x=><th key={x} style={{textAlign:"left",padding:"10px",borderBottom:"1px solid var(--border)"}}>{x}</th>)}</tr></thead>
+     <table style={{width:"100%",borderCollapse:"collapse",minWidth:1600}}>
+      <thead style={{position:"sticky",top:0,background:"var(--panel)",zIndex:1}}><tr>{["Sprache","Set","Name","Nr.","Variante","Letzter Preis","Quelle","Letzter Erfolg","Identity","Grund","Nächster Versuch","Status"].map(x=><th key={x} style={{textAlign:"left",padding:"10px",borderBottom:"1px solid var(--border)"}}>{x}</th>)}</tr></thead>
       <tbody>{data?.items.map(item=><tr key={`${item.languageCode}:${item.cardId}:${item.variantId}`}>
-       <td style={{padding:10}}>{item.languageCode.toUpperCase()}</td><td style={{padding:10}}>{item.setName}</td><td style={{padding:10}}>{item.cardName}</td><td style={{padding:10}}>{item.cardNumber}</td><td style={{padding:10}}>{item.variant}</td><td style={{padding:10}}>{euro(item.lastPriceEur)}</td><td style={{padding:10}}>{item.source??"—"}</td><td style={{padding:10}}>{date(item.lastSuccessfulSync)}</td><td style={{padding:10}}><span className="chip mutedChip">{item.currentStatus}</span></td>
+       <td style={{padding:10}}>{item.languageCode.toUpperCase()}</td><td style={{padding:10}}>{item.setName}</td><td style={{padding:10}}>{item.cardName}</td><td style={{padding:10}}>{item.cardNumber}</td><td style={{padding:10}}>{item.variant}</td><td style={{padding:10}}>{euro(item.lastPriceEur)}</td><td style={{padding:10}}>{item.source??"—"}</td><td style={{padding:10}}>{date(item.lastSuccessfulSync)}</td><td style={{padding:10}}>{item.identityMethod??"—"}</td><td style={{padding:10,maxWidth:320,whiteSpace:"normal"}}>{item.failureDetail??"—"}</td><td style={{padding:10}}>{item.nextAttemptAt?date(item.nextAttemptAt):"—"}</td><td style={{padding:10}}><span className="chip mutedChip">{item.currentStatus}</span></td>
       </tr>)}</tbody>
      </table>
     </div>}

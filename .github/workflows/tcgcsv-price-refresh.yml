@@ -67,3 +67,6 @@ jobs:
 
       - name: Bridge exact CardTrader identities to Cardmarket
         run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
+
+      - name: Annotate unresolved price backlog
+        run: python3 scripts/annotate-price-backlog.py
