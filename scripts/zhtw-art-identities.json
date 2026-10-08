@@ -1,0 +1,5772 @@
+[
+  {
+    "card_id": "SC1D-001",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "001",
+    "source_set": "S2",
+    "source_local_id": "001",
+    "distance": 60,
+    "margin": 161
+  },
+  {
+    "card_id": "SC1D-004",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "004",
+    "source_set": "S1a",
+    "source_local_id": "005",
+    "distance": 40,
+    "margin": 240
+  },
+  {
+    "card_id": "SC1D-005",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "005",
+    "source_set": "S1a",
+    "source_local_id": "006",
+    "distance": 58,
+    "margin": 180
+  },
+  {
+    "card_id": "SC1D-008",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "008",
+    "source_set": "S1W",
+    "source_local_id": "003",
+    "distance": 58,
+    "margin": 306
+  },
+  {
+    "card_id": "SC1D-015",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "015",
+    "source_set": "S1a",
+    "source_local_id": "010",
+    "distance": 39,
+    "margin": 223
+  },
+  {
+    "card_id": "SC1D-020",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "020",
+    "source_set": "S2",
+    "source_local_id": "015",
+    "distance": 73,
+    "margin": 216
+  },
+  {
+    "card_id": "SC1D-030",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "030",
+    "source_set": "S1W",
+    "source_local_id": "011",
+    "distance": 50,
+    "margin": 194
+  },
+  {
+    "card_id": "SC1D-037",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "037",
+    "source_set": "S1W",
+    "source_local_id": "016",
+    "distance": 48,
+    "margin": 267
+  },
+  {
+    "card_id": "SC1D-043",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "043",
+    "source_set": "S1H",
+    "source_local_id": "014",
+    "distance": 53,
+    "margin": 284
+  },
+  {
+    "card_id": "SC1D-046",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "046",
+    "source_set": "S1H",
+    "source_local_id": "015",
+    "distance": 35,
+    "margin": 254
+  },
+  {
+    "card_id": "SC1D-051",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "051",
+    "source_set": "S1H",
+    "source_local_id": "018",
+    "distance": 69,
+    "margin": 169
+  },
+  {
+    "card_id": "SC1D-054",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "054",
+    "source_set": "S1a",
+    "source_local_id": "027",
+    "distance": 40,
+    "margin": 266
+  },
+  {
+    "card_id": "SC1D-055",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "055",
+    "source_set": "S1a",
+    "source_local_id": "028",
+    "distance": 50,
+    "margin": 196
+  },
+  {
+    "card_id": "SC1D-059",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "059",
+    "source_set": "S1a",
+    "source_local_id": "032",
+    "distance": 26,
+    "margin": 179
+  },
+  {
+    "card_id": "SC1D-060",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "060",
+    "source_set": "S1a",
+    "source_local_id": "033",
+    "distance": 40,
+    "margin": 202
+  },
+  {
+    "card_id": "SC1D-068",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "068",
+    "source_set": "S1a",
+    "source_local_id": "034",
+    "distance": 35,
+    "margin": 219
+  },
+  {
+    "card_id": "SC1D-069",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "069",
+    "source_set": "S1a",
+    "source_local_id": "035",
+    "distance": 54,
+    "margin": 145
+  },
+  {
+    "card_id": "SC1D-070",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "070",
+    "source_set": "S1H",
+    "source_local_id": "023",
+    "distance": 54,
+    "margin": 182
+  },
+  {
+    "card_id": "SC1D-071",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "071",
+    "source_set": "S1H",
+    "source_local_id": "024",
+    "distance": 33,
+    "margin": 177
+  },
+  {
+    "card_id": "SC1D-074",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "074",
+    "source_set": "S2",
+    "source_local_id": "048",
+    "distance": 25,
+    "margin": 149
+  },
+  {
+    "card_id": "SC1D-084",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "084",
+    "source_set": "S1a",
+    "source_local_id": "043",
+    "distance": 80,
+    "margin": 245
+  },
+  {
+    "card_id": "SC1D-086",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "086",
+    "source_set": "S1H",
+    "source_local_id": "029",
+    "distance": 74,
+    "margin": 264
+  },
+  {
+    "card_id": "SC1D-087",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "087",
+    "source_set": "S1W",
+    "source_local_id": "029",
+    "distance": 45,
+    "margin": 239
+  },
+  {
+    "card_id": "SC1D-088",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "088",
+    "source_set": "S2",
+    "source_local_id": "054",
+    "distance": 40,
+    "margin": 275
+  },
+  {
+    "card_id": "SC1D-089",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "089",
+    "source_set": "S2",
+    "source_local_id": "055",
+    "distance": 50,
+    "margin": 219
+  },
+  {
+    "card_id": "SC1D-095",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "095",
+    "source_set": "S1a",
+    "source_local_id": "046",
+    "distance": 56,
+    "margin": 282
+  },
+  {
+    "card_id": "SC1D-098",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "098",
+    "source_set": "S1W",
+    "source_local_id": "034",
+    "distance": 78,
+    "margin": 343
+  },
+  {
+    "card_id": "SC1D-099",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "099",
+    "source_set": "S2",
+    "source_local_id": "063",
+    "distance": 46,
+    "margin": 201
+  },
+  {
+    "card_id": "SC1D-103",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "103",
+    "source_set": "S1a",
+    "source_local_id": "048",
+    "distance": 14,
+    "margin": 225
+  },
+  {
+    "card_id": "SC1D-104",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "104",
+    "source_set": "S1a",
+    "source_local_id": "049",
+    "distance": 51,
+    "margin": 192
+  },
+  {
+    "card_id": "SC1D-105",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "105",
+    "source_set": "S1H",
+    "source_local_id": "037",
+    "distance": 44,
+    "margin": 191
+  },
+  {
+    "card_id": "SC1D-106",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "106",
+    "source_set": "S1H",
+    "source_local_id": "038",
+    "distance": 29,
+    "margin": 258
+  },
+  {
+    "card_id": "SC1D-108",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "108",
+    "source_set": "S2",
+    "source_local_id": "068",
+    "distance": 33,
+    "margin": 198
+  },
+  {
+    "card_id": "SC1D-109",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "109",
+    "source_set": "S2",
+    "source_local_id": "069",
+    "distance": 46,
+    "margin": 205
+  },
+  {
+    "card_id": "SC1D-110",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "110",
+    "source_set": "S2",
+    "source_local_id": "070",
+    "distance": 63,
+    "margin": 276
+  },
+  {
+    "card_id": "SC1D-116",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "116",
+    "source_set": "S1W",
+    "source_local_id": "040",
+    "distance": 51,
+    "margin": 211
+  },
+  {
+    "card_id": "SC1D-118",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "118",
+    "source_set": "S2",
+    "source_local_id": "072",
+    "distance": 61,
+    "margin": 258
+  },
+  {
+    "card_id": "SC1D-119",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "119",
+    "source_set": "S1H",
+    "source_local_id": "039",
+    "distance": 31,
+    "margin": 160
+  },
+  {
+    "card_id": "SC1D-120",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "120",
+    "source_set": "S1a",
+    "source_local_id": "053",
+    "distance": 53,
+    "margin": 141
+  },
+  {
+    "card_id": "SC1D-121",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "121",
+    "source_set": "S1a",
+    "source_local_id": "054",
+    "distance": 67,
+    "margin": 233
+  },
+  {
+    "card_id": "SC1D-122",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "122",
+    "source_set": "S1W",
+    "source_local_id": "042",
+    "distance": 21,
+    "margin": 127
+  },
+  {
+    "card_id": "SC1D-123",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "123",
+    "source_set": "S1W",
+    "source_local_id": "043",
+    "distance": 29,
+    "margin": 133
+  },
+  {
+    "card_id": "SC1D-133",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "133",
+    "source_set": "S1H",
+    "source_local_id": "045",
+    "distance": 75,
+    "margin": 318
+  },
+  {
+    "card_id": "SC1D-136",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "136",
+    "source_set": "S2",
+    "source_local_id": "082",
+    "distance": 46,
+    "margin": 163
+  },
+  {
+    "card_id": "SC1D-137",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "137",
+    "source_set": "S2",
+    "source_local_id": "083",
+    "distance": 31,
+    "margin": 216
+  },
+  {
+    "card_id": "SC1D-151",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "151",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 36,
+    "margin": 215
+  },
+  {
+    "card_id": "SC1D-155",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "155",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 59,
+    "margin": 193
+  },
+  {
+    "card_id": "SC1D-156",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "156",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 34,
+    "margin": 234
+  },
+  {
+    "card_id": "SC1D-164",
+    "variant_id": "generated",
+    "target_set": "SC1D",
+    "target_local_id": "164",
+    "source_set": "S1a",
+    "source_local_id": "067",
+    "distance": 50,
+    "margin": 188
+  },
+  {
+    "card_id": "SC1a-001",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "001",
+    "source_set": "S2",
+    "source_local_id": "001",
+    "distance": 60,
+    "margin": 163
+  },
+  {
+    "card_id": "SC1a-002",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "002",
+    "source_set": "S1a",
+    "source_local_id": "007",
+    "distance": 35,
+    "margin": 249
+  },
+  {
+    "card_id": "SC1a-004",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "004",
+    "source_set": "S2",
+    "source_local_id": "030",
+    "distance": 63,
+    "margin": 219
+  },
+  {
+    "card_id": "SC1a-005",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "005",
+    "source_set": "S2",
+    "source_local_id": "031",
+    "distance": 42,
+    "margin": 243
+  },
+  {
+    "card_id": "SC1a-006",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "006",
+    "source_set": "S2",
+    "source_local_id": "032",
+    "distance": 45,
+    "margin": 161
+  },
+  {
+    "card_id": "SC1a-007",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "007",
+    "source_set": "S1H",
+    "source_local_id": "017",
+    "distance": 24,
+    "margin": 118
+  },
+  {
+    "card_id": "SC1a-008",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "008",
+    "source_set": "S1H",
+    "source_local_id": "018",
+    "distance": 67,
+    "margin": 171
+  },
+  {
+    "card_id": "SC1a-009",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "009",
+    "source_set": "S2",
+    "source_local_id": "033",
+    "distance": 47,
+    "margin": 178
+  },
+  {
+    "card_id": "SC1a-010",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "010",
+    "source_set": "S2",
+    "source_local_id": "034",
+    "distance": 37,
+    "margin": 157
+  },
+  {
+    "card_id": "SC1a-011",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "011",
+    "source_set": "S2",
+    "source_local_id": "035",
+    "distance": 60,
+    "margin": 170
+  },
+  {
+    "card_id": "SC1a-012",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "012",
+    "source_set": "S1a",
+    "source_local_id": "027",
+    "distance": 42,
+    "margin": 264
+  },
+  {
+    "card_id": "SC1a-013",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "013",
+    "source_set": "S1a",
+    "source_local_id": "028",
+    "distance": 50,
+    "margin": 196
+  },
+  {
+    "card_id": "SC1a-014",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "014",
+    "source_set": "S1a",
+    "source_local_id": "029",
+    "distance": 43,
+    "margin": 196
+  },
+  {
+    "card_id": "SC1a-015",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "015",
+    "source_set": "S1a",
+    "source_local_id": "030",
+    "distance": 68,
+    "margin": 181
+  },
+  {
+    "card_id": "SC1a-020",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "020",
+    "source_set": "S1a",
+    "source_local_id": "032",
+    "distance": 26,
+    "margin": 179
+  },
+  {
+    "card_id": "SC1a-021",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "021",
+    "source_set": "S1a",
+    "source_local_id": "033",
+    "distance": 41,
+    "margin": 200
+  },
+  {
+    "card_id": "SC1a-038",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "038",
+    "source_set": "S1a",
+    "source_local_id": "034",
+    "distance": 35,
+    "margin": 219
+  },
+  {
+    "card_id": "SC1a-039",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "039",
+    "source_set": "S1a",
+    "source_local_id": "035",
+    "distance": 54,
+    "margin": 145
+  },
+  {
+    "card_id": "SC1a-043",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "043",
+    "source_set": "S1H",
+    "source_local_id": "023",
+    "distance": 54,
+    "margin": 182
+  },
+  {
+    "card_id": "SC1a-044",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "044",
+    "source_set": "S1H",
+    "source_local_id": "024",
+    "distance": 33,
+    "margin": 177
+  },
+  {
+    "card_id": "SC1a-046",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "046",
+    "source_set": "S2",
+    "source_local_id": "042",
+    "distance": 29,
+    "margin": 249
+  },
+  {
+    "card_id": "SC1a-047",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "047",
+    "source_set": "S2",
+    "source_local_id": "043",
+    "distance": 55,
+    "margin": 293
+  },
+  {
+    "card_id": "SC1a-048",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "048",
+    "source_set": "S1W",
+    "source_local_id": "027",
+    "distance": 46,
+    "margin": 191
+  },
+  {
+    "card_id": "SC1a-049",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "049",
+    "source_set": "S1W",
+    "source_local_id": "028",
+    "distance": 52,
+    "margin": 230
+  },
+  {
+    "card_id": "SC1a-055",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "055",
+    "source_set": "S2",
+    "source_local_id": "048",
+    "distance": 25,
+    "margin": 149
+  },
+  {
+    "card_id": "SC1a-065",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "065",
+    "source_set": "S1H",
+    "source_local_id": "026",
+    "distance": 51,
+    "margin": 229
+  },
+  {
+    "card_id": "SC1a-066",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "066",
+    "source_set": "S1H",
+    "source_local_id": "027",
+    "distance": 57,
+    "margin": 277
+  },
+  {
+    "card_id": "SC1a-067",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "067",
+    "source_set": "S1H",
+    "source_local_id": "028",
+    "distance": 43,
+    "margin": 151
+  },
+  {
+    "card_id": "SC1a-068",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "068",
+    "source_set": "S1H",
+    "source_local_id": "029",
+    "distance": 74,
+    "margin": 264
+  },
+  {
+    "card_id": "SC1a-069",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "069",
+    "source_set": "S1H",
+    "source_local_id": "030",
+    "distance": 67,
+    "margin": 185
+  },
+  {
+    "card_id": "SC1a-070",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "070",
+    "source_set": "S1W",
+    "source_local_id": "029",
+    "distance": 45,
+    "margin": 239
+  },
+  {
+    "card_id": "SC1a-071",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "071",
+    "source_set": "S2",
+    "source_local_id": "051",
+    "distance": 64,
+    "margin": 249
+  },
+  {
+    "card_id": "SC1a-072",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "072",
+    "source_set": "S2",
+    "source_local_id": "052",
+    "distance": 46,
+    "margin": 236
+  },
+  {
+    "card_id": "SC1a-074",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "074",
+    "source_set": "S2",
+    "source_local_id": "054",
+    "distance": 39,
+    "margin": 277
+  },
+  {
+    "card_id": "SC1a-075",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "075",
+    "source_set": "S2",
+    "source_local_id": "055",
+    "distance": 49,
+    "margin": 221
+  },
+  {
+    "card_id": "SC1a-076",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "076",
+    "source_set": "S1W",
+    "source_local_id": "030",
+    "distance": 58,
+    "margin": 183
+  },
+  {
+    "card_id": "SC1a-077",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "077",
+    "source_set": "S1W",
+    "source_local_id": "031",
+    "distance": 57,
+    "margin": 205
+  },
+  {
+    "card_id": "SC1a-081",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "081",
+    "source_set": "S1a",
+    "source_local_id": "044",
+    "distance": 41,
+    "margin": 286
+  },
+  {
+    "card_id": "SC1a-082",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "082",
+    "source_set": "S1a",
+    "source_local_id": "045",
+    "distance": 75,
+    "margin": 250
+  },
+  {
+    "card_id": "SC1a-085",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "085",
+    "source_set": "S2",
+    "source_local_id": "060",
+    "distance": 45,
+    "margin": 168
+  },
+  {
+    "card_id": "SC1a-088",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "088",
+    "source_set": "S1a",
+    "source_local_id": "046",
+    "distance": 57,
+    "margin": 282
+  },
+  {
+    "card_id": "SC1a-094",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "094",
+    "source_set": "S1W",
+    "source_local_id": "034",
+    "distance": 78,
+    "margin": 343
+  },
+  {
+    "card_id": "SC1a-096",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "096",
+    "source_set": "S1W",
+    "source_local_id": "040",
+    "distance": 51,
+    "margin": 211
+  },
+  {
+    "card_id": "SC1a-097",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "097",
+    "source_set": "S4a",
+    "source_local_id": "126",
+    "distance": 47,
+    "margin": 225
+  },
+  {
+    "card_id": "SC1a-100",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "100",
+    "source_set": "S2",
+    "source_local_id": "072",
+    "distance": 59,
+    "margin": 259
+  },
+  {
+    "card_id": "SC1a-101",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "101",
+    "source_set": "S1H",
+    "source_local_id": "039",
+    "distance": 31,
+    "margin": 160
+  },
+  {
+    "card_id": "SC1a-102",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "102",
+    "source_set": "S1a",
+    "source_local_id": "053",
+    "distance": 53,
+    "margin": 141
+  },
+  {
+    "card_id": "SC1a-103",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "103",
+    "source_set": "S1a",
+    "source_local_id": "054",
+    "distance": 66,
+    "margin": 233
+  },
+  {
+    "card_id": "SC1a-104",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "104",
+    "source_set": "S2",
+    "source_local_id": "073",
+    "distance": 40,
+    "margin": 149
+  },
+  {
+    "card_id": "SC1a-105",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "105",
+    "source_set": "S1W",
+    "source_local_id": "042",
+    "distance": 21,
+    "margin": 127
+  },
+  {
+    "card_id": "SC1a-106",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "106",
+    "source_set": "S1W",
+    "source_local_id": "043",
+    "distance": 29,
+    "margin": 133
+  },
+  {
+    "card_id": "SC1a-108",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "108",
+    "source_set": "S1H",
+    "source_local_id": "040",
+    "distance": 45,
+    "margin": 217
+  },
+  {
+    "card_id": "SC1a-109",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "109",
+    "source_set": "S1H",
+    "source_local_id": "041",
+    "distance": 49,
+    "margin": 227
+  },
+  {
+    "card_id": "SC1a-110",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "110",
+    "source_set": "S2",
+    "source_local_id": "074",
+    "distance": 39,
+    "margin": 197
+  },
+  {
+    "card_id": "SC1a-115",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "115",
+    "source_set": "S1H",
+    "source_local_id": "042",
+    "distance": 64,
+    "margin": 218
+  },
+  {
+    "card_id": "SC1a-116",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "116",
+    "source_set": "S1H",
+    "source_local_id": "043",
+    "distance": 59,
+    "margin": 169
+  },
+  {
+    "card_id": "SC1a-124",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "124",
+    "source_set": "S1H",
+    "source_local_id": "044",
+    "distance": 80,
+    "margin": 337
+  },
+  {
+    "card_id": "SC1a-127",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "127",
+    "source_set": "S2",
+    "source_local_id": "077",
+    "distance": 27,
+    "margin": 158
+  },
+  {
+    "card_id": "SC1a-128",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "128",
+    "source_set": "S1H",
+    "source_local_id": "047",
+    "distance": 23,
+    "margin": 202
+  },
+  {
+    "card_id": "SC1a-129",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "129",
+    "source_set": "S1H",
+    "source_local_id": "048",
+    "distance": 23,
+    "margin": 173
+  },
+  {
+    "card_id": "SC1a-131",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "131",
+    "source_set": "S1W",
+    "source_local_id": "048",
+    "distance": 75,
+    "margin": 274
+  },
+  {
+    "card_id": "SC1a-136",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "136",
+    "source_set": "S2",
+    "source_local_id": "087",
+    "distance": 30,
+    "margin": 151
+  },
+  {
+    "card_id": "SC1a-141",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "141",
+    "source_set": "S1H",
+    "source_local_id": "055",
+    "distance": 62,
+    "margin": 253
+  },
+  {
+    "card_id": "SC1a-143",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "143",
+    "source_set": "S1H",
+    "source_local_id": "056",
+    "distance": 50,
+    "margin": 210
+  },
+  {
+    "card_id": "SC1a-145",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "145",
+    "source_set": "S2",
+    "source_local_id": "089",
+    "distance": 24,
+    "margin": 166
+  },
+  {
+    "card_id": "SC1a-146",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "146",
+    "source_set": "S2",
+    "source_local_id": "090",
+    "distance": 29,
+    "margin": 217
+  },
+  {
+    "card_id": "SC1a-148",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "148",
+    "source_set": "S1W",
+    "source_local_id": "060",
+    "distance": 31,
+    "margin": 161
+  },
+  {
+    "card_id": "SC1a-149",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "149",
+    "source_set": "S1a",
+    "source_local_id": "066",
+    "distance": 28,
+    "margin": 212
+  },
+  {
+    "card_id": "SC1a-150",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "150",
+    "source_set": "S1a",
+    "source_local_id": "067",
+    "distance": 50,
+    "margin": 188
+  },
+  {
+    "card_id": "SC1a-155",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "155",
+    "source_set": "S1a",
+    "source_local_id": "074",
+    "distance": 29,
+    "margin": 228
+  },
+  {
+    "card_id": "SC1a-156",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "156",
+    "source_set": "S2",
+    "source_local_id": "100",
+    "distance": 10,
+    "margin": 318
+  },
+  {
+    "card_id": "SC1a-157",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "157",
+    "source_set": "S1H",
+    "source_local_id": "062",
+    "distance": 16,
+    "margin": 379
+  },
+  {
+    "card_id": "SC1a-158",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "158",
+    "source_set": "S1W",
+    "source_local_id": "063",
+    "distance": 38,
+    "margin": 297
+  },
+  {
+    "card_id": "SC1a-159",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "159",
+    "source_set": "S1H",
+    "source_local_id": "063",
+    "distance": 31,
+    "margin": 209
+  },
+  {
+    "card_id": "SC1a-160",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "160",
+    "source_set": "S2",
+    "source_local_id": "101",
+    "distance": 12,
+    "margin": 167
+  },
+  {
+    "card_id": "SC1a-161",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "161",
+    "source_set": "S1a",
+    "source_local_id": "075",
+    "distance": 27,
+    "margin": 333
+  },
+  {
+    "card_id": "SC1a-162",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "162",
+    "source_set": "S2",
+    "source_local_id": "102",
+    "distance": 25,
+    "margin": 318
+  },
+  {
+    "card_id": "SC1a-163",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "163",
+    "source_set": "S1W",
+    "source_local_id": "064",
+    "distance": 27,
+    "margin": 316
+  },
+  {
+    "card_id": "SC1a-164",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "164",
+    "source_set": "S2",
+    "source_local_id": "104",
+    "distance": 17,
+    "margin": 340
+  },
+  {
+    "card_id": "SC1a-165",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "165",
+    "source_set": "S1W",
+    "source_local_id": "065",
+    "distance": 27,
+    "margin": 367
+  },
+  {
+    "card_id": "SC1a-166",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "166",
+    "source_set": "S1H",
+    "source_local_id": "065",
+    "distance": 36,
+    "margin": 344
+  },
+  {
+    "card_id": "SC1a-167",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "167",
+    "source_set": "S2",
+    "source_local_id": "105",
+    "distance": 14,
+    "margin": 362
+  },
+  {
+    "card_id": "SC1a-168",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "168",
+    "source_set": "S1W",
+    "source_local_id": "067",
+    "distance": 11,
+    "margin": 373
+  },
+  {
+    "card_id": "SC1a-169",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "169",
+    "source_set": "S1W",
+    "source_local_id": "068",
+    "distance": 7,
+    "margin": 317
+  },
+  {
+    "card_id": "SC1a-172",
+    "variant_id": "generated",
+    "target_set": "SC1a",
+    "target_local_id": "172",
+    "source_set": "S1a",
+    "source_local_id": "078",
+    "distance": 9,
+    "margin": 391
+  },
+  {
+    "card_id": "SC1b-001",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "001",
+    "source_set": "S1a",
+    "source_local_id": "001",
+    "distance": 34,
+    "margin": 137
+  },
+  {
+    "card_id": "SC1b-004",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "004",
+    "source_set": "S1a",
+    "source_local_id": "004",
+    "distance": 48,
+    "margin": 180
+  },
+  {
+    "card_id": "SC1b-005",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "005",
+    "source_set": "S2",
+    "source_local_id": "002",
+    "distance": 45,
+    "margin": 217
+  },
+  {
+    "card_id": "SC1b-007",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "007",
+    "source_set": "S2",
+    "source_local_id": "003",
+    "distance": 56,
+    "margin": 147
+  },
+  {
+    "card_id": "SC1b-008",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "008",
+    "source_set": "S2",
+    "source_local_id": "004",
+    "distance": 56,
+    "margin": 192
+  },
+  {
+    "card_id": "SC1b-009",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "009",
+    "source_set": "S2",
+    "source_local_id": "005",
+    "distance": 33,
+    "margin": 184
+  },
+  {
+    "card_id": "SC1b-010",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "010",
+    "source_set": "S2",
+    "source_local_id": "006",
+    "distance": 45,
+    "margin": 151
+  },
+  {
+    "card_id": "SC1b-011",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "011",
+    "source_set": "S2",
+    "source_local_id": "007",
+    "distance": 46,
+    "margin": 204
+  },
+  {
+    "card_id": "SC1b-012",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "012",
+    "source_set": "S1W",
+    "source_local_id": "001",
+    "distance": 42,
+    "margin": 167
+  },
+  {
+    "card_id": "SC1b-013",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "013",
+    "source_set": "S1W",
+    "source_local_id": "002",
+    "distance": 48,
+    "margin": 201
+  },
+  {
+    "card_id": "SC1b-014",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "014",
+    "source_set": "S1a",
+    "source_local_id": "005",
+    "distance": 41,
+    "margin": 240
+  },
+  {
+    "card_id": "SC1b-015",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "015",
+    "source_set": "S1a",
+    "source_local_id": "006",
+    "distance": 58,
+    "margin": 178
+  },
+  {
+    "card_id": "SC1b-016",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "016",
+    "source_set": "S1W",
+    "source_local_id": "003",
+    "distance": 57,
+    "margin": 306
+  },
+  {
+    "card_id": "SC1b-017",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "017",
+    "source_set": "S2",
+    "source_local_id": "008",
+    "distance": 30,
+    "margin": 158
+  },
+  {
+    "card_id": "SC1b-018",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "018",
+    "source_set": "S2",
+    "source_local_id": "009",
+    "distance": 33,
+    "margin": 156
+  },
+  {
+    "card_id": "SC1b-021",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "021",
+    "source_set": "S1W",
+    "source_local_id": "006",
+    "distance": 76,
+    "margin": 257
+  },
+  {
+    "card_id": "SC1b-030",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "030",
+    "source_set": "S1H",
+    "source_local_id": "005",
+    "distance": 61,
+    "margin": 208
+  },
+  {
+    "card_id": "SC1b-031",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "031",
+    "source_set": "S2",
+    "source_local_id": "010",
+    "distance": 79,
+    "margin": 323
+  },
+  {
+    "card_id": "SC1b-032",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "032",
+    "source_set": "S1a",
+    "source_local_id": "010",
+    "distance": 39,
+    "margin": 221
+  },
+  {
+    "card_id": "SC1b-036",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "036",
+    "source_set": "S1a",
+    "source_local_id": "012",
+    "distance": 60,
+    "margin": 249
+  },
+  {
+    "card_id": "SC1b-037",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "037",
+    "source_set": "S1a",
+    "source_local_id": "013",
+    "distance": 62,
+    "margin": 154
+  },
+  {
+    "card_id": "SC1b-038",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "038",
+    "source_set": "S2",
+    "source_local_id": "013",
+    "distance": 78,
+    "margin": 313
+  },
+  {
+    "card_id": "SC1b-039",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "039",
+    "source_set": "S1a",
+    "source_local_id": "014",
+    "distance": 80,
+    "margin": 199
+  },
+  {
+    "card_id": "SC1b-042",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "042",
+    "source_set": "S2",
+    "source_local_id": "015",
+    "distance": 72,
+    "margin": 218
+  },
+  {
+    "card_id": "SC1b-046",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "046",
+    "source_set": "S2",
+    "source_local_id": "016",
+    "distance": 38,
+    "margin": 238
+  },
+  {
+    "card_id": "SC1b-049",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "049",
+    "source_set": "S2",
+    "source_local_id": "019",
+    "distance": 71,
+    "margin": 287
+  },
+  {
+    "card_id": "SC1b-050",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "050",
+    "source_set": "S1W",
+    "source_local_id": "008",
+    "distance": 43,
+    "margin": 152
+  },
+  {
+    "card_id": "SC1b-051",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "051",
+    "source_set": "S1W",
+    "source_local_id": "009",
+    "distance": 66,
+    "margin": 220
+  },
+  {
+    "card_id": "SC1b-058",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "058",
+    "source_set": "S1W",
+    "source_local_id": "011",
+    "distance": 50,
+    "margin": 194
+  },
+  {
+    "card_id": "SC1b-059",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "059",
+    "source_set": "S1W",
+    "source_local_id": "012",
+    "distance": 50,
+    "margin": 244
+  },
+  {
+    "card_id": "SC1b-060",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "060",
+    "source_set": "S1W",
+    "source_local_id": "013",
+    "distance": 73,
+    "margin": 238
+  },
+  {
+    "card_id": "SC1b-061",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "061",
+    "source_set": "S1H",
+    "source_local_id": "010",
+    "distance": 33,
+    "margin": 221
+  },
+  {
+    "card_id": "SC1b-062",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "062",
+    "source_set": "S1H",
+    "source_local_id": "011",
+    "distance": 61,
+    "margin": 266
+  },
+  {
+    "card_id": "SC1b-063",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "063",
+    "source_set": "S1a",
+    "source_local_id": "018",
+    "distance": 52,
+    "margin": 263
+  },
+  {
+    "card_id": "SC1b-064",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "064",
+    "source_set": "S1a",
+    "source_local_id": "019",
+    "distance": 46,
+    "margin": 224
+  },
+  {
+    "card_id": "SC1b-065",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "065",
+    "source_set": "S1a",
+    "source_local_id": "020",
+    "distance": 48,
+    "margin": 225
+  },
+  {
+    "card_id": "SC1b-066",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "066",
+    "source_set": "S1a",
+    "source_local_id": "021",
+    "distance": 66,
+    "margin": 244
+  },
+  {
+    "card_id": "SC1b-069",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "069",
+    "source_set": "S1H",
+    "source_local_id": "012",
+    "distance": 53,
+    "margin": 254
+  },
+  {
+    "card_id": "SC1b-070",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "070",
+    "source_set": "S1W",
+    "source_local_id": "016",
+    "distance": 47,
+    "margin": 269
+  },
+  {
+    "card_id": "SC1b-071",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "071",
+    "source_set": "S2",
+    "source_local_id": "020",
+    "distance": 62,
+    "margin": 252
+  },
+  {
+    "card_id": "SC1b-072",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "072",
+    "source_set": "S2",
+    "source_local_id": "021",
+    "distance": 54,
+    "margin": 241
+  },
+  {
+    "card_id": "SC1b-074",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "074",
+    "source_set": "S2",
+    "source_local_id": "023",
+    "distance": 43,
+    "margin": 117
+  },
+  {
+    "card_id": "SC1b-075",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "075",
+    "source_set": "S2",
+    "source_local_id": "024",
+    "distance": 66,
+    "margin": 247
+  },
+  {
+    "card_id": "SC1b-076",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "076",
+    "source_set": "S2",
+    "source_local_id": "025",
+    "distance": 52,
+    "margin": 220
+  },
+  {
+    "card_id": "SC1b-078",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "078",
+    "source_set": "S2",
+    "source_local_id": "027",
+    "distance": 70,
+    "margin": 279
+  },
+  {
+    "card_id": "SC1b-086",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "086",
+    "source_set": "S1H",
+    "source_local_id": "014",
+    "distance": 53,
+    "margin": 284
+  },
+  {
+    "card_id": "SC1b-090",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "090",
+    "source_set": "S1H",
+    "source_local_id": "015",
+    "distance": 35,
+    "margin": 254
+  },
+  {
+    "card_id": "SC1b-094",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "094",
+    "source_set": "S2",
+    "source_local_id": "063",
+    "distance": 46,
+    "margin": 201
+  },
+  {
+    "card_id": "SC1b-098",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "098",
+    "source_set": "S1H",
+    "source_local_id": "035",
+    "distance": 44,
+    "margin": 160
+  },
+  {
+    "card_id": "SC1b-100",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "100",
+    "source_set": "S1a",
+    "source_local_id": "048",
+    "distance": 14,
+    "margin": 225
+  },
+  {
+    "card_id": "SC1b-101",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "101",
+    "source_set": "S1a",
+    "source_local_id": "049",
+    "distance": 51,
+    "margin": 192
+  },
+  {
+    "card_id": "SC1b-102",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "102",
+    "source_set": "S2",
+    "source_local_id": "065",
+    "distance": 48,
+    "margin": 216
+  },
+  {
+    "card_id": "SC1b-103",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "103",
+    "source_set": "S1H",
+    "source_local_id": "037",
+    "distance": 42,
+    "margin": 191
+  },
+  {
+    "card_id": "SC1b-104",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "104",
+    "source_set": "S1H",
+    "source_local_id": "038",
+    "distance": 28,
+    "margin": 260
+  },
+  {
+    "card_id": "SC1b-108",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "108",
+    "source_set": "S2",
+    "source_local_id": "067",
+    "distance": 56,
+    "margin": 248
+  },
+  {
+    "card_id": "SC1b-109",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "109",
+    "source_set": "S2",
+    "source_local_id": "068",
+    "distance": 33,
+    "margin": 198
+  },
+  {
+    "card_id": "SC1b-110",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "110",
+    "source_set": "S2",
+    "source_local_id": "069",
+    "distance": 48,
+    "margin": 205
+  },
+  {
+    "card_id": "SC1b-111",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "111",
+    "source_set": "S2",
+    "source_local_id": "070",
+    "distance": 63,
+    "margin": 276
+  },
+  {
+    "card_id": "SC1b-119",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "119",
+    "source_set": "S1H",
+    "source_local_id": "045",
+    "distance": 75,
+    "margin": 318
+  },
+  {
+    "card_id": "SC1b-122",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "122",
+    "source_set": "S2",
+    "source_local_id": "078",
+    "distance": 50,
+    "margin": 234
+  },
+  {
+    "card_id": "SC1b-123",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "123",
+    "source_set": "S2",
+    "source_local_id": "079",
+    "distance": 23,
+    "margin": 196
+  },
+  {
+    "card_id": "SC1b-124",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "124",
+    "source_set": "S2",
+    "source_local_id": "080",
+    "distance": 49,
+    "margin": 239
+  },
+  {
+    "card_id": "SC1b-125",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "125",
+    "source_set": "S2",
+    "source_local_id": "081",
+    "distance": 68,
+    "margin": 200
+  },
+  {
+    "card_id": "SC1b-126",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "126",
+    "source_set": "S1a",
+    "source_local_id": "059",
+    "distance": 38,
+    "margin": 192
+  },
+  {
+    "card_id": "SC1b-127",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "127",
+    "source_set": "S1a",
+    "source_local_id": "060",
+    "distance": 41,
+    "margin": 179
+  },
+  {
+    "card_id": "SC1b-128",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "128",
+    "source_set": "S1a",
+    "source_local_id": "061",
+    "distance": 25,
+    "margin": 143
+  },
+  {
+    "card_id": "SC1b-129",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "129",
+    "source_set": "S2",
+    "source_local_id": "082",
+    "distance": 46,
+    "margin": 163
+  },
+  {
+    "card_id": "SC1b-130",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "130",
+    "source_set": "S2",
+    "source_local_id": "083",
+    "distance": 32,
+    "margin": 214
+  },
+  {
+    "card_id": "SC1b-134",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "134",
+    "source_set": "S1a",
+    "source_local_id": "062",
+    "distance": 71,
+    "margin": 311
+  },
+  {
+    "card_id": "SC1b-141",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "141",
+    "source_set": "S1W",
+    "source_local_id": "056",
+    "distance": 47,
+    "margin": 191
+  },
+  {
+    "card_id": "SC1b-143",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "143",
+    "source_set": "S1a",
+    "source_local_id": "064",
+    "distance": 22,
+    "margin": 174
+  },
+  {
+    "card_id": "SC1b-144",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "144",
+    "source_set": "S1W",
+    "source_local_id": "058",
+    "distance": 54,
+    "margin": 182
+  },
+  {
+    "card_id": "SC1b-145",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "145",
+    "source_set": "S1H",
+    "source_local_id": "058",
+    "distance": 35,
+    "margin": 206
+  },
+  {
+    "card_id": "SC1b-146",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "146",
+    "source_set": "S1a",
+    "source_local_id": "065",
+    "distance": 36,
+    "margin": 187
+  },
+  {
+    "card_id": "SC1b-147",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "147",
+    "source_set": "S2",
+    "source_local_id": "091",
+    "distance": 60,
+    "margin": 213
+  },
+  {
+    "card_id": "SC1b-150",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "150",
+    "source_set": "S2",
+    "source_local_id": "093",
+    "distance": 21,
+    "margin": 203
+  },
+  {
+    "card_id": "SC1b-154",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "154",
+    "source_set": "S1W",
+    "source_local_id": "061",
+    "distance": 30,
+    "margin": 297
+  },
+  {
+    "card_id": "SC1b-155",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "155",
+    "source_set": "S1a",
+    "source_local_id": "071",
+    "distance": 29,
+    "margin": 289
+  },
+  {
+    "card_id": "SC1b-156",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "156",
+    "source_set": "S2",
+    "source_local_id": "097",
+    "distance": 28,
+    "margin": 240
+  },
+  {
+    "card_id": "SC1b-157",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "157",
+    "source_set": "S2",
+    "source_local_id": "098",
+    "distance": 15,
+    "margin": 368
+  },
+  {
+    "card_id": "SC1b-158",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "158",
+    "source_set": "S1H",
+    "source_local_id": "061",
+    "distance": 45,
+    "margin": 294
+  },
+  {
+    "card_id": "SC1b-159",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "159",
+    "source_set": "S1a",
+    "source_local_id": "072",
+    "distance": 21,
+    "margin": 403
+  },
+  {
+    "card_id": "SC1b-160",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "160",
+    "source_set": "S1W",
+    "source_local_id": "062",
+    "distance": 8,
+    "margin": 356
+  },
+  {
+    "card_id": "SC1b-161",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "161",
+    "source_set": "S2",
+    "source_local_id": "099",
+    "distance": 19,
+    "margin": 392
+  },
+  {
+    "card_id": "SC1b-162",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "162",
+    "source_set": "S1a",
+    "source_local_id": "073",
+    "distance": 24,
+    "margin": 273
+  },
+  {
+    "card_id": "SC1b-163",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "163",
+    "source_set": "S1H",
+    "source_local_id": "064",
+    "distance": 38,
+    "margin": 364
+  },
+  {
+    "card_id": "SC1b-164",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "164",
+    "source_set": "S2",
+    "source_local_id": "103",
+    "distance": 12,
+    "margin": 324
+  },
+  {
+    "card_id": "SC1b-165",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "165",
+    "source_set": "S1H",
+    "source_local_id": "066",
+    "distance": 9,
+    "margin": 361
+  },
+  {
+    "card_id": "SC1b-166",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "166",
+    "source_set": "S1a",
+    "source_local_id": "076",
+    "distance": 18,
+    "margin": 326
+  },
+  {
+    "card_id": "SC1b-167",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "167",
+    "source_set": "S1W",
+    "source_local_id": "066",
+    "distance": 41,
+    "margin": 256
+  },
+  {
+    "card_id": "SC1b-168",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "168",
+    "source_set": "S1H",
+    "source_local_id": "067",
+    "distance": 11,
+    "margin": 363
+  },
+  {
+    "card_id": "SC1b-169",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "169",
+    "source_set": "S1a",
+    "source_local_id": "077",
+    "distance": 15,
+    "margin": 377
+  },
+  {
+    "card_id": "SC1b-170",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "170",
+    "source_set": "S2",
+    "source_local_id": "106",
+    "distance": 10,
+    "margin": 361
+  },
+  {
+    "card_id": "SC1b-171",
+    "variant_id": "generated",
+    "target_set": "SC1b",
+    "target_local_id": "171",
+    "source_set": "S1H",
+    "source_local_id": "068",
+    "distance": 11,
+    "margin": 357
+  },
+  {
+    "card_id": "SC2D-002",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "002",
+    "source_set": "S2a",
+    "source_local_id": "001",
+    "distance": 76,
+    "margin": 332
+  },
+  {
+    "card_id": "SC2D-006",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "006",
+    "source_set": "S3",
+    "source_local_id": "001",
+    "distance": 36,
+    "margin": 153
+  },
+  {
+    "card_id": "SC2D-007",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "007",
+    "source_set": "S3",
+    "source_local_id": "002",
+    "distance": 57,
+    "margin": 127
+  },
+  {
+    "card_id": "SC2D-009",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "009",
+    "source_set": "S3a",
+    "source_local_id": "007",
+    "distance": 50,
+    "margin": 189
+  },
+  {
+    "card_id": "SC2D-010",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "010",
+    "source_set": "S3",
+    "source_local_id": "003",
+    "distance": 34,
+    "margin": 164
+  },
+  {
+    "card_id": "SC2D-011",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "011",
+    "source_set": "S3",
+    "source_local_id": "004",
+    "distance": 60,
+    "margin": 307
+  },
+  {
+    "card_id": "SC2D-012",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "012",
+    "source_set": "S3",
+    "source_local_id": "005",
+    "distance": 44,
+    "margin": 221
+  },
+  {
+    "card_id": "SC2D-013",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "013",
+    "source_set": "S3a",
+    "source_local_id": "011",
+    "distance": 66,
+    "margin": 177
+  },
+  {
+    "card_id": "SC2D-017",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "017",
+    "source_set": "S3",
+    "source_local_id": "013",
+    "distance": 31,
+    "margin": 146
+  },
+  {
+    "card_id": "SC2D-018",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "018",
+    "source_set": "S3",
+    "source_local_id": "014",
+    "distance": 41,
+    "margin": 282
+  },
+  {
+    "card_id": "SC2D-019",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "019",
+    "source_set": "S2a",
+    "source_local_id": "012",
+    "distance": 65,
+    "margin": 198
+  },
+  {
+    "card_id": "SC2D-021",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "021",
+    "source_set": "S2a",
+    "source_local_id": "014",
+    "distance": 55,
+    "margin": 189
+  },
+  {
+    "card_id": "SC2D-033",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "033",
+    "source_set": "S3",
+    "source_local_id": "018",
+    "distance": 59,
+    "margin": 203
+  },
+  {
+    "card_id": "SC2D-034",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "034",
+    "source_set": "S3",
+    "source_local_id": "019",
+    "distance": 71,
+    "margin": 259
+  },
+  {
+    "card_id": "SC2D-035",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "035",
+    "source_set": "S2a",
+    "source_local_id": "022",
+    "distance": 27,
+    "margin": 280
+  },
+  {
+    "card_id": "SC2D-036",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "036",
+    "source_set": "S2a",
+    "source_local_id": "023",
+    "distance": 57,
+    "margin": 258
+  },
+  {
+    "card_id": "SC2D-037",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "037",
+    "source_set": "S2a",
+    "source_local_id": "024",
+    "distance": 76,
+    "margin": 248
+  },
+  {
+    "card_id": "SC2D-038",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "038",
+    "source_set": "S3",
+    "source_local_id": "024",
+    "distance": 76,
+    "margin": 234
+  },
+  {
+    "card_id": "SC2D-044",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "044",
+    "source_set": "S3a",
+    "source_local_id": "016",
+    "distance": 53,
+    "margin": 214
+  },
+  {
+    "card_id": "SC2D-045",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "045",
+    "source_set": "S3a",
+    "source_local_id": "017",
+    "distance": 50,
+    "margin": 199
+  },
+  {
+    "card_id": "SC2D-046",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "046",
+    "source_set": "S3a",
+    "source_local_id": "018",
+    "distance": 65,
+    "margin": 171
+  },
+  {
+    "card_id": "SC2D-047",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "047",
+    "source_set": "S3a",
+    "source_local_id": "019",
+    "distance": 53,
+    "margin": 176
+  },
+  {
+    "card_id": "SC2D-048",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "048",
+    "source_set": "S3a",
+    "source_local_id": "020",
+    "distance": 80,
+    "margin": 167
+  },
+  {
+    "card_id": "SC2D-051",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "051",
+    "source_set": "S3a",
+    "source_local_id": "022",
+    "distance": 37,
+    "margin": 161
+  },
+  {
+    "card_id": "SC2D-052",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "052",
+    "source_set": "S3a",
+    "source_local_id": "023",
+    "distance": 64,
+    "margin": 184
+  },
+  {
+    "card_id": "SC2D-053",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "053",
+    "source_set": "S3a",
+    "source_local_id": "024",
+    "distance": 40,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2D-054",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "054",
+    "source_set": "S3a",
+    "source_local_id": "025",
+    "distance": 72,
+    "margin": 228
+  },
+  {
+    "card_id": "SC2D-055",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "055",
+    "source_set": "S2a",
+    "source_local_id": "028",
+    "distance": 46,
+    "margin": 206
+  },
+  {
+    "card_id": "SC2D-056",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "056",
+    "source_set": "S2a",
+    "source_local_id": "029",
+    "distance": 41,
+    "margin": 238
+  },
+  {
+    "card_id": "SC2D-058",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "058",
+    "source_set": "S2a",
+    "source_local_id": "032",
+    "distance": 55,
+    "margin": 230
+  },
+  {
+    "card_id": "SC2D-059",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "059",
+    "source_set": "S3",
+    "source_local_id": "037",
+    "distance": 75,
+    "margin": 221
+  },
+  {
+    "card_id": "SC2D-060",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "060",
+    "source_set": "S3",
+    "source_local_id": "038",
+    "distance": 56,
+    "margin": 292
+  },
+  {
+    "card_id": "SC2D-061",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "061",
+    "source_set": "S3",
+    "source_local_id": "039",
+    "distance": 72,
+    "margin": 295
+  },
+  {
+    "card_id": "SC2D-062",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "062",
+    "source_set": "S3a",
+    "source_local_id": "029",
+    "distance": 62,
+    "margin": 284
+  },
+  {
+    "card_id": "SC2D-067",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "067",
+    "source_set": "S2a",
+    "source_local_id": "038",
+    "distance": 28,
+    "margin": 204
+  },
+  {
+    "card_id": "SC2D-068",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "068",
+    "source_set": "S2a",
+    "source_local_id": "039",
+    "distance": 77,
+    "margin": 282
+  },
+  {
+    "card_id": "SC2D-069",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "069",
+    "source_set": "S3a",
+    "source_local_id": "034",
+    "distance": 43,
+    "margin": 213
+  },
+  {
+    "card_id": "SC2D-071",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "071",
+    "source_set": "S3a",
+    "source_local_id": "038",
+    "distance": 75,
+    "margin": 267
+  },
+  {
+    "card_id": "SC2D-073",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "073",
+    "source_set": "S3",
+    "source_local_id": "047",
+    "distance": 68,
+    "margin": 273
+  },
+  {
+    "card_id": "SC2D-074",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "074",
+    "source_set": "S3",
+    "source_local_id": "048",
+    "distance": 60,
+    "margin": 254
+  },
+  {
+    "card_id": "SC2D-075",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "075",
+    "source_set": "S2a",
+    "source_local_id": "044",
+    "distance": 64,
+    "margin": 272
+  },
+  {
+    "card_id": "SC2D-078",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "078",
+    "source_set": "S3a",
+    "source_local_id": "041",
+    "distance": 29,
+    "margin": 196
+  },
+  {
+    "card_id": "SC2D-080",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "080",
+    "source_set": "S3",
+    "source_local_id": "050",
+    "distance": 73,
+    "margin": 195
+  },
+  {
+    "card_id": "SC2D-083",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "083",
+    "source_set": "S2a",
+    "source_local_id": "046",
+    "distance": 42,
+    "margin": 229
+  },
+  {
+    "card_id": "SC2D-087",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "087",
+    "source_set": "S3",
+    "source_local_id": "054",
+    "distance": 23,
+    "margin": 215
+  },
+  {
+    "card_id": "SC2D-088",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "088",
+    "source_set": "S3",
+    "source_local_id": "055",
+    "distance": 76,
+    "margin": 225
+  },
+  {
+    "card_id": "SC2D-091",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "091",
+    "source_set": "S2a",
+    "source_local_id": "049",
+    "distance": 60,
+    "margin": 179
+  },
+  {
+    "card_id": "SC2D-092",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "092",
+    "source_set": "S3",
+    "source_local_id": "057",
+    "distance": 21,
+    "margin": 172
+  },
+  {
+    "card_id": "SC2D-093",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "093",
+    "source_set": "S3",
+    "source_local_id": "058",
+    "distance": 37,
+    "margin": 195
+  },
+  {
+    "card_id": "SC2D-096",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "096",
+    "source_set": "S3",
+    "source_local_id": "059",
+    "distance": 37,
+    "margin": 164
+  },
+  {
+    "card_id": "SC2D-097",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "097",
+    "source_set": "S3",
+    "source_local_id": "060",
+    "distance": 42,
+    "margin": 213
+  },
+  {
+    "card_id": "SC2D-099",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "099",
+    "source_set": "S3",
+    "source_local_id": "062",
+    "distance": 47,
+    "margin": 208
+  },
+  {
+    "card_id": "SC2D-100",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "100",
+    "source_set": "S3",
+    "source_local_id": "063",
+    "distance": 36,
+    "margin": 204
+  },
+  {
+    "card_id": "SC2D-104",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "104",
+    "source_set": "S3a",
+    "source_local_id": "047",
+    "distance": 50,
+    "margin": 134
+  },
+  {
+    "card_id": "SC2D-105",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "105",
+    "source_set": "S3a",
+    "source_local_id": "048",
+    "distance": 35,
+    "margin": 177
+  },
+  {
+    "card_id": "SC2D-106",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "106",
+    "source_set": "S3a",
+    "source_local_id": "049",
+    "distance": 71,
+    "margin": 259
+  },
+  {
+    "card_id": "SC2D-108",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "108",
+    "source_set": "S3",
+    "source_local_id": "069",
+    "distance": 37,
+    "margin": 218
+  },
+  {
+    "card_id": "SC2D-109",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "109",
+    "source_set": "S3",
+    "source_local_id": "070",
+    "distance": 34,
+    "margin": 163
+  },
+  {
+    "card_id": "SC2D-110",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "110",
+    "source_set": "S3",
+    "source_local_id": "071",
+    "distance": 75,
+    "margin": 243
+  },
+  {
+    "card_id": "SC2D-111",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "111",
+    "source_set": "S3a",
+    "source_local_id": "053",
+    "distance": 47,
+    "margin": 116
+  },
+  {
+    "card_id": "SC2D-117",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "117",
+    "source_set": "S2a",
+    "source_local_id": "056",
+    "distance": 62,
+    "margin": 176
+  },
+  {
+    "card_id": "SC2D-118",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "118",
+    "source_set": "S2a",
+    "source_local_id": "057",
+    "distance": 38,
+    "margin": 172
+  },
+  {
+    "card_id": "SC2D-119",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "119",
+    "source_set": "S3",
+    "source_local_id": "076",
+    "distance": 61,
+    "margin": 156
+  },
+  {
+    "card_id": "SC2D-120",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "120",
+    "source_set": "S3",
+    "source_local_id": "077",
+    "distance": 37,
+    "margin": 150
+  },
+  {
+    "card_id": "SC2D-122",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "122",
+    "source_set": "S3",
+    "source_local_id": "078",
+    "distance": 77,
+    "margin": 282
+  },
+  {
+    "card_id": "SC2D-124",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "124",
+    "source_set": "S3a",
+    "source_local_id": "057",
+    "distance": 62,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2D-125",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "125",
+    "source_set": "S1a",
+    "source_local_id": "059",
+    "distance": 57,
+    "margin": 183
+  },
+  {
+    "card_id": "SC2D-126",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "126",
+    "source_set": "S2a",
+    "source_local_id": "059",
+    "distance": 57,
+    "margin": 225
+  },
+  {
+    "card_id": "SC2D-127",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "127",
+    "source_set": "S3a",
+    "source_local_id": "061",
+    "distance": 49,
+    "margin": 175
+  },
+  {
+    "card_id": "SC2D-128",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "128",
+    "source_set": "S3a",
+    "source_local_id": "062",
+    "distance": 65,
+    "margin": 238
+  },
+  {
+    "card_id": "SC2D-129",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "129",
+    "source_set": "S3",
+    "source_local_id": "087",
+    "distance": 32,
+    "margin": 191
+  },
+  {
+    "card_id": "SC2D-130",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "130",
+    "source_set": "S3",
+    "source_local_id": "088",
+    "distance": 35,
+    "margin": 171
+  },
+  {
+    "card_id": "SC2D-131",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "131",
+    "source_set": "S2a",
+    "source_local_id": "060",
+    "distance": 39,
+    "margin": 183
+  },
+  {
+    "card_id": "SC2D-132",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "132",
+    "source_set": "S2a",
+    "source_local_id": "061",
+    "distance": 46,
+    "margin": 197
+  },
+  {
+    "card_id": "SC2D-140",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "140",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 44,
+    "margin": 219
+  },
+  {
+    "card_id": "SC2D-145",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "145",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 66,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2D-146",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "146",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 39,
+    "margin": 234
+  },
+  {
+    "card_id": "SC2D-147",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "147",
+    "source_set": "S2a",
+    "source_local_id": "065",
+    "distance": 63,
+    "margin": 210
+  },
+  {
+    "card_id": "SC2D-153",
+    "variant_id": "generated",
+    "target_set": "SC2D",
+    "target_local_id": "153",
+    "source_set": "S2a",
+    "source_local_id": "068",
+    "distance": 68,
+    "margin": 268
+  },
+  {
+    "card_id": "SC2a-002",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "002",
+    "source_set": "S2a",
+    "source_local_id": "001",
+    "distance": 75,
+    "margin": 336
+  },
+  {
+    "card_id": "SC2a-003",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "003",
+    "source_set": "S2a",
+    "source_local_id": "002",
+    "distance": 71,
+    "margin": 336
+  },
+  {
+    "card_id": "SC2a-004",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "004",
+    "source_set": "S3a",
+    "source_local_id": "001",
+    "distance": 56,
+    "margin": 232
+  },
+  {
+    "card_id": "SC2a-006",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "006",
+    "source_set": "S3a",
+    "source_local_id": "002",
+    "distance": 56,
+    "margin": 214
+  },
+  {
+    "card_id": "SC2a-008",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "008",
+    "source_set": "S3a",
+    "source_local_id": "003",
+    "distance": 77,
+    "margin": 198
+  },
+  {
+    "card_id": "SC2a-010",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "010",
+    "source_set": "S3",
+    "source_local_id": "001",
+    "distance": 37,
+    "margin": 153
+  },
+  {
+    "card_id": "SC2a-011",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "011",
+    "source_set": "S3",
+    "source_local_id": "002",
+    "distance": 59,
+    "margin": 127
+  },
+  {
+    "card_id": "SC2a-014",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "014",
+    "source_set": "S3a",
+    "source_local_id": "006",
+    "distance": 79,
+    "margin": 245
+  },
+  {
+    "card_id": "SC2a-015",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "015",
+    "source_set": "S3a",
+    "source_local_id": "007",
+    "distance": 50,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2a-017",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "017",
+    "source_set": "S3",
+    "source_local_id": "003",
+    "distance": 36,
+    "margin": 164
+  },
+  {
+    "card_id": "SC2a-019",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "019",
+    "source_set": "S3",
+    "source_local_id": "004",
+    "distance": 70,
+    "margin": 295
+  },
+  {
+    "card_id": "SC2a-020",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "020",
+    "source_set": "S3",
+    "source_local_id": "005",
+    "distance": 44,
+    "margin": 221
+  },
+  {
+    "card_id": "SC2a-021",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "021",
+    "source_set": "S2a",
+    "source_local_id": "004",
+    "distance": 50,
+    "margin": 217
+  },
+  {
+    "card_id": "SC2a-022",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "022",
+    "source_set": "S2a",
+    "source_local_id": "005",
+    "distance": 28,
+    "margin": 119
+  },
+  {
+    "card_id": "SC2a-023",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "023",
+    "source_set": "S3a",
+    "source_local_id": "011",
+    "distance": 72,
+    "margin": 177
+  },
+  {
+    "card_id": "SC2a-027",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "027",
+    "source_set": "S2a",
+    "source_local_id": "006",
+    "distance": 36,
+    "margin": 107
+  },
+  {
+    "card_id": "SC2a-028",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "028",
+    "source_set": "S2a",
+    "source_local_id": "007",
+    "distance": 68,
+    "margin": 212
+  },
+  {
+    "card_id": "SC2a-029",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "029",
+    "source_set": "S2a",
+    "source_local_id": "008",
+    "distance": 60,
+    "margin": 169
+  },
+  {
+    "card_id": "SC2a-032",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "032",
+    "source_set": "S3a",
+    "source_local_id": "012",
+    "distance": 36,
+    "margin": 142
+  },
+  {
+    "card_id": "SC2a-043",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "043",
+    "source_set": "S3",
+    "source_local_id": "017",
+    "distance": 32,
+    "margin": 157
+  },
+  {
+    "card_id": "SC2a-044",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "044",
+    "source_set": "S3",
+    "source_local_id": "018",
+    "distance": 59,
+    "margin": 203
+  },
+  {
+    "card_id": "SC2a-045",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "045",
+    "source_set": "S3",
+    "source_local_id": "019",
+    "distance": 71,
+    "margin": 259
+  },
+  {
+    "card_id": "SC2a-046",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "046",
+    "source_set": "S3",
+    "source_local_id": "021",
+    "distance": 55,
+    "margin": 227
+  },
+  {
+    "card_id": "SC2a-047",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "047",
+    "source_set": "S3",
+    "source_local_id": "022",
+    "distance": 42,
+    "margin": 233
+  },
+  {
+    "card_id": "SC2a-048",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "048",
+    "source_set": "S3",
+    "source_local_id": "023",
+    "distance": 46,
+    "margin": 267
+  },
+  {
+    "card_id": "SC2a-049",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "049",
+    "source_set": "S2a",
+    "source_local_id": "022",
+    "distance": 27,
+    "margin": 280
+  },
+  {
+    "card_id": "SC2a-050",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "050",
+    "source_set": "S2a",
+    "source_local_id": "023",
+    "distance": 57,
+    "margin": 258
+  },
+  {
+    "card_id": "SC2a-051",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "051",
+    "source_set": "S2a",
+    "source_local_id": "024",
+    "distance": 76,
+    "margin": 248
+  },
+  {
+    "card_id": "SC2a-052",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "052",
+    "source_set": "S3",
+    "source_local_id": "024",
+    "distance": 76,
+    "margin": 234
+  },
+  {
+    "card_id": "SC2a-053",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "053",
+    "source_set": "S3",
+    "source_local_id": "025",
+    "distance": 62,
+    "margin": 234
+  },
+  {
+    "card_id": "SC2a-056",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "056",
+    "source_set": "S3a",
+    "source_local_id": "023",
+    "distance": 64,
+    "margin": 184
+  },
+  {
+    "card_id": "SC2a-057",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "057",
+    "source_set": "S3a",
+    "source_local_id": "024",
+    "distance": 40,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2a-058",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "058",
+    "source_set": "S3",
+    "source_local_id": "035",
+    "distance": 45,
+    "margin": 243
+  },
+  {
+    "card_id": "SC2a-059",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "059",
+    "source_set": "S3",
+    "source_local_id": "036",
+    "distance": 59,
+    "margin": 231
+  },
+  {
+    "card_id": "SC2a-061",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "061",
+    "source_set": "S3a",
+    "source_local_id": "025",
+    "distance": 72,
+    "margin": 228
+  },
+  {
+    "card_id": "SC2a-062",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "062",
+    "source_set": "S2a",
+    "source_local_id": "028",
+    "distance": 46,
+    "margin": 206
+  },
+  {
+    "card_id": "SC2a-063",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "063",
+    "source_set": "S2a",
+    "source_local_id": "029",
+    "distance": 41,
+    "margin": 238
+  },
+  {
+    "card_id": "SC2a-066",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "066",
+    "source_set": "S2a",
+    "source_local_id": "032",
+    "distance": 55,
+    "margin": 230
+  },
+  {
+    "card_id": "SC2a-067",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "067",
+    "source_set": "S3a",
+    "source_local_id": "026",
+    "distance": 41,
+    "margin": 244
+  },
+  {
+    "card_id": "SC2a-068",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "068",
+    "source_set": "S3a",
+    "source_local_id": "027",
+    "distance": 72,
+    "margin": 160
+  },
+  {
+    "card_id": "SC2a-069",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "069",
+    "source_set": "S3",
+    "source_local_id": "037",
+    "distance": 74,
+    "margin": 223
+  },
+  {
+    "card_id": "SC2a-070",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "070",
+    "source_set": "S3",
+    "source_local_id": "038",
+    "distance": 56,
+    "margin": 292
+  },
+  {
+    "card_id": "SC2a-071",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "071",
+    "source_set": "S3",
+    "source_local_id": "039",
+    "distance": 72,
+    "margin": 295
+  },
+  {
+    "card_id": "SC2a-072",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "072",
+    "source_set": "S3",
+    "source_local_id": "040",
+    "distance": 34,
+    "margin": 192
+  },
+  {
+    "card_id": "SC2a-073",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "073",
+    "source_set": "S3",
+    "source_local_id": "041",
+    "distance": 46,
+    "margin": 259
+  },
+  {
+    "card_id": "SC2a-075",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "075",
+    "source_set": "S3a",
+    "source_local_id": "028",
+    "distance": 56,
+    "margin": 280
+  },
+  {
+    "card_id": "SC2a-076",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "076",
+    "source_set": "S3a",
+    "source_local_id": "029",
+    "distance": 62,
+    "margin": 284
+  },
+  {
+    "card_id": "SC2a-077",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "077",
+    "source_set": "S3a",
+    "source_local_id": "030",
+    "distance": 55,
+    "margin": 218
+  },
+  {
+    "card_id": "SC2a-078",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "078",
+    "source_set": "S2a",
+    "source_local_id": "034",
+    "distance": 48,
+    "margin": 230
+  },
+  {
+    "card_id": "SC2a-079",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "079",
+    "source_set": "S2a",
+    "source_local_id": "035",
+    "distance": 79,
+    "margin": 185
+  },
+  {
+    "card_id": "SC2a-080",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "080",
+    "source_set": "S3",
+    "source_local_id": "042",
+    "distance": 66,
+    "margin": 201
+  },
+  {
+    "card_id": "SC2a-086",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "086",
+    "source_set": "S3",
+    "source_local_id": "043",
+    "distance": 65,
+    "margin": 344
+  },
+  {
+    "card_id": "SC2a-094",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "094",
+    "source_set": "S2a",
+    "source_local_id": "046",
+    "distance": 42,
+    "margin": 229
+  },
+  {
+    "card_id": "SC2a-095",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "095",
+    "source_set": "S2a",
+    "source_local_id": "047",
+    "distance": 31,
+    "margin": 184
+  },
+  {
+    "card_id": "SC2a-099",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "099",
+    "source_set": "S3",
+    "source_local_id": "054",
+    "distance": 23,
+    "margin": 215
+  },
+  {
+    "card_id": "SC2a-100",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "100",
+    "source_set": "S3",
+    "source_local_id": "055",
+    "distance": 76,
+    "margin": 225
+  },
+  {
+    "card_id": "SC2a-101",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "101",
+    "source_set": "S3",
+    "source_local_id": "056",
+    "distance": 57,
+    "margin": 214
+  },
+  {
+    "card_id": "SC2a-104",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "104",
+    "source_set": "S2a",
+    "source_local_id": "049",
+    "distance": 59,
+    "margin": 179
+  },
+  {
+    "card_id": "SC2a-105",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "105",
+    "source_set": "S2a",
+    "source_local_id": "050",
+    "distance": 35,
+    "margin": 190
+  },
+  {
+    "card_id": "SC2a-106",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "106",
+    "source_set": "S3",
+    "source_local_id": "057",
+    "distance": 21,
+    "margin": 172
+  },
+  {
+    "card_id": "SC2a-107",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "107",
+    "source_set": "S3",
+    "source_local_id": "058",
+    "distance": 37,
+    "margin": 195
+  },
+  {
+    "card_id": "SC2a-111",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "111",
+    "source_set": "S3",
+    "source_local_id": "059",
+    "distance": 37,
+    "margin": 164
+  },
+  {
+    "card_id": "SC2a-112",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "112",
+    "source_set": "S3",
+    "source_local_id": "060",
+    "distance": 42,
+    "margin": 213
+  },
+  {
+    "card_id": "SC2a-115",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "115",
+    "source_set": "S3",
+    "source_local_id": "062",
+    "distance": 46,
+    "margin": 208
+  },
+  {
+    "card_id": "SC2a-116",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "116",
+    "source_set": "S3",
+    "source_local_id": "063",
+    "distance": 36,
+    "margin": 204
+  },
+  {
+    "card_id": "SC2a-121",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "121",
+    "source_set": "S3",
+    "source_local_id": "074",
+    "distance": 37,
+    "margin": 133
+  },
+  {
+    "card_id": "SC2a-124",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "124",
+    "source_set": "S3",
+    "source_local_id": "075",
+    "distance": 19,
+    "margin": 149
+  },
+  {
+    "card_id": "SC2a-125",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "125",
+    "source_set": "S3a",
+    "source_local_id": "055",
+    "distance": 36,
+    "margin": 157
+  },
+  {
+    "card_id": "SC2a-126",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "126",
+    "source_set": "S3a",
+    "source_local_id": "056",
+    "distance": 73,
+    "margin": 178
+  },
+  {
+    "card_id": "SC2a-127",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "127",
+    "source_set": "S3a",
+    "source_local_id": "060",
+    "distance": 37,
+    "margin": 152
+  },
+  {
+    "card_id": "SC2a-129",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "129",
+    "source_set": "S2a",
+    "source_local_id": "060",
+    "distance": 39,
+    "margin": 183
+  },
+  {
+    "card_id": "SC2a-130",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "130",
+    "source_set": "S2a",
+    "source_local_id": "061",
+    "distance": 46,
+    "margin": 197
+  },
+  {
+    "card_id": "SC2a-132",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "132",
+    "source_set": "S2a",
+    "source_local_id": "063",
+    "distance": 50,
+    "margin": 151
+  },
+  {
+    "card_id": "SC2a-134",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "134",
+    "source_set": "S3a",
+    "source_local_id": "067",
+    "distance": 57,
+    "margin": 295
+  },
+  {
+    "card_id": "SC2a-135",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "135",
+    "source_set": "S3a",
+    "source_local_id": "069",
+    "distance": 39,
+    "margin": 172
+  },
+  {
+    "card_id": "SC2a-137",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "137",
+    "source_set": "S3",
+    "source_local_id": "093",
+    "distance": 50,
+    "margin": 201
+  },
+  {
+    "card_id": "SC2a-138",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "138",
+    "source_set": "S3a",
+    "source_local_id": "070",
+    "distance": 27,
+    "margin": 174
+  },
+  {
+    "card_id": "SC2a-139",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "139",
+    "source_set": "S2a",
+    "source_local_id": "067",
+    "distance": 24,
+    "margin": 163
+  },
+  {
+    "card_id": "SC2a-141",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "141",
+    "source_set": "S3a",
+    "source_local_id": "072",
+    "distance": 31,
+    "margin": 200
+  },
+  {
+    "card_id": "SC2a-142",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "142",
+    "source_set": "S3",
+    "source_local_id": "097",
+    "distance": 33,
+    "margin": 182
+  },
+  {
+    "card_id": "SC2a-144",
+    "variant_id": "generated",
+    "target_set": "SC2a",
+    "target_local_id": "144",
+    "source_set": "S3a",
+    "source_local_id": "074",
+    "distance": 28,
+    "margin": 55
+  },
+  {
+    "card_id": "SC2b-001",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "001",
+    "source_set": "S3a",
+    "source_local_id": "008",
+    "distance": 52,
+    "margin": 183
+  },
+  {
+    "card_id": "SC2b-007",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "007",
+    "source_set": "S3",
+    "source_local_id": "010",
+    "distance": 71,
+    "margin": 163
+  },
+  {
+    "card_id": "SC2b-008",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "008",
+    "source_set": "S3",
+    "source_local_id": "011",
+    "distance": 67,
+    "margin": 254
+  },
+  {
+    "card_id": "SC2b-012",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "012",
+    "source_set": "S3",
+    "source_local_id": "013",
+    "distance": 34,
+    "margin": 144
+  },
+  {
+    "card_id": "SC2b-013",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "013",
+    "source_set": "S3",
+    "source_local_id": "014",
+    "distance": 42,
+    "margin": 286
+  },
+  {
+    "card_id": "SC2b-014",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "014",
+    "source_set": "S3",
+    "source_local_id": "015",
+    "distance": 52,
+    "margin": 268
+  },
+  {
+    "card_id": "SC2b-015",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "015",
+    "source_set": "S2a",
+    "source_local_id": "012",
+    "distance": 71,
+    "margin": 192
+  },
+  {
+    "card_id": "SC2b-017",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "017",
+    "source_set": "S2a",
+    "source_local_id": "014",
+    "distance": 64,
+    "margin": 171
+  },
+  {
+    "card_id": "SC2b-022",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "022",
+    "source_set": "S3",
+    "source_local_id": "020",
+    "distance": 52,
+    "margin": 268
+  },
+  {
+    "card_id": "SC2b-031",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "031",
+    "source_set": "S3",
+    "source_local_id": "030",
+    "distance": 39,
+    "margin": 185
+  },
+  {
+    "card_id": "SC2b-032",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "032",
+    "source_set": "S3a",
+    "source_local_id": "016",
+    "distance": 52,
+    "margin": 214
+  },
+  {
+    "card_id": "SC2b-033",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "033",
+    "source_set": "S3",
+    "source_local_id": "031",
+    "distance": 34,
+    "margin": 142
+  },
+  {
+    "card_id": "SC2b-034",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "034",
+    "source_set": "S3a",
+    "source_local_id": "017",
+    "distance": 50,
+    "margin": 199
+  },
+  {
+    "card_id": "SC2b-035",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "035",
+    "source_set": "S3a",
+    "source_local_id": "018",
+    "distance": 64,
+    "margin": 173
+  },
+  {
+    "card_id": "SC2b-036",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "036",
+    "source_set": "S3a",
+    "source_local_id": "019",
+    "distance": 53,
+    "margin": 176
+  },
+  {
+    "card_id": "SC2b-037",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "037",
+    "source_set": "S3a",
+    "source_local_id": "020",
+    "distance": 80,
+    "margin": 167
+  },
+  {
+    "card_id": "SC2b-038",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "038",
+    "source_set": "S2a",
+    "source_local_id": "025",
+    "distance": 54,
+    "margin": 346
+  },
+  {
+    "card_id": "SC2b-040",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "040",
+    "source_set": "S3a",
+    "source_local_id": "021",
+    "distance": 54,
+    "margin": 155
+  },
+  {
+    "card_id": "SC2b-044",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "044",
+    "source_set": "S3a",
+    "source_local_id": "022",
+    "distance": 37,
+    "margin": 161
+  },
+  {
+    "card_id": "SC2b-047",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "047",
+    "source_set": "S2a",
+    "source_local_id": "038",
+    "distance": 27,
+    "margin": 206
+  },
+  {
+    "card_id": "SC2b-048",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "048",
+    "source_set": "S2a",
+    "source_local_id": "039",
+    "distance": 77,
+    "margin": 282
+  },
+  {
+    "card_id": "SC2b-049",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "049",
+    "source_set": "S3a",
+    "source_local_id": "034",
+    "distance": 43,
+    "margin": 213
+  },
+  {
+    "card_id": "SC2b-050",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "050",
+    "source_set": "S3a",
+    "source_local_id": "035",
+    "distance": 60,
+    "margin": 217
+  },
+  {
+    "card_id": "SC2b-051",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "051",
+    "source_set": "S3a",
+    "source_local_id": "036",
+    "distance": 65,
+    "margin": 255
+  },
+  {
+    "card_id": "SC2b-052",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "052",
+    "source_set": "S2a",
+    "source_local_id": "040",
+    "distance": 58,
+    "margin": 235
+  },
+  {
+    "card_id": "SC2b-053",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "053",
+    "source_set": "S2a",
+    "source_local_id": "041",
+    "distance": 39,
+    "margin": 186
+  },
+  {
+    "card_id": "SC2b-054",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "054",
+    "source_set": "S2a",
+    "source_local_id": "042",
+    "distance": 58,
+    "margin": 218
+  },
+  {
+    "card_id": "SC2b-055",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "055",
+    "source_set": "S3",
+    "source_local_id": "044",
+    "distance": 41,
+    "margin": 162
+  },
+  {
+    "card_id": "SC2b-057",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "057",
+    "source_set": "S3",
+    "source_local_id": "046",
+    "distance": 77,
+    "margin": 247
+  },
+  {
+    "card_id": "SC2b-058",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "058",
+    "source_set": "S2a",
+    "source_local_id": "043",
+    "distance": 62,
+    "margin": 210
+  },
+  {
+    "card_id": "SC2b-060",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "060",
+    "source_set": "S3a",
+    "source_local_id": "038",
+    "distance": 75,
+    "margin": 267
+  },
+  {
+    "card_id": "SC2b-062",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "062",
+    "source_set": "S3",
+    "source_local_id": "047",
+    "distance": 68,
+    "margin": 273
+  },
+  {
+    "card_id": "SC2b-063",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "063",
+    "source_set": "S3",
+    "source_local_id": "048",
+    "distance": 60,
+    "margin": 254
+  },
+  {
+    "card_id": "SC2b-065",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "065",
+    "source_set": "S2a",
+    "source_local_id": "044",
+    "distance": 63,
+    "margin": 274
+  },
+  {
+    "card_id": "SC2b-067",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "067",
+    "source_set": "S3a",
+    "source_local_id": "039",
+    "distance": 66,
+    "margin": 235
+  },
+  {
+    "card_id": "SC2b-070",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "070",
+    "source_set": "S3a",
+    "source_local_id": "041",
+    "distance": 30,
+    "margin": 196
+  },
+  {
+    "card_id": "SC2b-072",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "072",
+    "source_set": "S3",
+    "source_local_id": "050",
+    "distance": 74,
+    "margin": 195
+  },
+  {
+    "card_id": "SC2b-075",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "075",
+    "source_set": "S2a",
+    "source_local_id": "045",
+    "distance": 78,
+    "margin": 257
+  },
+  {
+    "card_id": "SC2b-077",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "077",
+    "source_set": "S3a",
+    "source_local_id": "045",
+    "distance": 80,
+    "margin": 291
+  },
+  {
+    "card_id": "SC2b-081",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "081",
+    "source_set": "S3",
+    "source_local_id": "068",
+    "distance": 65,
+    "margin": 255
+  },
+  {
+    "card_id": "SC2b-082",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "082",
+    "source_set": "S2a",
+    "source_local_id": "051",
+    "distance": 48,
+    "margin": 249
+  },
+  {
+    "card_id": "SC2b-083",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "083",
+    "source_set": "S2a",
+    "source_local_id": "052",
+    "distance": 35,
+    "margin": 147
+  },
+  {
+    "card_id": "SC2b-085",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "085",
+    "source_set": "S3a",
+    "source_local_id": "047",
+    "distance": 50,
+    "margin": 134
+  },
+  {
+    "card_id": "SC2b-086",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "086",
+    "source_set": "S3a",
+    "source_local_id": "048",
+    "distance": 35,
+    "margin": 177
+  },
+  {
+    "card_id": "SC2b-087",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "087",
+    "source_set": "S3a",
+    "source_local_id": "049",
+    "distance": 71,
+    "margin": 259
+  },
+  {
+    "card_id": "SC2b-089",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "089",
+    "source_set": "S3a",
+    "source_local_id": "051",
+    "distance": 58,
+    "margin": 221
+  },
+  {
+    "card_id": "SC2b-092",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "092",
+    "source_set": "S3",
+    "source_local_id": "069",
+    "distance": 37,
+    "margin": 218
+  },
+  {
+    "card_id": "SC2b-093",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "093",
+    "source_set": "S3",
+    "source_local_id": "070",
+    "distance": 34,
+    "margin": 163
+  },
+  {
+    "card_id": "SC2b-094",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "094",
+    "source_set": "S3",
+    "source_local_id": "071",
+    "distance": 75,
+    "margin": 243
+  },
+  {
+    "card_id": "SC2b-095",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "095",
+    "source_set": "S3a",
+    "source_local_id": "053",
+    "distance": 47,
+    "margin": 116
+  },
+  {
+    "card_id": "SC2b-104",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "104",
+    "source_set": "S2a",
+    "source_local_id": "056",
+    "distance": 62,
+    "margin": 176
+  },
+  {
+    "card_id": "SC2b-105",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "105",
+    "source_set": "S2a",
+    "source_local_id": "057",
+    "distance": 38,
+    "margin": 172
+  },
+  {
+    "card_id": "SC2b-106",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "106",
+    "source_set": "S3",
+    "source_local_id": "076",
+    "distance": 61,
+    "margin": 156
+  },
+  {
+    "card_id": "SC2b-107",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "107",
+    "source_set": "S3",
+    "source_local_id": "077",
+    "distance": 37,
+    "margin": 150
+  },
+  {
+    "card_id": "SC2b-109",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "109",
+    "source_set": "S3",
+    "source_local_id": "078",
+    "distance": 78,
+    "margin": 282
+  },
+  {
+    "card_id": "SC2b-115",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "115",
+    "source_set": "S3",
+    "source_local_id": "082",
+    "distance": 51,
+    "margin": 213
+  },
+  {
+    "card_id": "SC2b-116",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "116",
+    "source_set": "S3",
+    "source_local_id": "083",
+    "distance": 33,
+    "margin": 181
+  },
+  {
+    "card_id": "SC2b-117",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "117",
+    "source_set": "S3",
+    "source_local_id": "084",
+    "distance": 35,
+    "margin": 148
+  },
+  {
+    "card_id": "SC2b-118",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "118",
+    "source_set": "S3a",
+    "source_local_id": "057",
+    "distance": 62,
+    "margin": 193
+  },
+  {
+    "card_id": "SC2b-119",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "119",
+    "source_set": "S3a",
+    "source_local_id": "058",
+    "distance": 75,
+    "margin": 348
+  },
+  {
+    "card_id": "SC2b-124",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "124",
+    "source_set": "S2a",
+    "source_local_id": "059",
+    "distance": 57,
+    "margin": 225
+  },
+  {
+    "card_id": "SC2b-125",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "125",
+    "source_set": "S3a",
+    "source_local_id": "061",
+    "distance": 49,
+    "margin": 175
+  },
+  {
+    "card_id": "SC2b-126",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "126",
+    "source_set": "S3a",
+    "source_local_id": "062",
+    "distance": 65,
+    "margin": 238
+  },
+  {
+    "card_id": "SC2b-128",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "128",
+    "source_set": "S3",
+    "source_local_id": "087",
+    "distance": 32,
+    "margin": 191
+  },
+  {
+    "card_id": "SC2b-129",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "129",
+    "source_set": "S3",
+    "source_local_id": "088",
+    "distance": 35,
+    "margin": 171
+  },
+  {
+    "card_id": "SC2b-130",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "130",
+    "source_set": "S3",
+    "source_local_id": "089",
+    "distance": 39,
+    "margin": 274
+  },
+  {
+    "card_id": "SC2b-131",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "131",
+    "source_set": "S2a",
+    "source_local_id": "064",
+    "distance": 35,
+    "margin": 144
+  },
+  {
+    "card_id": "SC2b-133",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "133",
+    "source_set": "S2a",
+    "source_local_id": "065",
+    "distance": 63,
+    "margin": 210
+  },
+  {
+    "card_id": "SC2b-135",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "135",
+    "source_set": "S3a",
+    "source_local_id": "068",
+    "distance": 34,
+    "margin": 202
+  },
+  {
+    "card_id": "SC2b-137",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "137",
+    "source_set": "S3a",
+    "source_local_id": "071",
+    "distance": 31,
+    "margin": 171
+  },
+  {
+    "card_id": "SC2b-139",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "139",
+    "source_set": "S2a",
+    "source_local_id": "068",
+    "distance": 68,
+    "margin": 268
+  },
+  {
+    "card_id": "SC2b-143",
+    "variant_id": "generated",
+    "target_set": "SC2b",
+    "target_local_id": "143",
+    "source_set": "S3a",
+    "source_local_id": "075",
+    "distance": 24,
+    "margin": 74
+  },
+  {
+    "card_id": "SCA-001",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "001",
+    "source_set": "S4",
+    "source_local_id": "006",
+    "distance": 63,
+    "margin": 200
+  },
+  {
+    "card_id": "SCA-002",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "002",
+    "source_set": "S4",
+    "source_local_id": "007",
+    "distance": 43,
+    "margin": 296
+  },
+  {
+    "card_id": "SCA-006",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "006",
+    "source_set": "S3a",
+    "source_local_id": "012",
+    "distance": 27,
+    "margin": 140
+  },
+  {
+    "card_id": "SCA-008",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "008",
+    "source_set": "S4a",
+    "source_local_id": "007",
+    "distance": 50,
+    "margin": 252
+  },
+  {
+    "card_id": "SCA-009",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "009",
+    "source_set": "S4a",
+    "source_local_id": "008",
+    "distance": 69,
+    "margin": 222
+  },
+  {
+    "card_id": "SCA-010",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "010",
+    "source_set": "S4",
+    "source_local_id": "008",
+    "distance": 62,
+    "margin": 303
+  },
+  {
+    "card_id": "SCA-011",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "011",
+    "source_set": "S1a",
+    "source_local_id": "014",
+    "distance": 45,
+    "margin": 256
+  },
+  {
+    "card_id": "SCA-012",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "012",
+    "source_set": "S1a",
+    "source_local_id": "015",
+    "distance": 44,
+    "margin": 294
+  },
+  {
+    "card_id": "SCA-013",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "013",
+    "source_set": "S3",
+    "source_local_id": "010",
+    "distance": 48,
+    "margin": 210
+  },
+  {
+    "card_id": "SCA-014",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "014",
+    "source_set": "S3",
+    "source_local_id": "011",
+    "distance": 34,
+    "margin": 278
+  },
+  {
+    "card_id": "SCA-019",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "019",
+    "source_set": "S4",
+    "source_local_id": "018",
+    "distance": 51,
+    "margin": 281
+  },
+  {
+    "card_id": "SCA-021",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "021",
+    "source_set": "S4",
+    "source_local_id": "020",
+    "distance": 40,
+    "margin": 282
+  },
+  {
+    "card_id": "SCA-022",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "022",
+    "source_set": "S4",
+    "source_local_id": "021",
+    "distance": 44,
+    "margin": 251
+  },
+  {
+    "card_id": "SCA-023",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "023",
+    "source_set": "S4",
+    "source_local_id": "022",
+    "distance": 54,
+    "margin": 254
+  },
+  {
+    "card_id": "SCA-024",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "024",
+    "source_set": "S4",
+    "source_local_id": "023",
+    "distance": 67,
+    "margin": 300
+  },
+  {
+    "card_id": "SCA-025",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "025",
+    "source_set": "S2a",
+    "source_local_id": "022",
+    "distance": 24,
+    "margin": 284
+  },
+  {
+    "card_id": "SCA-026",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "026",
+    "source_set": "S2a",
+    "source_local_id": "023",
+    "distance": 34,
+    "margin": 269
+  },
+  {
+    "card_id": "SCA-027",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "027",
+    "source_set": "S4",
+    "source_local_id": "025",
+    "distance": 34,
+    "margin": 293
+  },
+  {
+    "card_id": "SCA-028",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "028",
+    "source_set": "S4",
+    "source_local_id": "026",
+    "distance": 45,
+    "margin": 225
+  },
+  {
+    "card_id": "SCA-030",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "030",
+    "source_set": "S4",
+    "source_local_id": "032",
+    "distance": 44,
+    "margin": 329
+  },
+  {
+    "card_id": "SCA-032",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "032",
+    "source_set": "S3a",
+    "source_local_id": "016",
+    "distance": 25,
+    "margin": 236
+  },
+  {
+    "card_id": "SCA-033",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "033",
+    "source_set": "S3a",
+    "source_local_id": "017",
+    "distance": 34,
+    "margin": 217
+  },
+  {
+    "card_id": "SCA-034",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "034",
+    "source_set": "S4a",
+    "source_local_id": "052",
+    "distance": 46,
+    "margin": 194
+  },
+  {
+    "card_id": "SCA-035",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "035",
+    "source_set": "S4",
+    "source_local_id": "038",
+    "distance": 50,
+    "margin": 189
+  },
+  {
+    "card_id": "SCA-036",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "036",
+    "source_set": "S4",
+    "source_local_id": "039",
+    "distance": 25,
+    "margin": 186
+  },
+  {
+    "card_id": "SCA-037",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "037",
+    "source_set": "S4",
+    "source_local_id": "040",
+    "distance": 63,
+    "margin": 216
+  },
+  {
+    "card_id": "SCA-038",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "038",
+    "source_set": "S3a",
+    "source_local_id": "020",
+    "distance": 68,
+    "margin": 181
+  },
+  {
+    "card_id": "SCA-040",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "040",
+    "source_set": "S3a",
+    "source_local_id": "025",
+    "distance": 51,
+    "margin": 248
+  },
+  {
+    "card_id": "SCA-041",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "041",
+    "source_set": "S3",
+    "source_local_id": "037",
+    "distance": 58,
+    "margin": 221
+  },
+  {
+    "card_id": "SCA-042",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "042",
+    "source_set": "S3",
+    "source_local_id": "038",
+    "distance": 36,
+    "margin": 314
+  },
+  {
+    "card_id": "SCA-043",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "043",
+    "source_set": "S3",
+    "source_local_id": "039",
+    "distance": 39,
+    "margin": 353
+  },
+  {
+    "card_id": "SCA-044",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "044",
+    "source_set": "S3a",
+    "source_local_id": "029",
+    "distance": 58,
+    "margin": 288
+  },
+  {
+    "card_id": "SCA-045",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "045",
+    "source_set": "S3a",
+    "source_local_id": "030",
+    "distance": 41,
+    "margin": 226
+  },
+  {
+    "card_id": "SCA-049",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "049",
+    "source_set": "S4",
+    "source_local_id": "053",
+    "distance": 32,
+    "margin": 293
+  },
+  {
+    "card_id": "SCA-050",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "050",
+    "source_set": "S4",
+    "source_local_id": "054",
+    "distance": 29,
+    "margin": 267
+  },
+  {
+    "card_id": "SCA-051",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "051",
+    "source_set": "S4",
+    "source_local_id": "055",
+    "distance": 56,
+    "margin": 207
+  },
+  {
+    "card_id": "SCA-052",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "052",
+    "source_set": "S4",
+    "source_local_id": "058",
+    "distance": 46,
+    "margin": 232
+  },
+  {
+    "card_id": "SCA-053",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "053",
+    "source_set": "S2a",
+    "source_local_id": "040",
+    "distance": 27,
+    "margin": 254
+  },
+  {
+    "card_id": "SCA-054",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "054",
+    "source_set": "S2a",
+    "source_local_id": "041",
+    "distance": 26,
+    "margin": 192
+  },
+  {
+    "card_id": "SCA-055",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "055",
+    "source_set": "S2a",
+    "source_local_id": "042",
+    "distance": 54,
+    "margin": 226
+  },
+  {
+    "card_id": "SCA-057",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "057",
+    "source_set": "S3",
+    "source_local_id": "050",
+    "distance": 56,
+    "margin": 221
+  },
+  {
+    "card_id": "SCA-058",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "058",
+    "source_set": "S4",
+    "source_local_id": "063",
+    "distance": 23,
+    "margin": 274
+  },
+  {
+    "card_id": "SCA-059",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "059",
+    "source_set": "S4",
+    "source_local_id": "064",
+    "distance": 50,
+    "margin": 224
+  },
+  {
+    "card_id": "SCA-060",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "060",
+    "source_set": "S4",
+    "source_local_id": "065",
+    "distance": 76,
+    "margin": 286
+  },
+  {
+    "card_id": "SCA-062",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "062",
+    "source_set": "S3",
+    "source_local_id": "054",
+    "distance": 12,
+    "margin": 227
+  },
+  {
+    "card_id": "SCA-063",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "063",
+    "source_set": "S3",
+    "source_local_id": "055",
+    "distance": 36,
+    "margin": 250
+  },
+  {
+    "card_id": "SCA-064",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "064",
+    "source_set": "S3",
+    "source_local_id": "056",
+    "distance": 41,
+    "margin": 223
+  },
+  {
+    "card_id": "SCA-067",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "067",
+    "source_set": "S3",
+    "source_local_id": "057",
+    "distance": 9,
+    "margin": 182
+  },
+  {
+    "card_id": "SCA-068",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "068",
+    "source_set": "S3",
+    "source_local_id": "058",
+    "distance": 23,
+    "margin": 198
+  },
+  {
+    "card_id": "SCA-073",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "073",
+    "source_set": "S3a",
+    "source_local_id": "047",
+    "distance": 26,
+    "margin": 151
+  },
+  {
+    "card_id": "SCA-074",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "074",
+    "source_set": "S3a",
+    "source_local_id": "048",
+    "distance": 26,
+    "margin": 179
+  },
+  {
+    "card_id": "SCA-075",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "075",
+    "source_set": "S3a",
+    "source_local_id": "049",
+    "distance": 49,
+    "margin": 263
+  },
+  {
+    "card_id": "SCA-076",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "076",
+    "source_set": "S4",
+    "source_local_id": "078",
+    "distance": 24,
+    "margin": 178
+  },
+  {
+    "card_id": "SCA-077",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "077",
+    "source_set": "S4",
+    "source_local_id": "079",
+    "distance": 35,
+    "margin": 172
+  },
+  {
+    "card_id": "SCA-081",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "081",
+    "source_set": "S4",
+    "source_local_id": "082",
+    "distance": 47,
+    "margin": 187
+  },
+  {
+    "card_id": "SCA-084",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "084",
+    "source_set": "S4",
+    "source_local_id": "084",
+    "distance": 68,
+    "margin": 176
+  },
+  {
+    "card_id": "SCA-087",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "087",
+    "source_set": "S3a",
+    "source_local_id": "057",
+    "distance": 41,
+    "margin": 207
+  },
+  {
+    "card_id": "SCA-088",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "088",
+    "source_set": "S3a",
+    "source_local_id": "058",
+    "distance": 66,
+    "margin": 356
+  },
+  {
+    "card_id": "SCA-089",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "089",
+    "source_set": "S3a",
+    "source_local_id": "061",
+    "distance": 27,
+    "margin": 185
+  },
+  {
+    "card_id": "SCA-090",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "090",
+    "source_set": "S3a",
+    "source_local_id": "062",
+    "distance": 57,
+    "margin": 240
+  },
+  {
+    "card_id": "SCA-095",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "095",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 20,
+    "margin": 231
+  },
+  {
+    "card_id": "SCA-099",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "099",
+    "source_set": "S1H",
+    "source_local_id": "053",
+    "distance": 71,
+    "margin": 319
+  },
+  {
+    "card_id": "SCA-102",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "102",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 49,
+    "margin": 199
+  },
+  {
+    "card_id": "SCA-103",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "103",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 19,
+    "margin": 244
+  },
+  {
+    "card_id": "SCA-106",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "106",
+    "source_set": "S1W",
+    "source_local_id": "056",
+    "distance": 47,
+    "margin": 187
+  },
+  {
+    "card_id": "SCA-107",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "107",
+    "source_set": "S1a",
+    "source_local_id": "064",
+    "distance": 24,
+    "margin": 180
+  },
+  {
+    "card_id": "SCA-108",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "108",
+    "source_set": "S3a",
+    "source_local_id": "071",
+    "distance": 17,
+    "margin": 187
+  },
+  {
+    "card_id": "SCA-109",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "109",
+    "source_set": "S2a",
+    "source_local_id": "067",
+    "distance": 19,
+    "margin": 163
+  },
+  {
+    "card_id": "SCA-110",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "110",
+    "source_set": "S4",
+    "source_local_id": "093",
+    "distance": 20,
+    "margin": 199
+  },
+  {
+    "card_id": "SCA-111",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "111",
+    "source_set": "S1a",
+    "source_local_id": "065",
+    "distance": 29,
+    "margin": 197
+  },
+  {
+    "card_id": "SCA-112",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "112",
+    "source_set": "S2",
+    "source_local_id": "091",
+    "distance": 37,
+    "margin": 219
+  },
+  {
+    "card_id": "SCA-117",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "117",
+    "source_set": "S2a",
+    "source_local_id": "068",
+    "distance": 48,
+    "margin": 282
+  },
+  {
+    "card_id": "SCA-121",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "121",
+    "source_set": "S4",
+    "source_local_id": "096",
+    "distance": 29,
+    "margin": 238
+  },
+  {
+    "card_id": "SCA-124",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "124",
+    "source_set": "S3a",
+    "source_local_id": "074",
+    "distance": 13,
+    "margin": 68
+  },
+  {
+    "card_id": "SCA-126",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "126",
+    "source_set": "S4",
+    "source_local_id": "099",
+    "distance": 10,
+    "margin": 90
+  },
+  {
+    "card_id": "SCA-129",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "129",
+    "source_set": "S3a",
+    "source_local_id": "075",
+    "distance": 12,
+    "margin": 76
+  },
+  {
+    "card_id": "SCA-131",
+    "variant_id": "generated",
+    "target_set": "SCA",
+    "target_local_id": "131",
+    "source_set": "S4",
+    "source_local_id": "100",
+    "distance": 20,
+    "margin": 99
+  },
+  {
+    "card_id": "SCB-045",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "045",
+    "source_set": "S4a",
+    "source_local_id": "047",
+    "distance": 36,
+    "margin": 262
+  },
+  {
+    "card_id": "SCB-046",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "046",
+    "source_set": "S4a",
+    "source_local_id": "048",
+    "distance": 80,
+    "margin": 211
+  },
+  {
+    "card_id": "SCB-118",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "118",
+    "source_set": "S2a",
+    "source_local_id": "063",
+    "distance": 24,
+    "margin": 163
+  },
+  {
+    "card_id": "SCB-122",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "122",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 20,
+    "margin": 231
+  },
+  {
+    "card_id": "SCB-124",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "124",
+    "source_set": "S1H",
+    "source_local_id": "053",
+    "distance": 71,
+    "margin": 319
+  },
+  {
+    "card_id": "SCB-127",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "127",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 49,
+    "margin": 199
+  },
+  {
+    "card_id": "SCB-128",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "128",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 19,
+    "margin": 244
+  },
+  {
+    "card_id": "SCB-130",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "130",
+    "source_set": "S1a",
+    "source_local_id": "064",
+    "distance": 24,
+    "margin": 180
+  },
+  {
+    "card_id": "SCB-131",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "131",
+    "source_set": "S3a",
+    "source_local_id": "070",
+    "distance": 20,
+    "margin": 188
+  },
+  {
+    "card_id": "SCB-132",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "132",
+    "source_set": "S3a",
+    "source_local_id": "071",
+    "distance": 17,
+    "margin": 187
+  },
+  {
+    "card_id": "SCB-133",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "133",
+    "source_set": "S2a",
+    "source_local_id": "067",
+    "distance": 19,
+    "margin": 163
+  },
+  {
+    "card_id": "SCB-135",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "135",
+    "source_set": "S4",
+    "source_local_id": "093",
+    "distance": 20,
+    "margin": 199
+  },
+  {
+    "card_id": "SCB-142",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "142",
+    "source_set": "S3a",
+    "source_local_id": "072",
+    "distance": 20,
+    "margin": 210
+  },
+  {
+    "card_id": "SCB-144",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "144",
+    "source_set": "S1a",
+    "source_local_id": "067",
+    "distance": 15,
+    "margin": 214
+  },
+  {
+    "card_id": "SCB-145",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "145",
+    "source_set": "S4",
+    "source_local_id": "096",
+    "distance": 29,
+    "margin": 238
+  },
+  {
+    "card_id": "SCB-147",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "147",
+    "source_set": "S3a",
+    "source_local_id": "074",
+    "distance": 13,
+    "margin": 68
+  },
+  {
+    "card_id": "SCB-149",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "149",
+    "source_set": "S4",
+    "source_local_id": "099",
+    "distance": 10,
+    "margin": 90
+  },
+  {
+    "card_id": "SCB-152",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "152",
+    "source_set": "S3a",
+    "source_local_id": "075",
+    "distance": 12,
+    "margin": 76
+  },
+  {
+    "card_id": "SCB-154",
+    "variant_id": "generated",
+    "target_set": "SCB",
+    "target_local_id": "154",
+    "source_set": "S4",
+    "source_local_id": "100",
+    "distance": 16,
+    "margin": 100
+  },
+  {
+    "card_id": "SCC-121",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "121",
+    "source_set": "S2a",
+    "source_local_id": "063",
+    "distance": 14,
+    "margin": 161
+  },
+  {
+    "card_id": "SCC-129",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "129",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 18,
+    "margin": 223
+  },
+  {
+    "card_id": "SCC-134",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "134",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 47,
+    "margin": 199
+  },
+  {
+    "card_id": "SCC-135",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "135",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 18,
+    "margin": 244
+  },
+  {
+    "card_id": "SCC-139",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "139",
+    "source_set": "S1W",
+    "source_local_id": "056",
+    "distance": 45,
+    "margin": 191
+  },
+  {
+    "card_id": "SCC-141",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "141",
+    "source_set": "S1a",
+    "source_local_id": "064",
+    "distance": 19,
+    "margin": 182
+  },
+  {
+    "card_id": "SCC-144",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "144",
+    "source_set": "S2a",
+    "source_local_id": "067",
+    "distance": 19,
+    "margin": 163
+  },
+  {
+    "card_id": "SCC-154",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "154",
+    "source_set": "S3a",
+    "source_local_id": "072",
+    "distance": 16,
+    "margin": 212
+  },
+  {
+    "card_id": "SCC-158",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "158",
+    "source_set": "S1a",
+    "source_local_id": "067",
+    "distance": 17,
+    "margin": 212
+  },
+  {
+    "card_id": "SCC-159",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "159",
+    "source_set": "S4",
+    "source_local_id": "096",
+    "distance": 25,
+    "margin": 230
+  },
+  {
+    "card_id": "SCC-162",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "162",
+    "source_set": "S3a",
+    "source_local_id": "074",
+    "distance": 11,
+    "margin": 70
+  },
+  {
+    "card_id": "SCC-164",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "164",
+    "source_set": "S4",
+    "source_local_id": "099",
+    "distance": 11,
+    "margin": 88
+  },
+  {
+    "card_id": "SCC-167",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "167",
+    "source_set": "S3a",
+    "source_local_id": "075",
+    "distance": 11,
+    "margin": 78
+  },
+  {
+    "card_id": "SCC-169",
+    "variant_id": "generated",
+    "target_set": "SCC",
+    "target_local_id": "169",
+    "source_set": "S4",
+    "source_local_id": "100",
+    "distance": 15,
+    "margin": 96
+  },
+  {
+    "card_id": "SCD-125",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "125",
+    "source_set": "S3a",
+    "source_local_id": "064",
+    "distance": 18,
+    "margin": 223
+  },
+  {
+    "card_id": "SCD-130",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "130",
+    "source_set": "S3a",
+    "source_local_id": "065",
+    "distance": 47,
+    "margin": 199
+  },
+  {
+    "card_id": "SCD-131",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "131",
+    "source_set": "S3a",
+    "source_local_id": "066",
+    "distance": 18,
+    "margin": 244
+  },
+  {
+    "card_id": "SCD-135",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "135",
+    "source_set": "S1a",
+    "source_local_id": "064",
+    "distance": 19,
+    "margin": 182
+  },
+  {
+    "card_id": "SCD-152",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "152",
+    "source_set": "S3a",
+    "source_local_id": "074",
+    "distance": 11,
+    "margin": 70
+  },
+  {
+    "card_id": "SCD-154",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "154",
+    "source_set": "S4",
+    "source_local_id": "099",
+    "distance": 11,
+    "margin": 88
+  },
+  {
+    "card_id": "SCD-157",
+    "variant_id": "generated",
+    "target_set": "SCD",
+    "target_local_id": "157",
+    "source_set": "S3a",
+    "source_local_id": "075",
+    "distance": 11,
+    "margin": 78
+  }
+]
