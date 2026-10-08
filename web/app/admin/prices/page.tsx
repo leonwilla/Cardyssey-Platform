@@ -12,7 +12,7 @@ type PriceCase = {
   nextAttemptAt?:string|null; identityMethod?:string|null;
 };
 type ResponseData = {
-  counts:{total:number;stale:number;noPrice:number;providerError:number};
+  counts:{total:number;stale:number;noPrice:number;providerError:number;noPublicPrice:number};
   items:PriceCase[];
 };
 
@@ -66,6 +66,7 @@ export default function PriceMonitorPage(){
    <div className="statCard"><span>&gt; 8 Tage</span><strong>{data.counts.stale}</strong><small>Preis-Sync veraltet</small></div>
    <div className="statCard"><span>NO_PRICE</span><strong>{data.counts.noPrice}</strong><small>weiter ohne Preis</small></div>
    <div className="statCard"><span>PROVIDER_ERROR</span><strong>{data.counts.providerError}</strong><small>Providerfehler</small></div>
+   <div className="statCard"><span>Ohne öffentlichen Preis</span><strong>{data.counts.noPublicPrice}</strong><small>markiert · aktuell ignoriert</small></div>
   </section>}
   <section className="sectionBlock">
    <div className="sectionTitle"><div><span className="eyebrowText">Arbeitsliste</span><h2>Offene Kartenvarianten</h2></div><span className="chip mutedChip">{data?.items.length??0} angezeigt</span></div>

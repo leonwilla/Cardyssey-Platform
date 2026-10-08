@@ -136,31 +136,35 @@ for r in rows:
     })
 print(f"classic_resolved={len(resolved)} ambiguous={ambiguous}",flush=True)
 
-# Cardmarket product ids do not distinguish CardTrader's editable
-# first_edition property. Cache only No-Rarity here because it is a
-# dedicated CardTrader/Cardmarket product identity.
-identity_rows=[
-    r for r in resolved
-    if r["cardmarket_id"] is not None
-    and r["expansion_code"]=="1epnr"
-]
+# Cache the exact CardTrader blueprint for every resolved physical variant,
+# even when Cardmarket has no product id. The blueprint plus the expected
+# first-edition flag is still useful provenance for backlog classification.
+identity_rows=resolved
 if identity_rows:
     values=[]
     for r in identity_rows:
+        cm="NULL" if r["cardmarket_id"] is None else str(r["cardmarket_id"])
+        method=(
+            "ja-classic-no-rarity"
+            if r["expansion_code"]=="1epnr"
+            else f"ja-classic-{'1st' if r['expected_first'] else 'unlimited'}"
+        )
         values.append(
             f"('{q(r['card_id'])}','ja','{q(r['variant_id'])}',"
-            f"{r['cardmarket_id']},{r['blueprint_id']},{r['expansion_id']},'ja-classic')"
+            f"{cm},{r['blueprint_id']},{r['expansion_id']},'{method}')"
         )
-    db(
-        "INSERT INTO cardtrader_variant_identity_cache"
-        "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
-        + ",".join(values)
-        + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
-          "cardmarket_product_id=EXCLUDED.cardmarket_product_id,"
-          "blueprint_id=EXCLUDED.blueprint_id,"
-          "expansion_id=EXCLUDED.expansion_id,"
-          "method=EXCLUDED.method,updated_at=NOW()"
-    )
+    for start in range(0,len(values),250):
+        chunk=values[start:start+250]
+        db(
+            "INSERT INTO cardtrader_variant_identity_cache"
+            "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
+            + ",".join(chunk)
+            + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
+              "cardmarket_product_id=COALESCE(EXCLUDED.cardmarket_product_id,cardtrader_variant_identity_cache.cardmarket_product_id),"
+              "blueprint_id=EXCLUDED.blueprint_id,"
+              "expansion_id=EXCLUDED.expansion_id,"
+              "method=EXCLUDED.method,updated_at=NOW()"
+        )
 print(f"classic_variant_identities={len(identity_rows)}",flush=True)
 
 updates=[]

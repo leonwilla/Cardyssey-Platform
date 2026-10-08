@@ -47,6 +47,9 @@ WHERE p.card_id=x.card_id
     p.failure_detail IS NULL
     OR BTRIM(p.failure_detail)=''
     OR p.failure_detail='No current provider price during refresh'
+    OR p.failure_detail='No exact provider identity for this variant yet'
+    OR p.failure_detail='Card-level provider identity exists; exact variant price unavailable'
+    OR p.failure_detail LIKE 'Exact variant identity; no acceptable % listing/price currently'
   );
 """
 subprocess.run(

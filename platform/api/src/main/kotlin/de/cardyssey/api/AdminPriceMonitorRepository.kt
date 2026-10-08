@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import java.time.OffsetDateTime
 
 @Serializable data class AdminPriceMonitorItem(val cardId:String,val languageCode:String,val setName:String,val cardName:String,val cardNumber:String,val variantId:String,val variant:String,val lastPriceEur:Double?,val source:String?,val lastSuccessfulSync:String?,val currentStatus:String,val failureDetail:String?,val nextAttemptAt:String?,val identityMethod:String?)
-@Serializable data class AdminPriceMonitorCounts(val total:Long,val stale:Long,val noPrice:Long,val providerError:Long)
+@Serializable data class AdminPriceMonitorCounts(val total:Long,val stale:Long,val noPrice:Long,val providerError:Long,val noPublicPrice:Long)
 @Serializable data class AdminPriceMonitorResponse(val counts:AdminPriceMonitorCounts,val items:List<AdminPriceMonitorItem>)
 
 class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
@@ -22,7 +22,7 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  WHERE c.details_complete=TRUE AND COALESCE(v.value->>'id','')<>'' AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
 ), monitored AS (
  SELECT v.*,last_success.base_eur AS last_price_eur,last_success.source AS last_source,last_success.captured_at AS last_successful_sync,
-        p.failure_detail,p.next_attempt_at,
+        p.failure_detail,p.next_attempt_at,p.resolution_status AS raw_resolution_status,
         COALESCE(vi.method,CASE WHEN ci.card_id IS NOT NULL THEN 'card-level' END) AS identity_method,
  CASE WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='NO_PRICE' THEN 'NO_PRICE'
@@ -42,8 +42,9 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
   return dataSource.connection.use{connection->
    val counts=connection.prepareStatement(cte+"""SELECT COUNT(*) FILTER(WHERE monitor_status IS NOT NULL) total,
  COUNT(*) FILTER(WHERE monitor_status='STALE') stale,COUNT(*) FILTER(WHERE monitor_status='NO_PRICE') no_price,
- COUNT(*) FILTER(WHERE monitor_status='PROVIDER_ERROR') provider_error FROM monitored""").use{st->
-    st.executeQuery().use{r->check(r.next());AdminPriceMonitorCounts(r.getLong("total"),r.getLong("stale"),r.getLong("no_price"),r.getLong("provider_error"))}
+ COUNT(*) FILTER(WHERE monitor_status='PROVIDER_ERROR') provider_error,
+ COUNT(*) FILTER(WHERE raw_resolution_status='NO_PUBLIC_PRICE') no_public_price FROM monitored""").use{st->
+    st.executeQuery().use{r->check(r.next());AdminPriceMonitorCounts(r.getLong("total"),r.getLong("stale"),r.getLong("no_price"),r.getLong("provider_error"),r.getLong("no_public_price"))}
    }
    val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY language_code,set_name,card_name,card_id,variant_id")}
    val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status"),r.getString("failure_detail"),r.getObject("next_attempt_at",OffsetDateTime::class.java)?.toString(),r.getString("identity_method")))}}}

@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Reactivate deferred market prices
+        run: python3 scripts/reactivate-pending-market-prices.py
+
       - name: Backfill verified special TCGplayer variants
         run: python3 scripts/backfill-tcgcsv-special-variants.py
 
@@ -50,6 +53,9 @@ jobs:
       - name: Resolve Japanese promo prices
         run: python3 scripts/resolve-cardtrader-ja-promos.py
 
+      - name: Resolve Japanese promo prices from CardRush
+        run: python3 scripts/resolve-cardrush-ja-promos.py --apply
+
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
 
@@ -64,6 +70,9 @@ jobs:
 
       - name: Resolve audited Traditional Chinese art identities
         run: python3 scripts/resolve-cardtrader-zhtw-art-mapped.py
+
+      - name: Resolve Traditional Chinese retail reference prices
+        run: python3 scripts/resolve-hktcg-zhtw.py --apply
 
       - name: Bridge exact CardTrader identities to Cardmarket
         run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
