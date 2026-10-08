@@ -14,15 +14,22 @@ def db(sql):
 def q(v): return str(v).replace("'","''")
 def positive(v): return isinstance(v,(int,float)) and math.isfinite(v) and v>0
 
-def guide_price(g,legacy,allow_generic_holo=False):
-    keys=("trend-holo","avg7-holo","avg30-holo","avg-holo","low-holo") if legacy in ("HOLO","REVERSE") else ("trend","avg7","avg30","avg","low")
+def guide_price(g,legacy,allow_generic_holo=False,allow_holo_for_exact_normal=False):
+    generic=("trend","avg7","avg30","avg","low")
+    holo=("trend-holo","avg7-holo","avg30-holo","avg-holo","low-holo")
+    keys=holo if legacy in ("HOLO","REVERSE") else generic
     for key in keys:
         if positive(g.get(key)):
             return float(g[key]),key
-    # Some exact promo products are inherently holo, so Cardmarket stores
-    # their only price series in the generic fields and leaves *-holo empty.
+    # Some exact products are inherently holo, so Cardmarket stores only one
+    # of the two price series. Use the opposite series only for identities we
+    # already resolved to an exact promo/product blueprint.
     if legacy in ("HOLO","REVERSE") and allow_generic_holo:
-        for key in ("trend","avg7","avg30","avg","low"):
+        for key in generic:
+            if positive(g.get(key)):
+                return float(g[key]),key
+    if legacy=="NORMAL" and allow_holo_for_exact_normal:
+        for key in holo:
             if positive(g.get(key)):
                 return float(g[key]),key
     return None,None
@@ -75,9 +82,10 @@ for cid,lang,vid,legacy,pid,variant_method in rows:
         guide,
         legacy,
         allow_generic_holo=(
-            lang=="ja"
+            lang in ("ja","zh-cn")
             or variant_method in ("ja-promo","western-special")
         ),
+        allow_holo_for_exact_normal=variant_method in ("ja-promo","western-special"),
     )
     if value is None: continue
     updates.append((cid,lang,vid,pid,value,key))

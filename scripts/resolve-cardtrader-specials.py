@@ -121,7 +121,6 @@ for r in rows:
         ),
     })
 print(f"special_resolved={len(resolved)} de={sum(1 for r in resolved if r['language']=='de')} en={sum(1 for r in resolved if r['language']=='en')}",flush=True)
-
 identity_rows=[r for r in resolved if r["cardmarket_id"] is not None]
 if identity_rows:
     vals=[
@@ -227,13 +226,20 @@ for gid,items in price_groups.items():
         if key in already or usd_eur<=0:
             continue
         expected={"NORMAL":"normal","HOLO":"holofoil","REVERSE":"reverseholofoil"}.get(r["legacy"])
+        product_entries=by_product.get(r["tcg_player_id"],[])
         candidates=[
-            e for e in by_product.get(r["tcg_player_id"],[])
+            e for e in product_entries
             if norm(e.get("subTypeName"))==expected
         ]
-        if len(candidates)!=1:
+        # For an exact special-printing blueprint, TCGplayer sometimes exposes
+        # only one market subtype even when our catalog labels the physical
+        # print differently. A single product price is still unambiguous.
+        if len(candidates)==1:
+            entry=candidates[0]
+        elif len(candidates)==0 and len(product_entries)==1:
+            entry=product_entries[0]
+        else:
             continue
-        entry=candidates[0]
         usd=entry.get("marketPrice")
         if not isinstance(usd,(int,float)) or usd<=0:
             usd=entry.get("midPrice")
