@@ -33,7 +33,7 @@ AND c.image_local_path IS NOT NULL
 ORDER BY c.set_id,c.local_id""")
 ja=getrows("""SELECT card_id,set_id,local_id,name,'',image_local_path
 FROM catalog_cards_mirror WHERE language_code='ja'
-AND set_id IN ('S1H','S1W','S1a','S2','S2a','S3','S3a','S4','S4a','SA','SC','SC2','SCS','SD','SP1','SP2','SP3','SP4','SP5','SP6','SPD','SPZ')
+AND set_id IN ('S1H','S1W','S1a','S2','S2a','S3','S3a','S4','S4a','S5I','S5R','S5a','S6H','S6K','S6a','S7D','S7R','S8','SA','SC','SC2','SCS','SD','SEF','SEK','SGG','SGI','SP1','SP2','SP3','SP4','SP5','SP6','SPD','SPZ')
 AND image_local_path IS NOT NULL ORDER BY set_id,local_id""")
 def ahash(path,crop):
  try:

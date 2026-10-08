@@ -71,7 +71,7 @@ expansions=[e for e in get(f"{BASE}/expansions") if int(e.get("game_id") or 0)==
 by_code={str(e.get("code") or "").lower():e for e in expansions}
 
 # Exact source set/collector-number -> one CardTrader blueprint.
-SOURCE_CODE_ALIASES={"S3a":"ls3"}
+SOURCE_CODE_ALIASES={"S3a":"ls3","S5I":"s5l","SGI":"sgl"}
 source_sets=sorted({m["source_set"] for m in rows})
 blueprints={}
 indexes={}
