@@ -35,7 +35,7 @@ LEFT JOIN cardtrader_variant_identity_cache vi
 LEFT JOIN cardtrader_identity_cache i
   ON i.card_id=p.card_id AND i.language_code=p.language_code
 CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
-WHERE p.language_code IN ('ja','zh-cn','zh-tw')
+WHERE p.language_code IN ('de','en','ja','zh-cn','zh-tw')
   AND (p.resolution_status='NO_PRICE' OR p.source='CARDMARKET_OFFICIAL_CT_IDENTITY')
   AND COALESCE(vi.cardmarket_product_id,i.cardmarket_product_id) IS NOT NULL
   AND v.value->>'id'=p.variant_id
@@ -105,7 +105,7 @@ outlier_raw=db("""SELECT p.card_id,p.language_code,p.variant_id,p.legacy_variant
 FROM tcg_price_cache p
 JOIN cardtrader_identity_cache i
   ON i.card_id=p.card_id AND i.language_code=p.language_code
-WHERE p.language_code IN ('ja','zh-cn','zh-tw')
+WHERE p.language_code IN ('de','en','ja','zh-cn','zh-tw')
   AND p.source='CARDTRADER_MARKETPLACE'
   AND p.base_eur > 500
   AND i.cardmarket_product_id IS NOT NULL""")

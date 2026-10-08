@@ -105,10 +105,15 @@ for r in rows:
         if len(exact)==1:cand=exact
     if len(cand)!=1:continue
     b=cand[0]
+    cmids=[]
+    for value in b.get("card_market_ids") or []:
+        try: cmids.append(int(value))
+        except (TypeError,ValueError): pass
     resolved.append({
         **r,
         "blueprint_id":int(b["id"]),
         "version":str(b.get("version") or ""),
+        "cardmarket_id":cmids[0] if len(cmids)==1 else None,
         "tcg_player_id":(
             int(b["tcg_player_id"])
             if b.get("tcg_player_id") is not None
@@ -116,6 +121,25 @@ for r in rows:
         ),
     })
 print(f"special_resolved={len(resolved)} de={sum(1 for r in resolved if r['language']=='de')} en={sum(1 for r in resolved if r['language']=='en')}",flush=True)
+
+identity_rows=[r for r in resolved if r["cardmarket_id"] is not None]
+if identity_rows:
+    vals=[
+        f"('{q(r['card_id'])}','{q(r['language'])}','{q(r['variant_id'])}',"
+        f"{r['cardmarket_id']},{r['blueprint_id']},{r['expansion_id']},'western-special')"
+        for r in identity_rows
+    ]
+    db(
+        "INSERT INTO cardtrader_variant_identity_cache"
+        "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
+        + ",".join(vals)
+        + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
+          "cardmarket_product_id=EXCLUDED.cardmarket_product_id,"
+          "blueprint_id=EXCLUDED.blueprint_id,"
+          "expansion_id=EXCLUDED.expansion_id,"
+          "method=EXCLUDED.method,updated_at=NOW()"
+    )
+print(f"special_variant_identities={len(identity_rows)}",flush=True)
 
 langmap={"de":"de","en":"en"}
 groups={}
