@@ -66,6 +66,10 @@ for line in raw.splitlines():
     # Variant-level identities may intentionally describe stamps/subtypes/foils.
     if scope=="card" and (v.get("foil") or v.get("stamps") or v.get("subtype")):
         continue
+    # Cardmarket Japanese products do not distinguish CardTrader's editable
+    # 1st-edition/unlimited property. Never bridge those edition identities.
+    if variant_method in ("ja-classic-1st","ja-classic-unlimited"):
+        continue
     if str(v.get("size") or "standard").lower()!="standard": continue
     rows.append((cid,lang,vid,legacy,pid,variant_method))
 

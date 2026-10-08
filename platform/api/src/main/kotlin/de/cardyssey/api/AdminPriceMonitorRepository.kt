@@ -24,7 +24,8 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  SELECT v.*,last_success.base_eur AS last_price_eur,last_success.source AS last_source,last_success.captured_at AS last_successful_sync,
         p.failure_detail,p.next_attempt_at,p.resolution_status AS raw_resolution_status,
         COALESCE(vi.method,CASE WHEN ci.card_id IS NOT NULL THEN 'card-level' END) AS identity_method,
- CASE WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
+ CASE WHEN p.resolution_status='NO_PUBLIC_PRICE' THEN NULL
+      WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='NO_PRICE' THEN 'NO_PRICE'
       WHEN last_success.captured_at IS NULL OR last_success.captured_at < NOW()-INTERVAL '8 days' THEN 'STALE'
       ELSE NULL END AS monitor_status

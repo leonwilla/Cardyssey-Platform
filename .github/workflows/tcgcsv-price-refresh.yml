@@ -56,6 +56,12 @@ jobs:
       - name: Resolve Japanese promo prices from CardRush
         run: python3 scripts/resolve-cardrush-ja-promos.py --apply
 
+      - name: Resolve Japanese numbered prices from CardRush
+        run: python3 scripts/resolve-cardrush-ja-numbered.py --apply
+
+      - name: Resolve Japanese edition prices from CardRush
+        run: python3 scripts/resolve-cardrush-ja-editions.py --apply
+
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
 
@@ -79,3 +85,6 @@ jobs:
 
       - name: Annotate unresolved price backlog
         run: python3 scripts/annotate-price-backlog.py
+
+      - name: Defer unresolved public-price gaps
+        run: python3 scripts/finalize-unpriced-backlog.py

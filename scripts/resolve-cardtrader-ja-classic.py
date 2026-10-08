@@ -143,7 +143,14 @@ identity_rows=resolved
 if identity_rows:
     values=[]
     for r in identity_rows:
-        cm="NULL" if r["cardmarket_id"] is None else str(r["cardmarket_id"])
+        # Cardmarket product ids are safe only for dedicated no-rarity
+        # products. Cardmarket's Japanese product price does not distinguish
+        # CardTrader's editable first_edition flag.
+        cm=(
+            str(r["cardmarket_id"])
+            if r["expansion_code"]=="1epnr" and r["cardmarket_id"] is not None
+            else "NULL"
+        )
         method=(
             "ja-classic-no-rarity"
             if r["expansion_code"]=="1epnr"
@@ -160,7 +167,7 @@ if identity_rows:
             "(card_id,language_code,variant_id,cardmarket_product_id,blueprint_id,expansion_id,method) VALUES "
             + ",".join(chunk)
             + " ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET "
-              "cardmarket_product_id=COALESCE(EXCLUDED.cardmarket_product_id,cardtrader_variant_identity_cache.cardmarket_product_id),"
+              "cardmarket_product_id=EXCLUDED.cardmarket_product_id,"
               "blueprint_id=EXCLUDED.blueprint_id,"
               "expansion_id=EXCLUDED.expansion_id,"
               "method=EXCLUDED.method,updated_at=NOW()"
