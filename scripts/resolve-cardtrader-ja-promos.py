@@ -26,7 +26,7 @@ def num(v):
     s=str(v or "").strip().lower().split("/",1)[0].strip()
     return str(int(s)) if s.isdigit() else re.sub(r"^0+(?=\d)","",s)
 
-SET_CODE={"M-P":"mp-promo","SV-P":"promosv"}
+SET_CODE={"M-P":"mp-promo","SV-P":"promosv","M6a":"m6a"}
 
 expansions=[e for e in get(f"{BASE}/expansions") if int(e.get("game_id") or 0)==5]
 by_code={str(e.get("code") or "").lower():e for e in expansions}
@@ -37,7 +37,7 @@ FROM tcg_price_cache p
 JOIN catalog_cards_mirror c ON c.card_id=p.card_id AND c.language_code=p.language_code
 CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
 WHERE p.language_code='ja' AND p.resolution_status='NO_PRICE'
-  AND c.set_id IN ('M-P','SV-P')
+  AND c.set_id IN ('M-P','SV-P','M6a')
   AND v.value->>'id'=p.variant_id
 ORDER BY c.set_id,c.local_id,p.variant_id""")
 

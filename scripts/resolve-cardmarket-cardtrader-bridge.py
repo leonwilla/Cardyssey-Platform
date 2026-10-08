@@ -14,17 +14,24 @@ def db(sql):
 def q(v): return str(v).replace("'","''")
 def positive(v): return isinstance(v,(int,float)) and math.isfinite(v) and v>0
 
-def guide_price(g,legacy):
+def guide_price(g,legacy,allow_generic_holo=False):
     keys=("trend-holo","avg7-holo","avg30-holo","avg-holo","low-holo") if legacy in ("HOLO","REVERSE") else ("trend","avg7","avg30","avg","low")
     for key in keys:
         if positive(g.get(key)):
             return float(g[key]),key
+    # Some exact promo products are inherently holo, so Cardmarket stores
+    # their only price series in the generic fields and leaves *-holo empty.
+    if legacy in ("HOLO","REVERSE") and allow_generic_holo:
+        for key in ("trend","avg7","avg30","avg","low"):
+            if positive(g.get(key)):
+                return float(g[key]),key
     return None,None
 
 raw=db("""SELECT p.card_id,p.language_code,p.variant_id,p.legacy_variant,
        COALESCE(vi.cardmarket_product_id,i.cardmarket_product_id),
        v.value::text,
-       CASE WHEN vi.card_id IS NOT NULL THEN 'variant' ELSE 'card' END
+       CASE WHEN vi.card_id IS NOT NULL THEN 'variant' ELSE 'card' END,
+       COALESCE(vi.method,'')
 FROM tcg_price_cache p
 JOIN catalog_cards_mirror c
   ON c.card_id=p.card_id AND c.language_code=p.language_code
@@ -43,9 +50,9 @@ ORDER BY p.language_code,p.card_id,p.variant_id""")
 
 rows=[]
 for line in raw.splitlines():
-    z=line.split("\t",6)
-    if len(z)!=7: continue
-    cid,lang,vid,legacy,pid,vjson,scope=z
+    z=line.split("\t",7)
+    if len(z)!=8: continue
+    cid,lang,vid,legacy,pid,vjson,scope,variant_method=z
     try:v=json.loads(vjson)
     except Exception: continue
     # A card-level identity is safe only for the plain physical printing.
@@ -53,7 +60,7 @@ for line in raw.splitlines():
     if scope=="card" and (v.get("foil") or v.get("stamps") or v.get("subtype")):
         continue
     if str(v.get("size") or "standard").lower()!="standard": continue
-    rows.append((cid,lang,vid,legacy,pid))
+    rows.append((cid,lang,vid,legacy,pid,variant_method))
 
 response=requests.get(PRICE_URL,headers=UA,timeout=45)
 response.raise_for_status()
@@ -61,10 +68,14 @@ payload=response.json()
 prices={str(x.get("idProduct")):x for x in payload.get("priceGuides") or []}
 
 updates=[]
-for cid,lang,vid,legacy,pid in rows:
+for cid,lang,vid,legacy,pid,variant_method in rows:
     guide=prices.get(str(pid))
     if not guide: continue
-    value,key=guide_price(guide,legacy)
+    value,key=guide_price(
+        guide,
+        legacy,
+        allow_generic_holo=variant_method in ("ja-promo","western-special"),
+    )
     if value is None: continue
     updates.append((cid,lang,vid,pid,value,key))
 
