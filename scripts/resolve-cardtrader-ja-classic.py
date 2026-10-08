@@ -230,9 +230,9 @@ def edition_calibration(payload):
             unlimited_med=statistics.median(unlimited[:min(7,len(unlimited))])
             if unlimited_med<=0: continue
             ratio=first_med/unlimited_med
-            if 0.25<=ratio<=8.0:
+            if 0.4<=ratio<=2.5:
                 ratios.append(ratio)
-    if len(ratios)<5:
+    if len(ratios)<10:
         return None
     return statistics.median(ratios),len(ratios)
 
@@ -249,15 +249,16 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
         sp_values=[]
         mp_values=[]
         played_values=[]
+        opposite_nm_values=[]
         for p in products:
             if p.get("graded"): reasons["graded"]+=1; continue
             props=p.get("properties_hash") or {}
             lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
             if lang and lang!="jp": reasons["language"]+=1; continue
+            is_first=r["expected_first"]
             if r["expansion_code"]!="1epnr":
                 edition=props.get("first_edition")
                 is_first=str(edition).lower() in ("true","1","yes")
-                if is_first != r["expected_first"]: reasons["edition"]+=1; continue
             rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
             if str(rv).lower() in ("true","1","yes"): reasons["reverse"]+=1; continue
             price=p.get("price") or {}; cents=price.get("cents")
@@ -266,6 +267,11 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
             try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
             except Exception: reasons["price"]+=1; continue
             cond=str(props.get("condition") or "").strip().lower()
+            if is_first != r["expected_first"]:
+                reasons["edition"]+=1
+                if cond in ("near mint","mint","nm"):
+                    opposite_nm_values.append(unit)
+                continue
             if cond in ("near mint","mint","nm"):
                 nm_values.append(unit)
             elif cond=="slightly played":
@@ -276,25 +282,6 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
                 played_values.append(unit)
             else:
                 reasons["condition"]+=1
-
-        opposite_nm=[]
-        if edition_cal is not None and r["expansion_code"]!="1epnr":
-            for p in products:
-                if p.get("graded"): continue
-                props=p.get("properties_hash") or {}
-                lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
-                if lang and lang!="jp": continue
-                rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
-                if str(rv).lower() in ("true","1","yes"): continue
-                is_first=str(props.get("first_edition")).lower() in ("true","1","yes")
-                if is_first==r["expected_first"]: continue
-                cond=str(props.get("condition") or "").strip().lower()
-                if cond not in ("near mint","mint","nm"): continue
-                price=p.get("price") or {}; cents=price.get("cents")
-                if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
-                try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
-                except Exception: continue
-                opposite_nm.append(unit)
 
         values=nm_values
         factor=NM_FACTOR
@@ -323,8 +310,8 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
             factor=NM_FACTOR
             source="CARDTRADER_PLAYED_INFERRED"
             condition_label=f"PLAYED_INFERRED x{condition_ratio:.3f} ncal={calibration['played'][1]}"
-        elif not values and len(opposite_nm)>=2 and edition_cal is not None:
-            values=opposite_nm
+        elif not values and len(opposite_nm_values)>=2 and edition_cal is not None:
+            values=opposite_nm_values
             edition_ratio,edition_n=edition_cal
             condition_ratio=edition_ratio if r["expected_first"] else (1.0/edition_ratio)
             factor=NM_FACTOR
