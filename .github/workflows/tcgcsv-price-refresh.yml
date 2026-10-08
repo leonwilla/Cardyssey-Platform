@@ -41,6 +41,9 @@ jobs:
       - name: Resolve Japanese Pokédex identities
         run: python3 scripts/resolve-cardtrader-ja-dex.py
 
+      - name: Resolve Japanese promo prices
+        run: python3 scripts/resolve-cardtrader-ja-promos.py
+
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
 
