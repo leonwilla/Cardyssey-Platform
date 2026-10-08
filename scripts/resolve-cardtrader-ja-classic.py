@@ -236,10 +236,38 @@ def edition_calibration(payload):
         return None
     return statistics.median(ratios),len(ratios)
 
-for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
-    try: payload=get(f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),40)
+market_payloads={}
+for eid in sorted({r["expansion_id"] for r in resolved}):
+    try:
+        market_payloads[eid]=get(
+            f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),
+            40,
+        )
     except Exception as e:
-        print(f"classic_market_error expansion={eid} error={e!r}",flush=True); continue
+        print(f"classic_market_error expansion={eid} error={e!r}",flush=True)
+        market_payloads[eid]={}
+
+# PCG-era first-edition/unlimited prices are unusually consistent across sets.
+# Use a cross-set calibration only when >=10 same-card NM pairs support it.
+pcg_codes={"fol","cbs","rgsb","gsso","mif","hrt","hof","mic","odffe"}
+pcg_eids={
+    r["expansion_id"] for r in resolved
+    if r["expansion_code"] in pcg_codes
+}
+pcg_payload={}
+for eid in pcg_eids:
+    for blueprint_id,products in market_payloads.get(eid,{}).items():
+        pcg_payload[f"{eid}:{blueprint_id}"]=products
+pcg_edition_cal=edition_calibration(pcg_payload)
+if pcg_edition_cal is not None:
+    print(
+        f"classic_pcg_edition_calibration={pcg_edition_cal[0]:.4f} "
+        f"pairs={pcg_edition_cal[1]}",
+        flush=True,
+    )
+
+for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
+    payload=market_payloads.get(eid,{})
     calibration=condition_calibration(payload)
     edition_cal=edition_calibration(payload)
     for r in [x for x in resolved if x["expansion_id"]==eid]:
@@ -320,6 +348,26 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
                 f"EDITION_INFERRED {'1ST' if r['expected_first'] else 'UNLIMITED'} "
                 f"x{condition_ratio:.3f} ncal={edition_n}"
             )
+        elif (
+            not values
+            and len(opposite_nm_values)>=2
+            and pcg_edition_cal is not None
+            and r["expansion_code"] in pcg_codes
+        ):
+            opposite_sorted=sorted(opposite_nm_values)
+            opposite_median=statistics.median(opposite_sorted[:min(7,len(opposite_sorted))])
+            # Avoid cross-edition inference for very high-value cards where a
+            # modest percentage error would be material.
+            if opposite_median<=100.0:
+                values=opposite_nm_values
+                edition_ratio,edition_n=pcg_edition_cal
+                condition_ratio=edition_ratio if r["expected_first"] else (1.0/edition_ratio)
+                factor=NM_FACTOR
+                source="CARDTRADER_EDITION_INFERRED_PCG"
+                condition_label=(
+                    f"EDITION_INFERRED_PCG {'1ST' if r['expected_first'] else 'UNLIMITED'} "
+                    f"x{condition_ratio:.3f} ncal={edition_n}"
+                )
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)

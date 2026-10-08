@@ -53,6 +53,9 @@ jobs:
       - name: Resolve special promo prices
         run: python3 scripts/resolve-cardtrader-specials.py
 
+      - name: Resolve exact named TCGCSV specials
+        run: python3 scripts/resolve-tcgcsv-named-specials.py
+
       - name: Resolve safe western leftovers
         run: python3 scripts/resolve-cardtrader-western-safe.py
 

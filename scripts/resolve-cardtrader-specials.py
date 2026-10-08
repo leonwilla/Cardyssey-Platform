@@ -72,9 +72,9 @@ for line in raw.splitlines():
     if not variant:continue
     stamps=variant.get("stamps") or []
     tags,unknown=event_tags_from_stamps(stamps)
-    if unknown:continue
-    # Only special-event rows: a worlds stamp or recognized placement/staff tag.
-    if not tags and not any(re.fullmatch(r"worlds-20\d\d",str(x or "").lower()) for x in stamps):continue
+    # Only special-event rows. Unknown stamp labels are allowed only when the
+    # exact label is later present in the CardTrader blueprint name/version.
+    if not tags and not unknown and not any(re.fullmatch(r"worlds-20\d\d",str(x or "").lower()) for x in stamps):continue
     matches=[]
     if norm(code) and norm(code) in by_code:matches+=by_code[norm(code)]
     if norm(enname) and norm(enname) in by_name:matches+=by_name[norm(enname)]
@@ -82,7 +82,7 @@ for line in raw.splitlines():
     uniq={e["id"]:e for e in matches}
     if len(uniq)!=1:continue
     e=next(iter(uniq.values()))
-    rows.append({"card_id":cid,"language":lang,"variant_id":vid,"legacy":legacy,"local_id":local_id,"name":name,"tags":tags,"set_id":setid,"expansion_id":int(e["id"])})
+    rows.append({"card_id":cid,"language":lang,"variant_id":vid,"legacy":legacy,"local_id":local_id,"name":name,"tags":tags,"unknown_tags":unknown,"set_id":setid,"expansion_id":int(e["id"])})
 print(f"special_candidates={len(rows)}",flush=True)
 
 eids=sorted({r["expansion_id"] for r in rows})
@@ -97,8 +97,22 @@ resolved=[]
 for r in rows:
     cand=[]
     for b in blueprints.get(r["expansion_id"],[]):
-        if num((b.get("fixed_properties") or {}).get("collector_number"))!=num(r["local_id"]):continue
+        bp_num=num((b.get("fixed_properties") or {}).get("collector_number"))
+        target_num=num(r["local_id"])
+        if bp_num!=target_num:
+            # Some stamped products (for example My First Battle) use deck
+            # letters instead of collector numbers in CardTrader. Permit a
+            # mismatch only when exact stamp token(s) and card name identify
+            # the blueprint; uniqueness is still required below.
+            if not (
+                r["unknown_tags"]
+                and norm(r["name"]) in norm(b.get("name"))
+            ):
+                continue
         if event_tags_from_version(b.get("version"))!=r["tags"]:continue
+        blueprint_text=norm(str(b.get("name") or "")+" "+str(b.get("version") or ""))
+        if r["unknown_tags"] and not all(tag in blueprint_text for tag in r["unknown_tags"]):
+            continue
         cand.append(b)
     if len(cand)>1:
         exact=[b for b in cand if norm(b.get("name"))==norm(r["name"])]
@@ -190,7 +204,13 @@ print(f"special_price_updates={len(updates)}",flush=True)
 # CardTrader can identify rare event printings even when its own marketplace is
 # empty. Reuse that exact blueprint -> TCGplayer product identity against the
 # free TCGCSV feed for English copies only.
-TCGCSV_GROUPS={"dpp":1421,"np":1423,"bwp":1407,"basep":1418}
+TCGCSV_GROUPS={
+    "dpp":1421,
+    "np":1423,
+    "bwp":1407,
+    "basep":1418,
+    "mfb":23330,
+}
 tcg_updates=[]
 already={(r["card_id"],r["language"],r["variant_id"]) for r,_,_,_,_,_ in updates}
 
