@@ -1,32 +1,5 @@
 [
   {
-    "card_id": "PMCG1-074",
-    "local_id": "074",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138110,
-    "distance": 72,
-    "margin": 296
-  },
-  {
-    "card_id": "PMCG1-076",
-    "local_id": "076",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138125,
-    "distance": 48,
-    "margin": 308
-  },
-  {
-    "card_id": "PMCG1-078",
-    "local_id": "078",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138127,
-    "distance": 89,
-    "margin": 315
-  },
-  {
     "card_id": "PMCG1-079",
     "local_id": "079",
     "variant_id": "endfynwn4n10gzq",
@@ -34,42 +7,6 @@
     "blueprint_id": 138118,
     "distance": 81,
     "margin": 131
-  },
-  {
-    "card_id": "PMCG1-081",
-    "local_id": "081",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138119,
-    "distance": 68,
-    "margin": 261
-  },
-  {
-    "card_id": "PMCG1-089",
-    "local_id": "089",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138121,
-    "distance": 85,
-    "margin": 375
-  },
-  {
-    "card_id": "PMCG1-091",
-    "local_id": "091",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138133,
-    "distance": 48,
-    "margin": 318
-  },
-  {
-    "card_id": "PMCG1-092",
-    "local_id": "092",
-    "variant_id": "endfynwn4n10gzq",
-    "legacy": "NORMAL",
-    "blueprint_id": 138123,
-    "distance": 53,
-    "margin": 517
   },
   {
     "card_id": "PMCG1-097",
