@@ -74,7 +74,10 @@ for cid,lang,vid,legacy,pid,variant_method in rows:
     value,key=guide_price(
         guide,
         legacy,
-        allow_generic_holo=variant_method in ("ja-promo","western-special"),
+        allow_generic_holo=(
+            lang=="ja"
+            or variant_method in ("ja-promo","western-special")
+        ),
     )
     if value is None: continue
     updates.append((cid,lang,vid,pid,value,key))

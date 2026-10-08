@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,re,statistics,subprocess,urllib.parse,urllib.request
+import json,re,statistics,subprocess,time,urllib.error,urllib.parse,urllib.request
 from pathlib import Path
 
 BASE="https://api.cardtrader.com/api/v2"
@@ -11,8 +11,17 @@ for line in Path("/home/tv/cardshop/platform/.env").read_text().splitlines():
 H={"Authorization":"Bearer "+TOKEN,"Accept":"application/json","User-Agent":"Cardyssey-ja-classic"}
 
 def get(url,timeout=30):
-    with urllib.request.urlopen(urllib.request.Request(url,headers=H),timeout=timeout) as r:
-        return json.load(r)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers=H),timeout=timeout) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code!=429 or attempt==2:
+                raise
+            retry_after=e.headers.get("Retry-After")
+            try: delay=float(retry_after)
+            except (TypeError,ValueError): delay=0.75*(attempt+1)
+            time.sleep(min(max(delay,0.5),3.0))
 def db(sql):
     return subprocess.run(["docker","exec","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-At","-F","\t","-c",sql],check=True,capture_output=True,text=True).stdout.strip()
 def q(v): return str(v).replace("'","''")
@@ -30,7 +39,7 @@ SET_CODE={
 expansions=[e for e in get(f"{BASE}/expansions") if int(e.get("game_id") or 0)==5]
 by_code={str(e.get("code") or "").lower():e for e in expansions}
 
-raw=db("""SELECT c.card_id,c.set_id,c.local_id,c.name,p.variant_id,p.legacy_variant,v.value::text
+raw=db("""SELECT c.card_id,c.set_id,c.local_id,c.name,p.variant_id,p.legacy_variant,v.value::text,c.variants::text
 FROM tcg_price_cache p
 JOIN catalog_cards_mirror c ON c.card_id=p.card_id AND c.language_code=p.language_code
 CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
@@ -39,9 +48,9 @@ WHERE p.language_code='ja' AND p.resolution_status='NO_PRICE'
 ORDER BY c.set_id,c.local_id""")
 rows=[]
 for line in raw.splitlines():
-    z=line.split("\t",6)
-    if len(z)!=7: continue
-    cid,setid,local_id,name,vid,legacy,vjson=z
+    z=line.split("\t",7)
+    if len(z)!=8: continue
+    cid,setid,local_id,name,vid,legacy,vjson,all_variants_json=z
     try:v=json.loads(vjson)
     except Exception:continue
     if legacy not in ("NORMAL","HOLO"): continue
@@ -62,6 +71,24 @@ for line in raw.splitlines():
         # Nearly every plain card has a matching 1st-edition variant in our
         # catalog, so the plain printing is the non-1st-edition counterpart.
         expected_first=False
+    elif not stamps and not subtype:
+        # Some early Japanese sets encode the unlimited counterpart as a
+        # plain variant instead of subtype=unlimited. Accept it only when the
+        # same card also has a 1st-edition variant and has no explicit
+        # unlimited variant, which makes the pairing unambiguous.
+        all_variants=json.loads(all_variants_json or "[]")
+        has_1st=any(
+            any("1st" in str(s).lower() for s in (item.get("stamps") or []))
+            for item in all_variants
+        )
+        has_unlimited=any(
+            str(item.get("subtype") or "").lower()=="unlimited"
+            for item in all_variants
+        )
+        if has_1st and not has_unlimited:
+            expected_first=False
+        else:
+            continue
     else:
         continue
 
@@ -138,15 +165,57 @@ print(f"classic_variant_identities={len(identity_rows)}",flush=True)
 
 updates=[]
 reasons={"no_products":0,"graded":0,"condition":0,"language":0,"edition":0,"reverse":0,"price":0}
+
+def condition_calibration(payload):
+    """Empirically derive NM/lower-condition ratios within one expansion."""
+    ratios={"slightly played":[],"moderately played":[],"played":[]}
+    for products in payload.values() if isinstance(payload,dict) else []:
+        groups={}
+        for p in products:
+            if p.get("graded"): continue
+            props=p.get("properties_hash") or {}
+            lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
+            if lang and lang!="jp": continue
+            rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
+            if str(rv).lower() in ("true","1","yes"): continue
+            price=p.get("price") or {}; cents=price.get("cents")
+            if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
+            try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
+            except Exception: continue
+            edition=str(props.get("first_edition")).lower() in ("true","1","yes")
+            cond=str(props.get("condition") or "").strip().lower()
+            groups.setdefault(edition,{}).setdefault(cond,[]).append(unit)
+        for conds in groups.values():
+            nm=(conds.get("near mint") or [])+(conds.get("mint") or [])
+            if not nm: continue
+            nm.sort(); nm_med=statistics.median(nm[:min(7,len(nm))])
+            for cond in ratios:
+                vals=conds.get(cond) or []
+                if not vals: continue
+                vals=sorted(vals)
+                lower_med=statistics.median(vals[:min(7,len(vals))])
+                if lower_med<=0: continue
+                ratio=nm_med/lower_med
+                if 1.0 <= ratio <= 8.0:
+                    ratios[cond].append(ratio)
+    return {
+        cond:(statistics.median(vals),len(vals))
+        for cond,vals in ratios.items()
+        if len(vals)>=5
+    }
+
 for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
     try: payload=get(f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),40)
     except Exception as e:
         print(f"classic_market_error expansion={eid} error={e!r}",flush=True); continue
+    calibration=condition_calibration(payload)
     for r in [x for x in resolved if x["expansion_id"]==eid]:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products: reasons["no_products"]+=1
         nm_values=[]
         sp_values=[]
+        mp_values=[]
+        played_values=[]
         for p in products:
             if p.get("graded"): reasons["graded"]+=1; continue
             props=p.get("properties_hash") or {}
@@ -168,21 +237,38 @@ for gi,eid in enumerate(sorted({r["expansion_id"] for r in resolved}),1):
                 nm_values.append(unit)
             elif cond=="slightly played":
                 sp_values.append(unit)
+            elif cond=="moderately played":
+                mp_values.append(unit)
+            elif cond=="played":
+                played_values.append(unit)
             else:
                 reasons["condition"]+=1
         values=nm_values
         factor=NM_FACTOR
         source="CARDTRADER_MARKETPLACE"
         condition_label="NM"
+        condition_ratio=1.0
         if not values and len(sp_values)>=3:
             values=sp_values
             factor=0.80
             source="CARDTRADER_SP_INFERRED"
             condition_label="SP_INFERRED"
+        elif not values and len(mp_values)>=3 and "moderately played" in calibration:
+            values=mp_values
+            condition_ratio=calibration["moderately played"][0]
+            factor=NM_FACTOR
+            source="CARDTRADER_MP_INFERRED"
+            condition_label=f"MP_INFERRED x{condition_ratio:.3f} ncal={calibration['moderately played'][1]}"
+        elif not values and len(played_values)>=3 and "played" in calibration:
+            values=played_values
+            condition_ratio=calibration["played"][0]
+            factor=NM_FACTOR
+            source="CARDTRADER_PLAYED_INFERRED"
+            condition_label=f"PLAYED_INFERRED x{condition_ratio:.3f} ncal={calibration['played'][1]}"
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)
-            base=round(listing/factor,4)
+            base=round((listing*condition_ratio)/factor,4)
             updates.append((r,base,listing,len(values),source,condition_label))
     print(f"classic_market={gi}/{len(set(x['expansion_id'] for x in resolved))} updates={len(updates)}",flush=True)
 

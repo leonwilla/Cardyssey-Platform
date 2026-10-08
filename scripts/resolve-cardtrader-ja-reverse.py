@@ -61,6 +61,11 @@ print(f"ja_reverse_candidates={len(rows)}",flush=True)
 
 resolved=[]
 payload_by_exp={}
+# TCGdex's SV8a numbering is shifted for two cards relative to the
+# CardTrader master-ball checklist. These aliases were verified against the
+# exact card names (Duskull and Iron Jugulis); energy cards remain unmapped.
+SV8A_MASTERBALL_NUMBER_ALIASES={"64":"63","135":"134"}
+
 for eid in sorted({r["expansion_id"] for r in rows}):
     bps=get(f"{BASE}/blueprints/export?expansion_id={eid}")
     idx={}
@@ -68,7 +73,10 @@ for eid in sorted({r["expansion_id"] for r in rows}):
         n=normnum((b.get("fixed_properties") or {}).get("collector_number"))
         if n:idx.setdefault(n,[]).append(b)
     for r in [x for x in rows if x["expansion_id"]==eid]:
-        cand=idx.get(normnum(r["local_id"]),[])
+        key=normnum(r["local_id"])
+        if r["set_id"]=="SV8a" and r["foil"]=="masterball":
+            key=SV8A_MASTERBALL_NUMBER_ALIASES.get(key,key)
+        cand=idx.get(key,[])
         if len(cand)!=1:continue
         resolved.append({**r,"blueprint_id":int(cand[0]["id"])})
 print(f"ja_reverse_resolved={len(resolved)}",flush=True)

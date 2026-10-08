@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,statistics,subprocess,urllib.parse,urllib.request
+import json,statistics,subprocess,time,urllib.error,urllib.parse,urllib.request
 from pathlib import Path
 
 BASE="https://api.cardtrader.com/api/v2"
@@ -11,8 +11,17 @@ for line in Path("/home/tv/cardshop/platform/.env").read_text().splitlines():
 H={"Authorization":"Bearer "+TOKEN,"Accept":"application/json","User-Agent":"Cardyssey-ja-sequence"}
 
 def get(url,timeout=30):
-    with urllib.request.urlopen(urllib.request.Request(url,headers=H),timeout=timeout) as r:
-        return json.load(r)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers=H),timeout=timeout) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code!=429 or attempt==2:
+                raise
+            retry_after=e.headers.get("Retry-After")
+            try: delay=float(retry_after)
+            except (TypeError,ValueError): delay=0.75*(attempt+1)
+            time.sleep(min(max(delay,0.5),3.0))
 def db(sql):
     return subprocess.run(["docker","exec","cardyssey-db","psql","-U","cardyssey","-d","cardyssey","-At","-F","\t","-c",sql],check=True,capture_output=True,text=True).stdout.strip()
 def q(v): return str(v).replace("'","''")
@@ -31,6 +40,42 @@ by_code={str(e.get("code") or "").lower():e for e in expansions}
 
 updates=[]
 reason_totals={"no_products":0,"graded":0,"condition":0,"language":0,"reverse":0,"price":0}
+
+def condition_calibration(payload):
+    ratios={"moderately played":[],"played":[]}
+    for products in payload.values() if isinstance(payload,dict) else []:
+        by_condition={}
+        for p in products:
+            if p.get("graded"): continue
+            props=p.get("properties_hash") or {}
+            lang=str(props.get("pokemon_language") or props.get("language") or "").strip().lower()
+            if lang and lang!="jp": continue
+            rv=next((v for k,v in props.items() if "reverse" in str(k).lower()),None)
+            if str(rv).lower() in ("true","1","yes"): continue
+            price=p.get("price") or {}; cents=price.get("cents")
+            if not isinstance(cents,(int,float)) or cents<=0 or str(price.get("currency") or "").upper()!="EUR": continue
+            try: unit=float(cents)/100.0/max(1,int(p.get("bundle_size") or 1))
+            except Exception: continue
+            cond=str(props.get("condition") or "").strip().lower()
+            by_condition.setdefault(cond,[]).append(unit)
+        nm=(by_condition.get("near mint") or [])+(by_condition.get("mint") or [])
+        if not nm: continue
+        nm=sorted(nm); nm_med=statistics.median(nm[:min(7,len(nm))])
+        for cond in ratios:
+            vals=by_condition.get(cond) or []
+            if not vals: continue
+            vals=sorted(vals)
+            lower=statistics.median(vals[:min(7,len(vals))])
+            if lower<=0: continue
+            ratio=nm_med/lower
+            if 1.0<=ratio<=8.0:
+                ratios[cond].append(ratio)
+    return {
+        cond:(statistics.median(vals),len(vals))
+        for cond,vals in ratios.items()
+        if len(vals)>=5
+    }
+
 for setid,code in SET_CODE.items():
     e=by_code[code]
     eid=int(e["id"])
@@ -86,12 +131,15 @@ ORDER BY c.local_id::int""")
     print(f"sequence_set={setid} variant_identities={len(identity_rows)}",flush=True)
 
     payload=get(f"{BASE}/marketplace/products?"+urllib.parse.urlencode({"expansion_id":eid}),40)
+    calibration=condition_calibration(payload)
     before=len(updates)
     for r in rows:
         products=payload.get(str(r["blueprint_id"]),[]) if isinstance(payload,dict) else []
         if not products: reason_totals["no_products"]+=1
         nm_values=[]
         sp_values=[]
+        mp_values=[]
+        played_values=[]
         for p in products:
             if p.get("graded"): reason_totals["graded"]+=1; continue
             props=p.get("properties_hash") or {}
@@ -109,21 +157,36 @@ ORDER BY c.local_id::int""")
                 nm_values.append(unit)
             elif cond=="slightly played":
                 sp_values.append(unit)
+            elif cond=="moderately played":
+                mp_values.append(unit)
+            elif cond=="played":
+                played_values.append(unit)
             else:
                 reason_totals["condition"]+=1
         values=nm_values
         factor=NM_FACTOR
         source="CARDTRADER_MARKETPLACE"
         condition_label="NM"
+        condition_ratio=1.0
         if not values and len(sp_values)>=3:
             values=sp_values
             factor=0.80
             source="CARDTRADER_SP_INFERRED"
             condition_label="SP_INFERRED"
+        elif not values and len(mp_values)>=3 and "moderately played" in calibration:
+            values=mp_values
+            condition_ratio=calibration["moderately played"][0]
+            source="CARDTRADER_MP_INFERRED"
+            condition_label=f"MP_INFERRED x{condition_ratio:.3f} ncal={calibration['moderately played'][1]}"
+        elif not values and len(played_values)>=3 and "played" in calibration:
+            values=played_values
+            condition_ratio=calibration["played"][0]
+            source="CARDTRADER_PLAYED_INFERRED"
+            condition_label=f"PLAYED_INFERRED x{condition_ratio:.3f} ncal={calibration['played'][1]}"
         if values:
             values.sort(); sample=values[:min(7,len(values))]
             listing=round(statistics.median(sample),4)
-            base=round(listing/factor,4)
+            base=round((listing*condition_ratio)/factor,4)
             updates.append((setid,r,base,listing,len(values),source,condition_label))
     print(f"sequence_set={setid} updates={len(updates)-before}",flush=True)
 
