@@ -27,8 +27,8 @@ dependencies {
     implementation("com.zaxxer:HikariCP:6.2.1")
     implementation("org.postgresql:postgresql:42.7.5")
 
-    implementation("org.flywaydb:flyway-core:11.8.2")
-    implementation("org.flywaydb:flyway-database-postgresql:11.8.2")
+    implementation("org.flywaydb:flyway-core:13.8.1")
+    implementation("org.flywaydb:flyway-database-postgresql:13.8.1")
 
     implementation("de.mkammerer:argon2-jvm:2.11")
     implementation("org.jsoup:jsoup:1.18.3")
