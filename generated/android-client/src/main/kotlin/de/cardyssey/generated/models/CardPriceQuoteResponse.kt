@@ -23,6 +23,7 @@
 
 package de.cardyssey.generated.models
 
+import de.cardyssey.generated.models.EbayRecentSaleResponse
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -37,12 +38,16 @@ import com.squareup.moshi.JsonClass
  * @param conditionFactor 
  * @param exactLanguageMatch 
  * @param exactVariantMatch 
+ * @param recentSales 
  * @param variantId 
  * @param variantType 
  * @param source 
  * @param baseEur 
  * @param eur 
  * @param sampleCount 
+ * @param rangeLowEur 
+ * @param rangeHighEur 
+ * @param trend30dPercent 
  * @param updatedAtMs 
  */
 
@@ -70,6 +75,9 @@ data class CardPriceQuoteResponse (
     @Json(name = "exactVariantMatch")
     val exactVariantMatch: kotlin.Boolean,
 
+    @Json(name = "recentSales")
+    val recentSales: kotlin.collections.List<EbayRecentSaleResponse>,
+
     @Json(name = "variantId")
     val variantId: kotlin.String? = null,
 
@@ -87,6 +95,15 @@ data class CardPriceQuoteResponse (
 
     @Json(name = "sampleCount")
     val sampleCount: kotlin.Int? = null,
+
+    @Json(name = "rangeLowEur")
+    val rangeLowEur: kotlin.Double? = null,
+
+    @Json(name = "rangeHighEur")
+    val rangeHighEur: kotlin.Double? = null,
+
+    @Json(name = "trend30dPercent")
+    val trend30dPercent: kotlin.Double? = null,
 
     @Json(name = "updatedAtMs")
     val updatedAtMs: kotlin.Long? = null
@@ -119,13 +136,13 @@ data class CardPriceQuoteResponse (
     /**
      * 
      *
-     * Values: TCGDEX,JUSTTCG,SOLDCOMPS
+     * Values: TCGDEX,JUSTTCG,CARDYSSEY_EBAY
      */
     @JsonClass(generateAdapter = false)
     enum class Source(val value: kotlin.String) {
         @Json(name = "TCGDEX") TCGDEX("TCGDEX"),
         @Json(name = "JUSTTCG") JUSTTCG("JUSTTCG"),
-        @Json(name = "SOLDCOMPS") SOLDCOMPS("SOLDCOMPS");
+        @Json(name = "CARDYSSEY_EBAY") CARDYSSEY_EBAY("CARDYSSEY_EBAY");
     }
 
 }

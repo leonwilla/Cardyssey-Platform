@@ -40,6 +40,9 @@ import com.squareup.moshi.JsonClass
  * @param canSeeQuantity 
  * @param canSeeSets 
  * @param canSeeWishlist 
+ * @param favoritePokemon 
+ * @param favoriteSet 
+ * @param collectingFocus 
  */
 
 
@@ -73,7 +76,16 @@ data class FriendProfileResponse (
     val canSeeSets: kotlin.Boolean,
 
     @Json(name = "canSeeWishlist")
-    val canSeeWishlist: kotlin.Boolean
+    val canSeeWishlist: kotlin.Boolean,
+
+    @Json(name = "favoritePokemon")
+    val favoritePokemon: kotlin.String? = null,
+
+    @Json(name = "favoriteSet")
+    val favoriteSet: kotlin.String? = null,
+
+    @Json(name = "collectingFocus")
+    val collectingFocus: kotlin.String? = null
 
 ) {
 

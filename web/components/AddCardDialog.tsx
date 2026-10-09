@@ -47,10 +47,6 @@ type CardDetails = {
 const LANGUAGES = [
   ["de", "Deutsch"],
   ["en", "Englisch"],
-  ["fr", "Französisch"],
-  ["it", "Italienisch"],
-  ["es", "Spanisch"],
-  ["pt", "Portugiesisch"],
   ["ja", "Japanisch"],
   ["ko", "Koreanisch"],
   ["zh-tw", "Chinesisch (Trad.)"],

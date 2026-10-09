@@ -34,6 +34,9 @@ import com.squareup.moshi.JsonClass
  * @param email 
  * @param displayName 
  * @param avatarUrl 
+ * @param favoritePokemon 
+ * @param favoriteSet 
+ * @param collectingFocus 
  * @param friendCode 
  */
 
@@ -51,6 +54,15 @@ data class UserResponse (
 
     @Json(name = "avatarUrl")
     val avatarUrl: kotlin.String?,
+
+    @Json(name = "favoritePokemon")
+    val favoritePokemon: kotlin.String? = null,
+
+    @Json(name = "favoriteSet")
+    val favoriteSet: kotlin.String? = null,
+
+    @Json(name = "collectingFocus")
+    val collectingFocus: kotlin.String? = null,
 
     @Json(name = "friendCode")
     val friendCode: kotlin.String? = null

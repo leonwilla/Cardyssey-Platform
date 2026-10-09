@@ -9,6 +9,9 @@ Name | Type
 `friendCode` | string
 `displayName` | string
 `avatarUrl` | string
+`favoritePokemon` | string
+`favoriteSet` | string
+`collectingFocus` | string
 `isFriend` | boolean
 `canSeeShowcase` | boolean
 `canSeeCollection` | boolean
@@ -27,6 +30,9 @@ const example = {
   "friendCode": null,
   "displayName": null,
   "avatarUrl": null,
+  "favoritePokemon": null,
+  "favoriteSet": null,
+  "collectingFocus": null,
   "isFriend": null,
   "canSeeShowcase": null,
   "canSeeCollection": null,

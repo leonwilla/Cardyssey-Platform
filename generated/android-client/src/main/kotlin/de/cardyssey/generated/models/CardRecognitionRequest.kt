@@ -48,16 +48,12 @@ data class CardRecognitionRequest (
     /**
      * 
      *
-     * Values: de,en,fr,`it`,es,pt,ja,ko,zhMinusTw,zhMinusCn
+     * Values: de,en,ja,ko,zhMinusTw,zhMinusCn
      */
     @JsonClass(generateAdapter = false)
     enum class Language(val value: kotlin.String) {
         @Json(name = "de") de("de"),
         @Json(name = "en") en("en"),
-        @Json(name = "fr") fr("fr"),
-        @Json(name = "it") `it`("it"),
-        @Json(name = "es") es("es"),
-        @Json(name = "pt") pt("pt"),
         @Json(name = "ja") ja("ja"),
         @Json(name = "ko") ko("ko"),
         @Json(name = "zh-tw") zhMinusTw("zh-tw"),

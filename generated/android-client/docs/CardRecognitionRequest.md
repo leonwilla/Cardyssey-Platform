@@ -12,7 +12,7 @@
 ## Enum: language
 | Name | Value |
 | ---- | ----- |
-| language | de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn |
+| language | de, en, ja, ko, zh-tw, zh-cn |
 
 
 

@@ -65,16 +65,6 @@
         "operationId": "getHealth",
         "summary": "API-Status",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -121,6 +111,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }
@@ -137,16 +137,6 @@
         "operationId": "register",
         "summary": "Account registrieren",
         "responses": {
-          "201": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -193,6 +183,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
                 }
               }
             }
@@ -219,16 +219,6 @@
         "operationId": "login",
         "summary": "Anmelden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -275,6 +265,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
                 }
               }
             }
@@ -301,16 +301,6 @@
         "operationId": "refresh",
         "summary": "Tokens erneuern",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -357,6 +347,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
                 }
               }
             }
@@ -383,9 +383,6 @@
         "operationId": "logout",
         "summary": "Refresh-Token widerrufen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -435,6 +432,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "requestBody": {
@@ -458,16 +458,6 @@
         "operationId": "getMe",
         "summary": "Eigenes Profil laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -514,6 +504,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -527,16 +527,6 @@
         "operationId": "updateMe",
         "summary": "Eigenes Profil ändern",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -583,6 +573,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -608,16 +608,6 @@
         "operationId": "updateMyAvatar",
         "summary": "Profilbild hochladen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -664,6 +654,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -688,16 +688,6 @@
         "operationId": "deleteMyAvatar",
         "summary": "Profilbild löschen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -744,6 +734,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
                 }
               }
             }
@@ -759,19 +759,6 @@
         "operationId": "getCollection",
         "summary": "Sammlung laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CollectionItemDto"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -818,6 +805,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CollectionItemDto"
+                  }
                 }
               }
             }
@@ -831,16 +831,6 @@
         "operationId": "createCollectionItem",
         "summary": "Sammlungseintrag anlegen",
         "responses": {
-          "201": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CollectionWriteResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -887,6 +877,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionWriteResponse"
                 }
               }
             }
@@ -912,16 +912,6 @@
         "operationId": "updateCollectionItem",
         "summary": "Sammlungseintrag aktualisieren",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CollectionWriteResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -968,6 +958,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionWriteResponse"
                 }
               }
             }
@@ -1001,9 +1001,6 @@
         "operationId": "deleteCollectionItem",
         "summary": "Sammlungseintrag löschen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1053,6 +1050,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -1075,16 +1075,6 @@
         "operationId": "importCollection",
         "summary": "Sammlung importieren",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CollectionImportResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1131,6 +1121,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionImportResponse"
                 }
               }
             }
@@ -1159,19 +1159,6 @@
         "operationId": "getFriends",
         "summary": "Freundesliste laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FriendUserResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1218,6 +1205,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FriendUserResponse"
+                  }
                 }
               }
             }
@@ -1233,19 +1233,6 @@
         "operationId": "searchFriends",
         "summary": "Sammler suchen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FriendUserResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1292,6 +1279,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FriendUserResponse"
+                  }
                 }
               }
             }
@@ -1317,16 +1317,6 @@
         "operationId": "getFriendRequests",
         "summary": "Freundschaftsanfragen laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FriendRequestsResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1373,6 +1363,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequestsResponse"
                 }
               }
             }
@@ -1386,16 +1386,6 @@
         "operationId": "sendFriendRequest",
         "summary": "Freundschaftsanfrage senden",
         "responses": {
-          "201": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FriendRequestResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1442,6 +1432,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendRequestResponse"
                 }
               }
             }
@@ -1467,16 +1467,6 @@
         "operationId": "acceptFriendRequest",
         "summary": "Freundschaftsanfrage annehmen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FriendUserResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1523,6 +1513,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendUserResponse"
                 }
               }
             }
@@ -1548,9 +1548,6 @@
         "operationId": "deleteFriendRequest",
         "summary": "Freundschaftsanfrage löschen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1600,6 +1597,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -1622,9 +1622,6 @@
         "operationId": "deleteFriend",
         "summary": "Freund entfernen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1674,6 +1671,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -1696,16 +1696,6 @@
         "operationId": "getFriendProfile",
         "summary": "Freundesprofil laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FriendProfileResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1752,6 +1742,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendProfileResponse"
                 }
               }
             }
@@ -1777,19 +1777,6 @@
         "operationId": "getFriendShowcase",
         "summary": "Showcase eines Freundes",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ShowcaseItemResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1836,6 +1823,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowcaseItemResponse"
+                  }
                 }
               }
             }
@@ -1861,16 +1861,6 @@
         "operationId": "getFriendCollection",
         "summary": "Sammlung eines Freundes",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FriendCollectionResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -1917,6 +1907,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendCollectionResponse"
                 }
               }
             }
@@ -1942,19 +1942,6 @@
         "operationId": "getFriendSets",
         "summary": "Set-Fortschritt eines Freundes",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/FriendSetProgressResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2001,6 +1988,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FriendSetProgressResponse"
+                  }
                 }
               }
             }
@@ -2026,19 +2026,6 @@
         "operationId": "getFriendWishlist",
         "summary": "Wishlist eines Freundes",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WishlistResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2085,6 +2072,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WishlistResponse"
+                  }
                 }
               }
             }
@@ -2110,16 +2110,6 @@
         "operationId": "getPrivacy",
         "summary": "Privatsphäre laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrivacySettings"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2166,6 +2156,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
                 }
               }
             }
@@ -2179,16 +2179,6 @@
         "operationId": "updatePrivacy",
         "summary": "Privatsphäre speichern",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PrivacySettings"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2235,6 +2225,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacySettings"
                 }
               }
             }
@@ -2260,19 +2260,6 @@
         "operationId": "getShowcase",
         "summary": "Eigenes Showcase laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ShowcaseItemResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2319,6 +2306,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowcaseItemResponse"
+                  }
                 }
               }
             }
@@ -2332,19 +2332,6 @@
         "operationId": "updateShowcase",
         "summary": "Eigenes Showcase speichern",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ShowcaseItemResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2391,6 +2378,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShowcaseItemResponse"
+                  }
                 }
               }
             }
@@ -2416,19 +2416,6 @@
         "operationId": "getWishlist",
         "summary": "Wishlist laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WishlistResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2475,6 +2462,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WishlistResponse"
+                  }
                 }
               }
             }
@@ -2488,16 +2488,6 @@
         "operationId": "createWishlistItem",
         "summary": "Wishlist-Eintrag anlegen",
         "responses": {
-          "201": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WishlistResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2544,6 +2534,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WishlistResponse"
                 }
               }
             }
@@ -2569,9 +2569,6 @@
         "operationId": "deleteWishlistItem",
         "summary": "Wishlist-Eintrag löschen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2621,6 +2618,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -2643,19 +2643,6 @@
         "operationId": "getSaleListings",
         "summary": "Eigene Verkaufsangebote",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SaleListingResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2702,6 +2689,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SaleListingResponse"
+                  }
                 }
               }
             }
@@ -2715,9 +2715,6 @@
         "operationId": "createSaleListing",
         "summary": "Verkaufsangebot anlegen",
         "responses": {
-          "201": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2767,6 +2764,9 @@
                 }
               }
             }
+          },
+          "201": {
+            "description": "Erfolgreich"
           }
         },
         "requestBody": {
@@ -2789,9 +2789,6 @@
         "operationId": "updateSaleListing",
         "summary": "Verkaufsangebot ändern",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2841,6 +2838,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "requestBody": {
@@ -2871,9 +2871,6 @@
         "operationId": "deleteSaleListing",
         "summary": "Verkaufsangebot löschen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -2923,6 +2920,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -2945,19 +2945,6 @@
         "operationId": "getMarketplace",
         "summary": "Marktplatz laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/MarketplaceListingResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3004,6 +2991,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketplaceListingResponse"
+                  }
                 }
               }
             }
@@ -3019,19 +3019,6 @@
         "operationId": "getIncomingOffers",
         "summary": "Eingehende Angebote laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/MarketplaceOfferResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3078,6 +3065,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketplaceOfferResponse"
+                  }
                 }
               }
             }
@@ -3093,19 +3093,6 @@
         "operationId": "getOutgoingOffers",
         "summary": "Ausgehende Angebote laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/MarketplaceOfferResponse"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3152,6 +3139,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MarketplaceOfferResponse"
+                  }
                 }
               }
             }
@@ -3167,16 +3167,6 @@
         "operationId": "createOffer",
         "summary": "Angebot senden",
         "responses": {
-          "201": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3223,6 +3213,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
                 }
               }
             }
@@ -3248,16 +3248,6 @@
         "operationId": "acceptOffer",
         "summary": "Angebot annehmen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3304,6 +3294,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
                 }
               }
             }
@@ -3329,16 +3329,6 @@
         "operationId": "rejectOffer",
         "summary": "Angebot ablehnen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3385,6 +3375,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketplaceOfferResponse"
                 }
               }
             }
@@ -3410,9 +3410,6 @@
         "operationId": "withdrawOffer",
         "summary": "Angebot zurückziehen",
         "responses": {
-          "204": {
-            "description": "Erfolgreich"
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3462,6 +3459,9 @@
                 }
               }
             }
+          },
+          "204": {
+            "description": "Erfolgreich"
           }
         },
         "parameters": [
@@ -3484,19 +3484,6 @@
         "operationId": "searchCards",
         "summary": "Karten suchen",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CatalogCardSearchResult"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3543,6 +3530,19 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogCardSearchResult"
+                  }
                 }
               }
             }
@@ -3574,10 +3574,6 @@
               "enum": [
                 "de",
                 "en",
-                "fr",
-                "it",
-                "es",
-                "pt",
                 "ja",
                 "ko",
                 "zh-tw",
@@ -3609,16 +3605,6 @@
         "operationId": "getCard",
         "summary": "Kartendetails laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CatalogCardDetails"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3665,6 +3651,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogCardDetails"
                 }
               }
             }
@@ -3688,10 +3684,6 @@
               "enum": [
                 "de",
                 "en",
-                "fr",
-                "it",
-                "es",
-                "pt",
                 "ja",
                 "ko",
                 "zh-tw",
@@ -3711,16 +3703,6 @@
         "operationId": "recognizeCard",
         "summary": "OCR-Text analysieren",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CardRecognitionResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3767,6 +3749,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardRecognitionResponse"
                 }
               }
             }
@@ -3792,19 +3784,6 @@
         "operationId": "getSets",
         "summary": "Sets laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CatalogSetSummary"
-                  }
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3854,6 +3833,19 @@
                 }
               }
             }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogSetSummary"
+                  }
+                }
+              }
+            }
           }
         },
         "parameters": [
@@ -3866,10 +3858,6 @@
               "enum": [
                 "de",
                 "en",
-                "fr",
-                "it",
-                "es",
-                "pt",
                 "ja",
                 "ko",
                 "zh-tw",
@@ -3889,16 +3877,6 @@
         "operationId": "getSet",
         "summary": "Setdetails laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CatalogSetDetails"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -3945,6 +3923,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSetDetails"
                 }
               }
             }
@@ -3968,10 +3956,6 @@
               "enum": [
                 "de",
                 "en",
-                "fr",
-                "it",
-                "es",
-                "pt",
                 "ja",
                 "ko",
                 "zh-tw",
@@ -3991,16 +3975,6 @@
         "operationId": "getCardPriceQuote",
         "summary": "Zentralen Marktpreis für eine exakte Kartenvariante laden",
         "responses": {
-          "200": {
-            "description": "Erfolgreich",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CardPriceQuoteResponse"
-                }
-              }
-            }
-          },
           "400": {
             "description": "Ungültige Anfrage",
             "content": {
@@ -4047,6 +4021,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardPriceQuoteResponse"
                 }
               }
             }
@@ -4583,6 +4567,18 @@
           "displayName": {
             "type": "string",
             "nullable": true
+          },
+          "favoritePokemon": {
+            "type": "string",
+            "nullable": true
+          },
+          "favoriteSet": {
+            "type": "string",
+            "nullable": true
+          },
+          "collectingFocus": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -4603,6 +4599,18 @@
             "nullable": true
           },
           "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "favoritePokemon": {
+            "type": "string",
+            "nullable": true
+          },
+          "favoriteSet": {
+            "type": "string",
+            "nullable": true
+          },
+          "collectingFocus": {
             "type": "string",
             "nullable": true
           },
@@ -4992,6 +5000,18 @@
             "nullable": true
           },
           "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "favoritePokemon": {
+            "type": "string",
+            "nullable": true
+          },
+          "favoriteSet": {
+            "type": "string",
+            "nullable": true
+          },
+          "collectingFocus": {
             "type": "string",
             "nullable": true
           },
@@ -5888,10 +5908,6 @@
             "enum": [
               "de",
               "en",
-              "fr",
-              "it",
-              "es",
-              "pt",
               "ja",
               "ko",
               "zh-tw",
@@ -5925,6 +5941,38 @@
           "detectedNumber",
           "detectedQuery",
           "candidates"
+        ]
+      },
+      "EbayRecentSaleResponse": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "soldPriceEur": {
+            "type": "number",
+            "format": "double"
+          },
+          "rawCondition": {
+            "type": "string",
+            "nullable": true
+          },
+          "endedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "title",
+          "soldPriceEur"
         ]
       },
       "CardPriceQuoteResponse": {
@@ -5996,12 +6044,6 @@
             "nullable": true,
             "minimum": 0
           },
-          "updatedAtMs": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "minimum": 0
-          },
           "rangeLowEur": {
             "type": "number",
             "format": "double",
@@ -6011,6 +6053,17 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "trend30dPercent": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "updatedAtMs": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "minimum": 0
           },
           "recentSales": {
             "type": "array",
@@ -6375,38 +6428,6 @@
           "soldCompsConfigured",
           "registeredUsers",
           "collectionItems"
-        ]
-      },
-      "EbayRecentSaleResponse": {
-        "type": "object",
-        "properties": {
-          "itemId": {
-            "type": "string",
-            "nullable": true
-          },
-          "title": {
-            "type": "string"
-          },
-          "soldPriceEur": {
-            "type": "number",
-            "format": "double"
-          },
-          "rawCondition": {
-            "type": "string",
-            "nullable": true
-          },
-          "endedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "url": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "title",
-          "soldPriceEur"
         ]
       }
     }

@@ -12,6 +12,8 @@
 | **stamps** | **kotlin.collections.List&lt;kotlin.String&gt;** |  |  |
 | **legacyVariant** | **kotlin.String** |  |  |
 | **tcgDexEur** | **kotlin.Double** |  |  |
+| **tcgPlayerId** | **kotlin.String** |  |  [optional] |
+| **cardmarketProductId** | **kotlin.String** |  |  [optional] |
 
 
 

@@ -3571,9 +3571,7 @@ body{
 .scannerActions{
   width:100%;
   display:grid;
-  grid-template-columns:
-    minmax(0,1.45fr)
-    minmax(190px,.55fr);
+  grid-template-columns:1fr;
   gap:10px;
   margin-top:0;
 }
@@ -3588,11 +3586,6 @@ body{
   justify-content:center;
   border-radius:17px;
 }
-
-.scannerGalleryAction{
-  cursor:pointer;
-}
-
 .scannerReviewActions{
   display:grid;
   grid-template-columns:1fr 1.6fr;

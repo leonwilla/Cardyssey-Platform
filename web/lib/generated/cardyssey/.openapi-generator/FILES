@@ -3,6 +3,14 @@
 .openapi-generator-ignore
 README.md
 docs/AccountApi.md
+docs/AdminAccessResponse.md
+docs/AdminApi.md
+docs/AdminCollectionItemResponse.md
+docs/AdminListingResponse.md
+docs/AdminOverviewResponse.md
+docs/AdminUserDetailResponse.md
+docs/AdminUserSummaryResponse.md
+docs/AdminWishlistItemResponse.md
 docs/AuthApi.md
 docs/AuthResponse.md
 docs/CardPriceQuoteResponse.md
@@ -22,7 +30,9 @@ docs/CollectionWriteResponse.md
 docs/CreateMarketplaceOfferRequest.md
 docs/CreateSaleListingRequest.md
 docs/CreateWishlistRequest.md
+docs/EbayRecentSaleResponse.md
 docs/ErrorResponse.md
+docs/FounderSystemResponse.md
 docs/FriendCollectionCardResponse.md
 docs/FriendCollectionResponse.md
 docs/FriendProfileResponse.md
@@ -58,6 +68,7 @@ docs/WishlistApi.md
 docs/WishlistResponse.md
 package.json
 src/apis/AccountApi.ts
+src/apis/AdminApi.ts
 src/apis/AuthApi.ts
 src/apis/CatalogApi.ts
 src/apis/CollectionApi.ts
@@ -72,6 +83,13 @@ src/apis/SystemApi.ts
 src/apis/WishlistApi.ts
 src/apis/index.ts
 src/index.ts
+src/models/AdminAccessResponse.ts
+src/models/AdminCollectionItemResponse.ts
+src/models/AdminListingResponse.ts
+src/models/AdminOverviewResponse.ts
+src/models/AdminUserDetailResponse.ts
+src/models/AdminUserSummaryResponse.ts
+src/models/AdminWishlistItemResponse.ts
 src/models/AuthResponse.ts
 src/models/CardPriceQuoteResponse.ts
 src/models/CardRecognitionRequest.ts
@@ -88,7 +106,9 @@ src/models/CollectionWriteResponse.ts
 src/models/CreateMarketplaceOfferRequest.ts
 src/models/CreateSaleListingRequest.ts
 src/models/CreateWishlistRequest.ts
+src/models/EbayRecentSaleResponse.ts
 src/models/ErrorResponse.ts
+src/models/FounderSystemResponse.ts
 src/models/FriendCollectionCardResponse.ts
 src/models/FriendCollectionResponse.ts
 src/models/FriendProfileResponse.ts

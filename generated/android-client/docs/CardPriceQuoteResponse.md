@@ -11,12 +11,16 @@
 | **conditionFactor** | **kotlin.Double** |  |  |
 | **exactLanguageMatch** | **kotlin.Boolean** |  |  |
 | **exactVariantMatch** | **kotlin.Boolean** |  |  |
+| **recentSales** | [**kotlin.collections.List&lt;EbayRecentSaleResponse&gt;**](EbayRecentSaleResponse.md) |  |  |
 | **variantId** | **kotlin.String** |  |  [optional] |
 | **variantType** | **kotlin.String** |  |  [optional] |
 | **source** | [**inline**](#Source) |  |  [optional] |
 | **baseEur** | **kotlin.Double** |  |  [optional] |
 | **eur** | **kotlin.Double** |  |  [optional] |
 | **sampleCount** | **kotlin.Int** |  |  [optional] |
+| **rangeLowEur** | **kotlin.Double** |  |  [optional] |
+| **rangeHighEur** | **kotlin.Double** |  |  [optional] |
+| **trend30dPercent** | **kotlin.Double** |  |  [optional] |
 | **updatedAtMs** | **kotlin.Long** |  |  [optional] |
 
 
@@ -38,7 +42,7 @@
 ## Enum: source
 | Name | Value |
 | ---- | ----- |
-| source | TCGDEX, JUSTTCG, SOLDCOMPS |
+| source | TCGDEX, JUSTTCG, CARDYSSEY_EBAY |
 
 
 

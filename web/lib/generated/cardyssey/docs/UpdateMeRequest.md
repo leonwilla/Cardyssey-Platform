@@ -7,6 +7,9 @@
 Name | Type
 ------------ | -------------
 `displayName` | string
+`favoritePokemon` | string
+`favoriteSet` | string
+`collectingFocus` | string
 
 ## Example
 
@@ -16,6 +19,9 @@ import type { UpdateMeRequest } from 'cardyssey-contract'
 // TODO: Update the object below with actual values
 const example = {
   "displayName": null,
+  "favoritePokemon": null,
+  "favoriteSet": null,
+  "collectingFocus": null,
 } satisfies UpdateMeRequest
 
 console.log(example)

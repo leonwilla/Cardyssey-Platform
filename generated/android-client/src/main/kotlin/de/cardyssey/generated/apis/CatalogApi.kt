@@ -65,10 +65,6 @@ open class CatalogApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      enum class LanguageGetCard(val value: kotlin.String) {
          @Json(name = "de") de("de"),
          @Json(name = "en") en("en"),
-         @Json(name = "fr") fr("fr"),
-         @Json(name = "it") `it`("it"),
-         @Json(name = "es") es("es"),
-         @Json(name = "pt") pt("pt"),
          @Json(name = "ja") ja("ja"),
          @Json(name = "ko") ko("ko"),
          @Json(name = "zh-tw") zhMinusTw("zh-tw"),
@@ -171,10 +167,6 @@ open class CatalogApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      enum class LanguageGetSet(val value: kotlin.String) {
          @Json(name = "de") de("de"),
          @Json(name = "en") en("en"),
-         @Json(name = "fr") fr("fr"),
-         @Json(name = "it") `it`("it"),
-         @Json(name = "es") es("es"),
-         @Json(name = "pt") pt("pt"),
          @Json(name = "ja") ja("ja"),
          @Json(name = "ko") ko("ko"),
          @Json(name = "zh-tw") zhMinusTw("zh-tw"),
@@ -277,10 +269,6 @@ open class CatalogApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      enum class LanguageGetSets(val value: kotlin.String) {
          @Json(name = "de") de("de"),
          @Json(name = "en") en("en"),
-         @Json(name = "fr") fr("fr"),
-         @Json(name = "it") `it`("it"),
-         @Json(name = "es") es("es"),
-         @Json(name = "pt") pt("pt"),
          @Json(name = "ja") ja("ja"),
          @Json(name = "ko") ko("ko"),
          @Json(name = "zh-tw") zhMinusTw("zh-tw"),
@@ -454,10 +442,6 @@ open class CatalogApi(basePath: kotlin.String = defaultBasePath, client: Call.Fa
      enum class LanguageSearchCards(val value: kotlin.String) {
          @Json(name = "de") de("de"),
          @Json(name = "en") en("en"),
-         @Json(name = "fr") fr("fr"),
-         @Json(name = "it") `it`("it"),
-         @Json(name = "es") es("es"),
-         @Json(name = "pt") pt("pt"),
          @Json(name = "ja") ja("ja"),
          @Json(name = "ko") ko("ko"),
          @Json(name = "zh-tw") zhMinusTw("zh-tw"),

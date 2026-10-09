@@ -176,19 +176,10 @@ class CardCatalogService(
             setOf(
                 "de",
                 "en",
-                "fr",
-                "it",
-                "es",
-                "pt",
                 "ja",
                 "ko",
                 "zh-tw",
-                "zh-cn",
-                "id",
-                "th",
-                "nl",
-                "pl",
-                "ru"
+                "zh-cn"
             )
     }
 

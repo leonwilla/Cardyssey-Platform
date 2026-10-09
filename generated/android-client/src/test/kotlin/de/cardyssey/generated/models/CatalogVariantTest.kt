@@ -81,5 +81,17 @@ class CatalogVariantTest : ShouldSpec() {
             //modelInstance.tcgDexEur shouldBe ("TODO")
         }
 
+        // to test the property `tcgPlayerId`
+        should("test tcgPlayerId") {
+            // uncomment below to test the property
+            //modelInstance.tcgPlayerId shouldBe ("TODO")
+        }
+
+        // to test the property `cardmarketProductId`
+        should("test cardmarketProductId") {
+            // uncomment below to test the property
+            //modelInstance.cardmarketProductId shouldBe ("TODO")
+        }
+
     }
 }

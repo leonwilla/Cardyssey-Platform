@@ -19,7 +19,11 @@ Name | Type
 `exactLanguageMatch` | boolean
 `exactVariantMatch` | boolean
 `sampleCount` | number
+`rangeLowEur` | number
+`rangeHighEur` | number
+`trend30dPercent` | number
 `updatedAtMs` | number
+`recentSales` | [Array&lt;EbayRecentSaleResponse&gt;](EbayRecentSaleResponse.md)
 
 ## Example
 
@@ -41,7 +45,11 @@ const example = {
   "exactLanguageMatch": null,
   "exactVariantMatch": null,
   "sampleCount": null,
+  "rangeLowEur": null,
+  "rangeHighEur": null,
+  "trend30dPercent": null,
   "updatedAtMs": null,
+  "recentSales": null,
 } satisfies CardPriceQuoteResponse
 
 console.log(example)

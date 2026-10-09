@@ -42,7 +42,7 @@ try {
 | **id** | **kotlin.String**|  | |
 | Name | Type | Description  | Notes |
 | ------------- | ------------- | ------------- | ------------- |
-| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -96,7 +96,7 @@ try {
 | **id** | **kotlin.String**|  | |
 | Name | Type | Description  | Notes |
 | ------------- | ------------- | ------------- | ------------- |
-| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -148,7 +148,7 @@ try {
 ### Parameters
 | Name | Type | Description  | Notes |
 | ------------- | ------------- | ------------- | ------------- |
-| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -255,7 +255,7 @@ try {
 ### Parameters
 | **q** | **kotlin.String**|  | [optional] |
 | **number** | **kotlin.String**|  | [optional] |
-| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | **kotlin.String**|  | [optional] [default to Language.de] [enum: de, en, ja, ko, zh-tw, zh-cn] |
 | Name | Type | Description  | Notes |
 | ------------- | ------------- | ------------- | ------------- |
 | **limit** | **kotlin.Int**|  | [optional] [default to 20] |

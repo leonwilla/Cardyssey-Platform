@@ -181,35 +181,6 @@ export default function ScanPage() {
     stopCamera();
   }
 
-  function selectImage(
-    event:
-      React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file =
-      event.target.files?.[0];
-
-    if (!file) return;
-
-    stopCamera();
-    setError(null);
-    setCandidates([]);
-    setOcrText("");
-
-    const reader =
-      new FileReader();
-
-    reader.onload = () => {
-      if (
-        typeof reader.result ===
-        "string"
-      ) {
-        setImage(reader.result);
-      }
-    };
-
-    reader.readAsDataURL(file);
-  }
-
   async function recognizeCard() {
     if (!image) return;
 
@@ -495,17 +466,6 @@ export default function ScanPage() {
             </button>
           )}
 
-          <label className="ghostButton scannerGalleryAction">
-            Bild auswählen
-
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={selectImage}
-              hidden
-            />
-          </label>
         </div>
 
         {image && (

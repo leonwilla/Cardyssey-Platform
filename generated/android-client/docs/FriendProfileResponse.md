@@ -14,6 +14,9 @@
 | **canSeeQuantity** | **kotlin.Boolean** |  |  |
 | **canSeeSets** | **kotlin.Boolean** |  |  |
 | **canSeeWishlist** | **kotlin.Boolean** |  |  |
+| **favoritePokemon** | **kotlin.String** |  |  [optional] |
+| **favoriteSet** | **kotlin.String** |  |  [optional] |
+| **collectingFocus** | **kotlin.String** |  |  [optional] |
 
 
 

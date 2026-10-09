@@ -10,6 +10,11 @@ Name | Type
 `database` | string
 `service` | string
 `version` | string
+`justTcgConfigured` | boolean
+`ebayPricingMode` | string
+`ebayDirectEnabled` | boolean
+`ebayDirectSessionConfigured` | boolean
+`ebayPriceCacheTtlHours` | number
 
 ## Example
 
@@ -22,6 +27,11 @@ const example = {
   "database": null,
   "service": null,
   "version": null,
+  "justTcgConfigured": null,
+  "ebayPricingMode": null,
+  "ebayDirectEnabled": null,
+  "ebayDirectSessionConfigured": null,
+  "ebayPriceCacheTtlHours": null,
 } satisfies HealthResponse
 
 console.log(example)

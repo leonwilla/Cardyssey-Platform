@@ -38,6 +38,8 @@ import com.squareup.moshi.JsonClass
  * @param stamps 
  * @param legacyVariant 
  * @param tcgDexEur 
+ * @param tcgPlayerId 
+ * @param cardmarketProductId 
  */
 
 
@@ -65,7 +67,13 @@ data class CatalogVariant (
     val legacyVariant: kotlin.String,
 
     @Json(name = "tcgDexEur")
-    val tcgDexEur: kotlin.Double?
+    val tcgDexEur: kotlin.Double?,
+
+    @Json(name = "tcgPlayerId")
+    val tcgPlayerId: kotlin.String? = null,
+
+    @Json(name = "cardmarketProductId")
+    val cardmarketProductId: kotlin.String? = null
 
 ) {
 

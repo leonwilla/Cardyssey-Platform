@@ -31,13 +31,25 @@ import com.squareup.moshi.JsonClass
  * 
  *
  * @param displayName 
+ * @param favoritePokemon 
+ * @param favoriteSet 
+ * @param collectingFocus 
  */
 
 
 data class UpdateMeRequest (
 
     @Json(name = "displayName")
-    val displayName: kotlin.String?
+    val displayName: kotlin.String?,
+
+    @Json(name = "favoritePokemon")
+    val favoritePokemon: kotlin.String? = null,
+
+    @Json(name = "favoriteSet")
+    val favoriteSet: kotlin.String? = null,
+
+    @Json(name = "collectingFocus")
+    val collectingFocus: kotlin.String? = null
 
 ) {
 

@@ -57,6 +57,24 @@ class UserResponseTest : ShouldSpec() {
             //modelInstance.avatarUrl shouldBe ("TODO")
         }
 
+        // to test the property `favoritePokemon`
+        should("test favoritePokemon") {
+            // uncomment below to test the property
+            //modelInstance.favoritePokemon shouldBe ("TODO")
+        }
+
+        // to test the property `favoriteSet`
+        should("test favoriteSet") {
+            // uncomment below to test the property
+            //modelInstance.favoriteSet shouldBe ("TODO")
+        }
+
+        // to test the property `collectingFocus`
+        should("test collectingFocus") {
+            // uncomment below to test the property
+            //modelInstance.collectingFocus shouldBe ("TODO")
+        }
+
         // to test the property `friendCode`
         should("test friendCode") {
             // uncomment below to test the property

@@ -10,6 +10,9 @@ Name | Type
 `email` | string
 `displayName` | string
 `avatarUrl` | string
+`favoritePokemon` | string
+`favoriteSet` | string
+`collectingFocus` | string
 `friendCode` | string
 
 ## Example
@@ -23,6 +26,9 @@ const example = {
   "email": null,
   "displayName": null,
   "avatarUrl": null,
+  "favoritePokemon": null,
+  "favoriteSet": null,
+  "collectingFocus": null,
   "friendCode": null,
 } satisfies UserResponse
 

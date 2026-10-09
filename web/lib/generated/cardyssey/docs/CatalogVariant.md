@@ -14,6 +14,8 @@ Name | Type
 `stamps` | Array&lt;string&gt;
 `legacyVariant` | string
 `tcgDexEur` | number
+`tcgPlayerId` | string
+`cardmarketProductId` | string
 
 ## Example
 
@@ -30,6 +32,8 @@ const example = {
   "stamps": null,
   "legacyVariant": null,
   "tcgDexEur": null,
+  "tcgPlayerId": null,
+  "cardmarketProductId": null,
 } satisfies CatalogVariant
 
 console.log(example)

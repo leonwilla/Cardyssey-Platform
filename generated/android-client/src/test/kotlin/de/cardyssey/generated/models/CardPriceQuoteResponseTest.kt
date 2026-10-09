@@ -27,6 +27,7 @@ import io.kotlintest.shouldBe
 import io.kotlintest.specs.ShouldSpec
 
 import de.cardyssey.generated.models.CardPriceQuoteResponse
+import de.cardyssey.generated.models.EbayRecentSaleResponse
 
 class CardPriceQuoteResponseTest : ShouldSpec() {
     init {
@@ -75,6 +76,12 @@ class CardPriceQuoteResponseTest : ShouldSpec() {
             //modelInstance.exactVariantMatch shouldBe ("TODO")
         }
 
+        // to test the property `recentSales`
+        should("test recentSales") {
+            // uncomment below to test the property
+            //modelInstance.recentSales shouldBe ("TODO")
+        }
+
         // to test the property `variantId`
         should("test variantId") {
             // uncomment below to test the property
@@ -109,6 +116,24 @@ class CardPriceQuoteResponseTest : ShouldSpec() {
         should("test sampleCount") {
             // uncomment below to test the property
             //modelInstance.sampleCount shouldBe ("TODO")
+        }
+
+        // to test the property `rangeLowEur`
+        should("test rangeLowEur") {
+            // uncomment below to test the property
+            //modelInstance.rangeLowEur shouldBe ("TODO")
+        }
+
+        // to test the property `rangeHighEur`
+        should("test rangeHighEur") {
+            // uncomment below to test the property
+            //modelInstance.rangeHighEur shouldBe ("TODO")
+        }
+
+        // to test the property `trend30dPercent`
+        should("test trend30dPercent") {
+            // uncomment below to test the property
+            //modelInstance.trend30dPercent shouldBe ("TODO")
         }
 
         // to test the property `updatedAtMs`

@@ -220,10 +220,6 @@ visibility = [
 languages = [
     "de",
     "en",
-    "fr",
-    "it",
-    "es",
-    "pt",
     "ja",
     "ko",
     "zh-tw",
@@ -314,6 +310,15 @@ schemas = {
         obj(
             {
                 "displayName":
+                    string(nullable=True),
+
+                "favoritePokemon":
+                    string(nullable=True),
+
+                "favoriteSet":
+                    string(nullable=True),
+
+                "collectingFocus":
                     string(nullable=True)
             },
             ["displayName"]
@@ -328,6 +333,15 @@ schemas = {
                     string(nullable=True),
 
                 "avatarUrl":
+                    string(nullable=True),
+
+                "favoritePokemon":
+                    string(nullable=True),
+
+                "favoriteSet":
+                    string(nullable=True),
+
+                "collectingFocus":
                     string(nullable=True),
 
                 "friendCode":
@@ -659,6 +673,15 @@ schemas = {
                     string(nullable=True),
 
                 "avatarUrl":
+                    string(nullable=True),
+
+                "favoritePokemon":
+                    string(nullable=True),
+
+                "favoriteSet":
+                    string(nullable=True),
+
+                "collectingFocus":
                     string(nullable=True),
 
                 "isFriend":
@@ -2320,6 +2343,7 @@ document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
         "sampleCount": integer(nullable=True, minimum=0),
         "rangeLowEur": number(nullable=True),
         "rangeHighEur": number(nullable=True),
+        "trend30dPercent": number(nullable=True),
         "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64"),
         "recentSales":
             arr("EbayRecentSaleResponse")

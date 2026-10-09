@@ -38,7 +38,7 @@ async function example() {
   const body = {
     // string
     id: id_example,
-    // 'de' | 'en' | 'fr' | 'it' | 'es' | 'pt' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
+    // 'de' | 'en' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
     language: language_example,
   } satisfies GetCardRequest;
 
@@ -60,7 +60,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **id** | `string` |  | [Defaults to `undefined`] |
-| **language** | `de`, `en`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | `de`, `en`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -115,7 +115,7 @@ async function example() {
   const body = {
     // string
     id: id_example,
-    // 'de' | 'en' | 'fr' | 'it' | 'es' | 'pt' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
+    // 'de' | 'en' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
     language: language_example,
   } satisfies GetSetRequest;
 
@@ -137,7 +137,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **id** | `string` |  | [Defaults to `undefined`] |
-| **language** | `de`, `en`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | `de`, `en`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -190,7 +190,7 @@ async function example() {
   const api = new CatalogApi(config);
 
   const body = {
-    // 'de' | 'en' | 'fr' | 'it' | 'es' | 'pt' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
+    // 'de' | 'en' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
     language: language_example,
   } satisfies GetSetsRequest;
 
@@ -211,7 +211,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **language** | `de`, `en`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | `de`, `en`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, ja, ko, zh-tw, zh-cn] |
 
 ### Return type
 
@@ -342,7 +342,7 @@ async function example() {
     q: q_example,
     // string (optional)
     number: number_example,
-    // 'de' | 'en' | 'fr' | 'it' | 'es' | 'pt' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
+    // 'de' | 'en' | 'ja' | 'ko' | 'zh-tw' | 'zh-cn' (optional)
     language: language_example,
     // number (optional)
     limit: 56,
@@ -367,7 +367,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **q** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **number** | `string` |  | [Optional] [Defaults to `undefined`] |
-| **language** | `de`, `en`, `fr`, `it`, `es`, `pt`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, fr, it, es, pt, ja, ko, zh-tw, zh-cn] |
+| **language** | `de`, `en`, `ja`, `ko`, `zh-tw`, `zh-cn` |  | [Optional] [Defaults to `&#39;de&#39;`] [Enum: de, en, ja, ko, zh-tw, zh-cn] |
 | **limit** | `number` |  | [Optional] [Defaults to `20`] |
 
 ### Return type

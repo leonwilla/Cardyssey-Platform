@@ -57,5 +57,35 @@ class HealthResponseTest : ShouldSpec() {
             //modelInstance.version shouldBe ("TODO")
         }
 
+        // to test the property `justTcgConfigured`
+        should("test justTcgConfigured") {
+            // uncomment below to test the property
+            //modelInstance.justTcgConfigured shouldBe ("TODO")
+        }
+
+        // to test the property `ebayPricingMode`
+        should("test ebayPricingMode") {
+            // uncomment below to test the property
+            //modelInstance.ebayPricingMode shouldBe ("TODO")
+        }
+
+        // to test the property `ebayDirectEnabled`
+        should("test ebayDirectEnabled") {
+            // uncomment below to test the property
+            //modelInstance.ebayDirectEnabled shouldBe ("TODO")
+        }
+
+        // to test the property `ebayDirectSessionConfigured`
+        should("test ebayDirectSessionConfigured") {
+            // uncomment below to test the property
+            //modelInstance.ebayDirectSessionConfigured shouldBe ("TODO")
+        }
+
+        // to test the property `ebayPriceCacheTtlHours`
+        should("test ebayPriceCacheTtlHours") {
+            // uncomment below to test the property
+            //modelInstance.ebayPriceCacheTtlHours shouldBe ("TODO")
+        }
+
     }
 }

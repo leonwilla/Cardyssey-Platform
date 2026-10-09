@@ -34,6 +34,11 @@ import com.squareup.moshi.JsonClass
  * @param database 
  * @param service 
  * @param version 
+ * @param justTcgConfigured 
+ * @param ebayPricingMode 
+ * @param ebayDirectEnabled 
+ * @param ebayDirectSessionConfigured 
+ * @param ebayPriceCacheTtlHours 
  */
 
 
@@ -49,10 +54,34 @@ data class HealthResponse (
     val service: kotlin.String,
 
     @Json(name = "version")
-    val version: kotlin.String
+    val version: kotlin.String,
+
+    @Json(name = "justTcgConfigured")
+    val justTcgConfigured: kotlin.Boolean,
+
+    @Json(name = "ebayPricingMode")
+    val ebayPricingMode: HealthResponse.EbayPricingMode,
+
+    @Json(name = "ebayDirectEnabled")
+    val ebayDirectEnabled: kotlin.Boolean,
+
+    @Json(name = "ebayDirectSessionConfigured")
+    val ebayDirectSessionConfigured: kotlin.Boolean,
+
+    @Json(name = "ebayPriceCacheTtlHours")
+    val ebayPriceCacheTtlHours: kotlin.Int
 
 ) {
 
+    /**
+     * 
+     *
+     * Values: CARDYSSEY_DIRECT_ONLY
+     */
+    @JsonClass(generateAdapter = false)
+    enum class EbayPricingMode(val value: kotlin.String) {
+        @Json(name = "CARDYSSEY_DIRECT_ONLY") CARDYSSEY_DIRECT_ONLY("CARDYSSEY_DIRECT_ONLY");
+    }
 
 }
 
