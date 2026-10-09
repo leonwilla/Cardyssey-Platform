@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   refresh:
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: [self-hosted, linux, x64, cardyssey-android]
     steps:
       - name: Checkout
@@ -28,6 +28,7 @@ jobs:
           python3 scripts/test-price-round7.py
           python3 scripts/test-price-round8.py
           python3 scripts/test-price-round9.py
+          python3 scripts/test-price-round11.py
 
       - name: Reactivate deferred market prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -167,6 +168,11 @@ jobs:
         timeout-minutes: 16
         run: timeout 900s python3 scripts/resolve-cardtrader-ko-nm-prices.py --apply --report /tmp/cardyssey-cardtrader-ko-weekly.json
 
+      - name: Recover exact Japanese ordinary booster offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 21
+        run: timeout 1200s python3 scripts/resolve-cardtrader-ja-nm-prices.py --apply --report /tmp/cardyssey-cardtrader-ja-weekly.json
+
       - name: Refresh exact Japanese edition and numbered promo offers
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 3
@@ -208,6 +214,7 @@ jobs:
             /tmp/cardyssey-level-weekly.json
             /tmp/cardyssey-shiny-weekly.json
             /tmp/cardyssey-cardtrader-ko-weekly.json
+            /tmp/cardyssey-cardtrader-ja-weekly.json
             /tmp/cardyssey-hareruya-weekly.json
             /tmp/cardyssey-toreca-weekly.json
             /tmp/cardyssey-western-weekly.json

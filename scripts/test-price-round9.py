@@ -56,6 +56,12 @@ class KoreanMarketplaceTests(unittest.TestCase):
    self.bp["version"]=version;self.assertIsNone(self.match()[0])
   self.bp["version"]="Holo Rare | 001/078";self.bp["fixed_properties"]["pokemon_rarity"]="Rare"
   self.assertIsNone(self.match()[0])
+ def test_shiny_requires_explicit_compatible_rarity(self):
+  self.row["rarity"]="S";self.bp["fixed_properties"]["pokemon_rarity"]="Shiny Holo Rare"
+  self.bp["version"]="Shiny Holo Rare | 001/078";self.p["properties_hash"]["pokemon_rarity"]="Shiny Holo Rare"
+  self.assertIsNotNone(self.match()[0])
+  self.bp["fixed_properties"]["pokemon_rarity"]="Holo Rare"
+  self.assertIsNone(self.match()[0])
  def test_quantity_bundle_description_and_vacation(self):
   for key,value in [("quantity",2),("quantity",True),("bundle_size",2),("bundled_quantity",2),
                     ("description","Selling a lot"),("on_vacation",True)]:
@@ -80,7 +86,7 @@ class KoreanMarketplaceTests(unittest.TestCase):
   with patch.object(r.ko.retail,"db",return_value="[]") as db:r.ko.load_targets(r.SOURCE)
   self.assertIn("p.source='CARDTRADER_KO_NM' AND (TRUE)",db.call_args.args[0])
  def test_korean_boosters_only(self):
-  for code in ["SV1V","S12a","sv9a","SM11","sm9a"]:self.assertTrue(r.regular_set(code))
+  for code in ["SV1V","S12a","sv9a","SM11","sm9a","XY8b","M1S"]:self.assertTrue(r.regular_set(code))
   for code in ["SV-P","BW-P","SCC","CS4a","base1"]:self.assertFalse(r.regular_set(code))
 if __name__=="__main__":
  if "--postgres" in sys.argv:load("test-price-round3").postgres_tests(source=r.SOURCE)

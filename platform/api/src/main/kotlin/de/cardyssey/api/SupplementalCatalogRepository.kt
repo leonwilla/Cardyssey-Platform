@@ -24,6 +24,7 @@ class SupplementalCatalogRepository(
                     s.canonical_card_id, s.details, s.german_species_name,
                     COALESCE(m.image_complete, FALSE) AS image_complete,
                     CASE WHEN NULLIF(m.raw_payload->>'_cardyssey_verified_variant_source','') IS NOT NULL
+                           OR (m.language_code='ja' AND m.raw_payload->>'_cardyssey_retail_variant_source'='CARDTRADER_JP_NM')
                            OR (m.language_code='ko' AND m.raw_payload->>'_cardyssey_retail_variant_source' IN ('WEB_UTURI_KO','WEB_MEWTWO_KO','WEB_LAKE_KO','WEB_MANA_KO','WEB_LEVELUP_KO','WEB_SHINY_KO','CARDTRADER_KO_NM'))
                          THEN m.variants::text END AS recovered_variants
                 FROM catalog_supplemental_cards s

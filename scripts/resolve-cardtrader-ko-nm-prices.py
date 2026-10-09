@@ -24,10 +24,10 @@ RARITY={
  "SAR":{"Special Illustration Rare","Special Art Rare"},
  "UR":{"Hyper Rare","Ultra Rare","Secret Rare"},
  "HR":{"Hyper Rare","Rainbow Rare","Secret Rare"},
- "S":{"Shiny Rare","Shiny"},"SSR":{"Shiny Ultra Rare","Shiny Secret Rare","Secret Rare"},
+ "S":{"Shiny Rare","Shiny","Shiny Holo Rare"},"SSR":{"Shiny Ultra Rare","Shiny Secret Rare","Secret Rare"},
 }
 def regular_set(code):
- return re.fullmatch(r"(?:SM|SV|S)\d+[A-Za-z]*",str(code),re.I) is not None
+ return re.fullmatch(r"(?:SM|SV|S|XY|M)\d+[A-Za-z]*",str(code),re.I) is not None
 def blueprint_matches(row,bp,expansion,names):
  if row.get("language_code")!="ko" or row.get("identity_count")!=1 or not row.get("card_id","").startswith("official_ko_"):return False
  if not regular_set(row["set_id"]) or expansion.get("game_id")!=5 or ko.normalize(expansion.get("code",""))!=ko.normalize(row["set_id"]):return False
