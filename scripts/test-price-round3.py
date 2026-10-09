@@ -141,7 +141,7 @@ class JapanesePromoTests(unittest.TestCase):
         self.product['title']='トレーナーズポスト(C){グッズ}〈223/128〉[e1]'
         self.assertEqual(ja.match_offer(self.row,self.product)[1],'unmarked_edition')
 
-def postgres_tests():
+def postgres_tests(source=ko.SOURCE):
     def db(sql):
         r=subprocess.run(['docker','exec','-i','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-X','-qAt','-v','ON_ERROR_STOP=1'],
             input="BEGIN; SET LOCAL statement_timeout='15s';\n"+sql+'\nROLLBACK;',text=True,capture_output=True,check=False,timeout=25)
@@ -156,9 +156,10 @@ def postgres_tests():
     CREATE TEMP TABLE tcg_price_history(card_id text,language_code text,variant_id text,source text,base_eur numeric,captured_at timestamptz);
     """
     case=MatchTests();case.setUp();update=dict(row=case.row,offer=case.match()[0],base_eur='1.5217',observed_at='2026-10-09T12:00:00Z')
+    update['offer']['source']=source
     captured=[]
     with patch.object(ko.retail,'db',lambda sql:captured.append(sql) or '{"variants":0,"prices":0,"history":0}'):
-        ko.apply_updates([update])
+        ko.apply_updates([update],source=source)
     writer=captured[0]
     insert="""INSERT INTO catalog_cards_mirror(language_code,card_id,set_id,local_id,name,image_source_url,variants,raw_payload,details_complete)
         VALUES('ko','official_ko_test','SV9','101','마라카치','https://official/image','[]','{"name":"마라카치"}',TRUE);
@@ -183,7 +184,7 @@ def postgres_tests():
     changed=copy.deepcopy(payload);changed['details']['imageBase']='https://official/corrected-image'
     result=db(setup+first+rows(payload)+imported+check+drop+rows(changed)+imported+check+
               "SELECT resolution_status || ':' || COALESCE(base_eur::text,'NULL') FROM tcg_price_cache;")
-    assert json.loads(result[1])==dict(variants=1,proof='WEB_UTURI_KO'),result
+    assert json.loads(result[1])==dict(variants=1,proof=source),result
     assert json.loads(result[2])==dict(variants=0,proof=None),result
     assert result[3]=='NO_PRICE:NULL',result
     print('PASS: unchanged official imports preserve provenance; changed images clear derived variants/prices')

@@ -80,7 +80,7 @@ FROM resolved_rows r JOIN catalog_cards_mirror c
   ON c.card_id=r.payload->>'canonicalId' AND c.language_code=r.payload->'details'->>'languageCode'
 WHERE LEFT(c.card_id,9)='official_'
  AND (NULLIF(c.raw_payload->>'_cardyssey_verified_variant_source','') IS NOT NULL
-      OR c.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO')
+      OR c.raw_payload->>'_cardyssey_retail_variant_source' IN ('WEB_UTURI_KO','WEB_MEWTWO_KO'))
  AND NOT COALESCE((c.set_id=r.payload->'details'->>'setId'
    AND c.local_id=r.payload->'details'->>'localId'
    AND c.raw_payload->>'name'=r.payload->'details'->>'name'
@@ -125,7 +125,7 @@ ON CONFLICT (language_code, card_id) DO UPDATE SET
         ELSE catalog_cards_mirror.raw_payload END,
     variants = CASE WHEN LEFT(EXCLUDED.card_id, 9) = 'official_'
         AND (NULLIF(catalog_cards_mirror.raw_payload->>'_cardyssey_verified_variant_source','') IS NOT NULL
-          OR catalog_cards_mirror.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO')
+          OR catalog_cards_mirror.raw_payload->>'_cardyssey_retail_variant_source' IN ('WEB_UTURI_KO','WEB_MEWTWO_KO'))
         AND NOT COALESCE((catalog_cards_mirror.set_id=EXCLUDED.set_id
           AND catalog_cards_mirror.local_id=EXCLUDED.local_id
           AND catalog_cards_mirror.raw_payload->>'name'=EXCLUDED.raw_payload->>'name'
@@ -136,5 +136,5 @@ ON CONFLICT (language_code, card_id) DO UPDATE SET
 UPDATE tcg_price_cache p SET resolution_status='NO_PRICE',base_eur=NULL,updated_at=NOW(),next_attempt_at=NOW(),
  failure_detail='Audited supplemental print identity changed; derived price requires verification again'
 FROM invalidated_price_prints c WHERE p.card_id=c.card_id AND p.language_code=c.language_code
- AND (p.source='WEB_UTURI_KO' OR (c.twin_source IS NOT NULL AND
+ AND (p.source IN ('WEB_UTURI_KO','WEB_MEWTWO_KO') OR (c.twin_source IS NOT NULL AND
       p.failure_detail LIKE '%Exact catalogue duplicate of ' || c.twin_source || ';%'));

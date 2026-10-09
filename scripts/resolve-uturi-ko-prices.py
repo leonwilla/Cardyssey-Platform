@@ -29,6 +29,7 @@ retail=module('resolve-zhtw-retailer-prices')
 HOST='https://uturitrading.com'
 COLLECTION=HOST+'/en/collections/cartes-unite-pokemon'
 SOURCE='WEB_UTURI_KO'
+TRUSTED_KOREAN_SOURCES = frozenset(('WEB_UTURI_KO', 'WEB_MEWTWO_KO'))
 SKU=re.compile(r'^(\d+)\s+((?:SV|SM|S\d|XY|BW|M\d)[A-Za-z0-9-]*)$',re.I)
 VARIANT={'id':'generated','type':'normal','size':'standard','stamps':[],'legacyVariant':'NORMAL'}
 
@@ -115,7 +116,8 @@ def match_offer(row,product,ld,url,names):
     return dict(source=SOURCE,currency='EUR',amount=str(amount),title=product['title'],url=url,
                 product_id=product['id'],offer_variant_id=variant['id'],rarity=rarities[0],condition='new/near-mint'),None
 
-def load_targets():
+def load_targets(source=SOURCE):
+    if source not in TRUSTED_KOREAN_SOURCES:raise ValueError('unsupported Korean source')
     sql="""WITH counts AS (SELECT set_id,LTRIM(local_id,'0') AS num,COUNT(*) AS identity_count
       FROM catalog_cards_mirror WHERE language_code='ko' GROUP BY set_id,LTRIM(local_id,'0'))
     SELECT COALESCE(jsonb_agg(row_to_json(t)),'[]') FROM (
@@ -131,9 +133,13 @@ def load_targets():
       AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR (c.variants='"""+json.dumps([VARIANT])+"""'::jsonb AND c.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO'))
       AND (p.card_id IS NULL OR p.resolution_status='NO_PRICE' OR (p.source='WEB_UTURI_KO' AND (p.next_attempt_at<=NOW() OR p.updated_at<=NOW()-INTERVAL '6 days')))
     ) t;"""
+    sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
     return json.loads(retail.db(sql))
 
-def apply_updates(updates):
+def apply_updates(updates, source=SOURCE):
+    if source not in TRUSTED_KOREAN_SOURCES:raise ValueError('unsupported Korean source')
+    if any(u['offer'].get('source')!=source for u in updates):raise ValueError('mixed Korean sources')
+    if any(u['row'].get('language_code')!='ko' or not u['row']['card_id'].startswith('official_ko_') for u in updates):raise ValueError('unsupported Korean catalogue identity')
     if not updates:return dict(variants=0,prices=0,history=0)
     def q(value):return 'NULL' if value is None else retail.quote(value)
     values=[]
@@ -165,6 +171,8 @@ def apply_updates(updates):
     history AS (INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at)
       SELECT card_id,language_code,variant_id,source,base_eur,NOW() FROM written RETURNING 1)
     SELECT jsonb_build_object('variants',(SELECT COUNT(*) FROM catalog_changed),'prices',(SELECT COUNT(*) FROM written),'history',(SELECT COUNT(*) FROM history));"""
+    sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
+    sql=sql.replace(retail.quote(json.dumps(SOURCE)),retail.quote(json.dumps(source)))
     return json.loads(retail.db(sql))
 
 def main():
