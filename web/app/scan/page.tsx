@@ -46,6 +46,19 @@ const scanLanguages = [
 type ScanLanguage =
   (typeof scanLanguages)[number];
 
+function scanLanguageLabel(
+  code: string | undefined
+) {
+  return (
+    scanLanguages.find(
+      (language) =>
+        language.api === code
+    )?.label ??
+    code?.toUpperCase() ??
+    "Unbekannt"
+  );
+}
+
 export default function ScanPage() {
   const router = useRouter();
 
@@ -77,7 +90,7 @@ export default function ScanPage() {
     useState<ScanLanguage["api"]>("de");
 
   const [automaticLanguage, setAutomaticLanguage] =
-    useState(false);
+    useState(true);
 
   const selectedLanguage = useMemo(
     () =>
@@ -232,12 +245,11 @@ export default function ScanPage() {
 
       setOcrText(text);
 
-      if (!text) {
-        throw new Error(
-          "Auf dem Bild konnte kein Text erkannt werden."
-        );
-      }
-
+      /*
+       * Numberless promos and special cards can have little or no OCR-readable
+       * text. The backend also supports perceptual image matching, so keep
+       * going with an empty OCR string instead of rejecting the scan.
+       */
       const languagesToSearch =
         automaticLanguage
           ? scanLanguages
@@ -260,6 +272,8 @@ export default function ScanPage() {
                       text,
                       language:
                         language.api,
+                      imageBase64:
+                        image,
                     }),
                   }
                 );
@@ -451,7 +465,7 @@ export default function ScanPage() {
                 setAutomaticLanguage(true)
               }
             >
-              AUTO · TEST
+              AUTO
             </button>
           </div>
         </div>
@@ -552,6 +566,11 @@ export default function ScanPage() {
                         card.setId}
                       {" · #"}
                       {card.localId}
+                      {" · "}
+                      {scanLanguageLabel(
+                        card.recognizedLanguage ??
+                          selectedLanguage.api
+                      )}
                     </span>
 
                     <small>
