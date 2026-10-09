@@ -23,6 +23,7 @@ jobs:
           python3 scripts/test-price-source-round2.py
           python3 scripts/test-price-round3.py
           python3 scripts/test-price-round5.py
+          python3 scripts/test-price-round6.py
 
       - name: Reactivate deferred market prices
         run: python3 scripts/reactivate-pending-market-prices.py
@@ -78,8 +79,9 @@ jobs:
       - name: Resolve exact named TCGCSV specials
         run: python3 scripts/resolve-tcgcsv-named-specials.py
 
-      - name: Resolve safe western leftovers
-        run: python3 scripts/resolve-cardtrader-western-safe.py
+      - name: Resolve exact western leftovers
+        timeout-minutes: 4
+        run: timeout 180s python3 scripts/resolve-cardtrader-western-safe.py --apply --report /tmp/cardyssey-western-weekly.json
 
       - name: Resolve Traditional Chinese special printings
         run: python3 scripts/resolve-cardtrader-zhtw-specials.py
@@ -124,6 +126,11 @@ jobs:
         if: always()
         run: python3 scripts/audit-price-coverage.py
 
+      - name: Audit catalogue identity conflicts
+        if: always()
+        timeout-minutes: 1
+        run: timeout 40s python3 scripts/audit-catalog-identity-conflicts.py --report /tmp/cardyssey-catalog-conflicts-weekly.json
+
       - name: Preserve exact retail evidence and review candidates
         if: always()
         uses: actions/upload-artifact@v7
@@ -133,5 +140,7 @@ jobs:
             /tmp/cardyssey-uturi-weekly.json
             /tmp/cardyssey-mewtwo-weekly.json
             /tmp/cardyssey-hareruya-weekly.json
+            /tmp/cardyssey-western-weekly.json
+            /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14
