@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   refresh:
-    timeout-minutes: 40
+    timeout-minutes: 50
     runs-on: [self-hosted, linux, x64, cardyssey-android]
     steps:
       - name: Checkout
@@ -26,6 +26,7 @@ jobs:
           python3 scripts/test-price-round5.py
           python3 scripts/test-price-round6.py
           python3 scripts/test-price-round7.py
+          python3 scripts/test-price-round8.py
 
       - name: Reactivate deferred market prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -150,6 +151,16 @@ jobs:
         timeout-minutes: 5
         run: timeout 240s python3 scripts/resolve-shopify-ko-prices.py --shop mana --apply --report /tmp/cardyssey-mana-weekly.json
 
+      - name: Refresh exact Near Mint Korean offers from Level Up Games
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-extra-ko-prices.py --shop level --apply --report /tmp/cardyssey-level-weekly.json
+
+      - name: Refresh exact Near Mint Korean offers from ShinyCardboard4U
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-extra-ko-prices.py --shop shiny --apply --report /tmp/cardyssey-shiny-weekly.json
+
       - name: Refresh exact Japanese edition and numbered promo offers
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 3
@@ -188,6 +199,8 @@ jobs:
             /tmp/cardyssey-mewtwo-weekly.json
             /tmp/cardyssey-lake-weekly.json
             /tmp/cardyssey-mana-weekly.json
+            /tmp/cardyssey-level-weekly.json
+            /tmp/cardyssey-shiny-weekly.json
             /tmp/cardyssey-hareruya-weekly.json
             /tmp/cardyssey-toreca-weekly.json
             /tmp/cardyssey-western-weekly.json

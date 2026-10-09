@@ -29,7 +29,7 @@ retail=module('resolve-zhtw-retailer-prices')
 HOST='https://uturitrading.com'
 COLLECTION=HOST+'/en/collections/cartes-unite-pokemon'
 SOURCE='WEB_UTURI_KO'
-TRUSTED_KOREAN_SOURCES = frozenset(('WEB_UTURI_KO', 'WEB_MEWTWO_KO', 'WEB_LAKE_KO', 'WEB_MANA_KO'))
+TRUSTED_KOREAN_SOURCES = frozenset(('WEB_UTURI_KO', 'WEB_MEWTWO_KO', 'WEB_LAKE_KO', 'WEB_MANA_KO', 'WEB_LEVELUP_KO', 'WEB_SHINY_KO'))
 SKU=re.compile(r'^(\d+)\s+((?:SV|SM|S\d|XY|BW|M\d)[A-Za-z0-9-]*)$',re.I)
 VARIANT={'id':'generated','type':'normal','size':'standard','stamps':[],'legacyVariant':'NORMAL'}
 
