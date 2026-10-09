@@ -253,7 +253,18 @@ export default function SellingPage() {
       );
 
     if (response.ok) {
+      setMessage(
+        status === "SOLD"
+          ? "Verkaufsangebot als verkauft markiert."
+          : status === "PAUSED"
+            ? "Verkaufsangebot pausiert."
+            : "Verkaufsangebot aktiviert."
+      );
       await load();
+    } else {
+      setMessage(
+        "Status konnte nicht geändert werden."
+      );
     }
   }
 
@@ -271,7 +282,14 @@ export default function SellingPage() {
       );
 
     if (response.ok) {
+      setMessage(
+        "Verkaufsangebot entfernt."
+      );
       await load();
+    } else {
+      setMessage(
+        "Verkaufsangebot konnte nicht entfernt werden."
+      );
     }
   }
 
@@ -546,12 +564,18 @@ export default function SellingPage() {
                           "SOLD" && (
                           <button
                             className="ghostButton"
-                            onClick={() =>
-                              changeStatus(
-                                listing,
-                                "SOLD"
-                              )
-                            }
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Angebot als verkauft markieren? Du kannst es später wieder aktivieren."
+                                )
+                              ) {
+                                changeStatus(
+                                  listing,
+                                  "SOLD"
+                                );
+                              }
+                            }}
                           >
                             Verkauft
                           </button>
@@ -559,11 +583,17 @@ export default function SellingPage() {
 
                         <button
                           className="ghostButton"
-                          onClick={() =>
-                            remove(
-                              listing.id
-                            )
-                          }
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                "Inserat dauerhaft entfernen? Die Karte bleibt in deiner Sammlung."
+                              )
+                            ) {
+                              remove(
+                                listing.id
+                              );
+                            }
+                          }}
                         >
                           Entfernen
                         </button>

@@ -20,6 +20,9 @@ jobs:
       - name: Reactivate deferred market prices
         run: python3 scripts/reactivate-pending-market-prices.py
 
+      - name: Backfill curated catalog variants
+        run: python3 scripts/backfill-curated-tangela-sm10.py
+
       - name: Backfill verified special TCGplayer variants
         run: python3 scripts/backfill-tcgcsv-special-variants.py
 

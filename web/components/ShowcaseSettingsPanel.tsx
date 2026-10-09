@@ -98,6 +98,9 @@ export function ShowcaseSettingsPanel() {
       "VALUE_DESC"
     );
 
+  const [minimumValue, setMinimumValue] =
+    useState(0);
+
   useEffect(() => {
     async function load() {
 
@@ -170,8 +173,8 @@ export function ShowcaseSettingsPanel() {
           .toLocaleLowerCase("de");
 
       const filtered =
-        selectable.filter(
-          (item) =>
+        selectable.filter((item) => {
+          const matchesSearch =
             !needle ||
             [
               item.name,
@@ -181,8 +184,23 @@ export function ShowcaseSettingsPanel() {
               .filter(Boolean)
               .join(" ")
               .toLocaleLowerCase("de")
-              .includes(needle)
-        );
+              .includes(needle);
+
+          const value =
+            showcaseValue(item);
+
+          const matchesValue =
+            minimumValue <= 0 ||
+            (
+              value != null &&
+              value >= minimumValue
+            );
+
+          return (
+            matchesSearch &&
+            matchesValue
+          );
+        });
 
       return [...filtered].sort(
         (left, right) => {
@@ -246,6 +264,7 @@ export function ShowcaseSettingsPanel() {
         }
       );
     }, [
+      minimumValue,
       query,
       selectable,
       sort,
@@ -455,6 +474,32 @@ export function ShowcaseSettingsPanel() {
           placeholder="Karte, Set oder Nummer suchen …"
           aria-label="Showcase-Karten suchen"
         />
+
+        <select
+          value={minimumValue}
+          onChange={(event) =>
+            setMinimumValue(
+              Number(event.target.value)
+            )
+          }
+          aria-label="Showcase-Karten nach Mindestwert filtern"
+        >
+          <option value={0}>
+            Alle Werte
+          </option>
+          <option value={10}>
+            Ab 10 €
+          </option>
+          <option value={25}>
+            Ab 25 €
+          </option>
+          <option value={50}>
+            Ab 50 €
+          </option>
+          <option value={100}>
+            Ab 100 €
+          </option>
+        </select>
 
         <select
           value={sort}

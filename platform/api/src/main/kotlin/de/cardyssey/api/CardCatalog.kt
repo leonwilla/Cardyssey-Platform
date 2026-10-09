@@ -1872,6 +1872,24 @@ class CardCatalogService(
             )
         }
 
+        // Unbroken Bonds Tangela 16/214 has a documented Reverse Holo
+        // printing, but upstream currently collapses it to one generated Normal
+        // variant in both English and German.
+        if (
+            setId == "sm10" &&
+            localId == "16"
+        ) {
+            return listOf(
+                CatalogVariant(
+                    id = "curated:$supportedLanguage:sm10:16:reverse",
+                    type = "Reverse",
+                    size = "standard",
+                    legacyVariant = "REVERSE",
+                    tcgDexEur = null
+                )
+            )
+        }
+
         // German SV01 Felori 013/198 also exists as a Holo printing and
         // as the stamped Grass/leaf-symbol reverse printing. Upstream currently
         // exposes only Normal + Reverse for this German card.

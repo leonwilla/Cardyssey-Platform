@@ -16,6 +16,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.server.plugins.defaultheaders.DefaultHeaders
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
 import io.ktor.server.routing.get
@@ -432,6 +433,20 @@ fun Application.module() {
         )
 
     install(CallLogging)
+
+    install(DefaultHeaders) {
+        header("X-Content-Type-Options", "nosniff")
+        header("X-Frame-Options", "DENY")
+        header("Referrer-Policy", "strict-origin-when-cross-origin")
+        header(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+        )
+        header(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains"
+        )
+    }
 
     install(ContentNegotiation) {
         json(

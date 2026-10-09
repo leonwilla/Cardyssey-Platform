@@ -140,7 +140,10 @@ export function CardTile({
 
           <div className="cardPriceBlock">
             <span className="price">
-              {eur(positionValue)}
+              {market === "EBAY" &&
+              positionValue == null
+                ? "Keine Verkäufe"
+                : eur(positionValue)}
             </span>
 
             {item.quantity > 1 &&
