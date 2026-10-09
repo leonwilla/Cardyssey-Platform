@@ -12,13 +12,24 @@ physical AS (
 ), known AS (
  SELECT DISTINCT language_code,set_id,LTRIM(local_id,'0') num FROM physical
  WHERE jsonb_array_length(variants)>0
+), card_state AS (
+ SELECT c.*,
+ EXISTS(SELECT 1 FROM jsonb_array_elements(c.variants) v
+ JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code=c.language_code AND p.variant_id=v->>'id'
+ WHERE p.resolution_status='PRICE_FOUND') AS has_price,
+ EXISTS(SELECT 1 FROM jsonb_array_elements(c.variants) v
+ LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code=c.language_code AND p.variant_id=v->>'id'
+ WHERE p.resolution_status IS DISTINCT FROM 'PRICE_FOUND') AS has_unpriced_variant
+ FROM physical c
 ), cards AS (
  SELECT c.language_code,COUNT(*) catalog_entries,
+ COUNT(*) FILTER(WHERE NOT c.has_price) entirely_unpriced_entries,
+ COUNT(*) FILTER(WHERE c.has_price AND c.has_unpriced_variant) partially_priced_entries,
  COUNT(*) FILTER(WHERE NOT c.details_complete) incomplete_details,
  COUNT(*) FILTER(WHERE COALESCE(jsonb_array_length(c.variants),0)=0) missing_variants,
  COUNT(*) FILTER(WHERE COALESCE(jsonb_array_length(c.variants),0)=0 AND k.language_code IS NOT NULL) missing_with_number_twin,
  COUNT(*) FILTER(WHERE COALESCE(jsonb_array_length(c.variants),0)=0 AND k.language_code IS NULL) missing_without_number_twin
- FROM physical c LEFT JOIN known k ON k.language_code=c.language_code AND k.set_id=c.set_id AND k.num=LTRIM(c.local_id,'0')
+ FROM card_state c LEFT JOIN known k ON k.language_code=c.language_code AND k.set_id=c.set_id AND k.num=LTRIM(c.local_id,'0')
  GROUP BY c.language_code
 ), variants AS (
  SELECT c.language_code,c.card_id,v.value->>'id' variant_id
@@ -37,6 +48,8 @@ physical AS (
 )
 SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY language_code),'[]'::jsonb) FROM (
  SELECT l.language_code,COALESCE(c.catalog_entries,0) catalog_entries,
+ COALESCE(c.entirely_unpriced_entries,0) entirely_unpriced_entries,
+ COALESCE(c.partially_priced_entries,0) partially_priced_entries,
  COALESCE(c.incomplete_details,0) incomplete_details,
  COALESCE(c.missing_variants,0) missing_variants,
  COALESCE(c.missing_with_number_twin,0) missing_with_number_twin,
@@ -58,7 +71,11 @@ def main():
         text=True,capture_output=True,check=True,timeout=30,
     )
     rows = json.loads(result.stdout.strip())
-    print(json.dumps({'scope':'physical_catalog_entries_and_variants', 'languages':rows}, ensure_ascii=False,indent=2))
+    totals={key:sum(row[key] for row in rows) for key in
+            ('catalog_entries','entirely_unpriced_entries','partially_priced_entries',
+             'missing_variants','no_price','deferred')}
+    print(json.dumps({'scope':'physical_catalog_entries_and_variants',
+                      'totals':totals,'languages':rows}, ensure_ascii=False,indent=2))
     print('Missing variants may include duplicate catalogue entries. A set/number twin is a review hint, not a verified identity.')
     print('PRICE_FOUND counts include provider guides, estimates and retailer references; they are not a count of verified sales.')
 

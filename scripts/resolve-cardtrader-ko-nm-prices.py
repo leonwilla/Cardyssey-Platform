@@ -18,7 +18,7 @@ spec=importlib.util.spec_from_file_location("extra",Path(__file__).with_name("re
 extra=importlib.util.module_from_spec(spec);spec.loader.exec_module(extra)
 ko=extra.ko;SOURCE="CARDTRADER_KO_NM";BASE="https://api.cardtrader.com/api/v2"
 RARITY={
- "C":{"Common"},"U":{"Uncommon"},"RR":{"Ultra Rare","Double Rare"},
+ "R":{"Holo Rare"},"C":{"Common"},"U":{"Uncommon"},"RR":{"Ultra Rare","Double Rare"},
  "RRR":{"Ultra Rare","Triple Rare"},"AR":{"Art Rare","Illustration Rare"},
  "SR":{"Secret Rare","Super Rare","Full Art"},
  "SAR":{"Special Illustration Rare","Special Art Rare"},
@@ -27,7 +27,7 @@ RARITY={
  "S":{"Shiny Rare","Shiny"},"SSR":{"Shiny Ultra Rare","Shiny Secret Rare","Secret Rare"},
 }
 def regular_set(code):
- return re.fullmatch(r"S(?:V)?\d+[A-Za-z]*",str(code),re.I) is not None
+ return re.fullmatch(r"(?:SM|SV|S)\d+[A-Za-z]*",str(code),re.I) is not None
 def blueprint_matches(row,bp,expansion,names):
  if row.get("language_code")!="ko" or row.get("identity_count")!=1 or not row.get("card_id","").startswith("official_ko_"):return False
  if not regular_set(row["set_id"]) or expansion.get("game_id")!=5 or ko.normalize(expansion.get("code",""))!=ko.normalize(row["set_id"]):return False
@@ -39,6 +39,8 @@ def blueprint_matches(row,bp,expansion,names):
  if len(number)!=1 or tuple(map(int,number[0]))!=(int(row["local_id"]),row["official_count"]):return False
  if re.search(r"reverse|master.?ball|pok[eé].?ball|promo|stamp|edition|staff|winner|signed|world|error|jumbo|oversized|non.?holo|cosmos|cracked|sheen",version,re.I):return False
  if fixed.get("pokemon_rarity") not in RARITY.get(row.get("rarity"),set()):return False
+ # Ordinary R prints require an explicit holo blueprint; generic Rare is insufficient.
+ if row.get("rarity")=="R" and not re.fullmatch(r"Holo Rare \| \d+/\d+",version):return False
  languages=[p for p in bp.get("editable_properties",[]) if p.get("name")=="pokemon_language"]
  if len(languages)!=1 or "kr" not in languages[0].get("possible_values",[]):return False
  name=str(bp.get("name",""))

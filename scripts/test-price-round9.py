@@ -46,6 +46,16 @@ class KoreanMarketplaceTests(unittest.TestCase):
   self.row["identity_count"]=2;self.assertIsNone(self.match()[0])
   self.setUp();self.row["rarity"]="R";self.assertIsNone(self.match()[0])
   self.setUp();self.row["rarity"]="U";self.assertIsNone(self.match()[0])
+ def test_ordinary_rare_requires_explicit_holo_and_nonreverse_offer(self):
+  self.row["rarity"]="R";self.bp["fixed_properties"]["pokemon_rarity"]="Holo Rare"
+  self.bp["version"]="Holo Rare | 001/078";self.p["properties_hash"]["pokemon_rarity"]="Holo Rare"
+  self.assertIsNotNone(self.match()[0])
+  self.p["properties_hash"]["pokemon_reverse"]=True;self.assertIsNone(self.match()[0])
+  self.p["properties_hash"]["pokemon_reverse"]=False
+  for version in ["Rare | 001/078","Non-Holo Rare | 001/078","Holo Rare Reverse | 001/078","001/078"]:
+   self.bp["version"]=version;self.assertIsNone(self.match()[0])
+  self.bp["version"]="Holo Rare | 001/078";self.bp["fixed_properties"]["pokemon_rarity"]="Rare"
+  self.assertIsNone(self.match()[0])
  def test_quantity_bundle_description_and_vacation(self):
   for key,value in [("quantity",2),("quantity",True),("bundle_size",2),("bundled_quantity",2),
                     ("description","Selling a lot"),("on_vacation",True)]:
@@ -70,7 +80,7 @@ class KoreanMarketplaceTests(unittest.TestCase):
   with patch.object(r.ko.retail,"db",return_value="[]") as db:r.ko.load_targets(r.SOURCE)
   self.assertIn("p.source='CARDTRADER_KO_NM' AND (TRUE)",db.call_args.args[0])
  def test_korean_boosters_only(self):
-  for code in ["SV1V","S12a","sv9a"]:self.assertTrue(r.regular_set(code))
+  for code in ["SV1V","S12a","sv9a","SM11","sm9a"]:self.assertTrue(r.regular_set(code))
   for code in ["SV-P","BW-P","SCC","CS4a","base1"]:self.assertFalse(r.regular_set(code))
 if __name__=="__main__":
  if "--postgres" in sys.argv:load("test-price-round3").postgres_tests(source=r.SOURCE)
