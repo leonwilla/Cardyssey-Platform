@@ -30,6 +30,12 @@ data class TcgPriceStatistics(
     val trend30dPercent: Double?
 )
 
+internal fun TcgPriceStatistics.forCondition(condition: PricingCondition): TcgPriceStatistics =
+    copy(
+        lowEur = lowEur?.let { roundedUnitEur(it, condition.factor) },
+        highEur = highEur?.let { roundedUnitEur(it, condition.factor) }
+    )
+
 class TcgPriceCacheRepository(
     private val dataSource: HikariDataSource
 ) {
@@ -1222,7 +1228,7 @@ class CachedTcgPricingService(
                     details.languageCode,
                 variantId =
                     selected.id
-            )
+            ).forCondition(condition)
 
         return CardPriceQuoteResponse(
             cardId =

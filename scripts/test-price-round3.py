@@ -91,6 +91,56 @@ class MatchTests(unittest.TestCase):
         row['blueprint_name']='Swablu';product['title']='チルット:1ED(C){水}〈018/068〉[P9]'
         self.assertEqual(ja.match_offer(row,product)[1],'edition')
 
+
+class JapanesePromoTests(unittest.TestCase):
+    def setUp(self):
+        variant=dict(id='normal',type='normal',size='standard',stamps=[],subtype=None,foil=None,legacyVariant='NORMAL')
+        self.row=dict(language_code='ja',set_id='SV-P',local_id='223',official_count=0,legacy_variant='NORMAL',
+                      variant=variant,all_variants=[variant],native_name='トレーナーズポスト',name='トレーナーズポスト')
+        self.product=dict(id=1,handle='9750606938432',title='トレーナーズポスト(PROMO){グッズ}〈223/SV-P〉[SV-P]',
+                          body_html='状態表記の無いカードは状態Aとなります。',
+                          variants=[dict(id=2,title='Default Title',available=True,price='850')])
+
+    def test_exact_numbered_trainer_promo_without_species_metadata(self):
+        offer,reason=ja.match_offer(self.row,self.product)
+        self.assertIsNone(reason)
+        self.assertEqual(offer['identity_method'],'exact-numbered-promo-native-title')
+
+    def test_wrong_number_language_set_and_name_are_rejected(self):
+        for title in ['トレーナーズポスト(PROMO){グッズ}〈135/SV-P〉[SV-P]',
+                      'トレーナーズポスト(PROMO){グッズ}〈223/M-P〉[SV-P]',
+                      'トレーナーズポスト(PROMO){グッズ}〈223/SV-P〉[M-P]',
+                      'ダブルドラゴンエネルギー(PROMO){グッズ}〈223/SV-P〉[SV-P]',
+                      'トレーナーズポスト:スタンプ(PROMO){グッズ}〈223/SV-P〉[SV-P]']:
+            with self.subTest(title=title):
+                self.product['title']=title
+                self.assertIsNotNone(ja.match_offer(self.row,self.product)[1])
+        self.setUp();self.row['language_code']='ko'
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'set_language')
+
+    def test_promo_special_printings_and_multiple_variants_are_rejected(self):
+        for key,value in [('stamps',['event']),('foil','masterball'),('subtype','unlimited'),('type','reverse'),('size','jumbo')]:
+            with self.subTest(key=key):
+                self.setUp();self.row['variant'][key]=value
+                self.assertEqual(ja.match_offer(self.row,self.product)[1],'promo_variant')
+        self.setUp();self.row['all_variants'].append(dict(self.row['variant'],id='alternate'))
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'promo_variant')
+
+    def test_promo_condition_stock_and_options_are_rejected(self):
+        self.product['variants'][0]['available']=False
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'stock')
+        self.setUp();self.product['body_html']='unknown condition'
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'condition')
+        self.setUp();self.product['variants'].append(dict(self.product['variants'][0],id=3))
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'retailer_variant')
+
+    def test_modern_denominator_cannot_override_classic_edition(self):
+        self.row['set_id']='E1';self.row['official_count']=128
+        self.product['title']='トレーナーズポスト(C){グッズ}〈223/SV-P〉[e1]'
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'number')
+        self.product['title']='トレーナーズポスト(C){グッズ}〈223/128〉[e1]'
+        self.assertEqual(ja.match_offer(self.row,self.product)[1],'unmarked_edition')
+
 def postgres_tests():
     def db(sql):
         r=subprocess.run(['docker','exec','-i','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-X','-qAt','-v','ON_ERROR_STOP=1'],

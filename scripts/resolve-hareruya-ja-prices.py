@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact explicitly named Japanese editions, in stock and shop condition A."""
+"""Exact Japanese editions and numbered promos, in stock and shop condition A."""
 import argparse
 import concurrent.futures
 import importlib.util
@@ -24,9 +24,10 @@ def needs_price_review(offer,fx):
 MANIFEST={
  'PCG1':('74','P1'),'PCG2':('75','P2'),'PCG3':('76','P3'),'PCG4':('77','P4'),
  'PCG5':('78','P5'),'PCG6':('79','P6'),'PCG7':('80','P7'),'PCG8':('81','P8'),'PCG9':('82','P9'),
- 'E2':('50','e2'),'E3':('51','e3'),'E4':('52','e4'),'E5':('53','e5'),'VS1':('vs','VS'),'web1':('web','web'),
+ 'E1':('49','e1'),'E2':('50','e2'),'E3':('51','e3'),'E4':('52','e4'),'E5':('53','e5'),'VS1':('45','VS'),'web1':('47','web'),
+ 'SV-P':('581','SV-P'),'M-P':('699','M-P'),
 }
-TITLE=re.compile(r'^(.+)\(([^)]+)\)\{[^}]+\}〈(\d+)/(\d+)〉\[([A-Za-z0-9]+)\]$')
+TITLE=re.compile(r'^(.+)\(([^)]+)\)\{[^}]+\}〈(\d+)/(\d+|SV-P|M-P)〉\[([A-Za-z0-9-]+)\]$')
 
 def fetch_set(item):
  code,(handle,printed)=item;products=[];seen=set()
@@ -53,17 +54,28 @@ def match_offer(row,product):
  if not match or '状態' in title:return None,'title_or_condition'
  head,rarity,number,total,code=match.groups()
  if row['language_code']!='ja' or code.casefold()!=MANIFEST[row['set_id']][1].casefold():return None,'set_language'
- if int(number)!=int(row['local_id']) or int(total)!=row['official_count']:return None,'number'
+ promo=row['set_id'] in ('SV-P','M-P')
+ if int(number)!=int(row['local_id']):return None,'number'
+ if promo:
+  if total!=row['set_id'] or rarity!='PROMO':return None,'promo_set'
+  variant=row['variant']
+  if (row['legacy_variant']!='NORMAL' or variant.get('type')!='normal'
+      or variant.get('size','standard') not in ('standard',None)
+      or any(variant.get(k) for k in ('foil','stamps','subtype'))
+      or len(row['all_variants'])!=1):return None,'promo_variant'
+  # Exact full title is essential for Trainers/Energy without species metadata.
+  if retail.normalize(head)!=retail.normalize(row['native_name'] or row['name']):return None,'name'
+ elif not total.isdigit() or int(total)!=row['official_count']:return None,'number'
  first=bool(re.search(r'1ED|初版',head));unlimited=bool(re.search(r'再販|再版',head))
- if first==unlimited:return None,'unmarked_edition'
+ if not promo and first==unlimited:return None,'unmarked_edition'
  expected=edition(row['variant'],row['all_variants'])
- if expected!=('first' if first else 'unlimited'):return None,'edition'
+ if not promo and expected!=('first' if first else 'unlimited'):return None,'edition'
  # Reject multiple foil choices for the same edition unless the shop explicitly labels the foil.
  candidates=[v for v in row['all_variants'] if edition(v,row['all_variants'])==expected]
  foil=bool('キラ' in head or rarity.endswith('H'))
  if foil:
   if row['legacy_variant']!='HOLO':return None,'foil'
- elif len(candidates)!=1:return None,'ambiguous_foil'
+ elif not promo and len(candidates)!=1:return None,'ambiguous_foil'
  body=product.get('body_html','')
  if '状態表記の無いカードは状態A' not in body:return None,'condition'
  variants=product.get('variants') or []
@@ -74,7 +86,7 @@ def match_offer(row,product):
  if price is None:return None,'price'
  names=re.findall(r'(?:名前|英語名)：([^<\n]+)',body)
  raw=row['native_name'] or row['name']
- native_match=any(retail.normalize(name) in retail.normalize(raw) for name in names if name.strip())
+ native_match=promo or any(retail.normalize(name) in retail.normalize(raw) for name in names if name.strip())
  english=re.search(r'英語名：([^<\n]+)',body)
  blueprint_match=bool(english and row.get('blueprint_name') and re.search(r'(?<![A-Za-z0-9])'+re.escape(english[1].strip())+r'(?![A-Za-z0-9])',row['blueprint_name'],re.I))
  if not native_match and not blueprint_match:return None,'name'
@@ -82,7 +94,7 @@ def match_offer(row,product):
  if not re.fullmatch(r'[a-z0-9-]+',handle):return None,'product_identity'
  return dict(source=SOURCE,currency='JPY',amount=str(price),title=title,url=HOST+'/products/'+handle,
              product_id=product['id'],offer_variant_id=v['id'],condition='Hareruya condition A',
-             identity_method='native-name' if native_match else 'exact-edition-blueprint-species',blueprint_id=row.get('blueprint_id') if not native_match else None),None
+             identity_method=('exact-numbered-promo-native-title' if promo else 'native-name') if native_match else 'exact-edition-blueprint-species',blueprint_id=row.get('blueprint_id') if not native_match else None),None
 
 def load_targets():
  return json.loads(retail.db("""SELECT COALESCE(jsonb_agg(row_to_json(t)),'[]') FROM (

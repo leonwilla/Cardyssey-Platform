@@ -104,7 +104,7 @@ jobs:
         timeout-minutes: 5
         run: timeout 240s python3 scripts/resolve-uturi-ko-prices.py --apply --report /tmp/cardyssey-uturi-weekly.json
 
-      - name: Refresh explicit Japanese edition retail offers
+      - name: Refresh exact Japanese edition and numbered promo offers
         timeout-minutes: 3
         run: timeout 120s python3 scripts/resolve-hareruya-ja-prices.py --apply --report /tmp/cardyssey-hareruya-weekly.json
 
