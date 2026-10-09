@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Test exact retail price matching
+        run: python3 scripts/test-price-coverage.py
+
       - name: Reactivate deferred market prices
         run: python3 scripts/reactivate-pending-market-prices.py
 
@@ -80,6 +83,10 @@ jobs:
       - name: Resolve audited Traditional Chinese art identities
         run: python3 scripts/resolve-cardtrader-zhtw-art-mapped.py
 
+      - name: Refresh exact in-stock Traditional Chinese retail offers
+        timeout-minutes: 4
+        run: timeout 180s python3 scripts/resolve-zhtw-retailer-prices.py --apply
+
       - name: Resolve Traditional Chinese retail reference prices
         run: python3 scripts/resolve-hktcg-zhtw.py --apply
 
@@ -89,5 +96,6 @@ jobs:
       - name: Annotate unresolved price backlog
         run: python3 scripts/annotate-price-backlog.py
 
-      - name: Defer unresolved public-price gaps
-        run: python3 scripts/finalize-unpriced-backlog.py
+      - name: Audit full physical catalog price coverage
+        if: always()
+        run: python3 scripts/audit-price-coverage.py
