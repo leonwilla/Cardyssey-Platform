@@ -24,8 +24,14 @@ WITH candidates AS (
  AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
  AND jsonb_array_length(k.variants)>0
  AND k.raw_payload->>'_cardyssey_verified_variant_source' IS NULL
+ AND NOT EXISTS(SELECT 1 FROM tcg_price_cache kp WHERE kp.card_id=k.card_id
+   AND kp.language_code=k.language_code AND kp.failure_detail LIKE '%Exact catalogue duplicate of %')
  AND (COALESCE(jsonb_array_length(c.variants),0)=0
-      OR (c.raw_payload->>'_cardyssey_verified_variant_source'=k.card_id AND c.variants=k.variants))
+      OR (c.raw_payload->>'_cardyssey_verified_variant_source'=k.card_id AND c.variants=k.variants)
+      OR (c.raw_payload->>'_cardyssey_verified_variant_source' IS NULL AND c.variants=k.variants
+          AND EXISTS(SELECT 1 FROM tcg_price_cache cp WHERE cp.card_id=c.card_id
+            AND cp.language_code=c.language_code AND cp.failure_detail LIKE
+              '%Exact catalogue duplicate of ' || k.card_id || ';%')))
 ), verified AS (
  SELECT * FROM candidates WHERE matches=1
  AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(variants) v(value)
@@ -42,8 +48,9 @@ APPLY_SQL = PAIRS_SQL + """
 , changed_catalog AS (
  UPDATE catalog_cards_mirror c SET variants=q.variants,
  raw_payload=jsonb_set(c.raw_payload,'{_cardyssey_verified_variant_source}',to_jsonb(q.source_id),true)
- FROM verified q WHERE q.missing AND c.card_id=q.card_id AND c.language_code=q.language_code
- AND COALESCE(jsonb_array_length(c.variants),0)=0
+ FROM verified q WHERE c.card_id=q.card_id AND c.language_code=q.language_code
+ AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR
+      (c.variants=q.variants AND c.raw_payload->>'_cardyssey_verified_variant_source' IS NULL))
  RETURNING c.card_id,c.language_code
 ), copied_prices AS (
  INSERT INTO tcg_price_cache(card_id,language_code,variant_id,legacy_variant,source,base_eur,

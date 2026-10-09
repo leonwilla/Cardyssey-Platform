@@ -6,7 +6,7 @@
 - Three exact Japanese edition offers from Hareruya (PCG8-028 first edition, PCG9-041 unlimited, PCG9-018 unlimited), explicitly condition A and in stock. Mixed/unmarked editions and damaged offers are rejected. An existing curated CardTrader edition identity can resolve a mistranslated name only after the live blueprint export confirms expansion, collector number and English species.
 - Five exact Japanese public offers remain review candidates. A single asking price over EUR 100 is conservatively withheld from automatic collection valuation pending independent/manual review. This is a quality threshold, not a statement that no public price exists. Original JPY offers and exact URLs are preserved in the report; no price cap or invented market estimate is substituted.
 - These prices are asking offers, not completed sales. All observations retain source, original currency/amount, condition, URL, time and conversion provenance. Optimistic cache version checks preserve newer prices; cache/history writes are atomic.
-- Fixed shared API details for official supplemental cards: recovered proven mirror variants now reach Android/Web. Original nonempty supplemental variants take precedence; malformed/duplicate variants are rejected. This also makes the previous 259 recovered Japanese entries usable in card details.
+- Fixed shared API details for official supplemental cards: recovered proven mirror variants now reach Android/Web. Original nonempty supplemental variants take precedence; malformed/duplicate variants are rejected. Restored lost verification markers for 254 previously recovered Japanese entries with 557 variants, using retained price provenance plus current exact same-language/set/number/native-name/image/variant identity. Five former entries lack sufficient surviving proof and are not exposed by assumption. Four newer source prices/history points refreshed on verified aliases; these are not independent new offers.
 - Fixed weekly supplemental import losing verification markers. Unchanged set/number/native name/image identities preserve their proof. Changed identities clear only derived variants and owned derived effective prices for re-verification; history and unrelated provider prices remain intact.
 - New source refreshes run weekly, due after six days, with 240-second Korean and 120-second Japanese hard limits. Evidence and withheld high offers are retained as workflow artifacts for 14 days.
 
@@ -25,7 +25,7 @@
 
 ## Validation
 
-- Eight offline matching/hydration/review tests; three PostgreSQL rollback fixtures cover atomicity/idempotence/concurrent prices, the actual supplemental importer, and cross-language isolation.
+- Eight offline matching/hydration/review tests; four PostgreSQL rollback fixtures cover atomicity/idempotence/concurrent prices, the actual supplemental importer, and cross-language isolation.
 - Existing 14 price coverage, 10 round-two matching, eight supplemental tests and three PostgreSQL coverage fixtures pass.
 - Backend Gradle test/installDist passes, including three new variant detail tests. Shared runtime image builds. No Android-only schema or UI change, so no APK rebuild is needed for this block.
 - Before writes, backed up all 167 candidate catalogue identities and their existing cache records under /home/tv/cardyssey-backups/price-round3-20261009T133426Z (uncommitted). Applied evidence stays on Tiny under /tmp/cardyssey-uturi-applied.json and /tmp/cardyssey-hareruya-applied.json.
@@ -37,3 +37,5 @@
 - PCG6-039 / 2fnyg4g532wu18r396n1ly75loy: JPY 100000, https://www.hareruya2.com/products/9014120415552
 - PCG6-043 / 3a83wf50tz7q114spsx7dw6v5: JPY 250000, https://www.hareruya2.com/products/9014287728960
 - web1-036 / endfynwn4n10gzq: JPY 40000, https://www.hareruya2.com/products/9013867839808
+
+Live checks pass for Korean recovered card details, matching Korean/Japanese source prices through both API and Web proxy, and admin authorization/filter/pagination. Runtime is deployed; no changes to local legal-page edits, .env or founder_duplicates.csv.

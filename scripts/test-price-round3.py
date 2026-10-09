@@ -147,6 +147,20 @@ def postgres_tests():
     assert result==['1','ja:PRICE_FOUND','zh-tw:NO_PRICE'],result
     print('PASS: JPY update retains provenance and cannot update a same-ID Chinese price')
 
+    twins=load('repair-verified-catalog-twins')
+    variant=json.dumps([dict(id='normal',type='normal',legacyVariant='NORMAL')])
+    twin_rows="INSERT INTO catalog_cards_mirror(language_code,card_id,set_id,local_id,name,image_source_url,variants,raw_payload,details_complete) VALUES "
+    for card,image in [('canonical','https://same/image'),('derived','https://same/image'),('wrong-image','https://different/image')]:
+        twin_rows+="('ja',"+ko.retail.quote(card)+",'TEST','001','Name',"+ko.retail.quote(image)+","+ko.retail.quote(variant)+",'{\"name\":\"Name\"}',TRUE),"
+    twin_rows=twin_rows.rstrip(',')+';'
+    proof="INSERT INTO tcg_price_cache VALUES('derived','ja','normal','NORMAL','OLD',1,NOW(),'PRICE_FOUND','Exact catalogue duplicate of canonical; exact proof',NULL),('wrong-image','ja','normal','NORMAL','OLD',1,NOW(),'PRICE_FOUND','Exact catalogue duplicate of canonical; exact proof',NULL);"
+    result=db(setup+twin_rows+proof+twins.APPLY_SQL+twins.APPLY_SQL+"SELECT card_id FROM catalog_cards_mirror WHERE raw_payload->>'_cardyssey_verified_variant_source'='canonical';")
+    assert json.loads(result[0])['catalog_entries_repaired']==1,result
+    assert json.loads(result[1])['catalog_entries_repaired']==0,result
+    assert result[2:]==['derived'],result
+    print('PASS: lost twin provenance restored only with exact identity and saved source evidence; no reciprocal alias or changed-image recovery')
+
+
 if __name__=='__main__':
     if '--postgres' in sys.argv:postgres_tests()
     else:unittest.main()
