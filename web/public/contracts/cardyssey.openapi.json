@@ -4435,6 +4435,181 @@
           }
         }
       }
+    },
+    "/api/v1/admin/price-coverage": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminPriceCoverage",
+        "summary": "Fehlende Preise nach Set und Sprache",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceCoverageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "de",
+                "en",
+                "ja",
+                "ko",
+                "zh-cn",
+                "zh-tw"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/price-coverage/cards": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "operationId": "getAdminPriceCoverageCards",
+        "summary": "Fehlende Preise eines Sets (100 Einträge pro Seite)",
+        "responses": {
+          "200": {
+            "description": "Erfolgreich",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceCoverageCardsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ungültige Anfrage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nicht authentifiziert",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Nicht erlaubt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nicht gefunden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "language",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "de",
+                "en",
+                "ja",
+                "ko",
+                "zh-cn",
+                "zh-tw"
+              ]
+            },
+            "required": true
+          },
+          {
+            "name": "setId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6428,6 +6603,132 @@
           "soldCompsConfigured",
           "registeredUsers",
           "collectionItems"
+        ]
+      },
+      "AdminPriceCoverageGroup": {
+        "type": "object",
+        "properties": {
+          "setId": {
+            "type": "string"
+          },
+          "setName": {
+            "type": "string"
+          },
+          "languageCode": {
+            "type": "string"
+          },
+          "affectedCards": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missingPrices": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deferredPrices": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "providerErrors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missingCache": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missingVariantCards": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "setId",
+          "setName",
+          "languageCode",
+          "affectedCards",
+          "missingPrices",
+          "deferredPrices",
+          "providerErrors",
+          "missingCache",
+          "missingVariantCards"
+        ]
+      },
+      "AdminPriceCoverageResponse": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceCoverageGroup"
+            }
+          }
+        },
+        "required": [
+          "groups"
+        ]
+      },
+      "AdminPriceCoverageCard": {
+        "type": "object",
+        "properties": {
+          "cardId": {
+            "type": "string"
+          },
+          "cardName": {
+            "type": "string"
+          },
+          "cardNumber": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "variantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "variant": {
+            "type": "string",
+            "nullable": true
+          },
+          "failureDetail": {
+            "type": "string",
+            "nullable": true
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "cardId",
+          "cardName",
+          "cardNumber",
+          "reason"
+        ]
+      },
+      "AdminPriceCoverageCardsResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceCoverageCard"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "offset",
+          "items"
         ]
       }
     }

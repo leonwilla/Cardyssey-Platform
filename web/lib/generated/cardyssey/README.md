@@ -55,6 +55,8 @@ All URIs are relative to *http://127.0.0.1:8081*
 *AccountApi* | [**updateMyAvatar**](docs/AccountApi.md#updatemyavatar) | **PUT** /api/v1/me/avatar | Profilbild hochladen
 *AdminApi* | [**getAdminAccess**](docs/AdminApi.md#getadminaccess) | **GET** /api/v1/admin/access | Eigene Admin-/Founder-Berechtigung laden
 *AdminApi* | [**getAdminOverview**](docs/AdminApi.md#getadminoverview) | **GET** /api/v1/admin/overview | Control-Center-Übersicht laden
+*AdminApi* | [**getAdminPriceCoverage**](docs/AdminApi.md#getadminpricecoverage) | **GET** /api/v1/admin/price-coverage | Fehlende Preise nach Set und Sprache
+*AdminApi* | [**getAdminPriceCoverageCards**](docs/AdminApi.md#getadminpricecoveragecards) | **GET** /api/v1/admin/price-coverage/cards | Fehlende Preise eines Sets (100 Einträge pro Seite)
 *AdminApi* | [**getAdminUser**](docs/AdminApi.md#getadminuser) | **GET** /api/v1/admin/users/{id} | Read-only Nutzerdetails laden
 *AdminApi* | [**getAdminUsers**](docs/AdminApi.md#getadminusers) | **GET** /api/v1/admin/users | Nutzer für das Control Center laden
 *AdminApi* | [**getFounderSystem**](docs/AdminApi.md#getfoundersystem) | **GET** /api/v1/admin/system | Founder-Systemstatus laden
@@ -112,6 +114,10 @@ All URIs are relative to *http://127.0.0.1:8081*
 - [AdminCollectionItemResponse](docs/AdminCollectionItemResponse.md)
 - [AdminListingResponse](docs/AdminListingResponse.md)
 - [AdminOverviewResponse](docs/AdminOverviewResponse.md)
+- [AdminPriceCoverageCard](docs/AdminPriceCoverageCard.md)
+- [AdminPriceCoverageCardsResponse](docs/AdminPriceCoverageCardsResponse.md)
+- [AdminPriceCoverageGroup](docs/AdminPriceCoverageGroup.md)
+- [AdminPriceCoverageResponse](docs/AdminPriceCoverageResponse.md)
 - [AdminUserDetailResponse](docs/AdminUserDetailResponse.md)
 - [AdminUserSummaryResponse](docs/AdminUserSummaryResponse.md)
 - [AdminWishlistItemResponse](docs/AdminWishlistItemResponse.md)

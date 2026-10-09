@@ -7,6 +7,10 @@ docs/AdminApi.md
 docs/AdminCollectionItemResponse.md
 docs/AdminListingResponse.md
 docs/AdminOverviewResponse.md
+docs/AdminPriceCoverageCard.md
+docs/AdminPriceCoverageCardsResponse.md
+docs/AdminPriceCoverageGroup.md
+docs/AdminPriceCoverageResponse.md
 docs/AdminUserDetailResponse.md
 docs/AdminUserSummaryResponse.md
 docs/AdminWishlistItemResponse.md
@@ -105,6 +109,10 @@ src/main/kotlin/de/cardyssey/generated/models/AdminAccessResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminCollectionItemResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminListingResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminOverviewResponse.kt
+src/main/kotlin/de/cardyssey/generated/models/AdminPriceCoverageCard.kt
+src/main/kotlin/de/cardyssey/generated/models/AdminPriceCoverageCardsResponse.kt
+src/main/kotlin/de/cardyssey/generated/models/AdminPriceCoverageGroup.kt
+src/main/kotlin/de/cardyssey/generated/models/AdminPriceCoverageResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminUserDetailResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminUserSummaryResponse.kt
 src/main/kotlin/de/cardyssey/generated/models/AdminWishlistItemResponse.kt
@@ -169,6 +177,10 @@ src/test/kotlin/de/cardyssey/generated/models/AdminAccessResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminCollectionItemResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminListingResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminOverviewResponseTest.kt
+src/test/kotlin/de/cardyssey/generated/models/AdminPriceCoverageCardTest.kt
+src/test/kotlin/de/cardyssey/generated/models/AdminPriceCoverageCardsResponseTest.kt
+src/test/kotlin/de/cardyssey/generated/models/AdminPriceCoverageGroupTest.kt
+src/test/kotlin/de/cardyssey/generated/models/AdminPriceCoverageResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminUserDetailResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminUserSummaryResponseTest.kt
 src/test/kotlin/de/cardyssey/generated/models/AdminWishlistItemResponseTest.kt

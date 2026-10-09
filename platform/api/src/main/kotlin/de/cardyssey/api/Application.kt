@@ -82,6 +82,9 @@ fun Application.module() {
     val adminPriceMonitorRepository =
         AdminPriceMonitorRepository(database)
 
+    val adminPriceCoverageRepository =
+        AdminPriceCoverageRepository(database)
+
     val adminUserManagementRepository =
         AdminUserManagementRepository(database)
 
@@ -636,6 +639,7 @@ fun Application.module() {
             roles = roleRepository,
             admin = adminRepository,
             priceMonitor = adminPriceMonitorRepository,
+            priceCoverage = adminPriceCoverageRepository,
             userManagement =
                 adminUserManagementRepository,
             registrationSettings =

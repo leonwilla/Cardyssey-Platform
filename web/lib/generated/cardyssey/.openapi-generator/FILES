@@ -8,6 +8,10 @@ docs/AdminApi.md
 docs/AdminCollectionItemResponse.md
 docs/AdminListingResponse.md
 docs/AdminOverviewResponse.md
+docs/AdminPriceCoverageCard.md
+docs/AdminPriceCoverageCardsResponse.md
+docs/AdminPriceCoverageGroup.md
+docs/AdminPriceCoverageResponse.md
 docs/AdminUserDetailResponse.md
 docs/AdminUserSummaryResponse.md
 docs/AdminWishlistItemResponse.md
@@ -87,6 +91,10 @@ src/models/AdminAccessResponse.ts
 src/models/AdminCollectionItemResponse.ts
 src/models/AdminListingResponse.ts
 src/models/AdminOverviewResponse.ts
+src/models/AdminPriceCoverageCard.ts
+src/models/AdminPriceCoverageCardsResponse.ts
+src/models/AdminPriceCoverageGroup.ts
+src/models/AdminPriceCoverageResponse.ts
 src/models/AdminUserDetailResponse.ts
 src/models/AdminUserSummaryResponse.ts
 src/models/AdminWishlistItemResponse.ts

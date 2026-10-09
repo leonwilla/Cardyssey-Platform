@@ -17,6 +17,7 @@ fun Route.adminRoutes(
     roles: RoleRepository,
     admin: AdminRepository,
     priceMonitor: AdminPriceMonitorRepository,
+    priceCoverage: AdminPriceCoverageRepository,
     userManagement: AdminUserManagementRepository,
     registrationSettings: RegistrationSettingsRepository,
     justTcgConfigured: Boolean,
@@ -62,6 +63,29 @@ fun Route.adminRoutes(
                         status = call.request.queryParameters["status"]
                     )
                 )
+            }
+
+            get("/price-coverage") {
+                if (!call.requireAdmin(roles)) return@get
+                val language = call.request.queryParameters["language"]?.trim()?.lowercase()?.takeIf { it.isNotBlank() && it != "all" }
+                if (language != null && language !in AdminPriceCoverageRepository.languages) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_language"))
+                    return@get
+                }
+                call.respond(priceCoverage.overview(language))
+            }
+
+            get("/price-coverage/cards") {
+                if (!call.requireAdmin(roles)) return@get
+                val language = call.request.queryParameters["language"]?.trim()?.lowercase()
+                val setId = call.request.queryParameters["setId"]?.trim()
+                val rawOffset = call.request.queryParameters["offset"]
+                val offset = if (rawOffset == null) 0 else rawOffset.toIntOrNull()
+                if (language !in AdminPriceCoverageRepository.languages || setId.isNullOrBlank() || setId.length > 160 || offset == null || offset < 0) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_coverage_filter"))
+                    return@get
+                }
+                call.respond(priceCoverage.cards(language!!, setId, offset))
             }
 
             get("/users") {

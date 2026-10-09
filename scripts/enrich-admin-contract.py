@@ -259,6 +259,36 @@ paths.update({
     },
 })
 
+# Full physical catalogue coverage, including deferred and missing-variant entries.
+coverage_group = {
+    "setId": {"type": "string"}, "setName": {"type": "string"}, "languageCode": {"type": "string"},
+    **{key: {"type": "integer", "format": "int64"} for key in
+       ("affectedCards", "missingPrices", "deferredPrices", "providerErrors", "missingCache", "missingVariantCards")},
+}
+schemas["AdminPriceCoverageGroup"] = obj(coverage_group, list(coverage_group))
+schemas["AdminPriceCoverageResponse"] = obj({"groups": array(ref("AdminPriceCoverageGroup"))}, ["groups"])
+coverage_card = {
+    **{key: {"type": "string"} for key in ("cardId", "cardName", "cardNumber", "reason")},
+    **{key: nullable({"type": "string"}) for key in ("variantId", "variant", "failureDetail", "nextAttemptAt")},
+}
+schemas["AdminPriceCoverageCard"] = obj(coverage_card, ["cardId", "cardName", "cardNumber", "reason"])
+schemas["AdminPriceCoverageCardsResponse"] = obj({
+    "total": {"type": "integer", "format": "int64"},
+    "offset": {"type": "integer", "minimum": 0},
+    "items": array(ref("AdminPriceCoverageCard")),
+}, ["total", "offset", "items"])
+coverage_language = {"name": "language", "in": "query", "schema": {"type": "string", "enum": ["de", "en", "ja", "ko", "zh-cn", "zh-tw"]}}
+paths["/api/v1/admin/price-coverage"] = {"get": admin_operation(
+    "getAdminPriceCoverage", "Fehlende Preise nach Set und Sprache", ref("AdminPriceCoverageResponse"),
+    parameters=[coverage_language],
+)}
+paths["/api/v1/admin/price-coverage/cards"] = {"get": admin_operation(
+    "getAdminPriceCoverageCards", "Fehlende Preise eines Sets (100 Einträge pro Seite)", ref("AdminPriceCoverageCardsResponse"),
+    parameters=[{**coverage_language, "required": True},
+                {"name": "setId", "in": "query", "required": True, "schema": {"type": "string", "maxLength": 160}},
+                {"name": "offset", "in": "query", "schema": {"type": "integer", "minimum": 0, "default": 0}}],
+)}
+
 text = json.dumps(
     spec,
     indent=2,
