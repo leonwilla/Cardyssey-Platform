@@ -175,7 +175,7 @@ def load_targets():
         AND c.local_id ~ '^[0-9]+$' AND s.official_count>0
         AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE')
              OR (p.source IN (""" + sources + """) AND
-                 (p.next_attempt_at<=NOW() OR p.updated_at<=NOW()-INTERVAL '6 days')))
+                 (TRUE)))
       ORDER BY c.set_id,c.local_id,p.variant_id
     ) t;""")
     return [row for row in json.loads(raw) if eligible_variant(row)]

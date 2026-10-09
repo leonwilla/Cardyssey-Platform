@@ -11,115 +11,162 @@ concurrency:
 
 jobs:
   refresh:
-    timeout-minutes: 30
+    timeout-minutes: 40
     runs-on: [self-hosted, linux, x64, cardyssey-android]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
       - name: Test exact retail price matching
+        id: price_tests
         run: |
           python3 scripts/test-price-coverage.py
           python3 scripts/test-price-source-round2.py
           python3 scripts/test-price-round3.py
           python3 scripts/test-price-round5.py
           python3 scripts/test-price-round6.py
+          python3 scripts/test-price-round7.py
 
       - name: Reactivate deferred market prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/reactivate-pending-market-prices.py
 
       - name: Backfill curated catalog variants
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/backfill-curated-tangela-sm10.py
 
       - name: Backfill verified special TCGplayer variants
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/backfill-tcgcsv-special-variants.py
 
       - name: Refresh verified TCGCSV prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/refresh-tcgcsv-price-cache.py
 
       - name: Refresh verified Cardmarket prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/refresh-cardmarket-price-cache.py
 
       - name: Refresh CardTrader marketplace prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-semantic.py
 
       - name: Resolve classic Japanese printings
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-ja-classic.py
 
       - name: Resolve Japanese reverse printings
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-ja-reverse.py
 
       - name: Resolve classic Japanese sequence sets
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-ja-sequence.py
 
       - name: Resolve PMCG1 exact artwork prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-pmcg1-art.py
 
       - name: Resolve PMCG3 exact artwork prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-pmcg3-art.py
 
       - name: Resolve Japanese Pokédex identities
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-ja-dex.py
 
       - name: Resolve Japanese promo prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-ja-promos.py
 
       - name: Resolve Japanese promo prices from CardRush
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardrush-ja-promos.py --apply
 
       - name: Resolve Japanese numbered prices from CardRush
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardrush-ja-numbered.py --apply
 
       - name: Resolve Japanese edition prices from CardRush
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardrush-ja-editions.py --apply
 
       - name: Resolve special promo prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-specials.py
 
       - name: Resolve exact named TCGCSV specials
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-tcgcsv-named-specials.py
 
       - name: Resolve exact western leftovers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 4
         run: timeout 180s python3 scripts/resolve-cardtrader-western-safe.py --apply --report /tmp/cardyssey-western-weekly.json
 
       - name: Resolve Traditional Chinese special printings
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-zhtw-specials.py
 
       - name: Resolve audited Traditional Chinese art identities
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardtrader-zhtw-art-mapped.py
 
       - name: Refresh exact in-stock Traditional Chinese retail offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 4
         run: timeout 180s python3 scripts/resolve-zhtw-retailer-prices.py --apply
 
       - name: Refresh exact CardLand Traditional Chinese offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 4
         run: timeout 180s python3 scripts/resolve-cardland-zhtw-prices.py --apply
 
       - name: Resolve Traditional Chinese retail reference prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-hktcg-zhtw.py --apply
 
       - name: Bridge exact CardTrader identities to Cardmarket
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
 
       - name: Refresh exact in-stock Korean retail offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 5
         run: timeout 240s python3 scripts/resolve-uturi-ko-prices.py --apply --report /tmp/cardyssey-uturi-weekly.json
 
       - name: Refresh exact Near Mint Korean offers from Mewtwo
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 5
         run: timeout 240s python3 scripts/resolve-mewtwo-ko-prices.py --apply --report /tmp/cardyssey-mewtwo-weekly.json
 
+      - name: Refresh exact Near Mint Korean offers from Lake Cards
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-shopify-ko-prices.py --shop lake --apply --report /tmp/cardyssey-lake-weekly.json
+
+      - name: Refresh exact Near Mint Korean offers from ManaMarket
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-shopify-ko-prices.py --shop mana --apply --report /tmp/cardyssey-mana-weekly.json
+
       - name: Refresh exact Japanese edition and numbered promo offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 3
         run: timeout 120s python3 scripts/resolve-hareruya-ja-prices.py --apply --report /tmp/cardyssey-hareruya-weekly.json
 
+      - name: Refresh curated exact Japanese classic-edition offers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-torecacamp-ja-prices.py --apply --report /tmp/cardyssey-toreca-weekly.json
+
       - name: Recover verified catalogue duplicate variants and prices
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 1
         run: timeout 40s python3 scripts/repair-verified-catalog-twins.py --apply
 
       - name: Annotate unresolved price backlog
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/annotate-price-backlog.py
 
       - name: Audit full physical catalog price coverage
@@ -139,7 +186,10 @@ jobs:
           path: |
             /tmp/cardyssey-uturi-weekly.json
             /tmp/cardyssey-mewtwo-weekly.json
+            /tmp/cardyssey-lake-weekly.json
+            /tmp/cardyssey-mana-weekly.json
             /tmp/cardyssey-hareruya-weekly.json
+            /tmp/cardyssey-toreca-weekly.json
             /tmp/cardyssey-western-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore

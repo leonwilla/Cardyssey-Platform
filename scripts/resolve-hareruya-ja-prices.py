@@ -107,7 +107,7 @@ def load_targets():
  LEFT JOIN cardtrader_variant_identity_cache vi ON vi.card_id=p.card_id AND vi.language_code=p.language_code AND vi.variant_id=p.variant_id
  WHERE p.language_code='ja' AND p.variant_id=v.value->>'id' AND c.local_id ~ '^[0-9]+$'
  AND LEFT(c.card_id,9)<>'official_' AND
- (p.resolution_status='NO_PRICE' OR (p.source='WEB_HARERUYA_JP' AND (p.next_attempt_at<=NOW() OR p.updated_at<=NOW()-INTERVAL '6 days')))
+ (p.resolution_status='NO_PRICE' OR (p.source='WEB_HARERUYA_JP' AND (TRUE)))
  ) t;"""))
 
 def verified_blueprint_names(rows):

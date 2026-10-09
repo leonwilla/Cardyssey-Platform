@@ -29,7 +29,7 @@ retail=module('resolve-zhtw-retailer-prices')
 HOST='https://uturitrading.com'
 COLLECTION=HOST+'/en/collections/cartes-unite-pokemon'
 SOURCE='WEB_UTURI_KO'
-TRUSTED_KOREAN_SOURCES = frozenset(('WEB_UTURI_KO', 'WEB_MEWTWO_KO'))
+TRUSTED_KOREAN_SOURCES = frozenset(('WEB_UTURI_KO', 'WEB_MEWTWO_KO', 'WEB_LAKE_KO', 'WEB_MANA_KO'))
 SKU=re.compile(r'^(\d+)\s+((?:SV|SM|S\d|XY|BW|M\d)[A-Za-z0-9-]*)$',re.I)
 VARIANT={'id':'generated','type':'normal','size':'standard','stamps':[],'legacyVariant':'NORMAL'}
 
@@ -131,7 +131,7 @@ def load_targets(source=SOURCE):
       WHERE c.language_code='ko' AND c.details_complete AND c.local_id ~ '^[0-9]+$'
       AND c.image_source_url IS NOT NULL AND c.image_source_url<>''
       AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR (c.variants='"""+json.dumps([VARIANT])+"""'::jsonb AND c.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO'))
-      AND (p.card_id IS NULL OR p.resolution_status='NO_PRICE' OR (p.source='WEB_UTURI_KO' AND (p.next_attempt_at<=NOW() OR p.updated_at<=NOW()-INTERVAL '6 days')))
+      AND (p.card_id IS NULL OR p.resolution_status='NO_PRICE' OR (p.source='WEB_UTURI_KO' AND (TRUE)))
     ) t;"""
     sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
     return json.loads(retail.db(sql))
