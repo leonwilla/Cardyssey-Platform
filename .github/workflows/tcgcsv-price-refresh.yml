@@ -21,6 +21,7 @@ jobs:
         run: |
           python3 scripts/test-price-coverage.py
           python3 scripts/test-price-source-round2.py
+          python3 scripts/test-price-round3.py
 
       - name: Reactivate deferred market prices
         run: python3 scripts/reactivate-pending-market-prices.py
@@ -99,6 +100,14 @@ jobs:
       - name: Bridge exact CardTrader identities to Cardmarket
         run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
 
+      - name: Refresh exact in-stock Korean retail offers
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-uturi-ko-prices.py --apply --report /tmp/cardyssey-uturi-weekly.json
+
+      - name: Refresh explicit Japanese edition retail offers
+        timeout-minutes: 3
+        run: timeout 120s python3 scripts/resolve-hareruya-ja-prices.py --apply --report /tmp/cardyssey-hareruya-weekly.json
+
       - name: Recover verified catalogue duplicate variants and prices
         timeout-minutes: 1
         run: timeout 40s python3 scripts/repair-verified-catalog-twins.py --apply
@@ -109,3 +118,14 @@ jobs:
       - name: Audit full physical catalog price coverage
         if: always()
         run: python3 scripts/audit-price-coverage.py
+
+      - name: Preserve exact retail evidence and review candidates
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: exact-asian-retail-evidence
+          path: |
+            /tmp/cardyssey-uturi-weekly.json
+            /tmp/cardyssey-hareruya-weekly.json
+          if-no-files-found: ignore
+          retention-days: 14

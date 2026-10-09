@@ -187,26 +187,36 @@ def apply_updates(updates):
     values = []
     for update in updates:
         row, offer = update["row"], update["offer"]
+        language = row.get("language_code", "zh-tw")
+        if language not in ('de','en','ja','ko','zh-cn','zh-tw'):
+            raise ValueError("unsupported price language")
+        currency = offer.get("currency", "HKD")
+        amount = offer.get("amount", offer.get("hkd"))
+        if currency not in ('HKD','JPY','EUR') or positive_decimal(amount) is None or positive_decimal(update['base_eur']) is None:
+            raise ValueError("invalid retail currency/price")
         detail = json.dumps({
-            "basis": "ASKING", "currency": "HKD", "listed": offer["hkd"],
-            "fx_hkd_eur": update["fx"], "fx_date": update["fx_date"],
+            "basis": "ASKING", "currency": currency, "listed": amount,
+            ("fx_hkd_eur" if currency == "HKD" else "fx_to_eur"): update["fx"], "fx_date": update["fx_date"],
             "observed_at": update["observed_at"], "in_stock": True,
             "nm_base_factor": str(NM_FACTOR), "title": offer["title"],
             "url": offer["url"], "product_id": offer["product_id"],
+            "offer_variant_id": offer.get("offer_variant_id"),
+            **({"condition": offer["condition"]} if offer.get("condition") else {}),
+            **({"identity_method": offer["identity_method"], "blueprint_id": offer.get("blueprint_id")} if offer.get("identity_method") else {}),
         }, ensure_ascii=False, separators=(",", ":"))
         values.append("(" + ",".join(map(quote, (
-            row["card_id"], row["variant_id"], offer["source"], update["base_eur"],
+            row["card_id"], language, row["variant_id"], offer["source"], update["base_eur"],
             detail, row["updated_at"], row["resolution_status"],
         ))) + ")")
     # Update + history are one statement. A concurrently refreshed row is skipped.
-    sql = """WITH incoming(card_id,variant_id,source,base_eur,detail,old_updated,old_status) AS (
+    sql = """WITH incoming(card_id,language_code,variant_id,source,base_eur,detail,old_updated,old_status) AS (
       VALUES """ + ",".join(values) + """
     ), changed AS (
       UPDATE tcg_price_cache p SET source=i.source,base_eur=i.base_eur::numeric,
         resolution_status='PRICE_FOUND',failure_detail=i.detail,updated_at=NOW(),
         next_attempt_at=NOW()+INTERVAL '7 days'
       FROM incoming i WHERE p.card_id=i.card_id AND p.variant_id=i.variant_id
-        AND p.language_code='zh-tw' AND p.resolution_status=i.old_status
+        AND p.language_code=i.language_code AND p.resolution_status=i.old_status
         AND p.updated_at=i.old_updated::timestamptz
       RETURNING p.card_id,p.language_code,p.variant_id,p.source,p.base_eur
     ), recorded AS (
