@@ -18,7 +18,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Test exact retail price matching
-        run: python3 scripts/test-price-coverage.py
+        run: |
+          python3 scripts/test-price-coverage.py
+          python3 scripts/test-price-source-round2.py
 
       - name: Reactivate deferred market prices
         run: python3 scripts/reactivate-pending-market-prices.py
@@ -87,11 +89,19 @@ jobs:
         timeout-minutes: 4
         run: timeout 180s python3 scripts/resolve-zhtw-retailer-prices.py --apply
 
+      - name: Refresh exact CardLand Traditional Chinese offers
+        timeout-minutes: 4
+        run: timeout 180s python3 scripts/resolve-cardland-zhtw-prices.py --apply
+
       - name: Resolve Traditional Chinese retail reference prices
         run: python3 scripts/resolve-hktcg-zhtw.py --apply
 
       - name: Bridge exact CardTrader identities to Cardmarket
         run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
+
+      - name: Recover verified catalogue duplicate variants and prices
+        timeout-minutes: 1
+        run: timeout 40s python3 scripts/repair-verified-catalog-twins.py --apply
 
       - name: Annotate unresolved price backlog
         run: python3 scripts/annotate-price-backlog.py
