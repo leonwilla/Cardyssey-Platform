@@ -31,7 +31,7 @@ RARITY={
 }
 SET_ALIASES={'XY1-Bx': ('xy1', 'コレクションX'), 'XY1-By': ('xy1y', 'コレクションY'), 'XY2': ('xy2', 'ワイルドブレイズ'), 'XY3': ('xy3', 'ライジングフィスト'), 'XY4': ('xy4', 'ファントムゲート'), 'XY5-Bg': ('xy5', 'ガイアボルケーノ'), 'XY5-Bt': ('xy5t', 'タイダルストーム'), 'XY6-B': ('xy6', 'エメラルドブレイク'), 'XY7-B': ('xy7', 'バンデットリング'), 'XY8-Bb': ('xy8', '青い衝撃'), 'XY8-Br': ('xy8r', '赤い閃光'), 'XY9-B': ('xy9', '破天の怒り'), 'XY10-B': ('xy10', 'めざめる超王'), 'XY11-Bb': ('xy11f', '爆熱の闘士'), 'XY11-Br': ('xy11', '冷酷の反逆者')}
 def regular_set(code):
- return code in SET_ALIASES or re.fullmatch(r"(?:SM|SV|S)\d+[A-Za-z]*",str(code),re.I) is not None
+ return code in SET_ALIASES or re.fullmatch(r"(?:SM|SV|S|M)\d+[A-Za-z]*",str(code),re.I) is not None
 def blueprint_matches(row,bp,expansion,names):
  if row.get("language_code")!="ja" or row.get("identity_count")!=1 or not row.get("card_id","").startswith("official_ja_"):return False
  if not regular_set(row["set_id"]) or expansion.get("game_id")!=5 or ko.normalize(expansion.get("code",""))!=ko.normalize(row.get("market_code",row["set_id"])):return False
@@ -235,7 +235,7 @@ def cached_official_rows(rows,names=None):
  return eligible,rejected
 
 retail=ko.retail;VARIANT=ko.VARIANT
-TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,"TCGCSV_JP_MARKET"))
+TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,"TCGCSV_JP_MARKET","POKEWALLET_JP_MARKET"))
 def species_names():
  import csv,io
  grouped=defaultdict(dict)

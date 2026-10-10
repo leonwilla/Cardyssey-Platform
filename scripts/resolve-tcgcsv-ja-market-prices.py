@@ -58,7 +58,7 @@ def main():
  groups=retail.get_json(BASE+"/groups");assert groups["success"] and not groups["errors"]
  index=defaultdict(list)
  for g in groups["results"]:
-  m=re.match(r"((?:SM|SV|S|XY)\d+[A-Za-z]*): ",g.get("name",""))
+  m=re.match(r"((?:SM|SV|S|XY|M)\d+[A-Za-z]*): ",g.get("name",""),re.I)
   if m:index[ja.ko.normalize(m[1])].append(g)
  expansions=ct("/expansions");expindex=defaultdict(list)
  for e in expansions:

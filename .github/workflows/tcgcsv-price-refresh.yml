@@ -31,6 +31,8 @@ jobs:
           python3 scripts/test-price-round11.py
           python3 scripts/test-price-round12.py
           python3 scripts/test-price-round13.py
+          python3 scripts/test-pokewallet-client.py
+          python3 scripts/test-pokewallet-prices.py
 
       - name: Resolve True Unicorn Korean singles
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -204,6 +206,16 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/annotate-price-backlog.py
 
+      - name: Resolve Japanese PokéWallet market estimates
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          if [ -f /home/tv/.config/cardyssey/secrets/pokewallet-api-key ]; then
+            timeout 540s python3 scripts/resolve-pokewallet-ja-market-prices.py --apply --max-requests 50 --report /tmp/cardyssey-pokewallet-ja-weekly.json
+          else
+            echo "PokéWallet key not configured; skipping"
+          fi
+
       - name: Resolve Japanese TCGCSV market estimates
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 8
@@ -238,6 +250,7 @@ jobs:
             /tmp/cardyssey-english-review-weekly.json
             /tmp/cardyssey-unicorn-ko-prices.json
             /tmp/cardyssey-tcgcsv-ja-weekly.json
+            /tmp/cardyssey-pokewallet-ja-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14

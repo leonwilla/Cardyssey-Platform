@@ -82,13 +82,13 @@ def postgres_tests():
  CREATE TEMP TABLE tcg_price_cache(card_id text,language_code text,variant_id text,legacy_variant text,source text,base_eur numeric,updated_at timestamptz,resolution_status text,failure_detail text,next_attempt_at timestamptz,UNIQUE(card_id,language_code,variant_id));
  CREATE TEMP TABLE tcg_price_history(card_id text,language_code text,variant_id text,source text,base_eur numeric,captured_at timestamptz);"""
  count=0
- for lang,module,writer in [("ko",ko,ko.ko.apply_updates),("ja",ja,ja.apply_updates)]:
+ for lang,module,writer,source in [("ko",ko,ko.ko.apply_updates,ko.SOURCE),("ja",ja,ja.apply_updates,ja.SOURCE),("ja",ja,ja.apply_updates,"POKEWALLET_JP_MARKET")]:
   cid="official_"+lang+"_fixture"
   row=dict(card_id=cid,language_code=lang,set_id="SV1V",local_id="001",native_name="name",image_source_url="image",old_variants=[],old_updated=None,old_status=None)
-  update=dict(row=row,offer=dict(source=module.SOURCE),base_eur="1",observed_at="2026-10-10T12:00:00Z")
+  update=dict(row=row,offer=dict(source=source),base_eur="1",observed_at="2026-10-10T12:00:00Z")
   sqls=[]
   with patch.object(ko.ko.retail if lang=="ko" else ja.retail,"db",side_effect=lambda sql:sqls.append(sql) or '{"variants":0,"prices":0,"history":0}'):
-   writer([update],module.SOURCE,missing_only=True)
+   writer([update],source,missing_only=True)
   insert="INSERT INTO catalog_cards_mirror VALUES("+",".join(map(module.ko.retail.quote,[cid,lang,"SV1V","001",'{"name":"name"}',"image","[]"]))+");"
   for label,extra,expected in [
     ("missing","",dict(variants=1,prices=1,history=1)),
