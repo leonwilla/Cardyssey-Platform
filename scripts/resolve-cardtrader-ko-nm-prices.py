@@ -94,9 +94,12 @@ def write_report(path,report):
  temporary=path.with_name(path.name+".tmp")
  temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2)+chr(10))
  temporary.replace(path)
+missing_spec=importlib.util.spec_from_file_location("missing_prices",Path(__file__).with_name("missing-price-targets.py"))
+missing=importlib.util.module_from_spec(missing_spec);missing_spec.loader.exec_module(missing)
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  parser.add_argument("--apply",action="store_true");parser.add_argument("--report",type=Path)
+ parser.add_argument("--missing-only",action="store_true",help="Only cards without any positive cached price; weekly default still refreshes")
  parser.add_argument("--sets",nargs="*",help="Optional exact catalogue set codes; default all regular Korean boosters")
  args=parser.parse_args()
  token=next((x.split("=",1)[1].strip() for x in Path("/home/tv/cardshop/platform/.env").read_text().splitlines() if x.startswith("CARDTRADER_API_TOKEN=")),"")
@@ -110,6 +113,7 @@ def main():
  names=ko.species_names()
  rows=extra.load_targets(SOURCE)+pinned.load_targets(ko,SOURCE,names)
  if len({r["card_id"] for r in rows})!=len(rows):raise ValueError("duplicate Korean target")
+ if args.missing_only:rows=missing.filter_targets(rows,ko.retail)
  rows=[r for r in rows if regular_set(r["set_id"]) and (not args.sets or r["set_id"] in args.sets)]
  expansions=get("/expansions");index=defaultdict(list)
  for e in expansions:
@@ -142,7 +146,7 @@ def main():
    write_report(args.report,checkpoint)
 
  report=dict(complete=True,candidates=len(rows),expansions=len(groups),matched=len(updates),rejected=dict(rejected),errors=errors,updates=updates,
-             applied=ko.apply_updates(updates,SOURCE) if args.apply and not errors else dict(variants=0,prices=0,history=0))
+             applied=ko.apply_updates(updates,SOURCE,missing_only=args.missing_only) if args.apply and not errors else dict(variants=0,prices=0,history=0))
  if args.report:write_report(args.report,report)
  print(json.dumps({k:v for k,v in report.items() if k!="updates"}),flush=True)
  if errors:raise SystemExit(1)

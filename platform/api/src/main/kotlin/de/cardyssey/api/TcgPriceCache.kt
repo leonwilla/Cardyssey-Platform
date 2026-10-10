@@ -4,6 +4,17 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.delay
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.DayOfWeek
+import java.time.LocalTime
+
+/** Missing prices fill continuously; existing prices refresh in the Sunday UTC lane. */
+internal fun weeklyPriceRefreshAllowed(
+    now: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)
+): Boolean {
+    val utc = now.withOffsetSameInstant(ZoneOffset.UTC)
+    return utc.dayOfWeek == DayOfWeek.SUNDAY &&
+        !utc.toLocalTime().isBefore(LocalTime.of(4, 17))
+}
 
 data class CachedTcgPrice(
     val cardId: String,
@@ -355,7 +366,8 @@ class TcgPriceCacheRepository(
         baseEur: Double?,
         resolutionStatus: String,
         failureDetail: String?,
-        retryAfterHours: Long
+        retryAfterHours: Long,
+        allowExistingPrices: Boolean = weeklyPriceRefreshAllowed()
     ) {
         val normalized =
             baseEur
@@ -365,7 +377,7 @@ class TcgPriceCacheRepository(
                 }
 
         dataSource.connection.use { connection ->
-            connection.prepareStatement(
+            val written = connection.prepareStatement(
                 """
                 INSERT INTO tcg_price_cache (
                     card_id,
@@ -392,6 +404,7 @@ class TcgPriceCacheRepository(
                     failure_detail = EXCLUDED.failure_detail,
                     updated_at = NOW(),
                     next_attempt_at = EXCLUDED.next_attempt_at
+                WHERE ? OR COALESCE(tcg_price_cache.base_eur, 0) <= 0
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, target.cardId)
@@ -425,11 +438,12 @@ class TcgPriceCacheRepository(
                     retryAfterHours.coerceAtLeast(1L)
                 )
 
+                statement.setBoolean(10, allowExistingPrices)
                 statement.executeUpdate()
             }
 
             if (
-                normalized != null
+                normalized != null && written > 0
             ) {
                 connection.prepareStatement(
                     """
@@ -512,7 +526,8 @@ class TcgPriceCacheRepository(
     fun dueTargets(
         languages: List<String>,
         ttlHours: Long,
-        limit: Int
+        limit: Int,
+        allowExistingPrices: Boolean = weeklyPriceRefreshAllowed()
     ): List<TcgPriceRefreshTarget> {
         if (languages.isEmpty()) {
             return emptyList()
@@ -522,6 +537,9 @@ class TcgPriceCacheRepository(
             languages.joinToString(",") {
                 "?"
             }
+
+        val missingOnlyClause =
+            if (allowExistingPrices) "" else "AND COALESCE(p.base_eur, 0) <= 0"
 
         val sql =
             """
@@ -547,6 +565,7 @@ class TcgPriceCacheRepository(
                * on cards that can actually receive a physical market value.
                */
               AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
+              $missingOnlyClause
               AND (
                     p.next_attempt_at IS NULL
                     OR p.next_attempt_at <= NOW()
@@ -781,8 +800,8 @@ class CachedTcgPricingService(
     suspend fun runForever() {
         /*
          * Give Flyway/catalog startup a short head start. After that this loop
-         * continuously fills missing rows first and then rolls through prices
-         * older than the configured seven-day TTL.
+         * continuously fills missing rows. Existing positive prices are only
+         * eligible in the Sunday 04:17–24:00 UTC weekly refresh lane.
          */
         delay(
             15_000L
@@ -840,6 +859,12 @@ class CachedTcgPricingService(
     private suspend fun refreshTarget(
         target: TcgPriceRefreshTarget
     ) {
+        // Recheck queued targets before any provider request; a recovery import
+        // may have filled this price after the batch was selected.
+        if (!weeklyPriceRefreshAllowed() &&
+            (cache.read(target.cardId, target.languageCode, target.variantId)?.baseEur ?: 0.0) > 0.0
+        ) return
+
         val details =
             runCatching {
                 catalog.details(
@@ -1093,6 +1118,10 @@ class CachedTcgPricingService(
         failureDetail: String?,
         retryAfterHours: Long
     ) {
+        if (!weeklyPriceRefreshAllowed() &&
+            (cache.read(target.cardId, target.languageCode, target.variantId)?.baseEur ?: 0.0) > 0.0
+        ) return
+
         val preserved =
             cache.deferExistingPrice(
                 target = target,

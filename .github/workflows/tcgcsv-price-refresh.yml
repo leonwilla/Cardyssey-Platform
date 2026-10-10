@@ -30,6 +30,12 @@ jobs:
           python3 scripts/test-price-round9.py
           python3 scripts/test-price-round11.py
           python3 scripts/test-price-round12.py
+          python3 scripts/test-price-round13.py
+
+      - name: Resolve True Unicorn Korean singles
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: timeout 240s python3 scripts/resolve-unicorn-ko-prices.py --apply --report /tmp/cardyssey-unicorn-ko-prices.json
 
       - name: Reactivate deferred market prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -198,6 +204,11 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/annotate-price-backlog.py
 
+      - name: Resolve Japanese TCGCSV market estimates
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 8
+        run: timeout 420s python3 scripts/resolve-tcgcsv-ja-market-prices.py --apply --report /tmp/cardyssey-tcgcsv-ja-weekly.json
+
       - name: Audit full physical catalog price coverage
         if: always()
         run: python3 scripts/audit-price-coverage.py
@@ -225,6 +236,8 @@ jobs:
             /tmp/cardyssey-toreca-weekly.json
             /tmp/cardyssey-western-weekly.json
             /tmp/cardyssey-english-review-weekly.json
+            /tmp/cardyssey-unicorn-ko-prices.json
+            /tmp/cardyssey-tcgcsv-ja-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14

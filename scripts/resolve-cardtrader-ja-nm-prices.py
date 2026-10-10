@@ -96,9 +96,12 @@ def write_report(path,report):
  temporary=path.with_name(path.name+".tmp")
  temporary.write_text(json.dumps(report,ensure_ascii=False,indent=2)+chr(10))
  temporary.replace(path)
+missing_spec=importlib.util.spec_from_file_location("missing_prices",Path(__file__).with_name("missing-price-targets.py"))
+missing=importlib.util.module_from_spec(missing_spec);missing_spec.loader.exec_module(missing)
 def main():
  parser=argparse.ArgumentParser(description=__doc__)
  parser.add_argument("--apply",action="store_true");parser.add_argument("--report",type=Path)
+ parser.add_argument("--missing-only",action="store_true",help="Only cards without any positive cached price; weekly default still refreshes")
  parser.add_argument("--sets",nargs="*",help="Optional exact catalogue set codes; default all regular Japanese boosters")
  args=parser.parse_args()
  token=next((x.split("=",1)[1].strip() for x in Path("/home/tv/cardshop/platform/.env").read_text().splitlines() if x.startswith("CARDTRADER_API_TOKEN=")),"")
@@ -110,10 +113,11 @@ def main():
   req=urllib.request.Request(BASE+path,headers={"Authorization":"Bearer "+token,"Accept":"application/json","User-Agent":"Cardyssey/0.5 exact-ja-NM"})
   with urllib.request.urlopen(req,timeout=30) as response:return json.load(response)
  rows=load_targets(SOURCE)
+ if args.missing_only:rows=missing.filter_targets(rows,ko.retail)
  rows=[r for r in rows if regular_set(r["set_id"]) and (not args.sets or r["set_id"] in args.sets)]
  names=species_names()
  catalog_candidates=len(rows)
- rows,official_rejected=cached_official_rows(rows)
+ rows,official_rejected=cached_official_rows(rows,names)
  expansions=get("/expansions");index=defaultdict(list)
  for e in expansions:
   if e.get("game_id")==5:index[ko.normalize(e.get("code",""))].append(e)
@@ -142,7 +146,7 @@ def main():
    write_report(args.report,checkpoint)
 
  report=dict(complete=True,candidates=catalog_candidates,verified_official=len(rows),expansions=len(groups),matched=len(updates),rejected=dict(rejected),errors=errors,updates=updates,
-             applied=apply_updates(updates,SOURCE) if args.apply and not errors else dict(variants=0,prices=0,history=0))
+             applied=apply_updates(updates,SOURCE,missing_only=args.missing_only) if args.apply and not errors else dict(variants=0,prices=0,history=0))
  if args.report:write_report(args.report,report)
  print(json.dumps({k:v for k,v in report.items() if k!="updates"}),flush=True)
  if errors:raise SystemExit(1)
@@ -198,7 +202,14 @@ def cached_official_record(row,raw,revision):
  else:market_code=row["set_id"]
  return dict(row,official_count=int(total),rarity=OFFICIAL_RARITIES[rarity],official_rarity=rarity,
              official_number=str(raw["number"])+"/"+total,market_code=market_code),None
-def cached_official_rows(rows):
+def independent_species(native_name,names):
+ hits=[n for n in names if all(n.get(k) for k in ("1","6","9")) and ko.normalize(n["1"]) in ko.normalize(native_name)]
+ if not hits:return None
+ longest=max(len(ko.normalize(n["1"])) for n in hits)
+ hits=[n for n in hits if len(ko.normalize(n["1"]))==longest]
+ return hits[0] if len(hits)==1 else None
+
+def cached_official_rows(rows,names=None):
  root=Path("/home/tv/.cache/cardyssey-catalog/source")
  revision=subprocess.check_output(["git","-C",str(root),"rev-parse","HEAD"],text=True).strip()
  records=defaultdict(list);urls={x["official_url"] for x in rows}
@@ -212,12 +223,19 @@ def cached_official_rows(rows):
   if len(hits)!=1:rejected["official_record_missing_or_ambiguous"]+=1;continue
   verified,reason=cached_official_record(row,hits[0],revision)
   if reason:rejected[reason]+=1
-  else:eligible.append(verified)
+  else:
+   if not verified.get("german_species"):
+    species=independent_species(verified["native_name"],names or [])
+    if species is None:
+     rejected["independent_species_missing_or_ambiguous"]+=1;continue
+    verified["german_species"]=species["6"]
+    verified["species_identity_method"]="pinned-official-Pokemon-record/independent-PokeAPI-ja-de-en"
+   eligible.append(verified)
  print(json.dumps(dict(cached_official_checked=len(rows),cached_official_verified=len(eligible),source_revision=revision,rejected=dict(rejected))),flush=True)
  return eligible,rejected
 
 retail=ko.retail;VARIANT=ko.VARIANT
-TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,))
+TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,"TCGCSV_JP_MARKET"))
 def species_names():
  import csv,io
  grouped=defaultdict(dict)
@@ -237,7 +255,7 @@ def load_targets(source=SOURCE):
       FROM catalog_cards_mirror c JOIN counts ON counts.set_id=c.set_id AND counts.num=LTRIM(c.local_id,'0')
       LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code=c.language_code AND p.variant_id='generated'
       JOIN LATERAL (SELECT MIN(german_species_name) AS german_species,MIN(source_url) AS official_url,MIN(source_revision) AS source_revision FROM catalog_supplemental_cards s
-        WHERE s.canonical_card_id=c.card_id AND s.language_code=c.language_code HAVING COUNT(DISTINCT german_species_name)=1 AND COUNT(DISTINCT source_url)=1) species ON TRUE
+        WHERE s.canonical_card_id=c.card_id AND s.language_code=c.language_code HAVING COUNT(DISTINCT german_species_name) IN (0,1) AND COUNT(DISTINCT source_url)=1 AND COUNT(DISTINCT source_revision)=1) species ON TRUE
       WHERE c.language_code='ja' AND c.details_complete AND c.local_id ~ '^[0-9]+$'
       AND c.image_source_url IS NOT NULL AND c.image_source_url<>''
       AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR (c.variants='"""+json.dumps([VARIANT])+"""'::jsonb AND c.raw_payload->>'_cardyssey_retail_variant_source'='CARDTRADER_JP_NM'))
@@ -249,16 +267,17 @@ def load_targets(source=SOURCE):
     for row in rows:row["official_count"]=totals.get(row["set_id"])
     return rows
 
-def apply_updates(updates, source=SOURCE):
+def apply_updates(updates, source=SOURCE, *, missing_only=False):
     if source not in TRUSTED_JAPANESE_SOURCES:raise ValueError('unsupported Japanese source')
     if any(u['offer'].get('source')!=source for u in updates):raise ValueError('mixed Japanese sources')
     if any(u['row'].get('language_code')!='ja' or not u['row']['card_id'].startswith('official_ja_') for u in updates):raise ValueError('unsupported Japanese catalogue identity')
+    if missing_only and any(u["row"].get("old_status")=="PRICE_FOUND" for u in updates):raise ValueError("missing-only recovery cannot refresh PRICE_FOUND")
     if not updates:return dict(variants=0,prices=0,history=0)
     def q(value):return 'NULL' if value is None else retail.quote(value)
     values=[]
     for update in updates:
         r,o=update['row'],update['offer']
-        detail=json.dumps(dict(o,basis='ASKING',in_stock=True,observed_at=update['observed_at'],nm_base_factor='0.92'),ensure_ascii=False)
+        detail=json.dumps(dict(o,basis=o.get('basis','ASKING'),in_stock=o.get('in_stock',True),observed_at=update['observed_at'],nm_base_factor='0.92'),ensure_ascii=False)
         values.append('('+','.join(map(q,[r['card_id'],r['set_id'],r['local_id'],r['native_name'],r['image_source_url'],json.dumps(r['old_variants']),r['old_updated'],r['old_status'],update['base_eur'],detail]))+')')
     sql="""WITH incoming(card_id,set_id,local_id,native_name,image,old_variants,old_updated,old_status,base_eur,detail) AS (VALUES """+','.join(values)+"""),
     eligible AS (SELECT i.*,jsonb_array_length(c.variants)=0 AS needs_variant FROM incoming i
@@ -286,6 +305,9 @@ def apply_updates(updates, source=SOURCE):
     SELECT jsonb_build_object('variants',(SELECT COUNT(*) FROM catalog_changed),'prices',(SELECT COUNT(*) FROM written),'history',(SELECT COUNT(*) FROM history));"""
     sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
     sql=sql.replace(retail.quote(json.dumps(SOURCE)),retail.quote(json.dumps(source)))
+    if missing_only:
+        sql=sql.replace("AND p.resolution_status IS NOT DISTINCT FROM i.old_status)", "AND p.resolution_status IS NOT DISTINCT FROM i.old_status AND NOT EXISTS(SELECT 1 FROM tcg_price_cache existing WHERE existing.card_id=c.card_id AND existing.base_eur>0))")
+        sql=sql.replace("WHERE EXISTS(SELECT 1 FROM ready r WHERE r.card_id=EXCLUDED.card_id", "WHERE COALESCE(tcg_price_cache.base_eur,0)<=0 AND EXISTS(SELECT 1 FROM ready r WHERE r.card_id=EXCLUDED.card_id")
     return json.loads(retail.db(sql))
 
 if __name__=="__main__":main()
