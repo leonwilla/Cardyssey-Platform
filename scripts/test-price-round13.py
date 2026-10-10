@@ -82,7 +82,7 @@ def postgres_tests():
  CREATE TEMP TABLE tcg_price_cache(card_id text,language_code text,variant_id text,legacy_variant text,source text,base_eur numeric,updated_at timestamptz,resolution_status text,failure_detail text,next_attempt_at timestamptz,UNIQUE(card_id,language_code,variant_id));
  CREATE TEMP TABLE tcg_price_history(card_id text,language_code text,variant_id text,source text,base_eur numeric,captured_at timestamptz);"""
  count=0
- for lang,module,writer,source in [("ko",ko,ko.ko.apply_updates,ko.SOURCE),("ja",ja,ja.apply_updates,ja.SOURCE),("ja",ja,ja.apply_updates,"POKEWALLET_JP_MARKET")]:
+ for lang,module,writer,source in [("ko",ko,ko.ko.apply_updates,ko.SOURCE),("ja",ja,ja.apply_updates,ja.SOURCE),("ja",ja,ja.apply_updates,"POKEWALLET_JP_MARKET"),("ko",ko,ko.ko.apply_updates,"WEB_NERO_KO"),("ko",ko,ko.ko.apply_updates,"WEB_CARDANVIL_KO"),("ko",ko,ko.ko.apply_updates,"WEB_BLACKROSE_KO")]:
   cid="official_"+lang+"_fixture"
   row=dict(card_id=cid,language_code=lang,set_id="SV1V",local_id="001",native_name="name",image_source_url="image",old_variants=[],old_updated=None,old_status=None)
   update=dict(row=row,offer=dict(source=source),base_eur="1",observed_at="2026-10-10T12:00:00Z")

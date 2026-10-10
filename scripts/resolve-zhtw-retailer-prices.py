@@ -181,7 +181,9 @@ def load_targets():
     return [row for row in json.loads(raw) if eligible_variant(row)]
 
 
-def apply_updates(updates):
+def apply_updates(updates, *, missing_only=False):
+    if missing_only and any(u["row"].get("resolution_status") == "PRICE_FOUND" for u in updates):
+        raise ValueError("missing-only recovery cannot refresh PRICE_FOUND")
     if not updates:
         return 0
     values = []
@@ -223,15 +225,21 @@ def apply_updates(updates):
       INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at)
       SELECT card_id,language_code,variant_id,source,base_eur,NOW() FROM changed RETURNING 1
     ) SELECT COUNT(*) FROM recorded;"""
+    if missing_only:
+        sql = sql.replace("AND p.updated_at=i.old_updated::timestamptz", "AND p.updated_at=i.old_updated::timestamptz AND COALESCE(p.base_eur,0)<=0 AND NOT EXISTS(SELECT 1 FROM tcg_price_cache existing WHERE existing.card_id=p.card_id AND existing.base_eur>0)")
     return int(db(sql))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--missing-only", action="store_true")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     rows = load_targets()
+    if args.missing_only:
+        priced = set(json.loads(db("SELECT COALESCE(jsonb_agg(DISTINCT card_id), '[]') FROM tcg_price_cache WHERE base_eur>0;")))
+        rows = [r for r in rows if r["card_id"] not in priced and r["resolution_status"] != "PRICE_FOUND"]
     report = {"candidates": len(rows), "errors": [], "rejected": {}, "updates": []}
     if not rows:
         print(json.dumps(report)); return
@@ -281,7 +289,7 @@ def main():
                                   "fx": str(fx), "fx_date": fx_data["date"], "observed_at": observed_at})
     report["rejected"] = dict(rejected)
     # Any provider error keeps this run read-only: no partial batch is called complete.
-    report["applied"] = apply_updates(report["updates"]) if args.apply and not report["errors"] else 0
+    report["applied"] = apply_updates(report["updates"], missing_only=args.missing_only) if args.apply and not report["errors"] else 0
     if args.report:
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({"candidates": len(rows), "matched": len(report["updates"]),

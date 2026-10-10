@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact Korean NM ordinary-print offers from Lake Cards and ManaMarket.
+"""Exact Korean NM ordinary-print offers from verified public Shopify retailers.
 
 Discover only public singles feeds, verify variant-specific structured EUR offers,
 and cross-check official Korean identities with independent species names.
@@ -22,6 +22,8 @@ spec = importlib.util.spec_from_file_location("ko", Path(__file__).with_name("re
 ko = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ko)
 SHOPS = {
+    "nero": dict(host="https://nerocards.de", prefix="", collection="pok-mon-single", source="WEB_NERO_KO"),
+    "anvil": dict(host="https://cardanvil.sk", prefix="", collection="pok-mon-single", source="WEB_CARDANVIL_KO"),
     "lake": dict(host="https://lakecards.de", prefix="/en", collection="pok-mon-single", source="WEB_LAKE_KO"),
     "mana": dict(host="https://manamarket.eu", prefix="", collection="pokemon-singles", source="WEB_MANA_KO"),
 }
@@ -74,15 +76,39 @@ def korean_variant(product):
     return matches[0] if len(matches) == 1 else None
 
 
-def structured_product(html):
+def structured_product(text, detail=None):
     products = []
-    for block in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', html, re.S):
+    for block in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', text, re.S):
         data = json.loads(block)
-        if isinstance(data, dict) and data.get("@type") == "Product":
+        if isinstance(data, dict) and data.get("@type") in ("Product", "ProductGroup"):
             products.append(data)
     if len(products) != 1:
         raise ValueError("ambiguous product structured data")
-    return products[0]
+    product = dict(products[0])
+    if product.get("@type") == "ProductGroup":
+        if (detail is None or product.get("productGroupID") != str(detail.get("id"))
+                or product.get("name") != detail.get("title") or not isinstance(product.get("hasVariant"), list)):
+            raise ValueError("product group identity mismatch")
+        variants = {v["id"]: v for v in detail.get("variants", [])}
+        offers = []
+        for child in product["hasVariant"]:
+            offer = child.get("offers")
+            if child.get("@type") != "Product" or not isinstance(offer, dict):
+                raise ValueError("invalid product group offer")
+            m = re.fullmatch(re.escape(product["url"]) + r"\?variant=(\d+)", offer.get("url", ""))
+            variant = variants.get(int(m[1])) if m else None
+            if (variant is None or not child.get("sku") or child["sku"] != variant.get("sku")
+                    or child.get("name") != detail["title"] + " - " + variant["title"]):
+                raise ValueError("product group variant mismatch")
+            offers.append(dict(offer, sku=child["sku"]))
+        product["offers"] = offers
+    elif isinstance(product.get("offers"), dict):
+        # Single-variant Shopify JSON-LD puts the SKU on Product rather than Offer.
+        offer = product["offers"]
+        if not product.get("sku"):
+            raise ValueError("single product SKU absent")
+        product["offers"] = [dict(offer, sku=product["sku"])]
+    return product
 
 
 def fetch_product(shop, p):
@@ -91,7 +117,7 @@ def fetch_product(shop, p):
         raise ValueError("invalid product handle")
     url = shop["host"] + shop["prefix"] + "/products/" + handle
     data = get_json(url + ".js")
-    ld = structured_product(get_text(url))
+    ld = structured_product(get_text(url), data)
     return data, ld, url
 
 
@@ -174,10 +200,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--shop", choices=sorted(SHOPS), required=True)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--missing-only", action="store_true")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     shop = SHOPS[args.shop]
-    rows = ko.load_targets(shop["source"])
+    names = ko.species_names()
+    ct = ko.module("resolve-cardtrader-ko-nm-prices")
+    rows = ct.extra.load_targets(shop["source"]) + ct.pinned.load_targets(ko, shop["source"], names)
+    if args.missing_only:
+        rows = ct.missing.filter_targets(rows, ko.retail)
     by_key = defaultdict(list)
     for row in rows:
         by_key[(ko.normalize(row["set_id"]), int(row["local_id"]))].append(row)
@@ -185,7 +216,6 @@ def main():
     if currency != "EUR":
         raise SystemExit("shop currency is not verified EUR")
     products = collection(shop)
-    names = ko.species_names()
     candidates = []
     rejected = Counter()
     for p in products:
@@ -230,7 +260,7 @@ def main():
     updates = list(chosen.values())
     report = dict(shop=args.shop, source=shop["source"], catalog_candidates=len(rows), retail_products=len(products),
                   product_candidates=len(candidates), matched=len(updates), rejected=dict(rejected), errors=errors,
-                  updates=updates, applied=ko.apply_updates(updates, shop["source"]) if args.apply and not errors else dict(variants=0, prices=0, history=0))
+                  updates=updates, applied=ko.apply_updates(updates, shop["source"], missing_only=args.missing_only) if args.apply and not errors else dict(variants=0, prices=0, history=0))
     if args.report:
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({k: v for k, v in report.items() if k != "updates"}, ensure_ascii=False), flush=True)

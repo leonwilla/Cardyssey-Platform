@@ -31,8 +31,25 @@ jobs:
           python3 scripts/test-price-round11.py
           python3 scripts/test-price-round12.py
           python3 scripts/test-price-round13.py
+          python3 scripts/test-price-round15.py
           python3 scripts/test-pokewallet-client.py
           python3 scripts/test-pokewallet-prices.py
+
+      - name: Resolve BlackRoseSkulls Korean singles
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          timeout 420s python3 scripts/resolve-blackrose-ko-prices.py --apply --report /tmp/cardyssey-blackrose-ko-weekly.json
+      - name: Resolve NeroCards Korean singles
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          timeout 420s python3 scripts/resolve-shopify-ko-prices.py --shop nero --apply --report /tmp/cardyssey-nero-ko-weekly.json
+      - name: Resolve CardAnvil Korean singles
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          timeout 240s python3 scripts/resolve-shopify-ko-prices.py --shop anvil --apply --report /tmp/cardyssey-anvil-ko-weekly.json
 
       - name: Resolve True Unicorn Korean singles
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -251,6 +268,9 @@ jobs:
             /tmp/cardyssey-unicorn-ko-prices.json
             /tmp/cardyssey-tcgcsv-ja-weekly.json
             /tmp/cardyssey-pokewallet-ja-weekly.json
+            /tmp/cardyssey-blackrose-ko-weekly.json
+            /tmp/cardyssey-nero-ko-weekly.json
+            /tmp/cardyssey-anvil-ko-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14
