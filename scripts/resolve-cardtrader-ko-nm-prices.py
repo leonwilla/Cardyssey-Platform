@@ -17,6 +17,8 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location("extra",Path(__file__).with_name("resolve-extra-ko-prices.py"))
 extra=importlib.util.module_from_spec(spec);spec.loader.exec_module(extra)
 ko=extra.ko;SOURCE="CARDTRADER_KO_NM";BASE="https://api.cardtrader.com/api/v2"
+pinned_spec=importlib.util.spec_from_file_location("pinned_ko",Path(__file__).with_name("ko-pinned-species-targets.py"))
+pinned=importlib.util.module_from_spec(pinned_spec);pinned_spec.loader.exec_module(pinned)
 RARITY={
  "R":{"Holo Rare"},"C":{"Common"},"U":{"Uncommon"},"RR":{"Ultra Rare","Double Rare"},
  "RRR":{"Ultra Rare","Triple Rare"},"AR":{"Art Rare","Illustration Rare"},
@@ -105,9 +107,11 @@ def main():
   time.sleep(max(0,1.1-(time.monotonic()-last)));last=time.monotonic()
   req=urllib.request.Request(BASE+path,headers={"Authorization":"Bearer "+token,"Accept":"application/json","User-Agent":"Cardyssey/0.5 exact-ko-NM"})
   with urllib.request.urlopen(req,timeout=30) as response:return json.load(response)
- rows=extra.load_targets(SOURCE)
+ names=ko.species_names()
+ rows=extra.load_targets(SOURCE)+pinned.load_targets(ko,SOURCE,names)
+ if len({r["card_id"] for r in rows})!=len(rows):raise ValueError("duplicate Korean target")
  rows=[r for r in rows if regular_set(r["set_id"]) and (not args.sets or r["set_id"] in args.sets)]
- names=ko.species_names();expansions=get("/expansions");index=defaultdict(list)
+ expansions=get("/expansions");index=defaultdict(list)
  for e in expansions:
   if e.get("game_id")==5:index[ko.normalize(e.get("code",""))].append(e)
  groups=defaultdict(list);rejected=Counter()
@@ -124,6 +128,9 @@ def main():
    for row in group:
     offer,reason=match(row,blueprints,products,by_id[eid],names)
     if reason:rejected[reason]+=1;continue
+    if row.get("species_identity_method"):
+     offer.update(primary_url=row["source_url"],source_record_revision=row["source_revision"],
+                  species_names_url=row["species_names_url"],identity_evidence=row["species_identity_method"])
     updates.append(dict(row=row,offer=offer,observed_at=observed,
                         base_eur=str((Decimal(offer["amount"])/ko.retail.NM_FACTOR).quantize(Decimal(".0001"),rounding=ROUND_HALF_UP))))
    print(json.dumps(dict(set=group[0]["set_id"],catalog_candidates=len(group),matched_total=len(updates))),flush=True)

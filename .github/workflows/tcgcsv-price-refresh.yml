@@ -29,6 +29,7 @@ jobs:
           python3 scripts/test-price-round8.py
           python3 scripts/test-price-round9.py
           python3 scripts/test-price-round11.py
+          python3 scripts/test-price-round12.py
 
       - name: Reactivate deferred market prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -106,6 +107,11 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         timeout-minutes: 4
         run: timeout 180s python3 scripts/resolve-cardtrader-western-safe.py --apply --report /tmp/cardyssey-western-weekly.json
+
+      - name: Review exact English unavailable and unissued leftovers
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 4
+        run: timeout 180s python3 scripts/review-english-price-leftovers.py --apply --report /tmp/cardyssey-english-review-weekly.json
 
       - name: Resolve Traditional Chinese special printings
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -218,6 +224,7 @@ jobs:
             /tmp/cardyssey-hareruya-weekly.json
             /tmp/cardyssey-toreca-weekly.json
             /tmp/cardyssey-western-weekly.json
+            /tmp/cardyssey-english-review-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14
