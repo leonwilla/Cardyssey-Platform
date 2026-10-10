@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   refresh:
-    timeout-minutes: 90
+    timeout-minutes: 180
     runs-on: [self-hosted, linux, x64, cardyssey-android]
     steps:
       - name: Checkout
@@ -32,8 +32,15 @@ jobs:
           python3 scripts/test-price-round12.py
           python3 scripts/test-price-round13.py
           python3 scripts/test-price-round15.py
+          python3 scripts/test-price-round16.py
           python3 scripts/test-pokewallet-client.py
           python3 scripts/test-pokewallet-prices.py
+
+      - name: Resolve exact modern Japanese deck and promo references
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        timeout-minutes: 65
+        run: |
+          timeout 3750s python3 scripts/resolve-japanese-bulk-retail-prices.py --apply --report /tmp/cardyssey-japanese-bulk-weekly.json
 
       - name: Resolve BlackRoseSkulls Korean singles
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
@@ -269,6 +276,7 @@ jobs:
             /tmp/cardyssey-tcgcsv-ja-weekly.json
             /tmp/cardyssey-pokewallet-ja-weekly.json
             /tmp/cardyssey-blackrose-ko-weekly.json
+            /tmp/cardyssey-japanese-bulk-weekly.json
             /tmp/cardyssey-nero-ko-weekly.json
             /tmp/cardyssey-anvil-ko-weekly.json
             /tmp/cardyssey-catalog-conflicts-weekly.json

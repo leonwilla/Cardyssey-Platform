@@ -54,6 +54,8 @@ def blueprint_matches(row,bp,expansion,names):
  return len(hits)==1 and ko.normalize(hits[0]["6"])==ko.normalize(row["german_species"]) and ko.normalize(hits[0]["1"]) in ko.normalize(row["native_name"])
 def false(value):
  return value is False or value=="false"
+stock_spec=importlib.util.spec_from_file_location("single_stock",Path(__file__).with_name("cardtrader-single-stock.py"))
+stock=importlib.util.module_from_spec(stock_spec);stock_spec.loader.exec_module(stock)
 def listing_amount(p,bp,expansion):
  props=p.get("properties_hash") or {}
  if p.get("blueprint_id")!=bp["id"] or not false(p.get("graded")) or p.get("on_vacation") is not False:return None
@@ -66,11 +68,8 @@ def listing_amount(p,bp,expansion):
   if key in props and not false(props[key]):return None
  if any("reverse" in str(k).lower() and not false(v) for k,v in props.items()):return None
  if props.get("collector_number")!=(bp.get("fixed_properties") or {}).get("collector_number") or props.get("pokemon_rarity")!=(bp.get("fixed_properties") or {}).get("pokemon_rarity"):return None
- # Marketplace response describes physical units and stock quantity, not the
- # inventory-export bundle schema. Limit to stock=1, empty description and
- # category-73 single-card blueprints; reject any explicit non-unit bundle.
- if type(p.get("quantity")) is not int or p["quantity"]!=1 or p.get("description") not in (None,""):return None
- if any(k in p and (type(p[k]) is not int or p[k]!=1) for k in ("bundle_size","bundled_quantity")):return None
+ # Quantity is available inventory; explicit bundle_size=1 proves per-card pricing.
+ if not stock.is_single_card_stock(p) or p.get("description") not in (None,""):return None
  price=p.get("price") or {};cents=price.get("cents")
  if type(cents) is not int or cents<=0 or price.get("currency")!="EUR":return None
  if type(p.get("price_cents")) is not int or p.get("price_cents")!=cents or p.get("price_currency")!="EUR":return None
@@ -235,7 +234,7 @@ def cached_official_rows(rows,names=None):
  return eligible,rejected
 
 retail=ko.retail;VARIANT=ko.VARIANT
-TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,"TCGCSV_JP_MARKET","POKEWALLET_JP_MARKET"))
+TRUSTED_JAPANESE_SOURCES=frozenset((SOURCE,"TCGCSV_JP_MARKET","POKEWALLET_JP_MARKET","WEB_HARERUYA_JP","WEB_TORECACAMP_JP"))
 def species_names():
  import csv,io
  grouped=defaultdict(dict)

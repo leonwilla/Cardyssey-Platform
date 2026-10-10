@@ -53,6 +53,8 @@ def exact_blueprint(row, b, spec):
       and b.get("name")==row["name"] and b.get("tcg_player_id")==spec[2]
       and western.num((b.get("fixed_properties") or {}).get("collector_number"))==western.num(row["local_id"]))
 
+stock_spec=importlib.util.spec_from_file_location("single_stock",Path(__file__).with_name("cardtrader-single-stock.py"))
+stock=importlib.util.module_from_spec(stock_spec);stock_spec.loader.exec_module(stock)
 def listing_amount(p,b):
     props=p.get("properties_hash") or {}
     if p.get("blueprint_id")!=b["id"] or p.get("name_en")!=b["name"] or (p.get("expansion") or {}).get("id")!=b["expansion_id"]:
@@ -70,9 +72,7 @@ def listing_amount(p,b):
             return None
     if props.get("collector_number")!=(b.get("fixed_properties") or {}).get("collector_number") or props.get("pokemon_rarity")!=(b.get("fixed_properties") or {}).get("pokemon_rarity"):
         return None
-    if type(p.get("quantity")) is not int or p["quantity"]!=1 or p.get("description") not in (None,""):
-        return None
-    if any(k in p and (type(p[k]) is not int or p[k]!=1) for k in ("bundle_size","bundled_quantity")):
+    if not stock.is_single_card_stock(p) or p.get("description") not in (None,""):
         return None
     price=p.get("price") or {}
     cents=price.get("cents")
@@ -94,9 +94,9 @@ def load_targets():
         AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE') OR p.failure_detail LIKE '"""+REVIEW_PREFIX+"""%')
     ) t"""))
 
-def apply_sql(updates):
+def apply_sql(updates, *, missing_only=False):
     payload=retail.quote(json.dumps(updates,ensure_ascii=False))
-    return """WITH inputs AS (
+    sql = """WITH inputs AS (
       SELECT item->'row' r,item->>'status' status,item->>'source' source,item->>'base_eur' base,
         item->>'detail' detail,item->>'next_attempt_at' next_attempt FROM jsonb_array_elements("""+payload+"""::jsonb) item
     ), written AS (
@@ -120,7 +120,12 @@ def apply_sql(updates):
     ) SELECT jsonb_build_object('reviewed_variants',(SELECT COUNT(*) FROM written),
       'prices',(SELECT COUNT(*) FROM written WHERE resolution_status='PRICE_FOUND'),'history',(SELECT COUNT(*) FROM history));"""
 
-def apply_updates(updates):
+    if missing_only:
+        sql=sql.replace("AND (p.resolution_status<>'PRICE_FOUND' OR", "AND COALESCE(p.base_eur,0)<=0 AND NOT EXISTS(SELECT 1 FROM tcg_price_cache existing WHERE existing.card_id=p.card_id AND existing.base_eur>0) AND (p.resolution_status<>'PRICE_FOUND' OR")
+    return sql
+
+def apply_updates(updates, *, missing_only=False):
+    if missing_only and any(u["row"].get("old_status")=="PRICE_FOUND" for u in updates):raise ValueError("missing-only review cannot refresh PRICE_FOUND")
     seen=set()
     for u in updates:
         r=u["row"];key=(r["card_id"],r["variant_id"])
@@ -132,11 +137,15 @@ def apply_updates(updates):
                 raise ValueError("invalid reviewed English price")
         elif u["status"]!="NO_PUBLIC_PRICE" or u["source"] is not None or u["base_eur"] is not None:
             raise ValueError("invalid deferral")
-    return json.loads(retail.db(apply_sql(updates))) if updates else dict(reviewed_variants=0,prices=0,history=0)
+    return json.loads(retail.db(apply_sql(updates,missing_only=missing_only))) if updates else dict(reviewed_variants=0,prices=0,history=0)
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--apply",action="store_true");parser.add_argument("--report",type=Path)
-    args=parser.parse_args();rows=load_targets();observed=datetime.now(timezone.utc);retry=(observed+timedelta(days=7)).isoformat()
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument("--apply",action="store_true");parser.add_argument("--missing-only",action="store_true");parser.add_argument("--report",type=Path)
+    args=parser.parse_args();rows=load_targets()
+    if args.missing_only:
+        priced=set(json.loads(retail.db("SELECT COALESCE(jsonb_agg(DISTINCT card_id),'[]') FROM tcg_price_cache WHERE base_eur>0;")))
+        rows=[r for r in rows if r["card_id"] not in priced and r["old_status"]!="PRICE_FOUND"]
+    observed=datetime.now(timezone.utc);retry=(observed+timedelta(days=7)).isoformat()
     token=next((x.split("=",1)[1].strip() for x in Path("/home/tv/cardshop/platform/.env").read_text().splitlines() if x.startswith("CARDTRADER_API_TOKEN=")),"")
     if not token:raise SystemExit("CardTrader credentials unavailable")
     last=0
@@ -205,7 +214,7 @@ def main():
         evidence.append(dict(card_id=cid,variant_id=r["variant_id"],status=status,reason=reason,proof=proof))
         updates.append(dict(row=r,status=status,source=source,base_eur=str((amount/western.NM_FACTOR).quantize(Decimal(".0001"),rounding=ROUND_HALF_UP)) if amount is not None else None,detail=detail,next_attempt_at=retry if amount is not None else next_at))
     report=dict(complete=True,cards=len({r["card_id"] for r in rows}),variants=len(rows),price_matches=sum(u["status"]=="PRICE_FOUND" for u in updates),reviewed=len(updates),held=held,evidence=evidence,updates=updates,
-      applied=apply_updates(updates) if args.apply else dict(reviewed_variants=0,prices=0,history=0))
+      applied=apply_updates(updates,missing_only=args.missing_only) if args.apply else dict(reviewed_variants=0,prices=0,history=0))
     if args.report:args.report.write_text(json.dumps(report,ensure_ascii=False,indent=2)+chr(10))
     print(json.dumps({k:v for k,v in report.items() if k not in ("updates","evidence")},ensure_ascii=False))
 if __name__=="__main__":main()
