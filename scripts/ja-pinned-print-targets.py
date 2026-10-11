@@ -5,10 +5,11 @@ from collections import Counter,defaultdict
 from pathlib import Path
 
 CACHE=Path("/home/tv/.cache/cardyssey-catalog/source")
+MEGA_DECK_CODES={"MA","MBD","MBG","MDB","MEE","MEM","MEZ","MG","MMB-P","MMB-S","MP1"}
 PROMO_CODES={"SMP":"SM-P","XYP":"XY-P","S-P":"S-P","SV-P":"SV-P","M-P":"M-P"}
 
 def eligible_code(code):
-    return code in PROMO_CODES or re.fullmatch(r"(?:SV|SM|S)[A-Za-z0-9]+",code,re.I) is not None
+    return code in PROMO_CODES or code in MEGA_DECK_CODES or re.fullmatch(r"(?:(?:SV|SM|S)[A-Za-z0-9]+|M[0-9]+[A-Za-z]*)",code,re.I) is not None
 
 def verified_record(row,raw,revision):
     url=row.get("official_url","")

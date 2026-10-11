@@ -141,6 +141,7 @@ def fetch_inventory(tag,rows):
     shop=SHOPS[tag];host=shop["host"]
     if tag=="hareruya":
         handles=["sv","ss","sm"]
+        if any(r["set_id"].startswith("M") for r in rows):handles.append("mega")
         if any(r["set_id"]=="XYP" for r in rows):handles.append("xy")
     else:
         registry=[]

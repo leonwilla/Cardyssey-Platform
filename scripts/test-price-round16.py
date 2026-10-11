@@ -104,7 +104,23 @@ class AjaxCurrencyTests(BulkOfferTests):
     def test_bundles_subscriptions_and_product_mismatch(self):
         self.ajax["variants"][0]["quantity_rule"]["min"]=2;self.assertIsNone(self.offer()[0])
         self.setUp();self.ajax["id"]=9;self.assertIsNone(self.offer()[0])
+class MegaIdentityTests(unittest.TestCase):
+    def test_only_modern_numbered_mega_and_explicit_deck_codes(self):
+        for code in ["M1L","M6a","MA","MBD","MMB-P","MMB-S","MP1","M-P"]:
+            self.assertTrue(pinned.eligible_code(code),code)
+        for code in ["MISC","MOVIE","M","BW1","XY1"]:
+            self.assertFalse(pinned.eligible_code(code),code)
+    def test_missing_official_rarity_remains_absent_for_mega_deck(self):
+        fixture=PrintIdentityTests();fixture.setUp()
+        fixture.row["set_id"]="MEE";fixture.raw["set_name"]="MEE"
+        result=pinned.verified_record(fixture.row,fixture.raw,fixture.row["source_revision"])
+        self.assertIsNotNone(result);self.assertIsNone(result["rarity"])
 class InventoryScopeTests(unittest.TestCase):
+    def test_mega_collection_only_when_eligible_modern_mega_targets_exist(self):
+        with patch.object(bulk,"get",return_value={"products":[]}):
+            result=bulk.fetch_inventory("hareruya",[dict(set_id="MEE")])
+        self.assertEqual(["sv","ss","sm","mega"],result["scope"])
+
     def test_hareruya_xy_collection_only_for_numbered_xy_promos(self):
         for rows,expected in [([],3),([dict(set_id="XYP")],4)]:
             with patch.object(bulk,"get",return_value={"products":[]}) as get:
