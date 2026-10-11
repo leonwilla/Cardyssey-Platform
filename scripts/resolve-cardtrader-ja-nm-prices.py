@@ -266,7 +266,12 @@ def load_targets(source=SOURCE):
     for row in rows:row["official_count"]=totals.get(row["set_id"])
     return rows
 
-def apply_updates(updates, source=SOURCE, *, missing_only=False):
+def apply_updates(updates, source=SOURCE, *, missing_only=False, variant=None):
+    variant=VARIANT if variant is None else variant
+    allowed=[VARIANT,dict(VARIANT,type="reverse",legacyVariant="REVERSE")]
+    allowed += [dict(allowed[1],foil=f) for f in ("pokeball","masterball")]
+    if variant not in allowed:raise ValueError("unsupported Japanese recovered variant")
+    if any(u["row"].get("old_variants") not in ([],[variant]) for u in updates):raise ValueError("recovered variant differs from catalogue variant")
     if source not in TRUSTED_JAPANESE_SOURCES:raise ValueError('unsupported Japanese source')
     if any(u['offer'].get('source')!=source for u in updates):raise ValueError('mixed Japanese sources')
     if any(u['row'].get('language_code')!='ja' or not u['row']['card_id'].startswith('official_ja_') for u in updates):raise ValueError('unsupported Japanese catalogue identity')
@@ -285,7 +290,7 @@ def apply_updates(updates, source=SOURCE, *, missing_only=False):
       WHERE c.set_id=i.set_id AND c.local_id=i.local_id AND c.raw_payload->>'name'=i.native_name AND c.image_source_url=i.image
       AND c.variants=i.old_variants::jsonb AND p.updated_at IS NOT DISTINCT FROM i.old_updated::timestamptz
       AND p.resolution_status IS NOT DISTINCT FROM i.old_status),
-    catalog_changed AS (UPDATE catalog_cards_mirror c SET variants='"""+json.dumps([VARIANT])+"""'::jsonb,
+    catalog_changed AS (UPDATE catalog_cards_mirror c SET variants='"""+json.dumps([variant])+"""'::jsonb,
       raw_payload=jsonb_set(c.raw_payload,'{_cardyssey_retail_variant_source}','\"CARDTRADER_JP_NM\"'::jsonb,true)
       FROM eligible i WHERE i.needs_variant AND c.language_code='ja' AND c.card_id=i.card_id
       AND c.variants=i.old_variants::jsonb AND c.set_id=i.set_id AND c.local_id=i.local_id
@@ -293,7 +298,7 @@ def apply_updates(updates, source=SOURCE, *, missing_only=False):
     ready AS (SELECT e.* FROM eligible e WHERE NOT e.needs_variant OR EXISTS(SELECT 1 FROM catalog_changed c WHERE c.card_id=e.card_id)),
     written AS (INSERT INTO tcg_price_cache(card_id,language_code,variant_id,legacy_variant,source,base_eur,updated_at,resolution_status,failure_detail,next_attempt_at)
       SELECT card_id,'ja','generated','NORMAL','CARDTRADER_JP_NM',base_eur::numeric,NOW(),'PRICE_FOUND',detail,NOW()+INTERVAL '7 days' FROM ready
-      ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET source=EXCLUDED.source,base_eur=EXCLUDED.base_eur,
+      ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET source=EXCLUDED.source,legacy_variant=EXCLUDED.legacy_variant,base_eur=EXCLUDED.base_eur,
       updated_at=EXCLUDED.updated_at,resolution_status=EXCLUDED.resolution_status,failure_detail=EXCLUDED.failure_detail,next_attempt_at=EXCLUDED.next_attempt_at
       WHERE EXISTS(SELECT 1 FROM ready r WHERE r.card_id=EXCLUDED.card_id
         AND tcg_price_cache.updated_at IS NOT DISTINCT FROM r.old_updated::timestamptz
@@ -302,6 +307,7 @@ def apply_updates(updates, source=SOURCE, *, missing_only=False):
     history AS (INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at)
       SELECT card_id,language_code,variant_id,source,base_eur,NOW() FROM written RETURNING 1)
     SELECT jsonb_build_object('variants',(SELECT COUNT(*) FROM catalog_changed),'prices',(SELECT COUNT(*) FROM written),'history',(SELECT COUNT(*) FROM history));"""
+    sql=sql.replace(retail.quote('NORMAL'),retail.quote(variant['legacyVariant']))
     sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
     sql=sql.replace(retail.quote(json.dumps(SOURCE)),retail.quote(json.dumps(source)))
     if missing_only:

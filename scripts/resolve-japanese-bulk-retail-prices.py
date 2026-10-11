@@ -106,10 +106,12 @@ def match_offer(row,tag,feed,detail,ajax):
                 official_url=row["official_url"],official_number=row["official_number"],source_record_revision=row["source_revision"],
                 identity_method="exact-full-native-name/set-number-denominator/unique-pinned-official-print",
                 basis_description="in-stock single-card condition-A retail asking reference"),None
-def match_ajax_offer(row,tag,feed,ajax,currency):
+def match_ajax_offer(row,tag,feed,ajax,currency,*,identity_validator=None,identity_parser=None):
+    identity_validator=identity_validator or identity_matches
+    identity_parser=identity_parser or parsed_identity
     if currency!="JPY":return None,"currency"
     for product in (feed,ajax):
-        if not identity_matches(row,tag,product):return None,"print_identity"
+        if not identity_validator(row,tag,product):return None,"print_identity"
     if ajax.get("id")!=feed.get("id") or ajax.get("title")!=feed.get("title") or ajax.get("handle")!=feed.get("handle"):
         return None,"product_identity"
     handle=feed.get("handle","")
@@ -127,11 +129,11 @@ def match_ajax_offer(row,tag,feed,ajax,currency):
     rule=av.get("quantity_rule") or {}
     if rule.get("min")!=1 or rule.get("increment")!=1 or av.get("requires_selling_plan") or av.get("selling_plan_allocations") or av.get("quantity_price_breaks") or ajax.get("requires_selling_plan"):
         return None,"bundle_or_subscription"
-    shop=SHOPS[tag];identity=parsed_identity(tag,ajax)
+    shop=SHOPS[tag];identity=identity_parser(tag,ajax)
     return dict(source=shop["source"],currency=currency,amount=str(amount),title=ajax["title"],
                 url=shop["host"]+"/products/"+handle+"?variant="+str(fv["id"]),product_id=feed["id"],
                 offer_variant_id=fv["id"],sku=fv["sku"],condition=("Hareruya condition A" if tag=="hareruya" else "TorecaCamp condition A"),
-                language="ja",printing="ordinary",retailer_rarity=identity["rarity"],
+                language="ja",printing=identity.get("printing","ordinary"),retailer_rarity=identity["rarity"],
                 official_url=row["official_url"],official_number=row["official_number"],source_record_revision=row["source_revision"],
                 identity_method="exact-full-native-name/set-number-denominator/unique-pinned-official-print",
                 currency_evidence="same anonymous session cart.js presentment currency, Shopify Ajax product price units",

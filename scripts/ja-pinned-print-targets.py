@@ -11,9 +11,9 @@ PROMO_CODES={"SMP":"SM-P","XYP":"XY-P","S-P":"S-P","SV-P":"SV-P","M-P":"M-P"}
 def eligible_code(code):
     return code in PROMO_CODES or code in MEGA_DECK_CODES or re.fullmatch(r"(?:(?:SV|SM|S)[A-Za-z0-9]+|M[0-9]+[A-Za-z]*)",code,re.I) is not None
 
-def verified_record(row,raw,revision):
+def verified_record(row,raw,revision,*,require_unique=True):
     url=row.get("official_url","")
-    if row.get("language_code")!="ja" or row.get("identity_count")!=1 or not eligible_code(row.get("set_id","")):
+    if row.get("language_code")!="ja" or (require_unique and row.get("identity_count")!=1) or not eligible_code(row.get("set_id","")):
         return None
     if not re.fullmatch(r"https://www\.pokemon-card\.com/card-search/details\.php/card/[0-9]+",url):
         return None

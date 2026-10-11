@@ -282,3 +282,32 @@ jobs:
             /tmp/cardyssey-catalog-conflicts-weekly.json
           if-no-files-found: ignore
           retention-days: 14
+
+  japanese-image-prints:
+    timeout-minutes: 85
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Prepare isolated full-card image reader
+        run: |
+          python3 -m venv /tmp/cardyssey-japanese-image-weekly-venv
+          /tmp/cardyssey-japanese-image-weekly-venv/bin/pip install -r scripts/japanese-image-price-requirements.txt
+      - name: Test exact image-backed Japanese print matching
+        id: image_tests
+        run: |
+          /tmp/cardyssey-japanese-image-weekly-venv/bin/python scripts/test-price-round18.py
+          /tmp/cardyssey-japanese-image-weekly-venv/bin/python scripts/test-price-round18.py --postgres
+      - name: Recover and refresh verified Japanese full-card print references
+        if: ${{ !cancelled() && steps.image_tests.outcome == 'success' }}
+        timeout-minutes: 80
+        run: |
+          timeout 4740s /tmp/cardyssey-japanese-image-weekly-venv/bin/python scripts/resolve-japanese-image-print-prices.py --apply --report /tmp/cardyssey-japanese-image-weekly.json
+      - name: Preserve exact image-backed print evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: japanese-full-card-print-evidence
+          path: /tmp/cardyssey-japanese-image-weekly.json
+          if-no-files-found: ignore
+          retention-days: 14
