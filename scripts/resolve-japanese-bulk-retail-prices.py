@@ -166,6 +166,8 @@ def fetch_inventory(tag,rows):
             if len(batch)<250:break
         else:raise ValueError("collection pagination cap")
     return dict(complete=True,scope=handles,products=list(products.values()))
+_gate_spec=importlib.util.spec_from_file_location("manual_import_gate",Path(__file__).with_name("missing-price-targets.py"))
+manual_gate=importlib.util.module_from_spec(_gate_spec);_gate_spec.loader.exec_module(manual_gate)
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source",choices=["all"]+list(SHOPS),default="all")
@@ -224,11 +226,13 @@ def main():
         if get(SHOPS[tag]["host"]+"/cart.js").get("currency")!="JPY":
             errors.append(dict(source=tag,error="currency_changed_during_run"))
     report.update(complete=True,checked=len(candidates),matched=len(updates),rejected=dict(rejected),errors=errors,updates=updates)
-    if args.apply and not errors:
+    report["import_gate"]=manual_gate.import_gate(updates,ja.retail.db,missing_only=args.missing_only,errors=report["errors"])
+    if args.apply and report["import_gate"]["allowed"]:
         for source in sorted({u["offer"]["source"] for u in updates}):
             batch=[u for u in updates if u["offer"]["source"]==source]
             report["applied"][source]=ja.apply_updates(batch,source,missing_only=args.missing_only)
     ja.write_report(args.report,report)
     print(json.dumps({k:v for k,v in report.items() if k!="updates"}),flush=True)
     if errors:raise SystemExit(1)
+    if args.apply and args.missing_only and not report["import_gate"]["allowed"]:raise SystemExit(2)
 if __name__=="__main__":main()

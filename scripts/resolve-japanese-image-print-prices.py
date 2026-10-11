@@ -188,6 +188,8 @@ def export_templates(groups,directory):
     subprocess.run(["tar","-xzf",str(archive),"-C",str(directory)],check=True)
     return directory
 
+_gate_spec=importlib.util.spec_from_file_location("manual_import_gate",Path(__file__).with_name("missing-price-targets.py"))
+manual_gate=importlib.util.module_from_spec(_gate_spec);_gate_spec.loader.exec_module(manual_gate)
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--source",choices=["all"]+list(bulk.SHOPS),default="toreca",help="Default retailer supplies exact public card renders; photographed cards remain held by the same image guards")
@@ -278,12 +280,14 @@ def main():
         if bulk.get(bulk.SHOPS[tag]["host"]+"/cart.js").get("currency")!="JPY":report["errors"].append(dict(source=tag,error="currency_changed_during_run"))
     updates=[u for u in selected.values() if u]
     report.update(complete=True,checked=len(candidates),matched=len(updates),updates=updates,rejected=dict(held))
-    if args.apply and not report["errors"]:
+    report["import_gate"]=manual_gate.import_gate(updates,ja.retail.db,missing_only=args.missing_only,errors=report["errors"])
+    if args.apply and report["import_gate"]["allowed"]:
         batches=defaultdict(list)
         for u in updates:batches[(u["offer"]["source"],u["offer"]["printing"])].append(u)
         for (source,printing),batch in sorted(batches.items()):
             report["applied"][source+"/"+printing]=ja.apply_updates(batch,source,missing_only=args.missing_only,variant=VARIANTS[printing])
     ja.write_report(args.report,report);print(json.dumps({k:v for k,v in report.items() if k!="updates"}),flush=True)
     if report["errors"]:raise SystemExit(1)
+    if args.apply and args.missing_only and not report["import_gate"]["allowed"]:raise SystemExit(2)
 if __name__=="__main__":main()
 

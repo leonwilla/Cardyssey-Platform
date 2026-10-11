@@ -144,11 +144,13 @@ def main():
                    applied=dict(variants=0,prices=0,history=0))
    write_report(args.report,checkpoint)
 
- report=dict(complete=True,candidates=catalog_candidates,verified_official=len(rows),expansions=len(groups),matched=len(updates),rejected=dict(rejected),errors=errors,updates=updates,
-             applied=apply_updates(updates,SOURCE,missing_only=args.missing_only) if args.apply and not errors else dict(variants=0,prices=0,history=0))
+ gate=missing.import_gate(updates,ko.retail.db,missing_only=args.missing_only,errors=errors)
+ report=dict(complete=True,import_gate=gate,candidates=catalog_candidates,verified_official=len(rows),expansions=len(groups),matched=len(updates),rejected=dict(rejected),errors=errors,updates=updates,
+             applied=apply_updates(updates,SOURCE,missing_only=args.missing_only) if args.apply and gate["allowed"] else dict(variants=0,prices=0,history=0))
  if args.report:write_report(args.report,report)
  print(json.dumps({k:v for k,v in report.items() if k!="updates"}),flush=True)
  if errors:raise SystemExit(1)
+ if args.apply and args.missing_only and not gate["allowed"]:raise SystemExit(2)
 import urllib.parse
 # Primary page fixtures and pinned parsed official records validate denominator/rarity in memory.
 # Require a unique rarity-labelled official print. Unlabelled mirror records are
