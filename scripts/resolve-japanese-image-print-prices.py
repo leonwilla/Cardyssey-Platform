@@ -22,8 +22,11 @@ REVERSE=dict(ja.VARIANT,type="reverse",legacyVariant="REVERSE")
 VARIANTS={"ordinary":ja.VARIANT,"reverse":REVERSE,
           "pokeball":dict(REVERSE,foil="pokeball"),"masterball":dict(REVERSE,foil="masterball")}
 BODY=(16,165,201,265)
+ART=(16,41,201,147)
+MAX_ART_ERROR=3.5
+MIN_RIVAL_ART=16
 MAX_ERROR=2.5
-# A rival must differ substantially in both the full frame and foil body,
+# A rival must differ substantially in the full frame and a fixed local region,
 # and at least four times more than the best recompression-level match.
 MIN_RIVAL_WHOLE=8
 MIN_RIVAL_BODY=8
@@ -77,15 +80,33 @@ def prepare_image(path):
 
 def distances(image,template):
     diff=ImageChops.difference(image,template)
-    return dict(whole=sum(ImageStat.Stat(diff).mean)/3,body=sum(ImageStat.Stat(diff.crop(BODY)).mean)/3)
+    return dict(whole=sum(ImageStat.Stat(diff).mean)/3,body=sum(ImageStat.Stat(diff.crop(BODY)).mean)/3,art=sum(ImageStat.Stat(diff.crop(ART)).mean)/3)
 
 def select_print(image,templates):
     if len(templates)<2:return None,[]
     scores=sorted([dict(card_id=cid,**distances(image,im)) for cid,im in templates.items()],key=lambda s:s["whole"]+s["body"])
     best=scores[0]
     if best["whole"]>MAX_ERROR or best["body"]>MAX_ERROR:return None,scores
-    if any(s["whole"]<max(MIN_RIVAL_WHOLE,MIN_RIVAL_RATIO*best["whole"]) or s["body"]<max(MIN_RIVAL_BODY,MIN_RIVAL_RATIO*best["body"]) for s in scores[1:]):return None,scores
+    if not separated_scores(scores):return None,scores
     return best["card_id"],scores
+
+def separated_scores(scores):
+    """Full frame and text/foil body must match; all rivals need local separation.
+
+    Some official holographic prints differ in the illustration while their
+    lower text body is identical. That route also requires a close illustration
+    match and twice the minimum local rival distance. Neither route accepts
+    artwork-only matches or a close competing print.
+    """
+    if len(scores)<2:return False
+    best=scores[0]
+    if best["whole"]>MAX_ERROR or best["body"]>MAX_ERROR:return False
+    for rival in scores[1:]:
+        if rival["whole"]<max(MIN_RIVAL_WHOLE,MIN_RIVAL_RATIO*best["whole"]):return False
+        body=rival["body"]>=max(MIN_RIVAL_BODY,MIN_RIVAL_RATIO*best["body"])
+        art=best.get("art",float("inf"))<=MAX_ART_ERROR and rival.get("art",0)>=max(MIN_RIVAL_ART,MIN_RIVAL_RATIO*best.get("art",float("inf")))
+        if not (body or art):return False
+    return True
 
 def image_url(p):
     images=p.get("images") or []
@@ -224,10 +245,11 @@ def main():
             if row["old_variants"] not in ([],[variant]):reasons["existing_variant_disagrees"]+=1;return None,reasons,None
             offer,reason=bulk.match_ajax_offer(row,tag,feed,ajax,"JPY",identity_validator=metadata_matches,identity_parser=parsed_identity)
             if reason:reasons[reason]+=1;return None,reasons,None
-            offer.update(fx_to_eur=str(fx),fx_date=fxdata["date"],identity_method="exact-full-native-name/set-number-denominator/pinned-full-card-and-foil-body-raster/strict-peer-separation",
+            offer.update(fx_to_eur=str(fx),fx_date=fxdata["date"],identity_method="exact-full-native-name/set-number-denominator/pinned-full-card-and-foil-body-raster/body-or-illustration-peer-separation",
                 image_evidence=dict(retail_url=image_url(ajax),retail_sha256=digest,scores=scores,
                     normalized_size=[217,303],foil_body_crop=list(BODY),max_match_mae=MAX_ERROR,
                     min_rival_whole_mae=MIN_RIVAL_WHOLE,min_rival_body_mae=MIN_RIVAL_BODY,min_rival_error_ratio=MIN_RIVAL_RATIO,
+                    illustration_crop=list(ART),max_match_illustration_mae=MAX_ART_ERROR,min_rival_illustration_mae=MIN_RIVAL_ART,
                     official_templates=[dict(card_id=r["card_id"],url=r["image_source_url"],sha256=hashlib.sha256((image_root/r["image_local_path"]).read_bytes()).hexdigest()) for r in groups[key]]))
             base=(Decimal(offer["amount"])*fx/ja.retail.NM_FACTOR).quantize(Decimal(".0001"),rounding=ROUND_HALF_UP)
             u=dict(row=row,offer=offer,variant=variant,base_eur=str(base),observed_at=datetime.now(timezone.utc).isoformat())

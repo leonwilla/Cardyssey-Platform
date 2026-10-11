@@ -31,10 +31,20 @@ class ImageTests(unittest.TestCase):
         ImageDraw.Draw(wrong).rectangle(m.BODY,fill=(200,210,220))
         distant=Image.new("RGB",(217,303),(220,220,220))
         self.assertIsNone(m.select_print(image,{"wrong":wrong,"distant":distant})[0])
-    def test_distinct_artwork_with_same_foil_body_is_held(self):
+    def test_distinct_illustration_with_identical_text_body_is_resolved(self):
         image=Image.new("RGB",(217,303),(100,110,120));rival=Image.new("RGB",(217,303),(200,210,220))
         rival.paste(image.crop(m.BODY),m.BODY)
-        self.assertIsNone(m.select_print(image,{"one":image,"two":rival})[0])
+        self.assertEqual("one",m.select_print(image,{"one":image,"two":rival})[0])
+    def test_illustration_route_requires_close_match_and_every_rival_separated(self):
+        best=dict(card_id="best",whole=2,body=1,art=3)
+        rival=dict(card_id="rival",whole=9,body=1,art=16)
+        self.assertTrue(m.separated_scores([best,rival]))
+        for field,value in [("whole",7.99),("art",15.99)]:
+            self.assertFalse(m.separated_scores([best,dict(rival,**{field:value})]))
+        self.assertFalse(m.separated_scores([dict(best,art=3.51),rival]))
+        self.assertFalse(m.separated_scores([dict(best,body=2.51),rival]))
+        self.assertFalse(m.separated_scores([best,rival,dict(rival,card_id="close",art=4)]))
+        self.assertFalse(m.separated_scores([dict(best,whole=2.5),rival]))
     def test_single_peer_and_all_poor_matches_held(self):
         image=Image.new("RGB",(217,303),(100,110,120))
         self.assertIsNone(m.select_print(image,{"one":image})[0])
