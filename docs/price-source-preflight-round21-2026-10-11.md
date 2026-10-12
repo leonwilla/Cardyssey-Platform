@@ -1,5 +1,6 @@
 # Missing-price bulk audit and import threshold — 2026-10-11
 
+> Update 2026-10-12: The user superseded the 1,000-card manual minimum. Nonempty verified missing-price cohorts may now be imported; see price-recovery-round22-2026-10-12.md. This document records the earlier audit.
 ## Result
 
 No manual prices imported. A complete 181-expansion CardTrader inventory audit found 1,366 blueprint/expansion combinations with offers that passed the existing Korean NM stock/offer checks. Those are not 1,366 independently identified missing cards. Running the existing complete identity matcher against that saved inventory produced only **10 distinct missing Korean cards**. No rarity, edition, language, stock, condition or identity guards were relaxed to inflate the result.

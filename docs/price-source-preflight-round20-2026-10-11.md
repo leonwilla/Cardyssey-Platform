@@ -1,5 +1,6 @@
 # Missing-price bulk preflight — 2026-10-11
 
+> Update 2026-10-12: The user superseded the 1,000-card manual minimum. Nonempty verified missing-price cohorts may now be imported; see price-recovery-round22-2026-10-12.md. This document records the earlier audit.
 ## Manual run requirement
 
 The user now requires at least 1,000 new, evidenced prices per manual run. Do not start another small import merely because a few offers are available. Manual recovery still targets only cards with no positive price on any variant. Candidate checks, existing-price refreshes, copied duplicate catalogue references and fabricated estimates do not count as independent new price discoveries. Weekly authorized refresh remains enabled; this threshold applies to manual recovery runs.

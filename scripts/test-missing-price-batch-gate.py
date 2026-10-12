@@ -26,12 +26,12 @@ class BatchGateTests(unittest.TestCase):
     def check(self, batch, priced=(), **kwargs):
         return gate.import_gate(batch, lambda sql: json.dumps(list(priced)), missing_only=True, **kwargs)
 
-    def test_999_writes_blocked(self):
+    def test_small_batch_allowed(self):
         r = self.check(updates(999))
-        self.assertFalse(r['allowed']); self.assertEqual(r['distinct_new_cards'],999)
+        self.assertTrue(r['allowed']); self.assertEqual(r['distinct_new_cards'],999)
 
-    def test_1000_distinct_new_cards_allowed(self):
-        self.assertTrue(self.check(updates(1000))['allowed'])
+    def test_single_new_card_allowed(self):
+        self.assertTrue(self.check(updates(1))['allowed'])
 
     def test_duplicate_variant_rows_do_not_meet_threshold(self):
         r = self.check(updates(999)+updates(1))
@@ -53,6 +53,9 @@ class BatchGateTests(unittest.TestCase):
         for value in ['0','-1','NaN','Infinity',None,'bad']:
             batch=updates(1001);batch[-1]['base_eur']=value
             self.assertFalse(self.check(batch)['allowed'], value)
+
+    def test_empty_batch_blocked(self):
+        self.assertFalse(self.check([])["allowed"])
 
     def test_provider_failure_blocks(self):
         self.assertEqual(self.check(updates(1000),errors=[{'error':'HTTPError'}])['reason'],'provider_errors')
@@ -87,10 +90,10 @@ class CliTests(unittest.TestCase):
                 calls=writer.call_count
             return calls,json.loads(target.read_text())
 
-    def test_manual_999_never_calls_writer(self):
+    def test_manual_small_batch_calls_writer(self):
         calls,r=self.run_reader(999,True)
-        self.assertEqual(calls,0);self.assertEqual(r['applied']['prices'],0)
-        self.assertEqual(r['import_gate']['reason'],'below_minimum_new_cards')
+        self.assertEqual(calls,1);self.assertEqual(r['applied']['prices'],999)
+        self.assertEqual(r['import_gate']['reason'],'minimum_new_cards_met')
 
     def test_manual_1000_calls_writer(self):
         calls,r=self.run_reader(1000,True)

@@ -5,7 +5,7 @@ def filter_targets(rows, retail):
     return [r for r in rows if r.get("old_status")!="PRICE_FOUND" and r["card_id"] not in priced]
 
 
-MIN_NEW_CARDS = 1000
+MIN_NEW_CARDS = 1
 
 
 def import_gate(updates, db, *, missing_only, errors=()):
