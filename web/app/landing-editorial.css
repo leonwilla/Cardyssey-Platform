@@ -34,3 +34,18 @@
 @media(max-width:1050px){.v3 .tcgHeroGrid{gap:20px}.v3Dashboard{opacity:.55;right:-90px}.v3PathCopy{max-width:330px}.v3ShopVisual{opacity:.75}}
 @media(max-width:760px){.v3 .tcgHeroGrid{grid-template-columns:1fr;padding:65px 0 42px}.v3HeroArtwork{height:345px}.v3Card{height:230px}.v3CardFront{height:265px}.v3CardMid{transform:rotate(13deg) translate(94px,-4px)}.v3CardBack{transform:rotate(-16deg) translate(-93px,0)}.v3TwoPaths{grid-template-columns:1fr}.v3Path{min-height:345px}.v3Dashboard{opacity:.6;right:-50px;width:230px;height:290px}.v3PathCopy{padding:25px;max-width:320px}.v3ShopVisual{width:42%}.v3ShopCard{width:120px}.v3Features{padding:70px 0}.v3FeaturesRow{grid-template-columns:1fr 1fr}.v3FeaturesRow>a{border-bottom:1px solid #3a454f}.v3CommunityInner{grid-template-columns:1fr;padding:65px 0}.v3CommunityCards{height:260px}.v3CommunityCards img{height:240px}.v3Bottom{flex-direction:column;align-items:flex-start;padding:65px 0}.v3BottomButtons{justify-content:flex-start}}
 @media(max-width:440px){.v3HeroArtwork{height:290px}.v3Card{height:190px}.v3CardFront{height:226px}.v3CardMid{transform:rotate(13deg) translate(76px,0)}.v3CardBack{transform:rotate(-16deg) translate(-72px,0)}.v3FeaturesRow{grid-template-columns:1fr}.v3FeaturesRow>a{border-left:1px solid #3a454f;min-height:145px}.v3FeaturesRow h3{margin-top:20px}.v3PathCopy{max-width:265px}.v3Dashboard{right:-138px;opacity:.4}.v3ShopVisual{width:36%;opacity:.6}.v3ShopCard{width:95px}}
+
+/* TCG-wide brand adjustments */
+.v3 .tcgOverline{letter-spacing:.17em}
+.v3 .v3HeroArtwork{border-color:#566071}
+.v3 .v3HeroArtwork:after{content:"POKÉMON   /   YU-GI-OH!   /   MORE TO COME";position:absolute;left:23px;bottom:19px;font-size:9px;letter-spacing:.13em;color:#b7c1cb;z-index:3}
+.v3 .v3HeroFoot{bottom:38px;text-align:left;color:var(--tcg-gold)}
+.v3 .v3HeroGrid{opacity:.8}
+.v3 .v3DashCards img{aspect-ratio:2.5/3.5;object-fit:contain}
+.v3 .v3ShopVisual{background:radial-gradient(circle at 50% 53%,#514536,#29282d 63%);border-left-color:#ffffff26}
+.v3 .v3PathStore{background:linear-gradient(115deg,#34312b,#1b1d24)}
+.v3 .v3CommunityCards img{max-width:45%;object-fit:contain}
+@media(max-width:760px){.v3 .v3HeroArtwork:after{font-size:8px}.v3 .v3HeroFoot{bottom:38px}}
+
+/* Clear product availability and upcoming roadmap */
+.v3Roadmap{padding:36px 0 92px}.v3RoadmapHead{display:flex;align-items:end;justify-content:space-between;gap:45px;margin-bottom:26px}.v3RoadmapHead h2{font-size:clamp(32px,3.5vw,47px);letter-spacing:-.065em;line-height:1.12;margin:15px 0 0}.v3RoadmapHead h2 em{color:#a7bac5;font-style:normal}.v3RoadmapHead>p{max-width:355px;font-size:13px;line-height:1.75;color:#acb9c4}.v3RoadmapGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.v3RoadmapItem{min-height:176px;background:#141d26;border:1px solid #3a4652;padding:24px}.v3RoadmapCurrent{border-color:#9f8050;background:linear-gradient(120deg,#242720,#152029)}.v3RoadmapStatus{font-size:10px;letter-spacing:.15em;color:#b5c4ce;font-weight:800}.v3RoadmapCurrent .v3RoadmapStatus{color:#efc77c}.v3RoadmapItem strong{display:block;font-size:22px;margin:20px 0 8px;letter-spacing:-.035em}.v3RoadmapItem p{font-size:13px;color:#adbac4;line-height:1.6;margin:0}.v3RoadmapFoot{display:block;margin-top:13px;color:#8796a2;font-size:11px}.v3 .tcgNav{gap:24px}@media(max-width:760px){.v3Roadmap{padding:20px 0 72px}.v3RoadmapHead{display:block}.v3RoadmapGrid{grid-template-columns:1fr}.v3RoadmapItem{min-height:0}.v3RoadmapHead>p{margin-top:16px}}
