@@ -158,6 +158,8 @@ export default function CollectionPage() {
       "VALUE_DESC"
     );
 
+  const [view, setView] = useState<"SETS" | "CARDS">("SETS");
+  const [openedSet, setOpenedSet] = useState<string | null>(null);
   const [query, setQuery] =
     useState("");
 
@@ -1168,6 +1170,21 @@ export default function CollectionPage() {
       sort,
     ]);
 
+  const groupedSets = useMemo(() => {
+    const groups = new Map<string, PortfolioItem[]>();
+    for (const item of sortedItems) {
+      const id = item.setId || "OTHER";
+      groups.set(id, [...(groups.get(id) || []), item]);
+    }
+    return [...groups].map(([id, cards]) => ({
+      id, cards, name: cards[0]?.setName || id,
+      quantity: cards.reduce((n, card) => n + card.quantity, 0),
+      total: cards.reduce((n, card) => n + (positionValueEur(card, market) ?? 0), 0)
+    })).sort((a, b) => b.total - a.total);
+  }, [sortedItems, market]);
+  const visibleCards = view === "SETS" && openedSet
+    ? groupedSets.find((group) => group.id === openedSet)?.cards ?? [] : sortedItems;
+
   const count =
     items.reduce(
       (sum, item) =>
@@ -1341,9 +1358,9 @@ export default function CollectionPage() {
                     Synchronisiert
                   </span>
 
-                  <h2>
-                    Deine Karten
-                  </h2>
+                  <h2>{view === "SETS" ? (openedSet
+                    ? groupedSets.find((group) => group.id === openedSet)?.name
+                    : "Deine Sets") : "Deine Karten"}</h2>
                 </div>
 
                 <div className="collectionToolbar">
@@ -1570,6 +1587,11 @@ export default function CollectionPage() {
                 </div>
               </div>
 
+              <div className="collectionViewBar">
+                <button type="button" onClick={() => {setView("SETS");setOpenedSet(null);}}>Sets</button>
+                <button type="button" onClick={() => {setView("CARDS");setOpenedSet(null);}}>Alle Karten</button>
+                {view === "SETS" && openedSet && <button type="button" onClick={() => setOpenedSet(null)}>Zurück zu Sets</button>}
+              </div>
               {items.length ===
               0 ? (
                 <div className="statusPanel">
@@ -1581,9 +1603,19 @@ export default function CollectionPage() {
                 <div className="statusPanel">
                   Keine Karten für die aktuellen Filter gefunden.
                 </div>
+              ) : view === "SETS" && !openedSet ? (
+                <div className="collectionSetGrid">
+                  {groupedSets.map((group) => (
+                    <button type="button" className="collectionSetCard" key={group.id} onClick={() => setOpenedSet(group.id)}>
+                      <strong>{group.name}</strong>
+                      <span>{group.cards.length} Einträge / {group.quantity} Karten</span>
+                      <b>{eur(group.total)}</b>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <div className="cardGrid">
-                  {sortedItems.map(
+                  {visibleCards.map(
                     (item) => {
                       const hasLiveEbay =
                         market === "EBAY" &&

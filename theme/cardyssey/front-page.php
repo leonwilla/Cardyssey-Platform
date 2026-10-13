@@ -1,225 +1,44 @@
 <?php get_header(); ?>
-
-<main>
-
-    <section class="hero">
-        <div class="container hero-grid">
-
-            <div>
-                <span class="eyebrow">Trading Cards · Collectibles · Culture</span>
-
-                <h1>
-                    Deine Reise durch
-                    <span class="gradient-text">die Welt der Karten.</span>
-                </h1>
-
-                <p class="hero-copy">
-                    Entdecke Trading Cards, Collectibles und ausgewählte Pieces.
-                    Baue deine Sammlung auf und verwalte sie später direkt mit unserer App.
-                </p>
-
-                <div class="button-row">
-                    <a class="btn btn-primary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">
-                        Shop entdecken
-                    </a>
-
-                    <a class="btn btn-secondary" href="#app">
-                        App entdecken
-                    </a>
-                </div>
-            </div>
-
-            <div class="hero-visual">
-                <div class="hero-world"></div>
-                <div class="hero-card one"></div>
-                <div class="hero-card two"></div>
-                <div class="hero-card three"></div>
-            </div>
-
-        </div>
-    </section>
-
-
-    <section id="tcg-worlds" class="section">
-        <div class="container">
-
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow">Explore</span>
-                    <h2>Entdecke deine TCG-Welt</h2>
-                    <p>Von aktuellen Releases bis zu klassischen Sets.</p>
-                </div>
-            </div>
-
-            <div class="world-grid">
-
-                <a class="world-card" href="<?php echo esc_url(home_url('/product-category/pokemon/')); ?>">
-                    <div class="world-icon">PK</div>
-                    <div>
-                        <strong>Pokémon</strong><br>
-                        <span>Booster · Displays · Singles</span>
-                    </div>
-                </a>
-
-                <a class="world-card" href="<?php echo esc_url(home_url('/product-category/one-piece/')); ?>">
-                    <div class="world-icon">OP</div>
-                    <div>
-                        <strong>One Piece</strong><br>
-                        <span>Sets · Displays · Collection</span>
-                    </div>
-                </a>
-
-                <a class="world-card" href="<?php echo esc_url(home_url('/product-category/lorcana/')); ?>">
-                    <div class="world-icon">LC</div>
-                    <div>
-                        <strong>Lorcana</strong><br>
-                        <span>Booster · Sets · Zubehör</span>
-                    </div>
-                </a>
-
-                <a class="world-card" href="<?php echo esc_url(home_url('/product-category/yugioh/')); ?>">
-                    <div class="world-icon">YG</div>
-                    <div>
-                        <strong>Yu-Gi-Oh!</strong><br>
-                        <span>Booster · Displays · Decks</span>
-                    </div>
-                </a>
-
-                <a class="world-card" href="<?php echo esc_url(home_url('/product-category/magic/')); ?>">
-                    <div class="world-icon">MTG</div>
-                    <div>
-                        <strong>Magic</strong><br>
-                        <span>Sets · Booster · Commander</span>
-                    </div>
-                </a>
-
-            </div>
-
-        </div>
-    </section>
-
-
-    <section class="section product-zone">
-        <div class="container">
-
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow">New Drops</span>
-                    <h2>Neu im Shop</h2>
-                    <p>Frische Produkte und aktuelle Releases.</p>
-                </div>
-
-                <a class="btn btn-secondary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">
-                    Alle Produkte
-                </a>
-            </div>
-
-            <?php
-            if (class_exists('WooCommerce')) {
-                echo do_shortcode('[products limit="8" columns="4" orderby="date" order="DESC"]');
-            } else {
-                echo '<div class="empty-products">WooCommerce wird geladen.</div>';
-            }
-            ?>
-
-        </div>
-    </section>
-
-
-    <section id="app" class="section">
-        <div class="container">
-
-            <div class="feature-panel">
-                <div class="app-grid">
-
-                    <div>
-                        <div class="phone">
-                            <div class="phone-screen">
-                                <span class="eyebrow">Scanner</span>
-                                <div class="scan-frame"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="app-copy">
-                        <span class="eyebrow">Card Collection App</span>
-
-                        <h2>
-                            Deine Sammlung.
-                            <span class="gradient-text">Deine Reise.</span>
-                        </h2>
-
-                        <p class="hero-copy">
-                            Karten scannen, Varianten erkennen, Marktwerte vergleichen
-                            und komplette Sets über verschiedene TCGs hinweg vervollständigen.
-                        </p>
-
-                        <div class="features">
-
-                            <div class="feature">
-                                <span class="feature-bullet">✓</span>
-                                Karten schnell per Scanner erfassen
-                            </div>
-
-                            <div class="feature">
-                                <span class="feature-bullet">✓</span>
-                                Sammlung und Varianten verwalten
-                            </div>
-
-                            <div class="feature">
-                                <span class="feature-bullet">✓</span>
-                                Marktpreise aus mehreren Quellen
-                            </div>
-
-                            <div class="feature">
-                                <span class="feature-bullet">✓</span>
-                                Sets und komplette Kartenwelten vervollständigen
-                            </div>
-
-                        </div>
-
-                        <a class="btn btn-primary" href="#">
-                            Bald verfügbar
-                        </a>
-
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-
-    <section id="collectibles" class="section">
-        <div class="container">
-
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow">Beyond Cards</span>
-                    <h2>Collectibles & mehr</h2>
-                    <p>Ausgewählte Sammlerstücke neben unserem TCG-Kernsortiment.</p>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
-
-    <section id="fashion" class="section">
-        <div class="container">
-
-            <div class="section-heading">
-                <div>
-                    <span class="eyebrow">Selected Pieces</span>
-                    <h2>Fashion</h2>
-                    <p>Einzelstücke, besondere Pieces und wechselnde Drops.</p>
-                </div>
-            </div>
-
-        </div>
-    </section>
-
+<main class="freshShop">
+  <section class="freshHero"><div class="container freshHeroGrid">
+    <div class="freshIntro"><span class="freshEyebrow">CARDYSSEY — TRADING CARD STORE</span><h1>Gute Karten.<br><em>Gutes Gefühl.</em></h1><p>Entdecke Sammelkarten, Booster, Displays, Figuren, Plüschtiere und Zubehör – alles rund ums Sammeln. Ohne unnötige Umwege.</p><div class="freshButtons"><a class="freshPrimary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Zum Sortiment <span>↗</span></a><a class="freshSecondary" href="#welten">TCG-Welten entdecken ↓</a></div></div>
+    <div class="freshHeroVisual"><div class="freshVisualHead">FÜR ALLE, DIE GERNE SAMMELN.</div><img class="freshHeroCardOne" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-yugioh.jpg'); ?>" alt="Yu-Gi-Oh! Trading Card"><img class="freshHeroCardTwo" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-pokemon.png'); ?>" alt="Pokémon Trading Card"><span class="freshVisualFoot">DISCOVER · COLLECT · ENJOY</span></div>
+  </div></section>
+  <section class="container freshBrowse" id="welten"><div class="freshSectionHeading"><div><span class="freshEyebrow">FÜR JEDES SAMMLERHERZ</span><h2>Deine TCG-Welt beginnt hier.</h2></div><p>Pokémon, Yu-Gi-Oh!, One Piece und Magic. Weitere Sammlerartikel findest du nach Produktart.</p></div>
+   <div class="freshGames">
+    <?php
+    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering','Dragon Ball'];
+    foreach ($worlds as $world) {
+      $slug = sanitize_title($world);
+      $existing = get_term_by('slug',$slug,'product_cat');
+      $url = $existing && !is_wp_error($existing) && (int)$existing->count>0 ? get_term_link($existing) : '';
+      if ($url && !is_wp_error($url)) {
+        echo '<a class="freshGame" href="'.esc_url($url).'"><span>'.esc_html($world).'</span><small>Produkte ansehen ↗</small></a>';
+      } else {
+        echo '<div class="freshGame freshGameSoon"><span>'.esc_html($world).'</span><small>Sortiment folgt</small></div>';
+      }
+    }
+    ?>
+   </div>
+  </section>
+  <section class="container freshProductTypes" aria-labelledby="freshTypesTitle"><div class="freshSectionHeading"><div><span class="freshEyebrow">MEHR ALS KARTEN</span><h2 id="freshTypesTitle">Wonach suchst du?</h2></div><p>Vom einzelnen Kartenfund bis zum neuen Lieblingsstück für dein Regal.</p></div>
+    <div class="freshTypeGrid"><?php
+    $types = ['Einzelkarten','Booster & Packs','Displays & Boxen','Figuren & Sammlerstücke','Plüschtiere','Zubehör'];
+    foreach($types as $type) {
+      echo '<div class="freshTypeTile"><strong>'.esc_html($type).'</strong><span>Demnächst im Sortiment</span></div>';
+    }
+    ?></div>
+  </section>
+  <section class="freshCatalog"><div class="container"><div class="freshSectionHeading"><div><span class="freshEyebrow">SHOP THE COLLECTION</span><h2>Entdecke das Sortiment.</h2></div><a class="freshTextLink" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Artikel ↗</a></div>
+    <?php
+    if (class_exists('WooCommerce')) {
+      $published = wp_count_posts('product');
+      if ($published && !empty($published->publish)) echo do_shortcode('[products limit="8" columns="4" orderby="date" order="DESC"]');
+      else echo '<div class="freshEmpty"><strong>Wir füllen gerade unsere Regale.</strong><p>Hier erscheinen unsere neuesten Produkte, sobald sie im Shop eingestellt sind. Bis dahin kannst du schon die TCG-Welten entdecken.</p><a href="https://cardyssey.de/">In der Cardyssey-App stöbern ↗</a></div>';
+    }
+    ?>
+  </div></section>
+  <section class="container freshServices"><div><span>GUT ZU WISSEN</span><h3>Ohne Konto shoppen.</h3><p>Du kannst als Gast bestellen oder ein Shop-Konto für deine Bestellungen nutzen.</p></div><div><span>FÜR DEIN HOBBY</span><h3>Mehr als nur Shop.</h3><p>Mit der Cardyssey-App organisierst du deine Sammlung und findest neue Karten.</p></div><div><span>IM AUFBAU</span><h3>Noch mehr geplant.</h3><p>Weitere TCGs, Shop-Funktionen und die Verknüpfung mit deinem Cardyssey-Konto folgen.</p></div></section>
+  <section class="freshAppSection"><div class="container freshAppGrid"><div><span class="freshEyebrow">DIE CARDYSSEY-PLATTFORM</span><h2>Nach dem Auspacken<br>ist vor dem Sammeln.</h2><p>Scanne und verwalte deine Pokémon-Karten mit der Cardyssey-App. Neue Sammelkartenspiele sind in Planung.</p><a class="freshPrimary" href="https://cardyssey.de/">Cardyssey kennenlernen ↗</a></div><div class="freshAppFigure"><img src="<?php echo esc_url(get_template_directory_uri().'/assets/cardyssey-webapp-login.png'); ?>" alt="Originalaufnahme der Cardyssey-Webapp-Anmeldung"><span>Original-Webapp · Anmeldung</span></div></div></section>
 </main>
-
 <?php get_footer(); ?>

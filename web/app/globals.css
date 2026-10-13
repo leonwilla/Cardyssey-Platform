@@ -4753,3 +4753,14 @@ body{
     grid-template-columns:1fr 1fr;
   }
 }
+
+.collectionViewBar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+.collectionViewBar button{border:1px solid var(--border);border-radius:12px;background:var(--navy-card);color:var(--text);padding:10px 16px;cursor:pointer}
+.collectionSetGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.collectionSetCard{display:flex;flex-direction:column;gap:12px;text-align:left;min-height:158px;padding:20px;border:1px solid var(--border);border-radius:18px;background:var(--navy-card);color:var(--text);cursor:pointer}
+.collectionSetCard:hover{border-color:var(--cyan)}
+.collectionSetCard strong{font-size:20px}
+.collectionSetCard span{color:var(--secondary)}
+.collectionSetCard b{color:var(--gold);font-size:22px}
+@media(max-width:1050px){.collectionSetGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.collectionSetGrid{grid-template-columns:1fr}}

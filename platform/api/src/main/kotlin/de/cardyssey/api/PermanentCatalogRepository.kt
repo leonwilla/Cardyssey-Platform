@@ -181,10 +181,16 @@ class PermanentCatalogRepository(
                         ELSE COALESCE(EXCLUDED.image_source_url, catalog_cards_mirror.image_source_url)
                     END,
                     variants = CASE
-                        WHEN EXCLUDED.details_complete THEN EXCLUDED.variants
+                        WHEN EXCLUDED.details_complete
+                          AND jsonb_array_length(EXCLUDED.variants) > 0
+                        THEN EXCLUDED.variants
                         ELSE catalog_cards_mirror.variants
                     END,
                     raw_payload = CASE
+                        WHEN EXCLUDED.details_complete
+                          AND jsonb_array_length(EXCLUDED.variants) = 0
+                          AND jsonb_array_length(catalog_cards_mirror.variants) > 0
+                        THEN catalog_cards_mirror.raw_payload
                         WHEN EXCLUDED.details_complete OR NOT catalog_cards_mirror.details_complete
                         THEN EXCLUDED.raw_payload ELSE catalog_cards_mirror.raw_payload
                     END,

@@ -246,8 +246,13 @@ internal class JustTcgCentralPricingProvider(
                 response.statusCode() in 200..299 ->
                     json.parseToJsonElement(body).jsonObject
 
-                response.statusCode() == 429 ->
-                    throw IllegalStateException("JustTCG rate limit reached")
+                response.statusCode() == 429 -> {
+                    // Back off globally instead of repeating a known rate-limited
+                    // request for every card in the worker's large batch.
+                    requestLimitRetryAtMs = System.currentTimeMillis() + 60L * 60L * 1000L
+                    println("JustTCG paused for 1h: HTTP 429 rate limit")
+                    null
+                }
 
                 response.statusCode() >= 500 ->
                     throw IllegalStateException(

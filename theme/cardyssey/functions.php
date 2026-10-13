@@ -20,7 +20,7 @@ function cardyssey_assets() {
         'cardyssey-style',
         get_stylesheet_uri(),
         [],
-        wp_get_theme()->get('Version')
+        (string) filemtime(get_stylesheet_directory() . '/style.css')
     );
 }
 add_action('wp_enqueue_scripts', 'cardyssey_assets');

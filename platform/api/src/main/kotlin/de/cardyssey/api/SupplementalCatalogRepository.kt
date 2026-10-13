@@ -25,6 +25,7 @@ class SupplementalCatalogRepository(
                     COALESCE(m.image_complete, FALSE) AS image_complete,
                     CASE WHEN NULLIF(m.raw_payload->>'_cardyssey_verified_variant_source','') IS NOT NULL
                            OR (m.language_code='ja' AND m.raw_payload->>'_cardyssey_retail_variant_source' IN ('CARDTRADER_JP_NM','TCGCSV_JP_MARKET','POKEWALLET_JP_MARKET','WEB_HARERUYA_JP','WEB_TORECACAMP_JP'))
+                           OR (m.language_code='ko' AND m.raw_payload->>'_cardyssey_official_rarity_variant_source' IN ('POKEMON_KOREA_AR_SAR','POKEMON_KOREA_SPECIAL_RARITY','POKEMON_KOREA_HOLO_RARITY','POKEMON_KOREA_COMMON_UNCOMMON_BASE','POKEMON_KOREA_R_RR_RRR_S_BASE','POKEMON_KOREA_OTHER_RARITY_BASE','POKEMON_KOREA_DP_PROMO_BASE'))
                            OR (m.language_code='ko' AND m.raw_payload->>'_cardyssey_retail_variant_source' IN ('WEB_UTURI_KO','WEB_MEWTWO_KO','WEB_LAKE_KO','WEB_MANA_KO','WEB_LEVELUP_KO','WEB_SHINY_KO','CARDTRADER_KO_NM','WEB_UNICORN_KO','WEB_NERO_KO','WEB_CARDANVIL_KO','WEB_BLACKROSE_KO'))
                          THEN m.variants::text END AS recovered_variants
                 FROM catalog_supplemental_cards s

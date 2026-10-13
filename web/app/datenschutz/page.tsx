@@ -18,12 +18,6 @@ export default function DatenschutzPage() {
         <span className="legalEyebrow">Rechtliches</span>
         <h1>Datenschutzerklärung</h1>
 
-        <div className="legalWarning">
-          Die Hosting- und Infrastrukturangaben werden vor der
-          öffentlichen Veröffentlichung noch anhand des produktiven
-          Cardyssey-Setups ergänzt.
-        </div>
-
         <section>
           <h2>1. Verantwortlicher</h2>
           <p>
@@ -61,7 +55,21 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>4. Authentifizierung und lokale Speicherung</h2>
+          <h2>4. Hosting und technische Auslieferung</h2>
+          <p>
+            Die Cardyssey-Kernanwendung einschließlich Datenbank wird
+            auf vom Betreiber administrierter Serverinfrastruktur
+            betrieben. Für die öffentliche Erreichbarkeit der
+            Cardyssey-Web- und API-Domains wird Cloudflare eingesetzt,
+            insbesondere für Tunnel-, DNS- und Sicherheitsfunktionen.
+            Dabei können technisch notwendige Verbindungsdaten wie
+            IP-Adresse, Zeitpunkt, angefragte Ressource und
+            Sicherheitsereignisse durch Cloudflare verarbeitet werden.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. Authentifizierung und lokale Speicherung</h2>
           <p>
             Für die Anmeldung werden Zugriffs- und
             Aktualisierungstoken verwendet. Im Web werden dafür
@@ -73,7 +81,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>5. Community, Chats und Moderation</h2>
+          <h2>6. Community, Chats und Moderation</h2>
           <p>
             Nachrichten und von Nutzern geteilte Karten-, Set- oder
             Profildaten werden gespeichert, damit die
@@ -84,7 +92,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>6. Push-Benachrichtigungen</h2>
+          <h2>7. Push-Benachrichtigungen</h2>
           <p>
             Wenn Push-Benachrichtigungen aktiviert werden, nutzt die
             Android-App Firebase Cloud Messaging von Google. Dabei
@@ -96,7 +104,20 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>7. Karten-, Bild- und Preisdaten</h2>
+          <h2>8. Empfänger und Drittlandverarbeitung</h2>
+          <p>
+            Soweit für Cloudflare, Firebase Cloud Messaging oder andere
+            technisch eingebundene Dienste externe Anbieter eingesetzt
+            werden, erhalten diese nur die für den jeweiligen Dienst
+            erforderlichen Daten. Soweit eine Verarbeitung außerhalb
+            der EU bzw. des EWR stattfindet, werden die hierfür
+            vorgesehenen datenschutzrechtlichen Garantien des jeweiligen
+            Anbieters genutzt.
+          </p>
+        </section>
+
+        <section>
+          <h2>9. Karten-, Bild- und Preisdaten</h2>
           <p>
             Zur Bereitstellung des Kartenkatalogs, von Kartenbildern
             und Marktinformationen können Daten aus angebundenen
@@ -108,7 +129,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>8. Speicherdauer</h2>
+          <h2>10. Speicherdauer</h2>
           <p>
             Personenbezogene Daten werden nur so lange gespeichert,
             wie sie für die jeweiligen Funktionen, gesetzliche
@@ -124,7 +145,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>9. Rechte betroffener Personen</h2>
+          <h2>11. Rechte betroffener Personen</h2>
           <p>
             Betroffene Personen haben im Rahmen der gesetzlichen
             Voraussetzungen insbesondere Rechte auf Auskunft,
@@ -136,7 +157,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>10. Sicherheit</h2>
+          <h2>12. Sicherheit</h2>
           <p>
             Cardyssey setzt technische und organisatorische
             Maßnahmen ein, darunter verschlüsselte Übertragung,
@@ -147,7 +168,7 @@ export default function DatenschutzPage() {
         </section>
 
         <section>
-          <h2>11. Änderungen</h2>
+          <h2>13. Änderungen</h2>
           <p>
             Diese Datenschutzerklärung wird angepasst, wenn sich
             Funktionen, Anbieter oder rechtliche Anforderungen

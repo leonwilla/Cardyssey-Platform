@@ -3,84 +3,60 @@ import { BrandMark } from "@/components/BrandMark";
 import { ANDROID_APK_DOWNLOAD_URL } from "@/lib/android-release";
 import "./landing-editorial.css";
 
-const highlights = [
-  { number: "01", title: "Sammlung", text: "Karten und Varianten erfassen. Sets sortieren. Deinen Fortschritt sehen.", href: "/collection", action: "Sammlung öffnen" },
-  { number: "02", title: "Scanner", text: "Karte vor die Kamera halten, Ergebnis prüfen und direkt hinzufügen.", href: "/scan", action: "Scanner ansehen" },
-  { number: "03", title: "Marktpreise", text: "Verfügbare Kartenpreise und Entwicklungen übersichtlich verfolgen.", href: "/collection", action: "Preise entdecken" },
-  { number: "04", title: "Community", text: "Mit Freunden sammeln, Karten teilen und miteinander schreiben.", href: "/friends", action: "Community ansehen" },
+const cards = [
+  { src: "/landing/cards/base1-4.png", name: "Charizard · Base Set" },
+  { src: "/landing/cards/yugioh-dark-magician.jpg", name: "Yu-Gi-Oh! · Dark Magician (Bildbeispiel)" },
+  { src: "/landing/cards/sv4-234.png", name: "Pokémon TCG · Paradox Rift" },
 ];
-
 export default function Home() {
-  return (
-    <div className="tcgHome">
-      <header className="tcgHeader">
-        <div className="tcgWrap tcgHeaderInner">
-          <Link href="/" className="tcgBrand" aria-label="Cardyssey Startseite"><BrandMark /><span>Cardyssey</span></Link>
-          <nav aria-label="Hauptnavigation" className="tcgNav">
-            <a href="#plattform">Plattform</a><a href="#funktionen">Funktionen</a><a href="#shop">Shop</a><a href="#community">Community</a>
-          </nav>
-          <div className="tcgHeaderActions"><Link href="/login" className="tcgLogin">Anmelden</Link><Link href="/register" className="tcgButton tcgButtonSmall">Kostenlos starten <span aria-hidden="true">↗</span></Link></div>
+  return <div className="tcgHome v3">
+    <header className="tcgHeader"><div className="tcgWrap tcgHeaderInner">
+      <Link href="/" className="tcgBrand"><BrandMark/><span>Cardyssey</span></Link>
+      <nav className="tcgNav" aria-label="Hauptnavigation"><a href="#app">Die App</a><a href="#shop">Der Shop</a><a href="#funktionen">Funktionen</a><a href="#community">Community</a><a href="#ausblick">Ausblick</a></nav>
+      <div className="tcgHeaderActions"><Link href="/login" className="tcgLogin">Anmelden</Link><Link href="/register" className="tcgButton tcgButtonSmall">Kostenlos starten ↗</Link></div>
+    </div></header>
+    <main>
+      <section className="tcgHero" id="plattform"><div className="tcgWrap tcgHeroGrid">
+        <div className="tcgHeroCopy">
+          <span className="tcgOverline"><span className="tcgDot"/> DEIN HOBBY. DEINE KARTEN.</span>
+          <h1>Für alle, die<br/><span>Karten lieben.</span></h1>
+          <p>Sammlung organisieren, Lieblingskarten entdecken und im Shop stöbern. Ein Ort für deine Leidenschaft – ganz gleich, wie groß deine Sammlung ist.</p>
+          <div className="tcgHeroButtons"><Link href="/register" className="tcgButton">Zur Cardyssey-App ↗</Link><a href="https://shop.cardyssey.de" className="tcgButton tcgButtonLine">Zum TCG-Shop ↗</a></div>
+          <div className="tcgHeroFacts"><span>SAMMLUNG</span><span>·</span><span>SCANNER</span><span>·</span><span>PREISE</span><span>·</span><span>SHOP</span></div>
         </div>
-      </header>
-
-      <main>
-        <section className="tcgHero" id="plattform">
-          <div className="tcgWrap tcgHeroGrid">
-            <div className="tcgHeroCopy">
-              <span className="tcgOverline"><span className="tcgDot" /> DIE PLATTFORM FÜR DEINE KARTEN</span>
-              <h1>Deine Karten.<br/><span>Deine Welt.</span></h1>
-              <p>Scannen, sammeln, Preise verfolgen und neue Karten entdecken. Cardyssey bringt deine Sammlung, die Community und den TCG-Shop zusammen.</p>
-              <div className="tcgHeroButtons">
-                <Link href="/register" className="tcgButton">Sammlung starten <span aria-hidden="true">↗</span></Link>
-                <a href="https://shop.cardyssey.de" className="tcgButton tcgButtonLine">TCG-Shop besuchen <span aria-hidden="true">↗</span></a>
-              </div>
-              <div className="tcgHeroFacts"><span>WEB & ANDROID</span><span>•</span><span>SAMMLUNG & PREISE</span><span>•</span><span>SHOP & COMMUNITY</span></div>
-            </div>
-            <div className="tcgHeroStage">
-              <div className="tcgStageLabel">COLLECT / TRACK / DISCOVER <span>001—004</span></div>
-              <div className="tcgStagePanel">
-                <div className="tcgStageSide"><span>YOUR COLLECTION</span><strong>C.</strong><span>POKÉMON TCG</span></div>
-                <div className="tcgStageCard tcgCardOne"><span>01 / COLLECTION</span><div className="tcgCardArt"><span>◈</span></div><strong>Every card<br/>has a story.</strong><small>BUILD YOUR COLLECTION</small></div>
-                <div className="tcgStageCard tcgCardTwo"><span>02 / DISCOVER</span><div className="tcgCardArt"><span>✦</span></div><strong>Find your<br/>next favorite.</strong><small>EXPLORE THE HOBBY</small></div>
-              </div>
-              <div className="tcgStageBottom"><span>APP / COMMUNITY / STORE</span><span>MADE FOR COLLECTORS</span></div>
-            </div>
+        <div className="v3HeroArtwork" aria-label="Trading Cards aus unterschiedlichen Sammelkartenspielen"><div className="v3HeroGrid"/>
+          <span className="v3HeroLabel">KARTEN, DIE BEGEISTERN <small>TCG & COLLECTING</small></span>
+          <div className="v3Cards">
+            <img src={cards[2].src} alt={cards[2].name} className="v3Card v3CardBack" />
+            <img src={cards[1].src} alt={cards[1].name} className="v3Card v3CardMid" />
+            <img src={cards[0].src} alt={cards[0].name} className="v3Card v3CardFront" />
           </div>
-        </section>
-
-        <section className="tcgChoices tcgWrap" aria-label="Cardyssey entdecken">
-          <Link className="tcgChoice tcgChoiceApp" href="/collection">
-            <span className="tcgChoiceTop">01 — DIE PLATTFORM <span>↗</span></span>
-            <div><span className="tcgMiniLabel">CARDYSSEY APP</span><h2>Alles im Blick.<br/>Jede Karte zählt.</h2><p>Deine Sammlung, dein Scanner, deine Preise. Ein Platz für alles, was du sammelst.</p><span className="tcgChoiceLink">Zur Web-App <span aria-hidden="true">↗</span></span></div>
-            <div className="tcgChoiceDecor tcgAppDecor" aria-hidden="true"><span>COLLECTION</span><strong>MY CARDS</strong><i/><i/><i/></div>
-          </Link>
-          <a className="tcgChoice tcgChoiceShop" href="https://shop.cardyssey.de" id="shop">
-            <span className="tcgChoiceTop">02 — DER TCG-SHOP <span>↗</span></span>
-            <div><span className="tcgMiniLabel">CARDYSSEY SHOP</span><h2>Neues entdecken.<br/>Weiter sammeln.</h2><p>Der eigene Cardyssey-Shop für Pokémon-TCG-Produkte und Sammelzubehör.</p><span className="tcgChoiceLink">Zum Shop <span aria-hidden="true">↗</span></span></div>
-            <div className="tcgChoiceDecor tcgShopDecor" aria-hidden="true"><span>THE COLLECTOR’S CORNER</span><strong>TCG / STORE</strong><b>✦</b></div>
-          </a>
-        </section>
-
-        <section className="tcgFeatures tcgWrap" id="funktionen">
-          <div className="tcgSectionHead"><div><span className="tcgMiniLabel">DIE FUNKTIONEN</span><h2>Für das, was Sammeln<br/><em>wirklich ausmacht.</em></h2></div><p>Kein Tabellenchaos. Keine umständlichen Umwege. Nur die Funktionen, die du für deine Karten brauchst.</p></div>
-          <div className="tcgFeatureGrid">{highlights.map((feature) => (
-            <Link href={feature.href} className="tcgFeature" key={feature.number}>
-              <span className="tcgFeatureNum">{feature.number} / CARDYSSEY <span>↗</span></span>
-              <div className="tcgFeatureGlyph" aria-hidden="true">{feature.number === "01" ? "▧" : feature.number === "02" ? "⌗" : feature.number === "03" ? "↗" : "◎"}</div>
-              <h3>{feature.title}</h3><p>{feature.text}</p><span className="tcgFeatureAction">{feature.action} →</span>
-            </Link>
-          ))}</div>
-        </section>
-
-        <section className="tcgCommunity" id="community"><div className="tcgWrap tcgCommunityInner">
-          <div><span className="tcgMiniLabel">MEHR ALS EINE SAMMLUNG</span><h2>Das Hobby verbindet.<br/><em>Cardyssey auch.</em></h2><p>Zeig deine Karten, entdecke andere Sammlungen und bleib mit Freunden in Kontakt. Zusammen macht Sammeln einfach mehr Spaß.</p><Link href="/register" className="tcgButton tcgButtonLine">Community entdecken ↗</Link></div>
-          <div className="tcgCommunityVisual" aria-hidden="true"><span className="tcgCommunityVisualTop">CARDYSSEY / COMMUNITY</span><div className="tcgCommunityLines"><span>FRIENDS</span><strong>Collect<br/>together.</strong><span>SHARE / CHAT / DISCOVER</span></div><div className="tcgCommunityCircles"><i/><i/><i/></div></div>
-        </div></section>
-
-        <section className="tcgFinal tcgWrap"><span className="tcgMiniLabel">DEINE SAMMLUNG WARTET SCHON</span><h2>Bereit für deine<br/><em>nächste Karte?</em></h2><div className="tcgFinalActions"><Link href="/register" className="tcgButton">Jetzt kostenlos starten ↗</Link><a href={ANDROID_APK_DOWNLOAD_URL} className="tcgButton tcgButtonLine">Android-App herunterladen ↗</a><a href="https://shop.cardyssey.de" className="tcgTextLink">Zum Shop ↗</a></div></section>
-      </main>
-
-      <footer className="tcgFooter"><div className="tcgWrap tcgFooterInner"><Link href="/" className="tcgBrand"><BrandMark/><span>Cardyssey</span></Link><span>© 2026 Cardyssey</span><nav aria-label="Rechtliches"><a href="https://shop.cardyssey.de">Shop</a><Link href="/impressum">Impressum</Link><Link href="/datenschutz">Datenschutz</Link><Link href="/login">Login</Link></nav></div></footer>
-    </div>
-  );
+          <span className="v3HeroFoot">MEHR ALS EIN KARTENSPIEL.</span>
+        </div>
+      </div></section>
+      <section className="tcgWrap v5AppSpotlight" id="app">
+        <div className="v5AppText"><span className="tcgMiniLabel">DIE CARDYSSEY APP</span><h2>Deine Sammlung verdient mehr als eine Tabelle.</h2><p>Scanne deine Karten, verwalte Varianten und behalte den Überblick über Sets und verfügbare Marktpreise. Aktuell für Pokémon TCG.</p><div className="v5Bullet"><span>Sammlung & Sets</span><span>Scanner</span><span>Preisübersicht</span><span>Freunde & Chat</span></div><Link href="/register" className="tcgButton">App kostenlos ausprobieren ↗</Link></div>
+        <div className="v5RealScreen v5CardPreview"><span className="v5ScreenTop">Deine Karten im Mittelpunkt <small>TCG-Sammlung</small></span><div className="v5PreviewCards"><img src="/landing/cards/base1-4.png" alt="Pokémon Glurak Karte"/><img src="/landing/cards/yugioh-dark-magician.jpg" alt="Yu-Gi-Oh! Dark Magician Karte"/><img src="/landing/cards/sv4-234.png" alt="Pokémon TCG Sammelkarte"/></div><span className="v5ScreenFoot">Kartenillustration · Echte App-Aufnahmen folgen</span></div>
+      </section>
+      <section className="v5ShopFeature" id="shop"><div className="tcgWrap v5ShopFeatureGrid">
+        <div className="v5ShopGallery"><div className="v5ShopCard v5ShopCardA"><img src="/landing/cards/yugioh-dark-magician.jpg" alt="Yu-Gi-Oh! Sammelkarte"/></div><div className="v5ShopCard v5ShopCardB"><img src="/landing/cards/sv3-223.png" alt="Pokémon Sammelkarte"/></div></div>
+        <div className="v5ShopCopy"><span className="tcgMiniLabel">DER CARDYSSEY SHOP</span><h2>Ein guter Fund fühlt sich besonders an.</h2><p>Trading Cards und Zubehör entdecken. Ein Shop für unterschiedliche TCG-Welten, mit Raum für neue Spiele und Produkte.</p><a className="tcgButton" href="https://shop.cardyssey.de/">Shop entdecken ↗</a></div>
+      </div></section>
+      <section className="tcgWrap v3Features" id="funktionen"><div className="v3SectionTitle"><span className="tcgMiniLabel">FÜR DEINEN SAMMLERALLTAG</span><h2>Eine Plattform.<br/><em>Viele Möglichkeiten.</em></h2></div>
+        <div className="v3FeaturesRow"><Link href="/scan"><span>SCANNER</span><h3>Karten scannen.</h3><p>Aktuell Pokémon-Karten erkennen und erfassen.</p><b>↗</b></Link><Link href="/collection"><span>SAMMLUNG</span><h3>Alles an einem Ort.</h3><p>Karten, Sets und Varianten.</p><b>↗</b></Link><Link href="/collection"><span>MARKTPREISE</span><h3>Werte im Blick.</h3><p>Verfügbare Preise und Entwicklungen.</p><b>↗</b></Link><Link href="/friends"><span>COMMUNITY</span><h3>Zusammen sammeln.</h3><p>Freunde und Karten teilen.</p><b>↗</b></Link></div>
+      </section>
+      <section className="tcgWrap v3Roadmap" id="ausblick" aria-labelledby="v3RoadmapTitle">
+        <div className="v3RoadmapHead"><div><span className="tcgMiniLabel">CARDYSSEY ENTWICKELT SICH WEITER</span><h2 id="v3RoadmapTitle">Hier fängt es an. <em>Und wächst weiter.</em></h2></div><p>Wir bauen Cardyssey Schritt für Schritt zu einem Zuhause für Sammelkartenspiele aus. Was noch fehlt, kennzeichnen wir offen.</p></div>
+        <div className="v3RoadmapGrid">
+          <div className="v3RoadmapItem v3RoadmapCurrent"><span className="v3RoadmapStatus">VERFÜGBAR</span><strong>Pokémon TCG</strong><p>Sammlung, Kartensuche und Scanner mit Pokémon-Karten.</p></div>
+          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">COMING SOON</span><strong>Weitere Kartenspiele</strong><p>Mehr TCG-Kataloge und Sammelmöglichkeiten als zukünftige Erweiterung.</p></div>
+          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">IN PLANUNG</span><strong>Trading &amp; Angebote</strong><p>Persönliche Tauschangebote, Wishlist-Abgleich und Wertausgleich.</p></div>
+        </div>
+        <span className="v3RoadmapFoot">Ausblick, keine Termin- oder Verfügbarkeitszusage.</span>
+      </section>
+      <section className="v3Community" id="community"><div className="tcgWrap v3CommunityInner"><div><span className="tcgMiniLabel">GEMEINSAM STATT ALLEIN</span><h2>Eine Leidenschaft.<br/><em>Viele Sammler.</em></h2><p>Entdecke Sammlungen, zeig deine Lieblingskarten und bleib mit anderen Sammlern in Kontakt.</p><Link href="/register" className="tcgButton tcgButtonLine">Community entdecken ↗</Link></div><div className="v3CommunityCards"><img src="/landing/cards/sv4-234.png" alt="Pokémon Trading Card"/><img src="/landing/cards/yugioh-dark-magician.jpg" alt="Yu-Gi-Oh! Trading Card"/></div></div></section>
+      <section className="tcgWrap v3Bottom"><div><span className="tcgMiniLabel">CARDYSSEY</span><h2>Dein nächster Fund<br/>beginnt hier.</h2></div><div className="v3BottomButtons"><Link href="/register" className="tcgButton">Kostenlos starten ↗</Link><a href="https://shop.cardyssey.de" className="tcgButton tcgButtonLine">Zum Shop ↗</a><a href={ANDROID_APK_DOWNLOAD_URL} className="v3Apk">Android-App herunterladen →</a></div></section>
+    </main>
+    <footer className="tcgFooter"><div className="tcgWrap tcgFooterInner"><Link href="/" className="tcgBrand"><BrandMark/><span>Cardyssey</span></Link><span>© 2026 Cardyssey</span><nav><a href="https://shop.cardyssey.de">Shop</a><Link href="/impressum">Impressum</Link><Link href="/datenschutz">Datenschutz</Link><Link href="/login">Login</Link></nav></div></footer>
+  </div>;
 }

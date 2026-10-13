@@ -258,8 +258,11 @@ def main():
                 if old is None or Decimal(offer["amount"]) < Decimal(old["offer"]["amount"]):
                     chosen[row["card_id"]] = u
     updates = list(chosen.values())
+    # Distinguish refreshed known cards from genuinely new coverage.
+    new_matches = sum(u["row"].get("old_status") != "PRICE_FOUND" for u in updates)
     report = dict(shop=args.shop, source=shop["source"], catalog_candidates=len(rows), retail_products=len(products),
-                  product_candidates=len(candidates), matched=len(updates), rejected=dict(rejected), errors=errors,
+                  product_candidates=len(candidates), matched=len(updates), new_price_candidates=new_matches,
+                  previously_priced_matches=len(updates)-new_matches, rejected=dict(rejected), errors=errors,
                   updates=updates, applied=ko.apply_updates(updates, shop["source"], missing_only=args.missing_only) if args.apply and not errors else dict(variants=0, prices=0, history=0))
     if args.report:
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")

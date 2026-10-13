@@ -199,7 +199,8 @@ def get_listings():
             raise ValueError(f"missing category products on page {page}")
         return listing
     first = fetch(1)
-    if first.last_page > 40:
+    # Mewtwo currently has 44 category pages; keep a generous finite safety cap.
+    if first.last_page > 100:
         raise ValueError("category pagination limit")
     products = {}
     signatures = set()
