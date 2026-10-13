@@ -26,7 +26,7 @@ export function legalOperator(): LegalOperator {
 
   const email =
     process.env.LEGAL_CONTACT_EMAIL?.trim() ||
-    "willamowski.sell@gmail.com";
+    "kontakt@cardyssey.de";
 
   return {
     name,
