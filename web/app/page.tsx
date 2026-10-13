@@ -18,14 +18,14 @@ export default function Home() {
     <main>
       <section className="tcgHero" id="plattform"><div className="tcgWrap tcgHeroGrid">
         <div className="tcgHeroCopy">
-          <span className="tcgOverline"><span className="tcgDot"/> CARDYSSEY · TRADING CARD CULTURE</span>
-          <h1>Mehr sammeln.<br/><span>Mehr erleben.</span></h1>
-          <p>Von deiner Sammlung bis zum nächsten Fund: Cardyssey vereint Sammeln, Entdecken und Shoppen. Die App startet mit Pokémon-Karten – weitere TCGs sollen folgen.</p>
+          <span className="tcgOverline"><span className="tcgDot"/> DEIN HOBBY. DEINE KARTEN.</span>
+          <h1>Für alle, die<br/><span>Karten lieben.</span></h1>
+          <p>Sammlung organisieren, Lieblingskarten entdecken und im Shop stöbern. Ein Ort für deine Leidenschaft – ganz gleich, wie groß deine Sammlung ist.</p>
           <div className="tcgHeroButtons"><Link href="/register" className="tcgButton">Zur Cardyssey-App ↗</Link><a href="https://shop.cardyssey.de" className="tcgButton tcgButtonLine">Zum TCG-Shop ↗</a></div>
           <div className="tcgHeroFacts"><span>SAMMLUNG</span><span>·</span><span>SCANNER</span><span>·</span><span>PREISE</span><span>·</span><span>SHOP</span></div>
         </div>
         <div className="v3HeroArtwork" aria-label="Trading Cards aus unterschiedlichen Sammelkartenspielen"><div className="v3HeroGrid"/>
-          <span className="v3HeroLabel">THE ART OF COLLECTING <small>001 / CARDYSSEY</small></span>
+          <span className="v3HeroLabel">KARTEN, DIE BEGEISTERN <small>TCG & COLLECTING</small></span>
           <div className="v3Cards">
             <img src={cards[2].src} alt={cards[2].name} className="v3Card v3CardBack" />
             <img src={cards[1].src} alt={cards[1].name} className="v3Card v3CardMid" />
@@ -34,23 +34,23 @@ export default function Home() {
           <span className="v3HeroFoot">MEHR ALS EIN KARTENSPIEL.</span>
         </div>
       </div></section>
-      <section className="tcgWrap v3TwoPaths" aria-label="Unsere Angebote">
-        <article className="v3Path v3PathApp" id="app"><div className="v3PathCopy"><span className="tcgMiniLabel">01 / DIE APP</span><h2>Deine Sammlung.<br/>Dein Überblick.</h2><p>Die Karten deiner Sammlung erfassen, Varianten verwalten und Sets vervollständigen. Aktuell mit Fokus auf Pokémon.</p><Link href="/collection" className="tcgButton">Web-App entdecken ↗</Link></div>
-          <div className="v3Dashboard" aria-label="Vorschau der Cardyssey-Sammlungsfunktionen"><div className="v3DashTop"><strong>Cardyssey</strong><span>COLLECTION</span></div><div className="v3DashHeading"><strong>Meine Karten</strong><span>Sets · Sammlung · Preise</span></div><div className="v3DashCards">{cards.map(c=><div key={c.src}><img src={c.src} alt={c.name}/></div>)}</div><div className="v3DashBottom">DEINE KARTEN. DEIN FORTSCHRITT.</div></div>
-        </article>
-        <article className="v3Path v3PathStore" id="shop"><div className="v3PathCopy"><span className="tcgMiniLabel">02 / DER SHOP</span><h2>Für deinen<br/>nächsten Fund.</h2><p>Booster, Karten und Zubehör: Entdecke unsere TCG-Welt im Cardyssey-Shop.</p><a href="https://shop.cardyssey.de" className="tcgButton tcgButtonLine">Shop besuchen ↗</a></div>
-          <div className="v3ShopVisual"><span>THE CARDYSSEY SHOP</span><div className="v3ShopCard"><img src="/landing/cards/swsh12pt5-160.png" alt="Trading Card als Bildbeispiel, kein konkretes Shop-Angebot"/></div><strong>ENTDECKEN.<br/>SAMMELN.<br/>WEITERGEHEN.</strong></div>
-        </article>
+      <section className="tcgWrap v5AppSpotlight" id="app">
+        <div className="v5AppText"><span className="tcgMiniLabel">DIE CARDYSSEY APP</span><h2>Deine Sammlung verdient mehr als eine Tabelle.</h2><p>Scanne deine Karten, verwalte Varianten und behalte den Überblick über Sets und verfügbare Marktpreise. Aktuell für Pokémon TCG.</p><div className="v5Bullet"><span>Sammlung & Sets</span><span>Scanner</span><span>Preisübersicht</span><span>Freunde & Chat</span></div><Link href="/register" className="tcgButton">App kostenlos ausprobieren ↗</Link></div>
+        <div className="v5RealScreen"><span className="v5ScreenTop">Einblick in Cardyssey <small>Original-Webapp · Anmeldeseite</small></span><img src="/landing/screens/login.png" alt="Echter Screenshot der Cardyssey-Webapp-Anmeldeseite"/><span className="v5ScreenFoot">Eine persönliche Sammlungsansicht folgt mit einem freigegebenen Testaccount.</span></div>
       </section>
-      <section className="tcgWrap v3Features" id="funktionen"><div className="v3SectionTitle"><span className="tcgMiniLabel">ALLES, WAS DU BRAUCHST</span><h2>Eine Plattform.<br/><em>Viele Möglichkeiten.</em></h2></div>
-        <div className="v3FeaturesRow"><Link href="/scan"><span>01 / SCANNER</span><h3>Karten scannen.</h3><p>Aktuell Pokémon-Karten erkennen und erfassen.</p><b>↗</b></Link><Link href="/collection"><span>02 / SAMMLUNG</span><h3>Alles an einem Ort.</h3><p>Karten, Sets und Varianten.</p><b>↗</b></Link><Link href="/collection"><span>03 / PREISE</span><h3>Werte im Blick.</h3><p>Verfügbare Preise und Entwicklungen.</p><b>↗</b></Link><Link href="/friends"><span>04 / COMMUNITY</span><h3>Zusammen sammeln.</h3><p>Freunde und Karten teilen.</p><b>↗</b></Link></div>
+      <section className="v5ShopFeature" id="shop"><div className="tcgWrap v5ShopFeatureGrid">
+        <div className="v5ShopGallery"><div className="v5ShopCard v5ShopCardA"><img src="/landing/cards/yugioh-dark-magician.jpg" alt="Yu-Gi-Oh! Sammelkarte"/></div><div className="v5ShopCard v5ShopCardB"><img src="/landing/cards/sv3-223.png" alt="Pokémon Sammelkarte"/></div></div>
+        <div className="v5ShopCopy"><span className="tcgMiniLabel">DER CARDYSSEY SHOP</span><h2>Ein guter Fund fühlt sich besonders an.</h2><p>Trading Cards und Zubehör entdecken. Ein Shop für unterschiedliche TCG-Welten, mit Raum für neue Spiele und Produkte.</p><a className="tcgButton" href="https://shop.cardyssey.de/">Shop entdecken ↗</a></div>
+      </div></section>
+      <section className="tcgWrap v3Features" id="funktionen"><div className="v3SectionTitle"><span className="tcgMiniLabel">FÜR DEINEN SAMMLERALLTAG</span><h2>Eine Plattform.<br/><em>Viele Möglichkeiten.</em></h2></div>
+        <div className="v3FeaturesRow"><Link href="/scan"><span>SCANNER</span><h3>Karten scannen.</h3><p>Aktuell Pokémon-Karten erkennen und erfassen.</p><b>↗</b></Link><Link href="/collection"><span>SAMMLUNG</span><h3>Alles an einem Ort.</h3><p>Karten, Sets und Varianten.</p><b>↗</b></Link><Link href="/collection"><span>MARKTPREISE</span><h3>Werte im Blick.</h3><p>Verfügbare Preise und Entwicklungen.</p><b>↗</b></Link><Link href="/friends"><span>COMMUNITY</span><h3>Zusammen sammeln.</h3><p>Freunde und Karten teilen.</p><b>↗</b></Link></div>
       </section>
       <section className="tcgWrap v3Roadmap" id="ausblick" aria-labelledby="v3RoadmapTitle">
-        <div className="v3RoadmapHead"><div><span className="tcgMiniLabel">CARDYSSEY ENTWICKELT SICH WEITER</span><h2 id="v3RoadmapTitle">Heute Pokémon. <em>Morgen mehr TCG.</em></h2></div><p>Wir bauen Cardyssey Schritt für Schritt zu einem Zuhause für Sammelkartenspiele aus. Was noch fehlt, kennzeichnen wir offen.</p></div>
+        <div className="v3RoadmapHead"><div><span className="tcgMiniLabel">CARDYSSEY ENTWICKELT SICH WEITER</span><h2 id="v3RoadmapTitle">Hier fängt es an. <em>Und wächst weiter.</em></h2></div><p>Wir bauen Cardyssey Schritt für Schritt zu einem Zuhause für Sammelkartenspiele aus. Was noch fehlt, kennzeichnen wir offen.</p></div>
         <div className="v3RoadmapGrid">
-          <div className="v3RoadmapItem v3RoadmapCurrent"><span className="v3RoadmapStatus">● BEREITS VERFÜGBAR</span><strong>Pokémon TCG</strong><p>Sammlung, Kartensuche und Scanner mit Pokémon-Karten.</p></div>
-          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">◷ GEPLANT</span><strong>Weitere Kartenspiele</strong><p>Mehr TCG-Kataloge und Sammelmöglichkeiten als zukünftige Erweiterung.</p></div>
-          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">◷ IN PLANUNG</span><strong>Trading &amp; Angebote</strong><p>Persönliche Tauschangebote, Wishlist-Abgleich und Wertausgleich.</p></div>
+          <div className="v3RoadmapItem v3RoadmapCurrent"><span className="v3RoadmapStatus">VERFÜGBAR</span><strong>Pokémon TCG</strong><p>Sammlung, Kartensuche und Scanner mit Pokémon-Karten.</p></div>
+          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">COMING SOON</span><strong>Weitere Kartenspiele</strong><p>Mehr TCG-Kataloge und Sammelmöglichkeiten als zukünftige Erweiterung.</p></div>
+          <div className="v3RoadmapItem"><span className="v3RoadmapStatus">IN PLANUNG</span><strong>Trading &amp; Angebote</strong><p>Persönliche Tauschangebote, Wishlist-Abgleich und Wertausgleich.</p></div>
         </div>
         <span className="v3RoadmapFoot">Ausblick, keine Termin- oder Verfügbarkeitszusage.</span>
       </section>

@@ -1,65 +1,36 @@
 <?php get_header(); ?>
-<main class="shop-refresh">
-  <section class="shop-hero">
-    <div class="container shop-hero-layout">
-      <div class="shop-hero-copy">
-        <span class="shop-label">CARDYSSEY / TCG STORE</span>
-        <h1>Für alles,<br><em>was du sammelst.</em></h1>
-        <p>Trading Cards, versiegelte Produkte und Zubehör für dein Hobby. Entdecke das Sortiment im Cardyssey-Shop.</p>
-        <div class="shop-hero-actions">
-          <a class="shop-action" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Produkte entdecken <span>↗</span></a>
-          <a class="shop-action shop-action-secondary" href="https://cardyssey.de/">Die Cardyssey-App <span>↗</span></a>
-        </div>
-        <span class="shop-hero-foot">TRADING CARDS · ACCESSORIES · COLLECTING</span>
-      </div>
-      <div class="shop-hero-art" aria-label="Cardyssey Trading Card Store">
-        <div class="shop-art-header"><span>DISCOVER YOUR NEXT CARD</span><span>01 / 03</span></div>
-        <div class="shop-art-center">
-          <div class="shop-art-card shop-art-card-one"><span>POKÉMON</span><strong>COLLECT.</strong></div>
-          <div class="shop-art-card shop-art-card-two"><span>YU-GI-OH!</span><strong>DISCOVER.</strong></div>
-          <div class="shop-art-card shop-art-card-three"><span>ONE PIECE & MORE</span><strong>PLAY.</strong></div>
-        </div>
-        <div class="shop-art-caption">YOUR COLLECTION STARTS HERE</div>
-      </div>
-    </div>
-  </section>
-  <section class="shop-categories-intro container" aria-label="TCG Produktwelten"><span class="shop-label">ENTDECKE UNSERE TCG-WELT</span><div class="shop-worlds"><span>Pokémon</span><span>Yu-Gi-Oh!</span><span>One Piece</span><span>Magic: The Gathering</span><span>Lorcana</span><span>Dragon Ball</span><span>Star Wars Unlimited</span></div><p>Weitere Sammelkartenspiele im Blick. Nicht alle Produktwelten sind bereits im Sortiment verfügbar.</p></section>
-  <section class="container shop-discover" id="shop-kategorien">
-    <div class="shop-section-title"><div><span class="shop-label">UNSER SORTIMENT</span><h2>Finde deinen nächsten Fund.</h2></div><a href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Produkte ansehen ↗</a></div>
+<main class="freshShop">
+  <section class="freshHero"><div class="container freshHeroGrid">
+    <div class="freshIntro"><span class="freshEyebrow">CARDYSSEY — TRADING CARD STORE</span><h1>Gute Karten.<br><em>Gutes Gefühl.</em></h1><p>Entdecke Trading Cards und Zubehör für dein Hobby. Klar sortiert, ganz ohne Umwege.</p><div class="freshButtons"><a class="freshPrimary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Zum Sortiment <span>↗</span></a><a class="freshSecondary" href="#welten">TCG-Welten entdecken ↓</a></div></div>
+    <div class="freshHeroVisual"><div class="freshVisualHead">FÜR ALLE, DIE GERNE SAMMELN.</div><img class="freshHeroCardOne" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-yugioh.jpg'); ?>" alt="Yu-Gi-Oh! Trading Card"><img class="freshHeroCardTwo" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-pokemon.png'); ?>" alt="Pokémon Trading Card"><span class="freshVisualFoot">DISCOVER · COLLECT · ENJOY</span></div>
+  </div></section>
+  <section class="container freshBrowse" id="welten"><div class="freshSectionHeading"><div><span class="freshEyebrow">FÜR JEDES SAMMLERHERZ</span><h2>Deine TCG-Welt beginnt hier.</h2></div><p>Verschiedene Spiele, eine Leidenschaft. Wir erweitern unser Sortiment Schritt für Schritt.</p></div>
+   <div class="freshGames">
     <?php
-    if (taxonomy_exists('product_cat')) {
-      $categories = get_terms(['taxonomy'=>'product_cat','hide_empty'=>true,'number'=>6,'orderby'=>'count','order'=>'DESC','exclude'=>[get_option('default_product_cat')]]);
-      if (!is_wp_error($categories) && !empty($categories)) {
-        echo '<div class="shop-category-grid">';
-        foreach ($categories as $category) {
-          $thumbnail_id = get_term_meta($category->term_id, 'thumbnail_id', true);
-          $src = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id,'medium') : '';
-          echo '<a class="shop-category" href="'.esc_url(get_term_link($category)).'">';
-          if ($src) echo '<img src="'.esc_url($src).'" alt="" loading="lazy">';
-          echo '<span class="shop-category-content"><strong>'.esc_html($category->name).'</strong><small>'.(int)$category->count.' Produkte ↗</small></span></a>';
-        }
-        echo '</div>';
+    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering','Disney Lorcana','Dragon Ball','Star Wars Unlimited'];
+    foreach ($worlds as $world) {
+      $slug = sanitize_title($world);
+      $existing = get_term_by('slug',$slug,'product_cat');
+      $url = $existing && !is_wp_error($existing) && (int)$existing->count>0 ? get_term_link($existing) : '';
+      if ($url && !is_wp_error($url)) {
+        echo '<a class="freshGame" href="'.esc_url($url).'"><span>'.esc_html($world).'</span><small>Produkte ansehen ↗</small></a>';
       } else {
-        echo '<p class="shop-empty">Neue Kategorien werden ergänzt, sobald passende Produkte im Shop verfügbar sind.</p>';
+        echo '<div class="freshGame freshGameSoon"><span>'.esc_html($world).'</span><small>Sortiment folgt</small></div>';
       }
     }
     ?>
+   </div>
   </section>
-  <section class="shop-products-block">
-    <div class="container">
-      <div class="shop-section-title"><div><span class="shop-label">NEU ENTDECKEN</span><h2>Aktuell im Shop</h2></div><a href="<?php echo esc_url(cardyssey_shop_url()); ?>">Zum Sortiment ↗</a></div>
-      <?php
-      if (class_exists('WooCommerce')) {
-        $published = wp_count_posts('product');
-        if ($published && !empty($published->publish)) {
-          echo do_shortcode('[products limit="8" columns="4" orderby="date" order="DESC"]');
-        } else {
-          echo '<p class="shop-empty">Hier findest du unsere Produkte, sobald das Sortiment online ist.</p>';
-        }
-      } else echo '<p class="shop-empty">Das Sortiment wird vorbereitet.</p>';
-      ?>
-    </div>
-  </section>
-  <section class="container shop-app-banner" id="app"><div><span class="shop-label">MEHR ALS EIN SHOP</span><h2>Die Karten gekauft.<br><em>Die Sammlung im Blick.</em></h2><p>Mit der Cardyssey-App organisierst du deine Karten, verwaltest Sets und behältst verfügbare Marktwerte im Blick. Derzeit mit Fokus auf Pokémon – weitere TCGs sind geplant.</p></div><a class="shop-action" href="https://cardyssey.de/">Zur Cardyssey-Plattform ↗</a></section>
+  <section class="freshCatalog"><div class="container"><div class="freshSectionHeading"><div><span class="freshEyebrow">SHOP THE COLLECTION</span><h2>Entdecke das Sortiment.</h2></div><a class="freshTextLink" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Artikel ↗</a></div>
+    <?php
+    if (class_exists('WooCommerce')) {
+      $published = wp_count_posts('product');
+      if ($published && !empty($published->publish)) echo do_shortcode('[products limit="8" columns="4" orderby="date" order="DESC"]');
+      else echo '<div class="freshEmpty"><strong>Wir füllen gerade unsere Regale.</strong><p>Hier erscheinen unsere neuesten Produkte, sobald sie im Shop eingestellt sind. Bis dahin kannst du schon die TCG-Welten entdecken.</p><a href="https://cardyssey.de/">In der Cardyssey-App stöbern ↗</a></div>';
+    }
+    ?>
+  </div></section>
+  <section class="container freshServices"><div><span>GUT ZU WISSEN</span><h3>Ohne Konto shoppen.</h3><p>Du kannst als Gast bestellen oder ein Shop-Konto für deine Bestellungen nutzen.</p></div><div><span>FÜR DEIN HOBBY</span><h3>Mehr als nur Shop.</h3><p>Mit der Cardyssey-App organisierst du deine Sammlung und findest neue Karten.</p></div><div><span>IM AUFBAU</span><h3>Noch mehr geplant.</h3><p>Weitere TCGs, Shop-Funktionen und die Verknüpfung mit deinem Cardyssey-Konto folgen.</p></div></section>
+  <section class="freshAppSection"><div class="container freshAppGrid"><div><span class="freshEyebrow">DIE CARDYSSEY-PLATTFORM</span><h2>Nach dem Auspacken<br>ist vor dem Sammeln.</h2><p>Scanne und verwalte deine Pokémon-Karten mit der Cardyssey-App. Neue Sammelkartenspiele sind in Planung.</p><a class="freshPrimary" href="https://cardyssey.de/">Cardyssey kennenlernen ↗</a></div><div class="freshAppFigure"><img src="<?php echo esc_url(get_template_directory_uri().'/assets/cardyssey-webapp-login.png'); ?>" alt="Originalaufnahme der Cardyssey-Webapp-Anmeldung"><span>Original-Webapp · Anmeldung</span></div></div></section>
 </main>
 <?php get_footer(); ?>
