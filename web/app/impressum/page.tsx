@@ -37,6 +37,11 @@ export default function ImpressumPage() {
         </section>
 
         <section>
+          <h2>Umsatzsteuer-Identifikationsnummer</h2>
+          <p>Gemäß § 27a UStG: DE462990109</p>
+        </section>
+
+        <section>
           <h2>Kontakt</h2>
           {operator.email ? (
             <a href={`mailto:${operator.email}`}>
