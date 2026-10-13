@@ -15,14 +15,15 @@
       <div class="shop-hero-art" aria-label="Cardyssey Trading Card Store">
         <div class="shop-art-header"><span>DISCOVER YOUR NEXT CARD</span><span>01 / 03</span></div>
         <div class="shop-art-center">
-          <div class="shop-art-card shop-art-card-one">TCG<br><strong>COLLECT.</strong></div>
-          <div class="shop-art-card shop-art-card-two">CARDYSSEY<br><strong>DISCOVER.</strong></div>
-          <div class="shop-art-card shop-art-card-three">STORE<br><strong>PLAY.</strong></div>
+          <div class="shop-art-card shop-art-card-one"><span>POKÉMON</span><strong>COLLECT.</strong></div>
+          <div class="shop-art-card shop-art-card-two"><span>YU-GI-OH!</span><strong>DISCOVER.</strong></div>
+          <div class="shop-art-card shop-art-card-three"><span>ONE PIECE & MORE</span><strong>PLAY.</strong></div>
         </div>
         <div class="shop-art-caption">YOUR COLLECTION STARTS HERE</div>
       </div>
     </div>
   </section>
+  <section class="shop-categories-intro container" aria-label="TCG Produktwelten"><span class="shop-label">ENTDECKE UNSERE TCG-WELT</span><div class="shop-worlds"><span>Pokémon</span><span>Yu-Gi-Oh!</span><span>One Piece</span><span>Magic: The Gathering</span><span>Lorcana</span><span>Dragon Ball</span><span>Star Wars Unlimited</span></div><p>Weitere Sammelkartenspiele im Blick. Nicht alle Produktwelten sind bereits im Sortiment verfügbar.</p></section>
   <section class="container shop-discover" id="shop-kategorien">
     <div class="shop-section-title"><div><span class="shop-label">UNSER SORTIMENT</span><h2>Finde deinen nächsten Fund.</h2></div><a href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Produkte ansehen ↗</a></div>
     <?php
