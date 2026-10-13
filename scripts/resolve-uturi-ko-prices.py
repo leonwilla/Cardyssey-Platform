@@ -123,14 +123,15 @@ def load_targets(source=SOURCE):
     SELECT COALESCE(jsonb_agg(row_to_json(t)),'[]') FROM (
       SELECT c.card_id,c.language_code,c.set_id,c.local_id,c.raw_payload->>'name' AS native_name,
       c.image_source_url,c.variants AS old_variants,c.rarity,counts.identity_count,
+      CASE WHEN c.raw_payload->>'_cardyssey_official_rarity_variant_source'='POKEMON_KOREA_COMMON_UNCOMMON_BASE' THEN c.variants->0->>'id' ELSE 'generated' END AS target_variant_id,
       species.german_species,p.updated_at AS old_updated,p.resolution_status AS old_status
       FROM catalog_cards_mirror c JOIN counts ON counts.set_id=c.set_id AND counts.num=LTRIM(c.local_id,'0')
-      LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code=c.language_code AND p.variant_id='generated'
+      LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code=c.language_code AND p.variant_id=CASE WHEN c.raw_payload->>'_cardyssey_official_rarity_variant_source'='POKEMON_KOREA_COMMON_UNCOMMON_BASE' THEN c.variants->0->>'id' ELSE 'generated' END
       JOIN LATERAL (SELECT MIN(german_species_name) AS german_species FROM catalog_supplemental_cards s
         WHERE s.canonical_card_id=c.card_id AND s.language_code=c.language_code HAVING COUNT(DISTINCT german_species_name)=1) species ON TRUE
       WHERE c.language_code='ko' AND c.details_complete AND c.local_id ~ '^[0-9]+$'
       AND c.image_source_url IS NOT NULL AND c.image_source_url<>''
-      AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR (c.variants='"""+json.dumps([VARIANT])+"""'::jsonb AND c.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO'))
+      AND (COALESCE(jsonb_array_length(c.variants),0)=0 OR (c.variants='"""+json.dumps([VARIANT])+"""'::jsonb AND c.raw_payload->>'_cardyssey_retail_variant_source'='WEB_UTURI_KO') OR (jsonb_array_length(c.variants)=1 AND c.rarity IN ('C','U') AND c.raw_payload->>'_cardyssey_official_rarity_variant_source'='POKEMON_KOREA_COMMON_UNCOMMON_BASE'))
       AND (p.card_id IS NULL OR p.resolution_status='NO_PRICE' OR (p.source='WEB_UTURI_KO' AND (TRUE)))
     ) t;"""
     sql=sql.replace(retail.quote(SOURCE),retail.quote(source))
@@ -147,11 +148,11 @@ def apply_updates(updates, source=SOURCE, *, missing_only=False):
     for update in updates:
         r,o=update['row'],update['offer']
         detail=json.dumps(dict(o,basis='ASKING',in_stock=True,observed_at=update['observed_at'],nm_base_factor='0.92'),ensure_ascii=False)
-        values.append('('+','.join(map(q,[r['card_id'],r['set_id'],r['local_id'],r['native_name'],r['image_source_url'],json.dumps(r['old_variants']),r['old_updated'],r['old_status'],update['base_eur'],detail]))+')')
-    sql="""WITH incoming(card_id,set_id,local_id,native_name,image,old_variants,old_updated,old_status,base_eur,detail) AS (VALUES """+','.join(values)+"""),
+        values.append('('+','.join(map(q,[r['card_id'],r['set_id'],r['local_id'],r['native_name'],r['image_source_url'],json.dumps(r['old_variants']),r['old_updated'],r['old_status'],r.get('target_variant_id','generated'),update['base_eur'],detail]))+')')
+    sql="""WITH incoming(card_id,set_id,local_id,native_name,image,old_variants,old_updated,old_status,target_variant_id,base_eur,detail) AS (VALUES """+','.join(values)+"""),
     eligible AS (SELECT i.*,jsonb_array_length(c.variants)=0 AS needs_variant FROM incoming i
       JOIN catalog_cards_mirror c ON c.card_id=i.card_id AND c.language_code='ko'
-      LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code='ko' AND p.variant_id='generated'
+      LEFT JOIN tcg_price_cache p ON p.card_id=c.card_id AND p.language_code='ko' AND p.variant_id=i.target_variant_id
       WHERE c.set_id=i.set_id AND c.local_id=i.local_id AND c.raw_payload->>'name'=i.native_name AND c.image_source_url=i.image
       AND c.variants=i.old_variants::jsonb AND p.updated_at IS NOT DISTINCT FROM i.old_updated::timestamptz
       AND p.resolution_status IS NOT DISTINCT FROM i.old_status),
@@ -162,11 +163,11 @@ def apply_updates(updates, source=SOURCE, *, missing_only=False):
       AND c.raw_payload->>'name'=i.native_name AND c.image_source_url=i.image RETURNING c.card_id),
     ready AS (SELECT e.* FROM eligible e WHERE NOT e.needs_variant OR EXISTS(SELECT 1 FROM catalog_changed c WHERE c.card_id=e.card_id)),
     written AS (INSERT INTO tcg_price_cache(card_id,language_code,variant_id,legacy_variant,source,base_eur,updated_at,resolution_status,failure_detail,next_attempt_at)
-      SELECT card_id,'ko','generated','NORMAL','WEB_UTURI_KO',base_eur::numeric,NOW(),'PRICE_FOUND',detail,NOW()+INTERVAL '7 days' FROM ready
+      SELECT card_id,'ko',target_variant_id,'NORMAL','WEB_UTURI_KO',base_eur::numeric,NOW(),'PRICE_FOUND',detail,NOW()+INTERVAL '7 days' FROM ready
       ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET source=EXCLUDED.source,base_eur=EXCLUDED.base_eur,
       updated_at=EXCLUDED.updated_at,resolution_status=EXCLUDED.resolution_status,failure_detail=EXCLUDED.failure_detail,next_attempt_at=EXCLUDED.next_attempt_at
       WHERE EXISTS(SELECT 1 FROM ready r WHERE r.card_id=EXCLUDED.card_id
-        AND tcg_price_cache.updated_at IS NOT DISTINCT FROM r.old_updated::timestamptz
+        AND r.target_variant_id=EXCLUDED.variant_id AND tcg_price_cache.updated_at IS NOT DISTINCT FROM r.old_updated::timestamptz
         AND tcg_price_cache.resolution_status IS NOT DISTINCT FROM r.old_status)
       RETURNING card_id,language_code,variant_id,source,base_eur),
     history AS (INSERT INTO tcg_price_history(card_id,language_code,variant_id,source,base_eur,captured_at)
