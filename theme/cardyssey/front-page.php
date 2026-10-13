@@ -1,13 +1,13 @@
 <?php get_header(); ?>
 <main class="freshShop">
   <section class="freshHero"><div class="container freshHeroGrid">
-    <div class="freshIntro"><span class="freshEyebrow">CARDYSSEY — TRADING CARD STORE</span><h1>Gute Karten.<br><em>Gutes Gefühl.</em></h1><p>Entdecke Trading Cards und Zubehör für dein Hobby. Klar sortiert, ganz ohne Umwege.</p><div class="freshButtons"><a class="freshPrimary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Zum Sortiment <span>↗</span></a><a class="freshSecondary" href="#welten">TCG-Welten entdecken ↓</a></div></div>
+    <div class="freshIntro"><span class="freshEyebrow">CARDYSSEY — TRADING CARD STORE</span><h1>Gute Karten.<br><em>Gutes Gefühl.</em></h1><p>Entdecke Sammelkarten, Booster, Displays, Figuren, Plüschtiere und Zubehör – alles rund ums Sammeln. Ohne unnötige Umwege.</p><div class="freshButtons"><a class="freshPrimary" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Zum Sortiment <span>↗</span></a><a class="freshSecondary" href="#welten">TCG-Welten entdecken ↓</a></div></div>
     <div class="freshHeroVisual"><div class="freshVisualHead">FÜR ALLE, DIE GERNE SAMMELN.</div><img class="freshHeroCardOne" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-yugioh.jpg'); ?>" alt="Yu-Gi-Oh! Trading Card"><img class="freshHeroCardTwo" src="<?php echo esc_url(get_template_directory_uri().'/assets/tcg-pokemon.png'); ?>" alt="Pokémon Trading Card"><span class="freshVisualFoot">DISCOVER · COLLECT · ENJOY</span></div>
   </div></section>
-  <section class="container freshBrowse" id="welten"><div class="freshSectionHeading"><div><span class="freshEyebrow">FÜR JEDES SAMMLERHERZ</span><h2>Deine TCG-Welt beginnt hier.</h2></div><p>Verschiedene Spiele, eine Leidenschaft. Wir erweitern unser Sortiment Schritt für Schritt.</p></div>
+  <section class="container freshBrowse" id="welten"><div class="freshSectionHeading"><div><span class="freshEyebrow">FÜR JEDES SAMMLERHERZ</span><h2>Deine TCG-Welt beginnt hier.</h2></div><p>Pokémon, Yu-Gi-Oh!, One Piece und Magic. Weitere Sammlerartikel findest du nach Produktart.</p></div>
    <div class="freshGames">
     <?php
-    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering','Disney Lorcana','Dragon Ball','Star Wars Unlimited'];
+    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering'];
     foreach ($worlds as $world) {
       $slug = sanitize_title($world);
       $existing = get_term_by('slug',$slug,'product_cat');
@@ -20,6 +20,14 @@
     }
     ?>
    </div>
+  </section>
+  <section class="container freshProductTypes" aria-labelledby="freshTypesTitle"><div class="freshSectionHeading"><div><span class="freshEyebrow">MEHR ALS KARTEN</span><h2 id="freshTypesTitle">Wonach suchst du?</h2></div><p>Vom einzelnen Kartenfund bis zum neuen Lieblingsstück für dein Regal.</p></div>
+    <div class="freshTypeGrid"><?php
+    $types = ['Einzelkarten','Booster & Packs','Displays & Boxen','Figuren & Sammlerstücke','Plüschtiere','Zubehör'];
+    foreach($types as $type) {
+      echo '<div class="freshTypeTile"><strong>'.esc_html($type).'</strong><span>Demnächst im Sortiment</span></div>';
+    }
+    ?></div>
   </section>
   <section class="freshCatalog"><div class="container"><div class="freshSectionHeading"><div><span class="freshEyebrow">SHOP THE COLLECTION</span><h2>Entdecke das Sortiment.</h2></div><a class="freshTextLink" href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Artikel ↗</a></div>
     <?php
