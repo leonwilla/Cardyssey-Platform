@@ -7,7 +7,7 @@
   <section class="container freshBrowse" id="welten"><div class="freshSectionHeading"><div><span class="freshEyebrow">FÜR JEDES SAMMLERHERZ</span><h2>Deine TCG-Welt beginnt hier.</h2></div><p>Pokémon, Yu-Gi-Oh!, One Piece und Magic. Weitere Sammlerartikel findest du nach Produktart.</p></div>
    <div class="freshGames">
     <?php
-    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering'];
+    $worlds = ['Pokémon','Yu-Gi-Oh!','One Piece','Magic: The Gathering','Dragon Ball'];
     foreach ($worlds as $world) {
       $slug = sanitize_title($world);
       $existing = get_term_by('slug',$slug,'product_cat');
