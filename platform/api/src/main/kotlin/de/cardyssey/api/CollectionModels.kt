@@ -35,7 +35,12 @@ data class CollectionItemDto(
     val marketSampleCount: Map<String, Int> = emptyMap(),
     // Read model: these values are calculated centrally by Tiny.
     val valuedUnitEur: Map<String, Double> = emptyMap(),
-    val positionValueEur: Map<String, Double> = emptyMap()
+    val positionValueEur: Map<String, Double> = emptyMap(),
+    // Informational only. NEVER used by portfolio valuation or sale pricing.
+    val referenceUnitEur: Double? = null,
+    val referenceSource: String? = null,
+    val referenceUpdatedAtMs: Long? = null,
+    val referenceNote: String? = null
 )
 
 @Serializable

@@ -21,7 +21,7 @@ type PriceReview = {
  languageCode:string;cardId:string;variantId:string;searchStatus:string;
  searchQuery?:string|null;searchSteps:string;candidates:string;
  failureReason?:string|null;checkedAt:string;
- referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;
+ referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;ownerCount:number;ownedCopies:number;
 };
 function diagnosticJson(value:string):unknown[] {
  try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
@@ -37,6 +37,14 @@ export default function PriceMonitorPage(){
  const [user,setUser]=useState<User|null>(null);
  const [data,setData]=useState<ResponseData|null>(null);
  const [reviews,setReviews]=useState<PriceReview[]>([]);
+ const [ownedOnly,setOwnedOnly]=useState(false);
+ const [manualCase,setManualCase]=useState<PriceReview|null>(null);
+ const [manualPrice,setManualPrice]=useState("");
+ const [manualCondition,setManualCondition]=useState("NEAR_MINT");
+ const [manualUrl,setManualUrl]=useState("");
+ const [manualNote,setManualNote]=useState("");
+ const [manualConfirmed,setManualConfirmed]=useState(false);
+ const [manualSaving,setManualSaving]=useState(false);
  const [language,setLanguage]=useState("");
  const [status,setStatus]=useState("");
  const [loading,setLoading]=useState(true);
@@ -69,6 +77,27 @@ export default function PriceMonitorPage(){
  const copyText=useMemo(()=>data?.items.map((item,index)=>
   `${index+1}. [${item.currentStatus}] ${item.languageCode.toUpperCase()} | ${item.setName} | ${item.cardName} | #${item.cardNumber} | ${item.variant} | letzter Preis: ${euro(item.lastPriceEur)} | Quelle: ${item.source??"—"} | letzter erfolgreicher Sync: ${item.lastSuccessfulSync??"nie"} | Grund: ${item.failureDetail??"—"} | Identity: ${item.identityMethod??"keine"} | nächster Versuch: ${item.nextAttemptAt??"—"} | cardId=${item.cardId} | variantId=${item.variantId}`
  ).join("\n")??"",[data]);
+ async function saveManual(){
+  if(!manualCase||manualCase.ownerCount<1||!manualConfirmed)return;
+  const price=Number(manualPrice.replace(",","."));
+  if(!Number.isFinite(price)||price<=0){setMessage("Bitte einen gültigen Europreis eingeben.");return;}
+  setManualSaving(true);setMessage(null);
+  try{
+   const response=await fetch("/api/admin/price-review/manual",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+     languageCode:manualCase.languageCode,cardId:manualCase.cardId,variantId:manualCase.variantId,
+     priceEur:price,condition:manualCondition,sourceUrl:manualUrl,
+     note:manualNote,exactPrintConfirmed:manualConfirmed
+    })
+   });
+   if(!response.ok)throw new Error("Speichern abgelehnt. Karte nicht im Besitz, schon bepreist oder Angaben ungültig.");
+   setManualCase(null);setManualPrice("");setManualUrl("");setManualNote("");setManualConfirmed(false);
+   await load();setMessage("Manueller Variantenpreis mit Quellenbeleg gespeichert.");
+  }catch(e){setMessage(e instanceof Error?e.message:"Preis konnte nicht gespeichert werden.");}
+  finally{setManualSaving(false);}
+ }
+
  async function copyList(){await navigator.clipboard.writeText(`Cardyssey offene Preisfälle (${data?.items.length??0})\nFilter: Sprache=${language||"alle"}, Status=${status||"alle"}\n\n${copyText}`);setMessage(`${data?.items.length??0} Preisfälle kopiert.`);}
 
  return <AppShell active="/admin/prices" user={user}>
@@ -82,23 +111,51 @@ export default function PriceMonitorPage(){
    <div className="statCard"><span>Ohne öffentlichen Preis</span><strong>{data.counts.noPublicPrice}</strong><small>markiert · aktuell ignoriert</small></div>
   </section>}
   <section className="sectionBlock">
-   <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.length} Fälle</span></div>
+   <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.filter(r=>!ownedOnly||r.ownerCount>0).length} Fälle · {reviews.filter(r=>r.ownerCount>0).length} in Sammlungen</span></div>
    <p>Gespeicherte Suchbegriffe, geprüfte Schritte, Produktkandidaten und Fehlergründe. Fälle mit mittlerweile bestätigtem Preis werden ausgeblendet.</p>
    <div className="filterRow" style={{marginBottom:16}}>
-    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
+    <label><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} /> Nur Karten mit Besitzern (manuelle Priorität)</label>
+    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Besitzer: ${r.ownerCount} | Exemplare: ${r.ownedCopies} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
    </div>
+   {manualCase&&<form className="statusPanel" onSubmit={e=>{e.preventDefault();void saveManual();}} style={{display:"grid",gap:12,marginBottom:15}}>
+    <strong>Manuellen Variantenpreis eintragen: {manualCase.languageCode.toUpperCase()} · {manualCase.cardId} · {manualCase.variantId}</strong>
+    <p>Nur für diese genaue Karte und Druckvariante. Der Beleg wird dauerhaft protokolliert; die Eingabe wird zum TCG-Marktwert und zählt dann zur Sammlung. Nicht als allgemeine Schätzung verwenden.</p>
+    <div className="filterRow">
+     <label>Preis in € für den gewählten Zustand
+      <input type="text" inputMode="decimal" required value={manualPrice} onChange={e=>setManualPrice(e.target.value)} placeholder="z. B. 14,99" />
+     </label>
+     <label>Zustand
+      <select value={manualCondition} onChange={e=>setManualCondition(e.target.value)}>
+       {["MINT","NEAR_MINT","EXCELLENT","GOOD","PLAYED"].map(c=><option key={c} value={c}>{c}</option>)}
+      </select>
+     </label>
+     <label>Quellenlink (https)
+      <input type="url" required pattern="https://.*" value={manualUrl} onChange={e=>setManualUrl(e.target.value)} placeholder="https://www.cardmarket.com/..." />
+     </label>
+    </div>
+    <label>Bemerkung (optional)
+     <input value={manualNote} onChange={e=>setManualNote(e.target.value)} placeholder="Druck, Stempel, Edition und Quelle" maxLength={500} />
+    </label>
+    <label><input type="checkbox" checked={manualConfirmed} onChange={e=>setManualConfirmed(e.target.checked)} required /> Ich habe Sprache, Kartennummer, Set, Stempel, Druckvariante und Zustand anhand der Quelle geprüft.</label>
+    <div className="filterRow">
+     <button className="primaryButton" type="submit" disabled={manualSaving||!manualConfirmed||!manualPrice||!manualUrl}>{manualSaving?"Speichert …":"Preis verbindlich speichern"}</button>
+     <button className="ghostButton" type="button" onClick={()=>setManualCase(null)}>Abbrechen</button>
+    </div>
+   </form>}
    <div style={{maxHeight:"48vh",overflow:"auto"}}>
     <table style={{width:"100%",minWidth:1000,borderCollapse:"collapse"}}>
-     <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Referenzpreis (unbestätigt)","Problem / Schritte","Kandidaten","Geprüft"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
-     <tbody>{reviews.map(r=><tr key={`${r.languageCode}:${r.cardId}:${r.variantId}`}>
+     <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Besitzer","Referenzpreis (unbestätigt)","Problem / Schritte", "Kandidaten","Geprüft","Manuell"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
+     <tbody>{reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=><tr key={`${r.languageCode}:${r.cardId}:${r.variantId}`}>
       <td style={{padding:9}}>{r.languageCode.toUpperCase()}</td>
       <td style={{padding:9}}>{r.cardId}<small style={{display:"block"}}>{r.variantId}</small></td>
       <td style={{padding:9}}>{r.searchQuery??"—"}</td>
       <td style={{padding:9}}>{r.searchStatus}</td>
+      <td style={{padding:9}}>{r.ownerCount} Nutzer<small style={{display:"block"}}>{r.ownedCopies} Exemplare</small></td>
       <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>EN · Druckvariante ungeprüft</small><details><summary>Prüfgründe</summary><small style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.referenceVerification??"[]").join(", ")}</small></details></>:"—"}</td>
       <td style={{padding:9,maxWidth:300}}>{r.failureReason??"—"}<details><summary>Suchweg</summary><pre style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.searchSteps).join(" → ")}</pre></details></td>
       <td style={{padding:9}}><details><summary>{diagnosticJson(r.candidates).length} Treffer</summary><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(diagnosticJson(r.candidates),null,2)}</pre></details></td>
       <td style={{padding:9}}>{date(r.checkedAt)}</td>
+      <td style={{padding:9}}>{r.ownerCount>0?<button className="ghostButton" type="button" onClick={()=>{setManualCase(r);setManualConfirmed(false);setManualUrl("");setManualPrice("");}}>Preis prüfen / eintragen</button>:"Nur bei Sammlungskarten"}</td>
      </tr>)}</tbody>
     </table>
    </div>

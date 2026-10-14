@@ -29,6 +29,10 @@ export type PortfolioItem = {
   marketSampleCount?: Record<string, number>;
   valuedUnitEur?: Record<string, number>;
   positionValueEur?: Record<string, number>;
+  referenceUnitEur?: number | null;
+  referenceSource?: string | null;
+  referenceUpdatedAtMs?: number | null;
+  referenceNote?: string | null;
 };
 
 export type UserRole =

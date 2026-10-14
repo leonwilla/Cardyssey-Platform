@@ -50,6 +50,32 @@ internal fun TcgPriceStatistics.forCondition(condition: PricingCondition): TcgPr
 class TcgPriceCacheRepository(
     private val dataSource: HikariDataSource
 ) {
+    /** Card-level reference quote, explicitly NOT a verified printing/condition price. */
+    fun reference(cardId: String, languageCode: String, variantId: String): Pair<Double, Long>? =
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("""
+                SELECT r.price_eur,r.observed_at
+                FROM price_reference_candidates r
+                LEFT JOIN tcg_price_cache c
+                  ON c.card_id=r.card_id AND c.language_code=r.language_code AND c.variant_id=r.variant_id
+                WHERE r.card_id=? AND r.language_code=? AND r.variant_id=?
+                  AND r.provider='POKEMONTCGAPI_REFERENCE'
+                  AND r.price_eur>0
+                  AND (c.resolution_status IS NULL OR c.resolution_status<>'PRICE_FOUND')
+                ORDER BY r.observed_at DESC LIMIT 1
+            """.trimIndent()).use { statement ->
+                statement.setString(1,cardId)
+                statement.setString(2,languageCode)
+                statement.setString(3,variantId)
+                statement.executeQuery().use { rs ->
+                    if (!rs.next()) null else Pair(
+                        rs.getBigDecimal("price_eur").toDouble(),
+                        rs.getObject("observed_at", OffsetDateTime::class.java).toInstant().toEpochMilli()
+                    )
+                }
+            }
+        }
+
     fun read(
         cardId: String,
         languageCode: String,

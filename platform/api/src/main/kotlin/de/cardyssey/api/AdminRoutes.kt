@@ -10,6 +10,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.put
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import java.util.UUID
 
@@ -18,6 +19,7 @@ fun Route.adminRoutes(
     admin: AdminRepository,
     priceMonitor: AdminPriceMonitorRepository,
     priceReview: AdminPriceReviewRepository,
+    manualPrice: AdminManualPriceRepository,
     priceCoverage: AdminPriceCoverageRepository,
     userManagement: AdminUserManagementRepository,
     registrationSettings: RegistrationSettingsRepository,
@@ -69,6 +71,20 @@ fun Route.adminRoutes(
             get("/price-review") {
                 if (!call.requireAdmin(roles)) return@get
                 call.respond(priceReview.list(call.request.queryParameters["language"]?.takeIf { it in setOf("de","en","ko","ja","zh-tw","zh-cn") }))
+            }
+
+            post("/price-review/manual") {
+                if (!call.requireAdmin(roles)) return@post
+                val adminId=call.authenticatedUserId() ?: return@post
+                val input=runCatching { call.receive<AdminManualPriceInput>() }.getOrNull()
+                if (input==null) {
+                    call.respond(HttpStatusCode.BadRequest,mapOf("error" to "invalid_body"))
+                    return@post
+                }
+                val result=manualPrice.apply(adminId,input)
+                if (result==null) call.respond(HttpStatusCode.Conflict,
+                    mapOf("error" to "invalid_or_unowned_variant_or_already_priced"))
+                else call.respond(result)
             }
 
             get("/price-coverage") {

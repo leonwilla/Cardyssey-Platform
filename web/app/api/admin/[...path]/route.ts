@@ -87,3 +87,22 @@ export async function DELETE(
     { status: response.status }
   );
 }
+
+export async function POST(
+  request: Request,
+  context: Context
+) {
+  const { path } = await context.params;
+  const response = await authenticatedBackendFetch(
+    adminPath(request, path),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: await request.text(),
+    }
+  );
+  return Response.json(
+    await readBackendJson(response),
+    { status: response.status }
+  );
+}

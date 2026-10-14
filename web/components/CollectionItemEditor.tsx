@@ -42,6 +42,8 @@ type PricingQuote = {
   sampleCount?: number | null;
   rangeLowEur?: number | null;
   rangeHighEur?: number | null;
+  referenceEur?: number | null;
+  referenceNote?: string | null;
   recentSales?: EbayRecentSale[];
 };
 
@@ -213,6 +215,8 @@ export function CollectionItemEditor({
             nullableFiniteNumber(
               data?.rangeHighEur
             ),
+          referenceEur: nullableFiniteNumber(data?.referenceEur),
+          referenceNote: typeof data?.referenceNote === "string" ? data.referenceNote : null,
           recentSales:
             Array.isArray(data?.recentSales)
               ? data.recentSales
@@ -545,6 +549,15 @@ export function CollectionItemEditor({
             </strong>
           </div>
         </div>
+
+        {selectedMarket === "TCG" && unitValue == null &&
+          (pricingQuote?.referenceEur ?? item.referenceUnitEur ?? 0) > 0 && (
+          <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:13}}>
+            Richtwert: {formatEur(pricingQuote?.referenceEur ?? item.referenceUnitEur ?? null)}
+            {" "}pro Karte · Englisch · Druckvariante und Zustand ungeprüft.
+            Nicht im Sammlungswert enthalten.
+          </p>
+        )}
 
         {pricingError && (
           <p

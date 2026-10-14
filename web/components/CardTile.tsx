@@ -94,6 +94,11 @@ export function CardTile({
       ? liveUnitEur
       : storedUnitValue;
 
+  const referencePrice =
+    market === "TCG" && unitValue == null && item.referenceUnitEur != null &&
+    Number.isFinite(item.referenceUnitEur) && item.referenceUnitEur > 0
+      ? item.referenceUnitEur : null;
+
   const positionValue =
     liveUnitEur !== undefined
       ? liveUnitEur == null
@@ -145,6 +150,12 @@ export function CardTile({
                 ? "Keine Verkäufe"
                 : eur(positionValue)}
             </span>
+
+            {referencePrice != null && (
+              <small title={item.referenceNote ?? "Variante und Zustand ungeprüft. Nicht im Sammlungswert enthalten."}>
+                Richtwert: {eur(referencePrice)} / Karte · EN · ungeprüfte Druckvariante
+              </small>
+            )}
 
             {item.quantity > 1 &&
               unitValue != null && (

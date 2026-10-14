@@ -88,6 +88,8 @@ jobs:
           python3 scripts/annotate-price-review-tcgcsv.py --report /tmp/cardyssey-weekly-exact-id-audit.json --apply
           python3 scripts/audit-cardtrader-exact-stock.py --input /tmp/cardyssey-weekly-price-review.json --output /tmp/cardyssey-weekly-cardtrader-stock-audit.json
           python3 scripts/annotate-price-review-cardtrader.py --report /tmp/cardyssey-weekly-cardtrader-stock-audit.json --apply
+          python3 scripts/refresh-staged-reference-prices.py --apply --report /tmp/cardyssey-weekly-reference-refresh.json
+          python3 scripts/stage-english-german-comparators.py --apply
           python3 scripts/verify-reference-price-identity.py --apply
 
       - name: Refresh CardTrader marketplace prices

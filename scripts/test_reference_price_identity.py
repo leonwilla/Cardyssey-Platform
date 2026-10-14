@@ -11,6 +11,11 @@ class ReferencePriceIdentityTests(unittest.TestCase):
   self.assertEqual("REQUIRES_IDENTITY_REVIEW",status)
   self.assertIn("STAMP_NOT_VERIFIED",reasons)
   self.assertIn("PRINTING_NOT_IDENTIFIED",reasons)
+ def test_english_comparator_is_never_a_german_market_price(self):
+  status,reasons=module.classify({"size":"standard"},{"origin_language":"en","quotes":[{"locale":"en","amount":100,"basis":"SOLD","currency":"EUR","condition":"NEAR_MINT","printing":"NORMAL"}]},"de")
+  self.assertEqual("CROSS_LANGUAGE_REFERENCE",status)
+  self.assertIn("ENGLISH_REFERENCE_NOT_GERMAN_PRICE",reasons)
+
  def test_missing_language_quote(self):
   status,reasons=module.classify({"size":"standard"},{"quotes":[{"locale":"de","amount":15,"basis":"SOLD","currency":"EUR","condition":"NEAR_MINT","printing":"NORMAL"}]},"en")
   self.assertIn("NO_LANGUAGE_QUOTE",reasons)

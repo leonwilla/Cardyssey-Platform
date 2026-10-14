@@ -11,7 +11,8 @@ import io.ktor.server.routing.route
 fun Route.pricingRoutes(
     catalog: CardCatalogService,
     pricing: CachedTcgPricingService,
-    ebayPricing: CachedEbayPricingService
+    ebayPricing: CachedEbayPricingService,
+    referenceCache: TcgPriceCacheRepository
 ) {
     authenticate("auth-jwt") {
         route("/api/v1/pricing") {
@@ -116,7 +117,16 @@ fun Route.pricingRoutes(
                     return@get
                 }
 
-                call.respond(quote)
+                // Never replace an exact quote with a reference. An unavailable
+                // quote may carry a separately labeled card-level approximation.
+                val reference = if (market == "TCG" && quote.eur == null && requestedVariantId != null) {
+                    referenceCache.reference(cardId,language,requestedVariantId)
+                } else null
+                call.respond(if (reference != null) quote.copy(
+                    referenceEur = reference.first,
+                    referenceNote = "Englischer Karten-Richtwert; Druckvariante und Zustand ungeprüft. Kein bestätigter Marktpreis.",
+                    referenceUpdatedAtMs = reference.second
+                ) else quote)
             }
         }
     }

@@ -140,6 +140,18 @@ private fun CollectionItemDto.withCachedTcgPrice(
                     variant
             )
 
+    // Show an optional reference ONLY for a real physical variant without
+    // a verified price. Never promote a generic reference into TCG totals.
+    val candidate = variantSpec?.id?.takeIf { it.isNotBlank() }
+        ?.takeIf { cached?.baseEur?.let { eur -> eur.isFinite() && eur > 0.0 } != true }
+        ?.let { id -> cache.reference(cardId, languageCode, id) }
+    val itemWithReference = if (candidate != null) copy(
+        referenceUnitEur = candidate.first,
+        referenceSource = "POKEMONTCGAPI_REFERENCE",
+        referenceUpdatedAtMs = candidate.second,
+        referenceNote = "Unverbindlicher englischer Karten-Referenzwert. Druckvariante und Zustand nicht bestätigt; nicht im Sammlungswert."
+    ) else copy(referenceUnitEur = null, referenceSource = null, referenceUpdatedAtMs = null, referenceNote = null)
+
     val value =
         cached
             ?.baseEur
@@ -147,9 +159,9 @@ private fun CollectionItemDto.withCachedTcgPrice(
                 it.isFinite() &&
                     it > 0.0
             }
-            ?: return this
+            ?: return itemWithReference
 
-    return copy(
+    return itemWithReference.copy(
         unitEur =
             value,
         marketUnitEur =

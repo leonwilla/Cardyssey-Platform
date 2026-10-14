@@ -5,6 +5,9 @@ from datetime import date
 from pathlib import Path
 
 def classify(variant, evidence, language):
+ origin=evidence.get("origin_language")
+ if origin and origin != language:
+  return "CROSS_LANGUAGE_REFERENCE", ["ENGLISH_REFERENCE_NOT_GERMAN_PRICE","PRINT_AND_CONDITION_UNVERIFIED"]
  quotes=evidence.get("quotes") or []
  index=evidence.get("index") or {}
  locale_quotes=[q for q in quotes if q.get("locale")==language and isinstance(q.get("amount"),(int,float))]

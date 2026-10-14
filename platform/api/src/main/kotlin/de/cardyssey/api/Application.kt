@@ -640,6 +640,7 @@ fun Application.module() {
             admin = adminRepository,
             priceMonitor = adminPriceMonitorRepository,
             priceReview = AdminPriceReviewRepository(database),
+            manualPrice = AdminManualPriceRepository(database),
             priceCoverage = adminPriceCoverageRepository,
             userManagement =
                 adminUserManagementRepository,
@@ -742,7 +743,8 @@ fun Application.module() {
         pricingRoutes(
             catalog = cardCatalog,
             pricing = tcgPricing,
-            ebayPricing = ebayPricing
+            ebayPricing = ebayPricing,
+            referenceCache = tcgPriceCache
         )
     }
 }

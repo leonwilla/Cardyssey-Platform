@@ -44,7 +44,11 @@ data class CardPriceQuoteResponse(
     val rangeHighEur: Double? = null,
     val trend30dPercent: Double? = null,
     val updatedAtMs: Long? = null,
-    val recentSales: List<EbayRecentSaleResponse> = emptyList()
+    val recentSales: List<EbayRecentSaleResponse> = emptyList(),
+    // Informational only; not a substitute for a verified physical print quote.
+    val referenceEur: Double? = null,
+    val referenceNote: String? = null,
+    val referenceUpdatedAtMs: Long? = null
 )
 
 enum class PricingCondition(
