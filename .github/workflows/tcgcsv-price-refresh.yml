@@ -84,6 +84,7 @@ jobs:
         run: |
           python3 scripts/refresh-cardmarket-price-cache.py --fallback-report /tmp/cardyssey-weekly-price-review.json
           python3 scripts/store-price-review-cases.py --report /tmp/cardyssey-weekly-price-review.json --apply
+          python3 scripts/verify-reference-price-identity.py --apply
 
       - name: Refresh CardTrader marketplace prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}

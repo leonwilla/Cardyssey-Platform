@@ -21,7 +21,7 @@ type PriceReview = {
  languageCode:string;cardId:string;variantId:string;searchStatus:string;
  searchQuery?:string|null;searchSteps:string;candidates:string;
  failureReason?:string|null;checkedAt:string;
- referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;
+ referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;
 };
 function diagnosticJson(value:string):unknown[] {
  try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
@@ -95,7 +95,7 @@ export default function PriceMonitorPage(){
       <td style={{padding:9}}>{r.cardId}<small style={{display:"block"}}>{r.variantId}</small></td>
       <td style={{padding:9}}>{r.searchQuery??"—"}</td>
       <td style={{padding:9}}>{r.searchStatus}</td>
-      <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>EN · Druckvariante ungeprüft</small></>:"—"}</td>
+      <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>EN · Druckvariante ungeprüft</small><details><summary>Prüfgründe</summary><small style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.referenceVerification??"[]").join(", ")}</small></details></>:"—"}</td>
       <td style={{padding:9,maxWidth:300}}>{r.failureReason??"—"}<details><summary>Suchweg</summary><pre style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.searchSteps).join(" → ")}</pre></details></td>
       <td style={{padding:9}}><details><summary>{diagnosticJson(r.candidates).length} Treffer</summary><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(diagnosticJson(r.candidates),null,2)}</pre></details></td>
       <td style={{padding:9}}>{date(r.checkedAt)}</td>
