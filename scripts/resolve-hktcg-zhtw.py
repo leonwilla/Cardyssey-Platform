@@ -59,28 +59,33 @@ for si,setid in enumerate(wanted_sets,1):
     for page in range(1,min(max_page,20)+1):
         h=first if page==1 else fetch(base+"&page="+str(page))
         found=0
-        for m in re.finditer(r'<li\b[^>]*>(.*?)</li>',h,re.S):
-            block=m.group(1)
-            titlem=re.search(r'class="full-unstyled-link"[^>]*>\s*([^<]+)',block,re.S)
+        for m in re.finditer(r'<article\b[^>]*class="[^"]*hktcg-product-card[^"]*"[^>]*>.*?</article>',h,re.S):
+            block=m.group(0)
+            # HKTCG also returns Japanese products for the same set number.
+            # An explicit Traditional-Chinese product label is mandatory.
+            category=re.search(r'<div class="hktcg-product-card__copy">\s*<p>(.*?)</p>',block,re.S)
+            if not category or not re.search(r'繁中|繁體|繁体|中文版|Chinese',clean(category.group(1)),re.I):
+                continue
+            titlem=re.search(r'<h3[^>]*>(.*?)</h3>',block,re.S)
             if not titlem:continue
             title=clean(titlem.group(1))
             mm=re.match(rf'^{re.escape(setid)}\s+0*(\d+)/0*(\d+)\b',title,re.I)
             if not mm:continue
             local=int(mm.group(1));den=int(mm.group(2))
             if den<=0:continue
-            hrefm=re.search(r'href="([^"]+)"',block)
-            href=hrefm.group(1) if hrefm else ""
-            product_key=href.split("?",1)[0] or title
-            if product_key in seen_ids:continue
-            seen_ids.add(product_key)
+            hrefm=re.search(r'data-product-url="([^"]+)"',block)
+            if not hrefm:continue
+            href=html.unescape(hrefm.group(1)).split("?",1)[0]
+            if not href.startswith("/products/") or href in seen_ids:continue
+            seen_ids.add(href)
             pm=re.search(r'<span class=money>HK\$([0-9,.]+)</span>',block)
             if not pm:continue
             hkd=float(pm.group(1).replace(",",""))
-            if hkd<=0:continue
-            sold=("售罄" in block) or ("price--sold-out" in block)
+            if not math.isfinite(hkd) or hkd<=0:continue
+            sold=("is-soldout" in m.group(0).split(">",1)[0]) or ("售罄" in block)
             catalog[(setid,local,den)].append({
                 "hkd":hkd,"sold":sold,"title":title,
-                "url":"https://www.hktcg.com"+href.split("?",1)[0],
+                "url":"https://www.hktcg.com"+href,
             })
             found+=1
         if page>1 and found==0:break
@@ -99,6 +104,16 @@ for r in rows:
             exact=alt;den_mismatch+=1
     if not exact:
         misses+=1;continue
+    # Same set and number are not sufficient to identify a printing.
+    # Require the Chinese card name to match the complete product suffix.
+    identity=[]
+    for candidate in exact:
+        match=re.match(rf'^{re.escape(r["set_id"])}\s+\d+/\d+\s+(.+)$',candidate["title"],re.I)
+        if match and re.sub(r'\s+','',clean(match.group(1))) == re.sub(r'\s+','',r["name"]):
+            identity.append(candidate)
+    if len(identity)!=1:
+        misses+=1;continue
+    exact=identity
     live=[x for x in exact if not x["sold"]]
     chosen=min(live or exact,key=lambda x:x["hkd"])
     source="WEB_HKTCG" if live else "WEB_HKTCG_REFERENCE"
