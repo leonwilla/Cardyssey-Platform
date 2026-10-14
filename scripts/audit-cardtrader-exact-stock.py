@@ -4,7 +4,7 @@
 Strictly diagnostic: CardTrader crosswalk and price listings are NOT automatic
 print-identity, condition, or sold-price evidence.
 """
-import importlib.util,json,collections,statistics
+import argparse,importlib.util,json,collections
 from pathlib import Path
 import requests
 spec=importlib.util.spec_from_file_location("western",Path(__file__).with_name("resolve-cardtrader-western-safe.py"))
@@ -16,7 +16,11 @@ def req(path,params=None):
  r=requests.get("https://api.cardtrader.com/api/v2"+path,headers=headers,params=params,timeout=25)
  r.raise_for_status()
  return r.json()
-rows=json.loads(Path("/tmp/cardyssey-current-fallback.json").read_text())["unresolved"]
+parser=argparse.ArgumentParser()
+parser.add_argument("--input",type=Path,default=Path("/tmp/cardyssey-current-fallback.json"))
+parser.add_argument("--output",type=Path,default=Path("/tmp/cardyssey-cardtrader-exact-stock-audit.json"))
+args=parser.parse_args()
+rows=json.loads(args.input.read_text())["unresolved"]
 targets=[x for x in rows if x.get("exact_variant_provider_ids",{}).get("tcgplayer")]
 expansions=req("/expansions")
 expansion_by_id={e["id"]:e for e in expansions if e.get("game_id")==5}
@@ -47,5 +51,5 @@ for row in targets:
  eligible=[float(western.listing_amount(p,b["id"])) for p in products if western.listing_amount(p,b["id"]) is not None] if row["language"]=="en" else []
  result.append(dict(language=row["language"],card_id=row["card_id"],variant_id=row["variant_id"],tcgplayer_id=pid,blueprint_id=b["id"],blueprint_name=b.get("name"),blueprint_version=b.get("version"),expansion=e.get("name"),listings=len(products),eligible_en_nm_stock=len(eligible),min_en_nm_asking_eur=min(eligible) if eligible else None,status="HAS_EN_NM_OFFERS_VERIFY_PRINT" if eligible else "NO_ELIGIBLE_EN_NM_STOCK"))
  print(row["language"],row["card_id"],pid,result[-1]["status"],flush=True)
-Path("/tmp/cardyssey-cardtrader-exact-stock-audit.json").write_text(json.dumps({"cases":result},indent=2,ensure_ascii=False))
+args.output.write_text(json.dumps({"cases":result},indent=2,ensure_ascii=False))
 print("SUMMARY",dict(collections.Counter(x["status"] for x in result)),flush=True)
