@@ -183,7 +183,7 @@ JOIN catalog_cards_mirror c
 LEFT JOIN catalog_cards_mirror e
   ON e.language_code='en' AND e.set_id=c.set_id AND e.local_id=c.local_id
 WHERE p.language_code IN ('de','en')
-  AND (p.resolution_status='NO_PRICE' OR p.source='CARDMARKET_OFFICIAL')
+  AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE') OR p.source='CARDMARKET_OFFICIAL')
 ORDER BY p.language_code,p.card_id,p.variant_id
 """
 for line in db(query).splitlines():
@@ -331,6 +331,16 @@ for row in rows:
     reasons=print_reasons(row["variant"],candidates[0].get("name") if len(candidates)==1 else "",
                           set_verified=bool(same_set),number_verified=False,
                           language_verified=False,edition_verified=False)
+    exact_variant=None
+    detail_card=cards.get((row["card_id"],row["language"])) or {}
+    for variant_detail in detail_card.get("variants_detailed") or []:
+        if str(variant_detail.get("variantId") or "")==row["variant_id"]:
+            exact_variant=variant_detail
+            break
+    exact_links=(exact_variant or {}).get("thirdParty") or {}
+    exact_languages=(exact_variant or {}).get("languages") or []
+    if exact_languages and row["language"] not in [str(x).lower() for x in exact_languages]:
+        exact_links={}
     fallback.append(dict(language=row["language"],card_id=row["card_id"],
                          set_code=row["set_id"],number=row["local_id"],
                          english_name=label,variant_id=row["variant_id"],
@@ -338,6 +348,10 @@ for row in rows:
                          set_verified=bool(same_set),
                          status=candidate_status(len(candidates),reasons),
                          unverified_identity_fields=reasons,
+                         exact_variant_provider_ids={
+                             provider:identifier for provider,identifier in exact_links.items()
+                             if provider in ("tcgplayer","cardmarket","cardtrader")
+                             and identifier is not None},
                          products=[dict(id=x.get("idProduct"),name=x.get("name"),
                                         expansion=x.get("idExpansion")) for x in candidates[:8]]))
 if args.fallback_report:
