@@ -317,6 +317,13 @@ for row in rows:
     if identity in found_keys:
         continue
     label=row["en_name"]
+    # Search query for human/retailer fallback: number and name first.
+    # Product-catalog names do not contain printed numbers, so the number
+    # is a search hint, NOT evidence of a validated product identity.
+    card_details=cards.get((row["card_id"],row["language"])) or {}
+    total=((card_details.get("set") or {}).get("cardCount") or {}).get("official")
+    printed_number=str(row["local_id"])+("/"+str(total) if total else "")
+    search_query=f"{label} {printed_number}"
     matching=[p for p in by_name.get(norm(label),[]) if str(p.get("idProduct")) in prices]
     # Also support semantic star/delta naming, only if the normalized name
     # yields no matches. Avoid a full catalogue scan on every card.
@@ -343,7 +350,10 @@ for row in rows:
         exact_links={}
     fallback.append(dict(language=row["language"],card_id=row["card_id"],
                          set_code=row["set_id"],number=row["local_id"],
-                         english_name=label,variant_id=row["variant_id"],
+                         english_name=label,search_query=search_query,
+                         lookup_steps=["TCGdex exact card/variant ID","Cardmarket exact or semantic name",
+                                       "Cardmarket expansion check","language/edition/print check"],
+                         variant_id=row["variant_id"],
                          variant=row["variant"],total_candidates=len(candidates),
                          set_verified=bool(same_set),
                          status=candidate_status(len(candidates),reasons),
