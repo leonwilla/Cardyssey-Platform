@@ -79,9 +79,11 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/refresh-tcgcsv-price-cache.py
 
-      - name: Refresh verified Cardmarket prices
+      - name: Refresh verified Cardmarket prices and persist unresolved diagnostics
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
-        run: python3 scripts/refresh-cardmarket-price-cache.py
+        run: |
+          python3 scripts/refresh-cardmarket-price-cache.py --fallback-report /tmp/cardyssey-weekly-price-review.json
+          python3 scripts/store-price-review-cases.py --report /tmp/cardyssey-weekly-price-review.json --apply
 
       - name: Refresh CardTrader marketplace prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}

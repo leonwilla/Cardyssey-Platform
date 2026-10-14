@@ -17,6 +17,7 @@ fun Route.adminRoutes(
     roles: RoleRepository,
     admin: AdminRepository,
     priceMonitor: AdminPriceMonitorRepository,
+    priceReview: AdminPriceReviewRepository,
     priceCoverage: AdminPriceCoverageRepository,
     userManagement: AdminUserManagementRepository,
     registrationSettings: RegistrationSettingsRepository,
@@ -63,6 +64,11 @@ fun Route.adminRoutes(
                         status = call.request.queryParameters["status"]
                     )
                 )
+            }
+
+            get("/price-review") {
+                if (!call.requireAdmin(roles)) return@get
+                call.respond(priceReview.list(call.request.queryParameters["language"]?.takeIf { it in setOf("de","en","ko","ja","zh-tw","zh-cn") }))
             }
 
             get("/price-coverage") {

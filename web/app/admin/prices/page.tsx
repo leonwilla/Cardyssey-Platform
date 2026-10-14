@@ -17,6 +17,14 @@ type ResponseData = {
   items:PriceCase[];
 };
 
+type PriceReview = {
+ languageCode:string;cardId:string;variantId:string;searchStatus:string;
+ searchQuery?:string|null;searchSteps:string;candidates:string;
+ failureReason?:string|null;checkedAt:string;
+};
+function diagnosticJson(value:string):unknown[] {
+ try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
+}
 const LANGUAGES=[["","Alle Sprachen"],["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-tw","Chinesisch (trad.)"],["zh-cn","Chinesisch (vereinf.)"]];
 const STATUSES=[["","Alle offenen"],["STALE","> 8 Tage"],["NO_PRICE","NO_PRICE"],["PROVIDER_ERROR","PROVIDER_ERROR"]];
 
@@ -27,6 +35,7 @@ export default function PriceMonitorPage(){
  const router=useRouter();
  const [user,setUser]=useState<User|null>(null);
  const [data,setData]=useState<ResponseData|null>(null);
+ const [reviews,setReviews]=useState<PriceReview[]>([]);
  const [language,setLanguage]=useState("");
  const [status,setStatus]=useState("");
  const [loading,setLoading]=useState(true);
@@ -51,6 +60,8 @@ export default function PriceMonitorPage(){
    const response=await fetch(`/api/admin/price-monitor?${params.toString()}`,{cache:"no-store"});
    if(!response.ok)throw new Error();
    setData(await response.json() as ResponseData);
+   const reviewResponse=await fetch(`/api/admin/price-review?${params.toString()}`,{cache:"no-store"});
+   if(reviewResponse.ok)setReviews(await reviewResponse.json() as PriceReview[]);
   }catch{setMessage("Offene Preisfälle konnten nicht geladen werden.");}
   finally{setLoading(false);}
  }
@@ -69,6 +80,27 @@ export default function PriceMonitorPage(){
    <div className="statCard"><span>PROVIDER_ERROR</span><strong>{data.counts.providerError}</strong><small>Providerfehler</small></div>
    <div className="statCard"><span>Ohne öffentlichen Preis</span><strong>{data.counts.noPublicPrice}</strong><small>markiert · aktuell ignoriert</small></div>
   </section>}
+  <section className="sectionBlock">
+   <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.length} Fälle</span></div>
+   <p>Gespeicherte Suchbegriffe, geprüfte Schritte, Produktkandidaten und Fehlergründe. Fälle mit mittlerweile bestätigtem Preis werden ausgeblendet.</p>
+   <div className="filterRow" style={{marginBottom:16}}>
+    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
+   </div>
+   <div style={{maxHeight:"48vh",overflow:"auto"}}>
+    <table style={{width:"100%",minWidth:1000,borderCollapse:"collapse"}}>
+     <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Problem / Schritte","Kandidaten","Geprüft"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
+     <tbody>{reviews.map(r=><tr key={`${r.languageCode}:${r.cardId}:${r.variantId}`}>
+      <td style={{padding:9}}>{r.languageCode.toUpperCase()}</td>
+      <td style={{padding:9}}>{r.cardId}<small style={{display:"block"}}>{r.variantId}</small></td>
+      <td style={{padding:9}}>{r.searchQuery??"—"}</td>
+      <td style={{padding:9}}>{r.searchStatus}</td>
+      <td style={{padding:9,maxWidth:300}}>{r.failureReason??"—"}<details><summary>Suchweg</summary><pre style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.searchSteps).join(" → ")}</pre></details></td>
+      <td style={{padding:9}}><details><summary>{diagnosticJson(r.candidates).length} Treffer</summary><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(diagnosticJson(r.candidates),null,2)}</pre></details></td>
+      <td style={{padding:9}}>{date(r.checkedAt)}</td>
+     </tr>)}</tbody>
+    </table>
+   </div>
+  </section>
   {user && <AdminPriceCoverage />}
   <section className="sectionBlock">
    <div className="sectionTitle"><div><span className="eyebrowText">Arbeitsliste</span><h2>Offene Kartenvarianten</h2></div><span className="chip mutedChip">{data?.items.length??0} angezeigt</span></div>

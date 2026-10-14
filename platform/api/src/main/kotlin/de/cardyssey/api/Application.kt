@@ -639,6 +639,7 @@ fun Application.module() {
             roles = roleRepository,
             admin = adminRepository,
             priceMonitor = adminPriceMonitorRepository,
+            priceReview = AdminPriceReviewRepository(database),
             priceCoverage = adminPriceCoverageRepository,
             userManagement =
                 adminUserManagementRepository,
