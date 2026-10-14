@@ -9,7 +9,7 @@
     </a>
     <nav class="main-nav" aria-label="Shop-Navigation">
       <a href="<?php echo esc_url(cardyssey_shop_url()); ?>">Alle Produkte</a>
-      <a href="<?php echo esc_url(home_url('/#shop-kategorien')); ?>">Kategorien</a>
+      <a href="<?php echo esc_url(home_url('/#welten')); ?>">Kategorien</a>
       <a href="https://cardyssey.de/">Die App ↗</a>
     </nav>
     <div class="header-actions">

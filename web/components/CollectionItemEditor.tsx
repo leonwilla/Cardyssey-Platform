@@ -279,10 +279,9 @@ export function CollectionItemEditor({
   const currentItem = item;
 
   const storedUnitValue =
-    singleValueEur(
-      currentItem,
-      selectedMarket
-    );
+    condition === currentItem.condition
+      ? singleValueEur(currentItem, selectedMarket)
+      : null;
 
   const liveUnitValue =
     pricingQuote?.eur != null &&
@@ -324,6 +323,7 @@ export function CollectionItemEditor({
         ).format(value);
 
   async function save() {
+    if (busy || !Number.isInteger(quantity) || quantity < 1 || quantity > 100_000) return;
     await onSave({
       ...currentItem,
       quantity,
@@ -347,7 +347,7 @@ export function CollectionItemEditor({
   return (
     <div
       className="modalBackdrop"
-      onMouseDown={onClose}
+      onMouseDown={busy ? undefined : onClose}
     >
       <div
         className="editorModal"
@@ -512,7 +512,7 @@ export function CollectionItemEditor({
               onClick={
                 () =>
                   setQuantity(
-                    quantity + 1
+                    Math.min(100_000, quantity + 1)
                   )
               }
               disabled={busy}
@@ -716,6 +716,7 @@ export function CollectionItemEditor({
         )}
 
         <div className="editorActions">
+          {!busy && <a className="ghostButton" href={`/chat?shareCard=${encodeURIComponent(currentItem.cardId)}&language=${encodeURIComponent(currentItem.languageCode)}&collectionKey=${encodeURIComponent(currentItem.key)}`}>Karte teilen</a>}
           <button
             className="dangerButton"
             onClick={remove}

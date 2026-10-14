@@ -1,5 +1,7 @@
 "use client";
 
+import { SharedChatCard } from "@/components/SharedChatCard";
+
 import {
   FormEvent,
   useCallback,
@@ -214,6 +216,9 @@ export default function ChatPage() {
       sender: string;
       body: string;
     } | null>(null);
+
+  const [pendingShare, setPendingShare] = useState<PortfolioItem | null>(null);
+  const [shareSending, setShareSending] = useState(false);
 
   const [shareOpen, setShareOpen] =
     useState(false);
@@ -643,6 +648,42 @@ export default function ChatPage() {
     }
   }
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cardId = params.get("shareCard");
+    const language = params.get("language") || "de";
+    if (!cardId || !["de", "en", "ja", "ko", "zh-cn", "zh-tw"].includes(language)) return;
+    const controller = new AbortController();
+    async function loadShare() {
+      try {
+        const key = params.get("collectionKey");
+        if (key) {
+          const response = await fetch("/api/collection", { signal: controller.signal, cache: "no-store" });
+          if (!response.ok) throw new Error("Sammlung konnte nicht geladen werden.");
+          const items = await response.json() as PortfolioItem[];
+          const item = items.find(item => item.key === key && item.cardId === cardId && item.languageCode === language);
+          if (!item) throw new Error("Die Karte ist nicht mehr in deiner Sammlung.");
+          if (!controller.signal.aborted) setPendingShare(item);
+        } else {
+          const response = await fetch(`/api/cards/${encodeURIComponent(cardId!)}?language=${encodeURIComponent(language)}`, { signal: controller.signal, cache: "no-store" });
+          if (!response.ok) throw new Error("Karte konnte zum Teilen nicht geladen werden.");
+          const card = await response.json();
+          const variant = card.variants?.find((value: any) => value.id === params.get("variantId"));
+          if (!controller.signal.aborted) setPendingShare({
+            key: card.id + ":" + language, cardId: card.id, languageCode: language,
+            name: card.name, setId: card.setId, setName: card.setName, localId: card.localId,
+            imageBase: card.imageBase, variant: variant?.legacyVariant ?? "", variantSpec: variant,
+            condition: "", quantity: 1, marketUnitEur: {},
+          });
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) setStatus(error instanceof Error ? error.message : "Karte konnte nicht geladen werden.");
+      }
+    }
+    void loadShare();
+    return () => controller.abort();
+  }, []);
+
   async function openSharePicker() {
     if (!selection) {
       return;
@@ -678,10 +719,9 @@ export default function ChatPage() {
   async function shareCard(
     item: PortfolioItem
   ) {
-    if (!selection) {
-      return;
-    }
-
+    if (!selection || shareSending) return;
+    setShareSending(true);
+    try {
     const payload = {
       cardId: item.cardId,
       name: item.name,
@@ -691,7 +731,8 @@ export default function ChatPage() {
       imageUrl: item.imageBase,
       languageCode: item.languageCode,
       variant: item.variant,
-      condition: item.condition,
+      ...(item.condition ? { condition: item.condition } : {}),
+      variantSpec: item.variantSpec,
       quantity: item.quantity,
     };
 
@@ -729,6 +770,8 @@ export default function ChatPage() {
     }
 
     setShareOpen(false);
+    setPendingShare(null);
+    window.history.replaceState(null, "", "/chat");
     setReplyingTo(null);
 
     if (selection.kind === "friend") {
@@ -743,6 +786,11 @@ export default function ChatPage() {
       await loadCommunityMessages(
         selection.id
       );
+    }
+    } catch {
+      setStatus("Karte konnte nicht geteilt werden. Bitte erneut versuchen.");
+    } finally {
+      setShareSending(false);
     }
   }
 
@@ -1345,11 +1393,11 @@ export default function ChatPage() {
                 }}
               >
                 {shareCards
-                  .slice(0, 150)
                   .map((item) => (
                     <button
                       type="button"
                       key={item.key}
+                      disabled={shareSending}
                       className="chatThread"
                       onClick={() =>
                         void shareCard(item)
@@ -1414,6 +1462,16 @@ export default function ChatPage() {
         </button>
       </section>
 
+      {pendingShare && (
+        <div className="statusPanel">
+          <strong>{pendingShare.name} teilen</strong>
+          <p>{selection ? "Die Karte wird an den ausgewählten Chat gesendet." : "Wähle zuerst einen Freund, eine Gruppe oder einen Raum."}</p>
+          <button className="primaryButton" disabled={!selection || shareSending} onClick={() => void shareCard(pendingShare)}>
+            {shareSending ? "Wird gesendet …" : "Karte jetzt senden"}
+          </button>
+          <button className="ghostButton" disabled={shareSending} onClick={() => { setPendingShare(null); window.history.replaceState(null, "", "/chat"); }}>Abbrechen</button>
+        </div>
+      )}
       <div className="chatLayout">
         <aside className="chatThreadList">
           <div className="chatListHead">
@@ -1658,14 +1716,7 @@ export default function ChatPage() {
                           {message.body}
                         </p>
 
-                        {message.objectType && (
-                          <div
-                            className="chip"
-                            style={{ marginTop: "6px" }}
-                          >
-                            Geteilter Inhalt · {message.objectType}
-                          </div>
-                        )}
+                        <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
                         <div
                           style={{
@@ -2069,16 +2120,7 @@ export default function ChatPage() {
                             {message.body}
                           </p>
 
-                          {message.objectType && (
-                            <div
-                              className="chip"
-                              style={{
-                                marginTop: "6px",
-                              }}
-                            >
-                              Geteilter Inhalt · {message.objectType}
-                            </div>
-                          )}
+                          <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
                           <div
                             style={{
@@ -2266,14 +2308,7 @@ export default function ChatPage() {
                             <p>{message.body}</p>
                           )}
 
-                          {message.objectType && (
-                            <div
-                              className="chip"
-                              style={{ marginTop: "6px" }}
-                            >
-                              Geteilter Inhalt · {message.objectType}
-                            </div>
-                          )}
+                          <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
                           <div
                             style={{

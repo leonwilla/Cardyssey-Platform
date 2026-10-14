@@ -9,6 +9,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { mergeScanCandidates, withAbort } from "@/lib/scan-candidates";
 
 const scanLanguages = [
   {
@@ -68,6 +69,11 @@ export default function ScanPage() {
   const streamRef =
     useRef<MediaStream | null>(null);
 
+  const cameraGeneration = useRef(0);
+  const recognitionController = useRef<AbortController | null>(null);
+  const ocrWorker = useRef<import("tesseract.js").Worker | null>(null);
+  const [cameraStarting, setCameraStarting] = useState(false);
+
   const [cameraActive, setCameraActive] =
     useState(false);
 
@@ -102,6 +108,10 @@ export default function ScanPage() {
   );
 
   async function startCamera() {
+    if (cameraStarting) return;
+    stopCamera();
+    const generation = ++cameraGeneration.current;
+    setCameraStarting(true);
     setError(null);
     setImage(null);
     setCandidates([]);
@@ -118,21 +128,25 @@ export default function ScanPage() {
           audio: false,
         });
 
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+      if (generation !== cameraGeneration.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
       }
+      streamRef.current = stream;
 
       setCameraActive(true);
     } catch {
-      setError(
-        "Kamera konnte nicht geöffnet werden."
-      );
+      if (generation === cameraGeneration.current) {
+        setError("Kamera konnte nicht geöffnet werden. Bitte Kameraberechtigung prüfen.");
+      }
+    } finally {
+      if (generation === cameraGeneration.current) setCameraStarting(false);
     }
   }
 
   function stopCamera() {
+    cameraGeneration.current += 1;
+    setCameraStarting(false);
     streamRef.current
       ?.getTracks()
       .forEach(
@@ -147,7 +161,10 @@ export default function ScanPage() {
     const video =
       videoRef.current;
 
-    if (!video) return;
+    if (!video || video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+      setError("Die Kamera lädt noch. Bitte kurz warten und erneut aufnehmen.");
+      return;
+    }
 
     const canvas =
       document.createElement("canvas");
@@ -182,8 +199,13 @@ export default function ScanPage() {
   }
 
   async function recognizeCard() {
-    if (!image) return;
-
+    if (!image || recognitionController.current) return;
+    const controller = new AbortController();
+    recognitionController.current = controller;
+    const timeout = window.setTimeout(() => {
+      controller.abort();
+      void ocrWorker.current?.terminate().catch(() => {});
+    }, 90_000);
     setRecognizing(true);
     setError(null);
     setCandidates([]);
@@ -201,18 +223,32 @@ export default function ScanPage() {
             )
           : selectedLanguage.ocr;
 
-      const worker =
-        await createWorker(
-          ocrLanguages
-        );
-
-      const result =
-        await worker.recognize(image);
-
-      await worker.terminate();
-
-      const text =
-        result.data.text.trim();
+      let text = "";
+      let worker: import("tesseract.js").Worker | null = null;
+      try {
+        worker = await withAbort(createWorker(ocrLanguages, 1, {
+          workerPath: "/vendor/tesseract/worker.min.js",
+          corePath: "/vendor/tesseract",
+        }).then((created) => {
+          if (controller.signal.aborted) {
+            void created.terminate().catch(() => {});
+            throw new DOMException("Aborted", "AbortError");
+          }
+          ocrWorker.current = created;
+          return created;
+        }), controller.signal);
+        if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
+        if (!worker) throw new Error("OCR konnte nicht gestartet werden.");
+        const result = await withAbort(worker.recognize(image), controller.signal);
+        text = result.data.text.trim();
+      } catch (ocrError) {
+        // Image recognition remains usable when OCR language downloads fail.
+        if (controller.signal.aborted) throw ocrError;
+      } finally {
+        if (worker) await worker.terminate().catch(() => {});
+        if (ocrWorker.current === worker) ocrWorker.current = null;
+      }
+      if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
 
       setOcrText(text);
 
@@ -227,7 +263,7 @@ export default function ScanPage() {
           : [selectedLanguage];
 
       const recognized =
-        await Promise.all(
+        await Promise.allSettled(
           languagesToSearch.map(
             async (language) => {
               const response =
@@ -235,6 +271,7 @@ export default function ScanPage() {
                   "/api/cards/recognize",
                   {
                     method: "POST",
+                    signal: controller.signal,
                     headers: {
                       "Content-Type":
                         "application/json",
@@ -250,7 +287,9 @@ export default function ScanPage() {
                 );
 
               if (!response.ok) {
-                return [];
+                throw new Error(response.status === 401
+                  ? "Bitte melde dich erneut an."
+                  : "Kartenerkennung ist vorübergehend nicht erreichbar.");
               }
 
               const data =
@@ -269,22 +308,15 @@ export default function ScanPage() {
           )
         );
 
-      const unique =
-        new Map<string, any>();
-
-      recognized
-        .flat()
-        .forEach((card) => {
-          if (!unique.has(card.id)) {
-            unique.set(
-              card.id,
-              card
-            );
-          }
-        });
-
-      const nextCandidates =
-        [...unique.values()];
+      if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
+      const successful = recognized.filter(
+        (result): result is PromiseFulfilledResult<any[]> => result.status === "fulfilled"
+      );
+      if (successful.length === 0) {
+        const failed = recognized.find((result) => result.status === "rejected");
+        throw failed?.status === "rejected" ? failed.reason : new Error("Erkennung fehlgeschlagen.");
+      }
+      const nextCandidates = mergeScanCandidates(successful.map((result) => result.value));
 
       if (
         nextCandidates.length === 0
@@ -299,17 +331,32 @@ export default function ScanPage() {
       );
     } catch (recognitionError) {
       setError(
-        recognitionError instanceof Error
+        controller.signal.aborted
+          ? "Erkennung abgebrochen oder Zeitlimit erreicht. Bitte erneut versuchen."
+          : recognitionError instanceof Error
           ? recognitionError.message
           : "Erkennung fehlgeschlagen."
       );
     } finally {
+      window.clearTimeout(timeout);
+      if (recognitionController.current === controller) recognitionController.current = null;
       setRecognizing(false);
     }
   }
 
   useEffect(() => {
+    if (!cameraActive || !videoRef.current || !streamRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    void video.play().catch(() => setError("Kameravorschau konnte nicht starten. Bitte Kamera erneut öffnen."));
+    return () => { video.srcObject = null; };
+  }, [cameraActive]);
+
+  useEffect(() => {
     return () => {
+      cameraGeneration.current += 1;
+      recognitionController.current?.abort();
+      void ocrWorker.current?.terminate().catch(() => {});
       streamRef.current
         ?.getTracks()
         .forEach(
@@ -385,8 +432,8 @@ export default function ScanPage() {
                 Bereit für deine Karte
               </strong>
               <small>
-                Starte die Kamera oder
-                wähle ein Bild aus.
+                Starte die Kamera und
+                richte deine Karte aus.
               </small>
             </div>
           )}
@@ -452,8 +499,9 @@ export default function ScanPage() {
             <button
               className="primaryButton scannerMainAction"
               onClick={startCamera}
+              disabled={cameraStarting || recognizing}
             >
-              Kamera starten
+              {cameraStarting ? "Kamera wird geöffnet …" : "Kamera starten"}
             </button>
           )}
 
@@ -472,6 +520,7 @@ export default function ScanPage() {
           <div className="scannerReviewActions">
             <button
               className="ghostButton"
+              disabled={recognizing}
               onClick={() => {
                 setImage(null);
                 setCandidates([]);
@@ -505,7 +554,7 @@ export default function ScanPage() {
                   <button
                     type="button"
                     className="scannerCandidate"
-                    key={card.id}
+                    key={card.recognizedLanguage + ":" + card.id}
                     onClick={() =>
                       router.push(
                         `/collection?addCard=${encodeURIComponent(

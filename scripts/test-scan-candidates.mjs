@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { mergeScanCandidates, withAbort } from "../web/lib/scan-candidates.ts";
+const de = { id: "same-card", recognizedLanguage: "de" };
+const en = { id: "same-card", recognizedLanguage: "en" };
+assert.deepEqual(mergeScanCandidates([[de], [en, de]]), [de, en]);
+assert.deepEqual(mergeScanCandidates([[], [de]]), [de]);
+assert.equal(await withAbort(Promise.resolve(42), new AbortController().signal),42);
+const controller = new AbortController();
+const pending = withAbort(new Promise(() => {}),controller.signal);
+controller.abort();
+await assert.rejects(pending, { name: "AbortError" });
+await assert.rejects(withAbort(Promise.resolve(42),controller.signal),{name:"AbortError"});
+console.log("PASS: language identities, duplicate candidates and OCR cancellation");

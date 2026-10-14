@@ -1160,7 +1160,7 @@ export function AddCardDialog({
                     onClick={
                       () =>
                         setQuantity(
-                          quantity + 1
+                          Math.min(100_000, quantity + 1)
                         )
                     }
                     disabled={disabled}
@@ -1172,6 +1172,7 @@ export function AddCardDialog({
             </div>
 
             <div className="editorActions">
+              {!disabled && selected && <a className="ghostButton" href={`/chat?shareCard=${encodeURIComponent(selected.id)}&language=${encodeURIComponent(language)}${selectedVariant ? "&variantId=" + encodeURIComponent(selectedVariant.id) : ""}`}>Karte teilen</a>}
               <button
                 type="button"
                 className="ghostButton"

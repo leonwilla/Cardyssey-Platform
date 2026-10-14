@@ -38,78 +38,58 @@ export default function SetDetailsPage() {
   const [set, setSet] = useState<SetDetails | null>(null);
   const [fallback, setFallback] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setSet(null);
+    setItems([]);
+    setFallback(false);
+    async function get(path: string) {
+      try {
+        const response = await fetch(path, { cache: "no-store", signal: controller.signal });
+        return { status: response.status, data: response.ok ? await response.json() : null };
+      } catch {
+        return { status: 0, data: null };
+      }
+    }
     async function load() {
-      const id = decodeURIComponent(params.id);
-
+      const id = params.id;
       const [me, collection, details] = await Promise.all([
-        fetch("/api/auth/me", { cache: "no-store" }),
-        fetch("/api/collection", { cache: "no-store" }),
-        fetch(`/api/sets/${encodeURIComponent(id)}?language=${encodeURIComponent(language)}`, {
-          cache: "no-store",
-        }),
+        get("/api/auth/me"),
+        get("/api/collection"),
+        get(`/api/sets/${encodeURIComponent(id)}?language=${encodeURIComponent(language)}`),
       ]);
-
-      if (me.status === 401) {
+      if (controller.signal.aborted) return;
+      if ([me.status, collection.status, details.status].includes(401)) {
         router.replace("/login");
         return;
       }
-
-      if (me.ok) {
-        setUser(await me.json());
-      }
-
-      let collectionItems: PortfolioItem[] = [];
-
-      if (collection.ok) {
-        collectionItems = await collection.json();
-        setItems(collectionItems);
-      }
-
-      if (details.ok) {
-        setSet(await details.json());
-        setFallback(false);
+      if (me.data) setUser(me.data);
+      const collectionItems: PortfolioItem[] = Array.isArray(collection.data) ? collection.data : [];
+      setItems(collectionItems);
+      if (details.data && Array.isArray(details.data.cards)) {
+        setSet(details.data);
       } else {
-        const matching = collectionItems.filter(
-          (item) =>
-            item.setId === id &&
-            item.languageCode === language
-        );
-
+        const matching = collectionItems.filter(item => item.setId === id && item.languageCode === language);
         const first = matching[0];
-
         if (first) {
           const unique = new Map<string, SetCard>();
-
           for (const item of matching) {
-            if (!unique.has(item.cardId)) {
-              unique.set(item.cardId, {
-                id: item.cardId,
-                localId: item.localId ?? "",
-                name: item.name,
-                imageBase: item.imageBase,
-              });
-            }
+            if (!unique.has(item.cardId)) unique.set(item.cardId, {
+              id: item.cardId, localId: item.localId ?? "", name: item.name, imageBase: item.imageBase,
+            });
           }
-
-          setSet({
-            id,
-            name: first.setName ?? id,
-            officialCount: 0,
-            totalCount: unique.size,
-            cards: [...unique.values()],
-          });
-
+          setSet({ id, name: first.setName ?? id, officialCount: 0, totalCount: unique.size, cards: [...unique.values()] });
           setFallback(true);
         }
       }
-
       setLoading(false);
     }
-
-    load();
-  }, [params.id, router, language]);
+    void load();
+    return () => controller.abort();
+  }, [params.id, router, language, retry]);
 
   const owned = useMemo(
     () =>
@@ -139,6 +119,7 @@ export default function SetDetailsPage() {
       <AppShell active="/sets" user={user}>
         <div className="statusPanel errorPanel">
           Keine Set-Daten verfügbar.
+          <button className="ghostButton" onClick={() => setRetry(value => value + 1)}>Erneut versuchen</button>
         </div>
       </AppShell>
     );

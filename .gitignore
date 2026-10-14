@@ -46,3 +46,7 @@ logs/
 *service-account*.json
 *firebase-admin*.json
 **/google-services.json
+
+# Reproducible OCR assets and Python cache
+web/public/vendor/tesseract/
+__pycache__/
