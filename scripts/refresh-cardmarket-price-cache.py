@@ -17,6 +17,7 @@ import math
 import re
 import subprocess
 import requests
+from price_identity_validation import print_reasons,candidate_status
 
 UA = {"User-Agent": "Cardyssey/0.4 cardmarket-price-refresh"}
 PRICE_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
@@ -126,11 +127,15 @@ prices={str(x.get("idProduct")):x for x in price_rows}
 
 by_exp=collections.defaultdict(list)
 by_name=collections.defaultdict(list)
+by_semantic_name=collections.defaultdict(list)
 for product in products:
     by_exp[product.get("idExpansion")].append(product)
     key=norm(product.get("name"))
     if key:
         by_name[key].append(product)
+    semantic_key=semantic_name(product.get("name"))
+    if semantic_key:
+        by_semantic_name[semantic_key].append(product)
 
 # Build a high-confidence Cardyssey set -> Cardmarket idExpansion map from full EN set-name overlap.
 set_cards=collections.defaultdict(list)
@@ -316,20 +321,23 @@ for row in rows:
     # Also support semantic star/delta naming, only if the normalized name
     # yields no matches. Avoid a full catalogue scan on every card.
     if not matching:
-        matching=[p for p in products
-                  if semantic_name(p.get("name"))==semantic_name(label)
-                  and str(p.get("idProduct")) in prices]
+        matching=[p for p in by_semantic_name.get(semantic_name(label),[])
+                  if str(p.get("idProduct")) in prices]
     matched_set=set_map.get(row["set_id"])
     same_set=[p for p in matching if p.get("idExpansion")==matched_set] if matched_set is not None else []
     candidates=same_set if same_set else matching
+    # The public product list does not establish a language-filtered or
+    # first-edition-filtered price. Never mark a candidate as import-ready.
+    reasons=print_reasons(row["variant"],candidates[0].get("name") if len(candidates)==1 else "",
+                          set_verified=bool(same_set),number_verified=False,
+                          language_verified=False,edition_verified=False)
     fallback.append(dict(language=row["language"],card_id=row["card_id"],
                          set_code=row["set_id"],number=row["local_id"],
                          english_name=label,variant_id=row["variant_id"],
                          variant=row["variant"],total_candidates=len(candidates),
                          set_verified=bool(same_set),
-                         status=("MATCH_NEEDS_LANGUAGE_EDITION_CHECK" if len(same_set)==1
-                                 else "AMBIGUOUS_PRODUCT_IDENTITY" if candidates
-                                 else "NO_PROVIDER_PRODUCT_MATCH"),
+                         status=candidate_status(len(candidates),reasons),
+                         unverified_identity_fields=reasons,
                          products=[dict(id=x.get("idProduct"),name=x.get("name"),
                                         expansion=x.get("idExpansion")) for x in candidates[:8]]))
 if args.fallback_report:
