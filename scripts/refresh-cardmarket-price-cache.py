@@ -12,6 +12,7 @@ import argparse
 import collections
 import concurrent.futures
 import json
+from pathlib import Path
 import math
 import re
 import subprocess
@@ -108,6 +109,7 @@ def explicit_special_product(name, variant):
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--dry-run",action="store_true")
+parser.add_argument("--fallback-report",type=Path,help="JSON audit of unresolved identity candidates, no guessed prices")
 args=parser.parse_args()
 
 print("cardmarket_download=products_start",flush=True)
@@ -299,6 +301,45 @@ for row in pending:
     if value is None:
         continue
     updates.append((row,product_id,value,key,method))
+
+# Second-stage fallback: use the real card name and set context to expose
+# otherwise overlooked provider candidates. This is a diagnostic route, not
+# automatic authority to assign a price across languages or printings.
+found_keys={(u[0]["card_id"],u[0]["language"],u[0]["variant_id"]) for u in updates}
+fallback=[]
+for row in rows:
+    identity=(row["card_id"],row["language"],row["variant_id"])
+    if identity in found_keys:
+        continue
+    label=row["en_name"]
+    matching=[p for p in by_name.get(norm(label),[]) if str(p.get("idProduct")) in prices]
+    # Also support semantic star/delta naming, only if the normalized name
+    # yields no matches. Avoid a full catalogue scan on every card.
+    if not matching:
+        matching=[p for p in products
+                  if semantic_name(p.get("name"))==semantic_name(label)
+                  and str(p.get("idProduct")) in prices]
+    matched_set=set_map.get(row["set_id"])
+    same_set=[p for p in matching if p.get("idExpansion")==matched_set] if matched_set is not None else []
+    candidates=same_set if same_set else matching
+    fallback.append(dict(language=row["language"],card_id=row["card_id"],
+                         set_code=row["set_id"],number=row["local_id"],
+                         english_name=label,variant_id=row["variant_id"],
+                         variant=row["variant"],total_candidates=len(candidates),
+                         set_verified=bool(same_set),
+                         status=("MATCH_NEEDS_LANGUAGE_EDITION_CHECK" if len(same_set)==1
+                                 else "AMBIGUOUS_PRODUCT_IDENTITY" if candidates
+                                 else "NO_PROVIDER_PRODUCT_MATCH"),
+                         products=[dict(id=x.get("idProduct"),name=x.get("name"),
+                                        expansion=x.get("idExpansion")) for x in candidates[:8]]))
+if args.fallback_report:
+    args.fallback_report.parent.mkdir(parents=True,exist_ok=True)
+    args.fallback_report.write_text(json.dumps({
+        "source":"Cardmarket public product catalogue",
+        "scope":"Unresolved after quick product-ID and safe set/name lookups",
+        "warning":"Candidates are NOT verified language/edition/size/stamp prices",
+        "unresolved":fallback},ensure_ascii=False,indent=2)+"\n")
+print(f"cardmarket_fallback_unresolved={len(fallback)} review_candidates={sum(bool(x['products']) for x in fallback)}",flush=True)
 
 # Deduplicate by cache primary key, preferring exact Cardmarket-id resolution.
 best={}
