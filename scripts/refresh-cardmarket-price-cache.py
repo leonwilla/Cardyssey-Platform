@@ -322,8 +322,11 @@ for row in rows:
     # is a search hint, NOT evidence of a validated product identity.
     card_details=cards.get((row["card_id"],row["language"])) or {}
     total=((card_details.get("set") or {}).get("cardCount") or {}).get("official")
-    printed_number=str(row["local_id"])+("/"+str(total) if total else "")
-    search_query=f"{label} {printed_number}"
+    # Promo set totals are not card-number denominators.
+    promo_prefixes=("np","dpp","basep","svp","mep","bwp","swshp","smp","xyp")
+    printed_number=str(row["local_id"])+("/"+str(total) if total and row["set_id"] not in promo_prefixes else "")
+    search_name=str(label).replace("☆", "Gold Star").replace("★", "Gold Star")
+    search_query=f"{search_name} {printed_number}"
     matching=[p for p in by_name.get(norm(label),[]) if str(p.get("idProduct")) in prices]
     # Also support semantic star/delta naming, only if the normalized name
     # yields no matches. Avoid a full catalogue scan on every card.
