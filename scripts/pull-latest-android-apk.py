@@ -1,135 +1,77 @@
+"""Synchronize the verified current Cardyssey Android release into the web download path.
+
+The Demo APK workflow publishes release assets to Cardyssey-Downloads. GitHub
+Actions artifacts are ephemeral and need not exist after successful publishing.
+"""
 from pathlib import Path
-import io
+import hashlib
 import json
-import urllib.request
-import urllib.error
+import os
+import subprocess
+import tempfile
 import zipfile
 
-ROOT = Path("/home/tv/cardshop")
-ENV = ROOT / ".env"
+ROOT = Path(__file__).resolve().parent.parent
 TARGET = ROOT / "web/public/downloads/cardyssey-latest.apk"
-ANDROID_REPOSITORY = "leonwilla/Pokemonkarten-APP"
-
-token = None
-
-for line in ENV.read_text().splitlines():
-    if line.startswith("GITHUB_ANDROID_TOKEN="):
-        token = line.split("=", 1)[1].strip()
-        break
-
-if not token:
-    raise RuntimeError("GITHUB_ANDROID_TOKEN fehlt")
-
-headers = {
-    "Authorization": f"Bearer {token}",
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "User-Agent": "Cardyssey-Tiny",
-}
-
-def github_json(url):
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req) as response:
-        return json.load(response)
-
-runs = github_json(
-    "https://api.github.com/repos/"
-    f"{ANDROID_REPOSITORY}/actions/workflows/"
-    "android-demo-apk.yml/runs"
-    "?branch=main&status=success&per_page=1"
-)
-
-if not runs.get("workflow_runs"):
-    raise RuntimeError("Kein erfolgreicher APK-Workflow gefunden")
-
-run = runs["workflow_runs"][0]
-run_id = run["id"]
-
-print("Workflow:", run_id)
-print("Commit:", run["head_sha"][:8])
-
-sha = run["head_sha"]
-sha_file = ROOT / ".last-android-apk-sha"
-
-if (
-    TARGET.exists()
-    and sha_file.exists()
-    and sha_file.read_text().strip() == sha
-):
-    print("APK bereits aktuell.")
-    raise SystemExit(0)
-
-artifacts = github_json(
-    "https://api.github.com/repos/"
-    f"{ANDROID_REPOSITORY}/actions/runs/{run_id}/artifacts"
-)
-
-artifact = next(
-    (
-        a for a in artifacts.get("artifacts", [])
-        if a["name"] == "cardyssey-android-latest"
-    ),
-    None,
-)
-
-if not artifact:
-    raise RuntimeError("Artifact cardyssey-android-latest nicht gefunden")
-
-archive_url = artifact["archive_download_url"]
+SHA_FILE = ROOT / ".last-android-apk-sha"
+REPO = "leonwilla/Cardyssey-Downloads"
 
 
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
+def gh(*args):
+    return subprocess.run(
+        ["gh", *args], check=True, text=True, capture_output=True
+    ).stdout
 
 
-opener = urllib.request.build_opener(NoRedirect)
+def main():
+    release = json.loads(gh("api", f"repos/{REPO}/releases/latest"))
+    tag = release["tag_name"]
+    names = {a["name"] for a in release.get("assets", [])}
+    if not {"cardyssey-latest.apk", "cardyssey-version.json"} <= names:
+        raise RuntimeError(f"Release {tag} has no complete signed APK bundle")
 
-req = urllib.request.Request(
-    archive_url,
-    headers=headers,
-)
+    with tempfile.TemporaryDirectory(prefix="cardyssey-apk-") as directory:
+        gh("release", "download", tag, "-R", REPO,
+           "-p", "cardyssey-version.json", "-D", directory)
+        metadata = json.loads((Path(directory) / "cardyssey-version.json").read_text())
+        sha = metadata["sha256"].lower()
+        commit = metadata["commit"]
+        if not isinstance(commit, str) or len(commit) != 40 or len(sha) != 64:
+            raise RuntimeError("Invalid release metadata")
+        if metadata.get("file") != "cardyssey-latest.apk":
+            raise RuntimeError("Unexpected APK filename")
 
-try:
-    opener.open(req)
-    raise RuntimeError("GitHub lieferte keinen Download-Redirect")
-except urllib.error.HTTPError as error:
-    if error.code not in (301, 302, 303, 307, 308):
-        raise
+        # Never skip an APK just because the SHA marker is up to date: check
+        # the actual file against signed release metadata.
+        if TARGET.is_file() and TARGET.stat().st_size == metadata["sizeBytes"]:
+            if hashlib.sha256(TARGET.read_bytes()).hexdigest() == sha:
+                if not SHA_FILE.is_file() or SHA_FILE.read_text().strip() != commit:
+                    SHA_FILE.write_text(commit)
+                print(f"APK current: {tag}, {commit[:8]}")
+                return
 
-    storage_url = error.headers.get("Location")
+        gh("release", "download", tag, "-R", REPO,
+           "-p", "cardyssey-latest.apk", "-D", directory)
+        apk = Path(directory) / "cardyssey-latest.apk"
+        if apk.stat().st_size != metadata["sizeBytes"]:
+            raise RuntimeError("APK size mismatch")
+        if hashlib.sha256(apk.read_bytes()).hexdigest() != sha:
+            raise RuntimeError("APK SHA256 mismatch")
+        if not zipfile.is_zipfile(apk):
+            raise RuntimeError("Downloaded artifact is not an APK")
 
-if not storage_url:
-    raise RuntimeError("GitHub Download-Redirect enthält keine Location")
+        TARGET.parent.mkdir(parents=True, exist_ok=True)
+        temporary = TARGET.with_suffix(".apk.tmp")
+        try:
+            with apk.open("rb") as source, temporary.open("wb") as dest:
+                import shutil
+                shutil.copyfileobj(source, dest)
+            os.replace(temporary, TARGET)
+        finally:
+            temporary.unlink(missing_ok=True)
+        SHA_FILE.write_text(commit)
+        print(f"APK updated: {tag}, {commit[:8]}, {apk.stat().st_size} bytes")
 
-# Wichtig: temporären Storage-Link OHNE GitHub Token abrufen.
-req = urllib.request.Request(
-    storage_url,
-    headers={"User-Agent": "Cardyssey-Tiny"},
-)
 
-with urllib.request.urlopen(req) as response:
-    zip_data = response.read()
-
-with zipfile.ZipFile(io.BytesIO(zip_data)) as archive:
-    apk = next(
-        (
-            name for name in archive.namelist()
-            if name.endswith(".apk")
-        ),
-        None,
-    )
-
-    if not apk:
-        raise RuntimeError("Keine APK im Artifact gefunden")
-
-    apk_data = archive.read(apk)
-
-tmp = TARGET.with_suffix(".apk.tmp")
-tmp.write_bytes(apk_data)
-tmp.replace(TARGET)
-sha_file.write_text(sha)
-
-print("APK aktualisiert:")
-print(TARGET)
-print(f"Größe: {TARGET.stat().st_size / 1024 / 1024:.1f} MB")
+if __name__ == "__main__":
+    main()
