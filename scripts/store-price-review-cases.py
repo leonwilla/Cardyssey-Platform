@@ -19,9 +19,13 @@ def main():
   if not all(r.get(k) for k in ("language","card_id","variant_id","status")):continue
   candidates=[dict(**product,match_type="SET_VERIFIED_PRODUCT") for product in r.get("products") or []]
   candidates += [dict(**product,match_type="NAME_ONLY_WRONG_OR_UNVERIFIED_SET") for product in r.get("name_only_search_hints") or []]
+  candidates += [dict(provider=provider,provider_id=identifier,match_type="EXACT_VARIANT_EXTERNAL_ID_NOT_PRICE_PROOF")
+                 for provider,identifier in sorted((r.get("exact_variant_provider_ids") or {}).items())]
   reason=", ".join(r.get("unverified_identity_fields") or []) or r["status"]
   if not r.get("set_verified") and r.get("name_only_match_count"):
    reason="KEIN SET-TREFFER; "+str(r["name_only_match_count"])+" Namensähnlichkeiten aus fremden/unbestätigten Sets. "+reason
+  if r.get("exact_variant_provider_ids"):
+   reason += "; exakte Provider-ID vorhanden, Preis/Edition weiterhin unbestätigt"
   payload.append(dict(language_code=r["language"],card_id=r["card_id"],variant_id=r["variant_id"],
                       search_status=r["status"],search_query=r.get("search_query",""),
                       search_steps=r.get("lookup_steps",[]),candidates=candidates,
