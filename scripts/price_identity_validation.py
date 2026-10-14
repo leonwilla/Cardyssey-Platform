@@ -46,3 +46,14 @@ def candidate_status(candidate_count, reasons):
     if not candidate_count:return "NO_PROVIDER_PRODUCT_MATCH"
     if candidate_count!=1:return "AMBIGUOUS_PRODUCT_IDENTITY"
     return "READY_FOR_REVIEW" if reasons else "IDENTITY_VERIFIED"
+
+
+def split_by_verified_expansion(products, expected_expansion):
+    """Return verified-set candidates and name-only search hints separately.
+
+    An unverified expansion must never become an identity candidate.
+    """
+    if expected_expansion is None:
+        return [], list(products)
+    verified=[p for p in products if p.get("idExpansion")==expected_expansion]
+    return verified,[p for p in products if p.get("idExpansion")!=expected_expansion]

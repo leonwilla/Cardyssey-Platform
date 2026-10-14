@@ -17,7 +17,7 @@ import math
 import re
 import subprocess
 import requests
-from price_identity_validation import print_reasons,candidate_status
+from price_identity_validation import print_reasons,candidate_status,split_by_verified_expansion
 
 UA = {"User-Agent": "Cardyssey/0.4 cardmarket-price-refresh"}
 PRICE_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
@@ -334,8 +334,9 @@ for row in rows:
         matching=[p for p in by_semantic_name.get(semantic_name(label),[])
                   if str(p.get("idProduct")) in prices]
     matched_set=set_map.get(row["set_id"])
-    same_set=[p for p in matching if p.get("idExpansion")==matched_set] if matched_set is not None else []
-    candidates=same_set if same_set else matching
+    # Name matches outside a verified expansion are search hints only.
+    candidates,related_name_matches=split_by_verified_expansion(matching,matched_set)
+    same_set=candidates
     # The public product list does not establish a language-filtered or
     # first-edition-filtered price. Never mark a candidate as import-ready.
     reasons=print_reasons(row["variant"],candidates[0].get("name") if len(candidates)==1 else "",
@@ -366,7 +367,10 @@ for row in rows:
                              if provider in ("tcgplayer","cardmarket","cardtrader")
                              and identifier is not None},
                          products=[dict(id=x.get("idProduct"),name=x.get("name"),
-                                        expansion=x.get("idExpansion")) for x in candidates[:8]]))
+                                        expansion=x.get("idExpansion")) for x in candidates[:8]],
+                         name_only_match_count=len(related_name_matches),
+                         name_only_search_hints=[dict(id=x.get("idProduct"),name=x.get("name"),
+                                        expansion=x.get("idExpansion")) for x in related_name_matches[:5]]))
 if args.fallback_report:
     args.fallback_report.parent.mkdir(parents=True,exist_ok=True)
     args.fallback_report.write_text(json.dumps({
