@@ -21,6 +21,7 @@ type PriceReview = {
  languageCode:string;cardId:string;variantId:string;searchStatus:string;
  searchQuery?:string|null;searchSteps:string;candidates:string;
  failureReason?:string|null;checkedAt:string;
+ referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;
 };
 function diagnosticJson(value:string):unknown[] {
  try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
@@ -84,16 +85,17 @@ export default function PriceMonitorPage(){
    <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.length} Fälle</span></div>
    <p>Gespeicherte Suchbegriffe, geprüfte Schritte, Produktkandidaten und Fehlergründe. Fälle mit mittlerweile bestätigtem Preis werden ausgeblendet.</p>
    <div className="filterRow" style={{marginBottom:16}}>
-    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
+    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
    </div>
    <div style={{maxHeight:"48vh",overflow:"auto"}}>
     <table style={{width:"100%",minWidth:1000,borderCollapse:"collapse"}}>
-     <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Problem / Schritte","Kandidaten","Geprüft"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
+     <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Referenzpreis (unbestätigt)","Problem / Schritte","Kandidaten","Geprüft"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
      <tbody>{reviews.map(r=><tr key={`${r.languageCode}:${r.cardId}:${r.variantId}`}>
       <td style={{padding:9}}>{r.languageCode.toUpperCase()}</td>
       <td style={{padding:9}}>{r.cardId}<small style={{display:"block"}}>{r.variantId}</small></td>
       <td style={{padding:9}}>{r.searchQuery??"—"}</td>
       <td style={{padding:9}}>{r.searchStatus}</td>
+      <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>EN · Druckvariante ungeprüft</small></>:"—"}</td>
       <td style={{padding:9,maxWidth:300}}>{r.failureReason??"—"}<details><summary>Suchweg</summary><pre style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.searchSteps).join(" → ")}</pre></details></td>
       <td style={{padding:9}}><details><summary>{diagnosticJson(r.candidates).length} Treffer</summary><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(diagnosticJson(r.candidates),null,2)}</pre></details></td>
       <td style={{padding:9}}>{date(r.checkedAt)}</td>
