@@ -5,7 +5,7 @@ No proxy rotation, bot-challenge solving, account/session impersonation or
 product-search crawling. Source URLs must be explicitly queued and supported.
 The worker never writes tcg_price_cache; all results are review-only.
 """
-import argparse,json,re,subprocess,time,urllib.parse,urllib.request,urllib.error
+import argparse,json,re,subprocess,time,urllib.parse,urllib.request,urllib.error,multiprocessing
 from datetime import datetime,timezone
 from decimal import Decimal,InvalidOperation
 from html.parser import HTMLParser
@@ -73,6 +73,30 @@ def get_page(url, use_cloudscraper=False):
  except urllib.error.HTTPError as exc:return "HTTP_"+str(exc.code),None
  except (urllib.error.URLError,TimeoutError):return "NETWORK_ERROR",None
 
+def guarded_cloudscraper_page(url, seconds=30):
+ # Some challenge solvers can ignore socket timeouts. Bound the entire
+ # attempt in a separate process, never blocking the queued worker.
+ ctx=multiprocessing.get_context("fork")
+ parent,child=ctx.Pipe(duplex=False)
+ def work():
+  try:child.send(get_page(url,use_cloudscraper=True))
+  except BaseException:child.send(("NETWORK_ERROR",None))
+  finally:child.close()
+ process=ctx.Process(target=work,daemon=True)
+ process.start();child.close()
+ try:
+  if parent.poll(seconds):
+   return parent.recv()
+  return "PAGE_TIMEOUT",None
+ except EOFError:
+  return "NETWORK_ERROR",None
+ finally:
+  if process.is_alive():
+   process.terminate()
+  process.join(timeout=2)
+  if process.is_alive():process.kill();process.join(timeout=2)
+  parent.close()
+
 def analyze(page):
  if not page:return None,None
  m=page["metadata"]
@@ -113,7 +137,7 @@ def main():
   elif provider in blocked_providers:
    status,page="SKIPPED_PROVIDER_BLOCKED",None
   else:
-   status,page=get_page(x.get("url",""),use_cloudscraper=args.cloudscraper)
+   status,page=guarded_cloudscraper_page(x.get("url","")) if args.cloudscraper else get_page(x.get("url",""))
    if status in ("BOT_CHALLENGE","HTTP_403","HTTP_429"):
     blocked_providers.add(provider)
     if provider in allowed:health[provider]=time.time()+14*86400
