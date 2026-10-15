@@ -21,10 +21,20 @@ type PriceReview = {
  languageCode:string;cardId:string;variantId:string;searchStatus:string;
  searchQuery?:string|null;searchSteps:string;candidates:string;
  failureReason?:string|null;checkedAt:string;
- referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;ownerCount:number;ownedCopies:number;
+ referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;ownerCount:number;ownedCopies:number;cardName?:string|null;cardNumber?:string|null;setId?:string|null;variantDetails?:string|null;
 };
 function diagnosticJson(value:string):unknown[] {
  try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
+}
+function variantLabel(details?:string|null){
+ try {
+  const v=JSON.parse(details??"null") as Record<string,unknown>|null;
+  if(!v||typeof v!=="object")return "Druckvariante im Katalog nicht gefunden";
+  const parts=[v.type,v.subtype,v.foil,
+   typeof v.size==="string"&&v.size.toLowerCase()!=="standard"?v.size:null,
+   ...(Array.isArray(v.stamps)?v.stamps:[])];
+  return parts.filter((x):x is string=>typeof x==="string"&&x.length>0).join(" · ")||"Unbekannte Ausgabe";
+ }catch{return "Druckvariante unbekannt";}
 }
 const LANGUAGES=[["","Alle Sprachen"],["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-tw","Chinesisch (trad.)"],["zh-cn","Chinesisch (vereinf.)"]];
 const STATUSES=[["","Alle offenen"],["STALE","> 8 Tage"],["NO_PRICE","NO_PRICE"],["PROVIDER_ERROR","PROVIDER_ERROR"]];
@@ -111,14 +121,15 @@ export default function PriceMonitorPage(){
    <div className="statCard"><span>Ohne öffentlichen Preis</span><strong>{data.counts.noPublicPrice}</strong><small>markiert · aktuell ignoriert</small></div>
   </section>}
   <section className="sectionBlock">
-   <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.filter(r=>!ownedOnly||r.ownerCount>0).length} Fälle · {reviews.filter(r=>r.ownerCount>0).length} in Sammlungen</span></div>
+   <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{reviews.filter(r=>!ownedOnly||r.ownerCount>0).length} Fälle · {reviews.filter(r=>r.ownerCount>0).length} exakt gehaltene Varianten</span></div>
    <p>Gespeicherte Suchbegriffe, geprüfte Schritte, Produktkandidaten und Fehlergründe. Fälle mit mittlerweile bestätigtem Preis werden ausgeblendet.</p>
    <div className="filterRow" style={{marginBottom:16}}>
-    <label><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} /> Nur Karten mit Besitzern (manuelle Priorität)</label>
+    <label><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} /> Nur exakt gehaltene Druckvarianten</label>
     <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Besitzer: ${r.ownerCount} | Exemplare: ${r.ownedCopies} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
    </div>
    {manualCase&&<form className="statusPanel" onSubmit={e=>{e.preventDefault();void saveManual();}} style={{display:"grid",gap:12,marginBottom:15}}>
-    <strong>Manuellen Variantenpreis eintragen: {manualCase.languageCode.toUpperCase()} · {manualCase.cardId} · {manualCase.variantId}</strong>
+    <strong>Manuellen Variantenpreis eintragen: {manualCase.cardName??manualCase.cardId} · {manualCase.setId} · #{manualCase.cardNumber} · {manualCase.languageCode.toUpperCase()}</strong>
+    <p><strong>Genaue Druckvariante:</strong> {variantLabel(manualCase.variantDetails)} · ID {manualCase.variantId}</p>
     <p>Nur für diese genaue Karte und Druckvariante. Der Beleg wird dauerhaft protokolliert; die Eingabe wird zum TCG-Marktwert und zählt dann zur Sammlung. Nicht als allgemeine Schätzung verwenden.</p>
     <div className="filterRow">
      <label>Preis in € für den gewählten Zustand
@@ -147,15 +158,17 @@ export default function PriceMonitorPage(){
      <thead><tr>{["Sprache","Karte","Suchbegriff","Ergebnis","Besitzer","Referenzpreis (unbestätigt)","Problem / Schritte", "Kandidaten","Geprüft","Manuell"].map(v=><th key={v} style={{textAlign:"left",padding:9}}>{v}</th>)}</tr></thead>
      <tbody>{reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=><tr key={`${r.languageCode}:${r.cardId}:${r.variantId}`}>
       <td style={{padding:9}}>{r.languageCode.toUpperCase()}</td>
-      <td style={{padding:9}}>{r.cardId}<small style={{display:"block"}}>{r.variantId}</small></td>
-      <td style={{padding:9}}>{r.searchQuery??"—"}</td>
+      <td style={{padding:9}}>{r.cardName??r.cardId}<small style={{display:"block"}}>{r.setId} · #{r.cardNumber}</small><small style={{display:"block"}}>{variantLabel(r.variantDetails)}</small><details><summary>Interne ID</summary>{r.cardId} · {r.variantId}</details></td>
+      <td style={{padding:9}}>{r.searchQuery??"—"}
+       <small style={{display:"block"}}><a target="_blank" rel="noopener noreferrer" href={`https://www.google.com/search?q=${encodeURIComponent(`${r.searchQuery??r.cardId} ${r.setId??""} Pokemon Card market price`)}`}>Websuche öffnen</a></small>
+      </td>
       <td style={{padding:9}}>{r.searchStatus}</td>
       <td style={{padding:9}}>{r.ownerCount} Nutzer<small style={{display:"block"}}>{r.ownedCopies} Exemplare</small></td>
-      <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>EN · Druckvariante ungeprüft</small><details><summary>Prüfgründe</summary><small style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.referenceVerification??"[]").join(", ")}</small></details></>:"—"}</td>
+      <td style={{padding:9}}>{r.referencePriceEur!=null?<><strong>{euro(r.referencePriceEur)}</strong><small style={{display:"block"}}>{r.referenceStatus==="CROSS_LANGUAGE_REFERENCE"?"EN-Vergleich, kein DE-Preis":"EN · Druckvariante ungeprüft"}</small><details><summary>Prüfgründe</summary><small style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.referenceVerification??"[]").join(", ")}</small></details></>:"—"}</td>
       <td style={{padding:9,maxWidth:300}}>{r.failureReason??"—"}<details><summary>Suchweg</summary><pre style={{whiteSpace:"pre-wrap"}}>{diagnosticJson(r.searchSteps).join(" → ")}</pre></details></td>
       <td style={{padding:9}}><details><summary>{diagnosticJson(r.candidates).length} Treffer</summary><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(diagnosticJson(r.candidates),null,2)}</pre></details></td>
       <td style={{padding:9}}>{date(r.checkedAt)}</td>
-      <td style={{padding:9}}>{r.ownerCount>0?<button className="ghostButton" type="button" onClick={()=>{setManualCase(r);setManualConfirmed(false);setManualUrl("");setManualPrice("");}}>Preis prüfen / eintragen</button>:"Nur bei Sammlungskarten"}</td>
+      <td style={{padding:9}}>{r.ownerCount>0?<button className="ghostButton" type="button" onClick={()=>{setManualCase(r);setManualConfirmed(false);setManualUrl("");setManualPrice("");}}>Preis prüfen / eintragen</button>:"Variante nicht in einer Sammlung"}</td>
      </tr>)}</tbody>
     </table>
    </div>
