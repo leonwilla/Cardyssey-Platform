@@ -11,7 +11,7 @@ import java.time.OffsetDateTime
 class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  fun openCases(language:String?,status:String?):AdminPriceMonitorResponse {
   val lang=language?.trim()?.lowercase()?.takeIf{it.isNotBlank()&&it!="all"}
-  val stat=status?.trim()?.uppercase()?.takeIf{it in setOf("STALE","NO_PRICE","PROVIDER_ERROR")}
+  val stat=status?.trim()?.uppercase()?.takeIf{it in setOf("STALE","NO_PRICE","NO_PUBLIC_PRICE","PROVIDER_ERROR")}
   val cte="""WITH variants AS (
  SELECT c.card_id,c.language_code,c.local_id,c.name AS card_name,COALESCE(s.name,c.set_id) AS set_name,
         v.value->>'id' AS variant_id,
@@ -24,7 +24,7 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  SELECT v.*,p.base_eur AS last_price_eur,p.source AS last_source,p.updated_at AS last_successful_sync,
         p.failure_detail,p.next_attempt_at,p.resolution_status AS raw_resolution_status,
         COALESCE(vi.method,CASE WHEN ci.card_id IS NOT NULL THEN 'card-level' END) AS identity_method,
- CASE WHEN p.resolution_status='NO_PUBLIC_PRICE' THEN NULL
+ CASE WHEN p.resolution_status='NO_PUBLIC_PRICE' THEN 'NO_PUBLIC_PRICE'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='NO_PRICE' THEN 'NO_PRICE'
       WHEN p.updated_at IS NULL OR p.updated_at < NOW()-INTERVAL '8 days' THEN 'STALE'
@@ -43,7 +43,7 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  COUNT(*) FILTER(WHERE raw_resolution_status='NO_PUBLIC_PRICE') no_public_price FROM monitored""").use{st->
     st.executeQuery().use{r->check(r.next());AdminPriceMonitorCounts(r.getLong("total"),r.getLong("stale"),r.getLong("no_price"),r.getLong("provider_error"),r.getLong("no_public_price"))}
    }
-   val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY language_code,set_name,card_name,card_id,variant_id LIMIT 250")}
+   val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY CASE monitor_status WHEN 'NO_PRICE' THEN 0 WHEN 'NO_PUBLIC_PRICE' THEN 1 WHEN 'PROVIDER_ERROR' THEN 2 ELSE 3 END, language_code,set_name,card_name,card_id,variant_id LIMIT 250")}
    val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.queryTimeout=15;st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status"),r.getString("failure_detail"),r.getObject("next_attempt_at",OffsetDateTime::class.java)?.toString(),r.getString("identity_method")))}}}
    AdminPriceMonitorResponse(counts,items)
   }

@@ -37,7 +37,7 @@ function variantLabel(details?:string|null){
  }catch{return "Druckvariante unbekannt";}
 }
 const LANGUAGES=[["","Alle Sprachen"],["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-tw","Chinesisch (trad.)"],["zh-cn","Chinesisch (vereinf.)"]];
-const STATUSES=[["","Alle offenen"],["STALE","> 8 Tage"],["NO_PRICE","NO_PRICE"],["PROVIDER_ERROR","PROVIDER_ERROR"]];
+const STATUSES=[["","Alle offenen"],["STALE","> 8 Tage"],["NO_PRICE","NO_PRICE"],["NO_PUBLIC_PRICE","Kein öffentlicher Preis"],["PROVIDER_ERROR","PROVIDER_ERROR"]];
 
 function date(value?:string|null){if(!value)return "Noch nie";return new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));}
 function euro(value?:number|null){return value==null?"—":new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(value);}
