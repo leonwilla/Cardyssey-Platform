@@ -99,6 +99,7 @@ jobs:
           # exact-variant importers; do not repeatedly probe challenged pages.
           python3 scripts/audit-tcgcsv-exact-variant-prices.py --input /tmp/cardyssey-weekly-price-review.json --output /tmp/cardyssey-weekly-exact-id-audit.json
           python3 scripts/annotate-price-review-tcgcsv.py --report /tmp/cardyssey-weekly-exact-id-audit.json --apply
+          python3 scripts/summarize-de-en-price-leftovers.py --cardmarket-report /tmp/cardyssey-weekly-price-review.json --tcgcsv-report /tmp/cardyssey-weekly-exact-id-audit.json --output /tmp/cardyssey-de-en-leftovers-weekly.json
           python3 scripts/audit-cardtrader-exact-stock.py --input /tmp/cardyssey-weekly-price-review.json --output /tmp/cardyssey-weekly-cardtrader-stock-audit.json
           python3 scripts/annotate-price-review-cardtrader.py --report /tmp/cardyssey-weekly-cardtrader-stock-audit.json --apply
           python3 scripts/refresh-staged-reference-prices.py --apply --report /tmp/cardyssey-weekly-reference-refresh.json

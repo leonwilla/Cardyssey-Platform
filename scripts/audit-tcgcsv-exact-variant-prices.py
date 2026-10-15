@@ -7,7 +7,7 @@ import argparse
 import collections
 import json
 from pathlib import Path
-import requests
+from price_feed_client import fetch_json
 
 HEADERS={"User-Agent":"Cardyssey/1.0 (+https://cardyssey.de)","Accept":"application/json"}
 GROUPS={"np":1423,"basep":1418,"dpp":1421,"mep":24451,"ex8":1428}
@@ -16,9 +16,7 @@ BASE="https://tcgcsv.com/tcgplayer/3"
 def fetch_group(group):
     result={}
     for kind in ("products","prices"):
-        response=requests.get(f"{BASE}/{group}/{kind}",headers=HEADERS,timeout=20)
-        response.raise_for_status()
-        result[kind]=response.json().get("results") or []
+        result[kind]=fetch_json(f"{BASE}/{group}/{kind}",headers=HEADERS,timeout=20).get("results") or []
     return result
 
 def audit(record, catalogue):
@@ -49,7 +47,7 @@ def main():
     failed={}
     for group in groups:
         try:feeds[group]=fetch_group(group)
-        except (requests.RequestException,ValueError) as exc:failed[str(group)]=str(exc)
+        except (OSError,RuntimeError,ValueError) as exc:failed[str(group)]=str(exc)
     audits=[{**{k:x[k] for k in ("language","card_id","variant_id","set_code")},**audit(x,feeds)}
             for x in items if x.get("exact_variant_provider_ids",{}).get("tcgplayer")]
     counts=dict(collections.Counter(x["status"] for x in audits))
