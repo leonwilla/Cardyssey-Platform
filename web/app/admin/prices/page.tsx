@@ -48,6 +48,7 @@ export default function PriceMonitorPage(){
  const [data,setData]=useState<ResponseData|null>(null);
  const [reviews,setReviews]=useState<PriceReview[]>([]);
  const [ownedOnly,setOwnedOnly]=useState(false);
+ const [cardmarketOnly,setCardmarketOnly]=useState(false);
  const [activePanel,setActivePanel]=useState("review");
  const [cardSearch,setCardSearch]=useState("");
  const [detailsId,setDetailsId]=useState<string|null>(null);
@@ -133,6 +134,7 @@ export default function PriceMonitorPage(){
  async function copyList(){await navigator.clipboard.writeText(`Cardyssey offene Preisfälle (${data?.items.length??0})\nFilter: Sprache=${language||"alle"}, Status=${status||"alle"}\n\n${copyText}`);setMessage(`${data?.items.length??0} Preisfälle kopiert.`);}
 
  const filteredReviews=reviews.filter(r=>(!ownedOnly||r.ownerCount>0)&&
+  (!cardmarketOnly||r.searchStatus==="CARDMARKET_PRINT_REVIEW")&&
   [r.cardName,r.cardId,r.setId,r.languageCode,r.searchQuery].join(" ").toLowerCase().includes(cardSearch.toLowerCase()));
  return <AppShell active="/admin/prices" user={user}>
   <section className="pageIntro"><div><span className="eyebrowText">Admin · Pricing</span><h1>Preise verwalten</h1><p>Prüfe einzelne Karten, finde Kataloglücken und kontrolliere die Synchronisierung – alles getrennt und übersichtlich.</p></div></section>
@@ -153,6 +155,7 @@ export default function PriceMonitorPage(){
    <div className="sectionTitle"><div><span className="eyebrowText">Preis-Prüfung</span><h2>Unklare und erfolglose Suchläufe</h2></div><span className="chip mutedChip">{filteredReviews.length} Fälle · {reviews.filter(r=>r.ownerCount>0).length} exakt gehaltene Varianten</span></div>
    <p>Gespeicherte Suchbegriffe, geprüfte Schritte, Produktkandidaten und Fehlergründe. Fälle mit mittlerweile bestätigtem Preis werden ausgeblendet.</p>
    <div className="filterRow" style={{marginBottom:16}}>
+    <label style={{display:"flex",alignItems:"center",gap:6}}><input type="checkbox" checked={cardmarketOnly} onChange={e=>setCardmarketOnly(e.target.checked)}/> Nur Cardmarket-Druckvarianten (23)</label>
     <input aria-label="Karten suchen" placeholder="Kartenname, Set, Sprache suchen …" value={cardSearch} onChange={e=>setCardSearch(e.target.value)}/>
     <select aria-label="Sprache auswählen" value={language} onChange={e=>setLanguage(e.target.value)}>{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
     <button className="ghostButton" type="button" onClick={()=>void load()} disabled={loading}>Aktualisieren</button>
