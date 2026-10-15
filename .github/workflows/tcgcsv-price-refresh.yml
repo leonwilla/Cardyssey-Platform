@@ -277,6 +277,7 @@ jobs:
 
       - name: Preserve exact retail evidence and review candidates
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: exact-asian-retail-evidence
@@ -326,6 +327,7 @@ jobs:
           timeout 4740s /tmp/cardyssey-japanese-image-weekly-venv/bin/python scripts/resolve-japanese-image-print-prices.py --apply --report /tmp/cardyssey-japanese-image-weekly.json
       - name: Preserve exact image-backed print evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: japanese-full-card-print-evidence
