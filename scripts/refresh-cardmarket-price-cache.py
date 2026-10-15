@@ -332,7 +332,7 @@ for row in rows:
     promo_prefixes=("np","dpp","basep","svp","mep","bwp","swshp","smp","xyp")
     printed_number=str(row["local_id"])+("/"+str(total) if total and row["set_id"] not in promo_prefixes else "")
     search_name=str(label).replace("☆", "Gold Star").replace("★", "Gold Star")
-    search_query=f"{search_name} {printed_number}"
+    search_query=" ".join(str(part) for part in (search_name, printed_number, row["set_id"], "German" if row["language"]=="de" else "English" if row["language"]=="en" else row["language"]) if part)
     matching=[p for p in by_name.get(norm(label),[]) if str(p.get("idProduct")) in prices]
     # Also support semantic star/delta naming, only if the normalized name
     # yields no matches. Avoid a full catalogue scan on every card.

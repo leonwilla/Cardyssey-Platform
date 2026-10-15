@@ -22,7 +22,7 @@ class AdminPriceReviewRepository(private val dataSource:HikariDataSource) {
       COALESCE(owners.owner_count,0) AS owner_count, COALESCE(owners.owned_copies,0) AS owned_copies,
       catalog.name AS card_name,catalog.local_id AS card_number,catalog.set_id,
       physical.variant::text AS variant_details,
-      sets.name AS set_name,CASE WHEN sets.total_count > 0 THEN catalog.local_id || '/' || sets.total_count::text ELSE catalog.local_id END AS printed_number
+      sets.name AS set_name,CASE WHEN sets.total_count > 0 AND catalog.set_id !~* '^(basep|np|dpp|svp|mep|bwp|swshp|smp|xyp|s-p|sm-p|xy-p)$' THEN catalog.local_id || '/' || sets.total_count::text ELSE catalog.local_id END AS printed_number
       FROM price_review_cases p
       LEFT JOIN price_reference_candidates r ON r.language_code=p.language_code AND r.card_id=p.card_id AND r.variant_id=p.variant_id AND r.provider='POKEMONTCGAPI_REFERENCE'
       LEFT JOIN LATERAL (
