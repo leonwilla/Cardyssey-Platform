@@ -12,6 +12,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 DOMAINS={"tcgplayer.com":"TCGPLAYER","www.tcgplayer.com":"TCGPLAYER"}
+OPTIONAL_DOMAINS={"www.cardmarket.com":"CARDMARKET","www.pricecharting.com":"PRICECHARTING"}
+
 WAIT_SECONDS=10
 
 class MetadataParser(HTMLParser):
@@ -33,18 +35,41 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 OPENER=urllib.request.build_opener(NoRedirect())
 
-def get_page(url):
- uri=urllib.parse.urlsplit(url)
- if uri.scheme!="https" or uri.hostname not in DOMAINS or uri.username or uri.password or uri.port:return "BLOCKED_HOST",None
+def get_page(url, use_cloudscraper=False):
+ try:uri=urllib.parse.urlsplit(url)
+ except ValueError:return "INVALID_URL",None
+ allowed={**DOMAINS,**OPTIONAL_DOMAINS} if use_cloudscraper else DOMAINS
+ if uri.scheme!="https" or uri.hostname not in allowed or uri.username or uri.password or uri.port:return "BLOCKED_HOST",None
  if len(url)>1500:return "INVALID_URL",None
+ if use_cloudscraper:
+  try:
+   import cloudscraper
+  except ImportError:return "CLOUDSCRAPER_NOT_INSTALLED",None
+  try:
+   # Explicit single-page request. Do not auto-follow off-host redirects.
+   scraper=cloudscraper.create_scraper()
+   response=scraper.get(url,timeout=18,allow_redirects=False,headers={"Accept":"text/html"})
+   if response.status_code in (301,302,303,307,308):return "REDIRECTED_HOST",None
+   if (response.headers.get("cf-mitigated") or "").lower()=="challenge":return "BOT_CHALLENGE",None
+   if response.status_code in (403,429,503):return "HTTP_"+str(response.status_code),None
+   if response.status_code!=200:return "HTTP_"+str(response.status_code),None
+   if "html" not in response.headers.get("content-type","").lower():return "NOT_HTML",None
+   parsed=MetadataParser();parsed.feed(response.text[:700000])
+   title=" ".join(parsed.title).strip()[:200]
+   if "just a moment" in title.lower():return "BOT_CHALLENGE",None
+   return "FETCHED",dict(title=title,metadata=parsed.meta)
+  except Exception:
+   return "NETWORK_ERROR",None
  req=urllib.request.Request(url,headers={"User-Agent":"CardysseyPricingResearch/1.0 (contact: https://cardyssey.de)","Accept":"text/html"})
  try:
   with OPENER.open(req,timeout=13) as result:
    if urllib.parse.urlsplit(result.url).hostname not in DOMAINS:return "REDIRECTED_HOST",None
    content=result.read(700000).decode("utf-8","replace")
-   if "captcha" in content.lower() or "just a moment" in content.lower():return "BOT_CHALLENGE",None
+   if (result.headers.get("cf-mitigated") or "").lower()=="challenge":return "BOT_CHALLENGE",None
    parsed=MetadataParser();parsed.feed(content)
-   return "FETCHED",dict(title=" ".join(parsed.title).strip()[:200],metadata=parsed.meta)
+   title=" ".join(parsed.title).strip()[:200]
+   if "just a moment" in title.lower():return "BOT_CHALLENGE",None
+   return "FETCHED",dict(title=title,metadata=parsed.meta)
  except urllib.error.HTTPError as exc:return "HTTP_"+str(exc.code),None
  except (urllib.error.URLError,TimeoutError):return "NETWORK_ERROR",None
 
@@ -65,31 +90,33 @@ def main():
  p.add_argument("--output",type=Path,required=True)
  p.add_argument("--limit",type=int,default=25)
  p.add_argument("--apply-review",action="store_true")
+ p.add_argument("--cloudscraper",action="store_true",help="Opt-in protected-page diagnostic; review only")
  p.add_argument("--provider-state",type=Path,default=Path("/home/tv/.local/state/cardyssey-queue/scrape-provider-state.json"))
  args=p.parse_args()
  rows=[json.loads(x) for x in args.input.read_text().splitlines() if x.strip()][:max(0,min(args.limit,100))]
  args.provider_state.parent.mkdir(parents=True,exist_ok=True)
  try: health=json.loads(args.provider_state.read_text())
  except (FileNotFoundError,ValueError):health={}
- output=[];last_request=0;blocked_providers=set()
+ output=[];last_request=None;blocked_providers=set()
+ allowed={**DOMAINS,**OPTIONAL_DOMAINS} if args.cloudscraper else DOMAINS
  for x in rows:
   provider=urllib.parse.urlsplit(x.get("url","")).hostname
-  if provider in DOMAINS and health.get(provider,0)>time.time():
+  if provider in allowed and health.get(provider,0)>time.time():
    status,page="PROVIDER_COOLDOWN",None
   else:
    status,page=None,None
-  if status is None and provider in DOMAINS:
-   delay=WAIT_SECONDS-(time.monotonic()-last_request)
+  if status is None and provider in allowed:
+   delay=WAIT_SECONDS-(time.monotonic()-last_request) if last_request is not None else 0
    if delay>0:time.sleep(delay)
    last_request=time.monotonic()
   if status=="PROVIDER_COOLDOWN":pass
   elif provider in blocked_providers:
    status,page="SKIPPED_PROVIDER_BLOCKED",None
   else:
-   status,page=get_page(x.get("url",""))
+   status,page=get_page(x.get("url",""),use_cloudscraper=args.cloudscraper)
    if status in ("BOT_CHALLENGE","HTTP_403","HTTP_429"):
     blocked_providers.add(provider)
-    if provider in DOMAINS:health[provider]=time.time()+14*86400
+    if provider in allowed:health[provider]=time.time()+14*86400
   amount,currency=analyze(page)
   row={k:x.get(k) for k in ("language","card_id","variant_id","url")}
   row.update(status=status,title=(page or {}).get("title"),amount=amount,currency=currency,
