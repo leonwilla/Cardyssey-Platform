@@ -21,23 +21,19 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
  WHERE c.details_complete=TRUE AND COALESCE(v.value->>'id','')<>'' AND c.set_id !~ '^(A[0-9]|B[0-9]|P-A)'
 ), monitored AS (
- SELECT v.*,last_success.base_eur AS last_price_eur,last_success.source AS last_source,last_success.captured_at AS last_successful_sync,
+ SELECT v.*,p.base_eur AS last_price_eur,p.source AS last_source,p.updated_at AS last_successful_sync,
         p.failure_detail,p.next_attempt_at,p.resolution_status AS raw_resolution_status,
         COALESCE(vi.method,CASE WHEN ci.card_id IS NOT NULL THEN 'card-level' END) AS identity_method,
  CASE WHEN p.resolution_status='NO_PUBLIC_PRICE' THEN NULL
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='PROVIDER_ERROR' THEN 'PROVIDER_ERROR'
       WHEN COALESCE(p.resolution_status,'NO_PRICE')='NO_PRICE' THEN 'NO_PRICE'
-      WHEN last_success.captured_at IS NULL OR last_success.captured_at < NOW()-INTERVAL '8 days' THEN 'STALE'
+      WHEN p.updated_at IS NULL OR p.updated_at < NOW()-INTERVAL '8 days' THEN 'STALE'
       ELSE NULL END AS monitor_status
  FROM variants v
  LEFT JOIN tcg_price_cache p ON p.card_id=v.card_id AND p.language_code=v.language_code AND p.variant_id=v.variant_id
  LEFT JOIN cardtrader_variant_identity_cache vi ON vi.card_id=v.card_id AND vi.language_code=v.language_code AND vi.variant_id=v.variant_id
  LEFT JOIN cardtrader_identity_cache ci ON ci.card_id=v.card_id AND ci.language_code=v.language_code
- LEFT JOIN LATERAL (
-  SELECT h.base_eur,h.source,h.captured_at FROM tcg_price_history h
-  WHERE h.card_id=v.card_id AND h.language_code=v.language_code AND h.variant_id=v.variant_id
-  ORDER BY h.captured_at DESC LIMIT 1
- ) last_success ON TRUE
+
 )
 """
   return dataSource.connection.use{connection->
@@ -47,8 +43,8 @@ class AdminPriceMonitorRepository(private val dataSource:HikariDataSource) {
  COUNT(*) FILTER(WHERE raw_resolution_status='NO_PUBLIC_PRICE') no_public_price FROM monitored""").use{st->
     st.executeQuery().use{r->check(r.next());AdminPriceMonitorCounts(r.getLong("total"),r.getLong("stale"),r.getLong("no_price"),r.getLong("provider_error"),r.getLong("no_public_price"))}
    }
-   val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY language_code,set_name,card_name,card_id,variant_id")}
-   val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status"),r.getString("failure_detail"),r.getObject("next_attempt_at",OffsetDateTime::class.java)?.toString(),r.getString("identity_method")))}}}
+   val sql=buildString{append(cte);append("SELECT * FROM monitored WHERE monitor_status IS NOT NULL");if(lang!=null)append(" AND language_code=?");if(stat!=null)append(" AND monitor_status=?");append(" ORDER BY language_code,set_name,card_name,card_id,variant_id LIMIT 250")}
+   val items=connection.prepareStatement(sql).use{st->var i=1;if(lang!=null)st.setString(i++,lang);if(stat!=null)st.setString(i,stat);st.queryTimeout=15;st.executeQuery().use{r->buildList{while(r.next())add(AdminPriceMonitorItem(r.getString("card_id"),r.getString("language_code"),r.getString("set_name"),r.getString("card_name"),r.getString("local_id"),r.getString("variant_id"),r.getString("variant_label"),r.getBigDecimal("last_price_eur")?.toDouble(),r.getString("last_source"),r.getObject("last_successful_sync",OffsetDateTime::class.java)?.toString(),r.getString("monitor_status"),r.getString("failure_detail"),r.getObject("next_attempt_at",OffsetDateTime::class.java)?.toString(),r.getString("identity_method")))}}}
    AdminPriceMonitorResponse(counts,items)
   }
  }

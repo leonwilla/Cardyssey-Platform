@@ -73,6 +73,14 @@ fun Route.adminRoutes(
                 call.respond(priceReview.list(call.request.queryParameters["language"]?.takeIf { it in setOf("de","en","ko","ja","zh-tw","zh-cn") }))
             }
 
+            post("/price-review/link-preview") {
+                if (!call.requireAdmin(roles)) return@post
+                val input=runCatching { call.receive<AdminPriceLinkInput>() }.getOrNull()
+                val result=input?.let { AdminPriceLinkPreview().preview(it.url) }
+                if(result==null) call.respond(HttpStatusCode.BadRequest,mapOf("error" to "source_not_allowed"))
+                else call.respond(result)
+            }
+
             post("/price-review/manual") {
                 if (!call.requireAdmin(roles)) return@post
                 val adminId=call.authenticatedUserId() ?: return@post
