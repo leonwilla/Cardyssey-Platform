@@ -7,6 +7,7 @@ import re
 import subprocess
 import time
 import urllib.request
+from price_feed_client import fetch_json as cached_feed_json
 
 UA = {"User-Agent": "Cardyssey/0.3 recurring-price-refresh", "Accept": "application/json"}
 NEAR_MINT_FACTOR = 0.92
@@ -27,17 +28,14 @@ def db(sql):
         check=True, capture_output=True, text=True,
     ).stdout.strip()
 
-def fetch_json(url, attempts=2):
-    last = None
-    for attempt in range(attempts):
-        try:
-            req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=15) as response:
-                return json.load(response)
-        except Exception as error:
-            last = error
-            time.sleep(0.5 * (attempt + 1))
-    raise RuntimeError(f"GET failed: {url}: {last}")
+def fetch_json(url, attempts=3):
+    # Currency rates are a separate public service, not a TCGCSV price feed.
+    if url == "https://api.frankfurter.dev/v2/rate/USD/EUR":
+        req = urllib.request.Request(url, headers=UA)
+        with urllib.request.urlopen(req, timeout=15) as response:
+            return json.load(response)
+    return cached_feed_json(url, headers=UA, attempts=attempts)
+
 
 def norm(value):
     return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())

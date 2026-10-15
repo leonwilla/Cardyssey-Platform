@@ -17,6 +17,7 @@ import math
 import re
 import subprocess
 import requests
+from price_feed_client import fetch_json as cached_feed_json
 from price_identity_validation import print_reasons,candidate_status,split_by_verified_expansion
 
 UA = {"User-Agent": "Cardyssey/0.4 cardmarket-price-refresh"}
@@ -114,15 +115,13 @@ parser.add_argument("--fallback-report",type=Path,help="JSON audit of unresolved
 args=parser.parse_args()
 
 print("cardmarket_download=products_start",flush=True)
-products_payload=requests.get(PRODUCT_URL,headers=UA,timeout=45)
-products_payload.raise_for_status()
-print(f"cardmarket_download=products_done bytes={len(products_payload.content)}",flush=True)
+products_payload=cached_feed_json(PRODUCT_URL,headers=UA)
+print(f"cardmarket_download=products_done items={len(products_payload.get('products') or [])}",flush=True)
 print("cardmarket_download=prices_start",flush=True)
-price_payload=requests.get(PRICE_URL,headers=UA,timeout=45)
-price_payload.raise_for_status()
-print(f"cardmarket_download=prices_done bytes={len(price_payload.content)}",flush=True)
-products=products_payload.json().get("products") or []
-price_rows=price_payload.json().get("priceGuides") or []
+price_payload=cached_feed_json(PRICE_URL,headers=UA)
+print(f"cardmarket_download=prices_done items={len(price_payload.get('priceGuides') or [])}",flush=True)
+products=products_payload.get("products") or []
+price_rows=price_payload.get("priceGuides") or []
 prices={str(x.get("idProduct")):x for x in price_rows}
 
 by_exp=collections.defaultdict(list)
@@ -398,7 +397,7 @@ for update in updates:
 updates=list(best.values())
 
 print(
-    f"cardmarket_created_at={price_payload.json().get('createdAt')} "
+    f"cardmarket_created_at={price_payload.get('createdAt')} "
     f"catalog_products={len(products)} set_map={len(set_map)} "
     f"eligible_rows={len(rows)} updates={len(updates)} dry_run={args.dry_run}",
     flush=True
