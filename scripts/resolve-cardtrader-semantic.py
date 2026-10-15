@@ -35,6 +35,14 @@ JOIN catalog_cards_mirror c ON c.card_id=p.card_id AND c.language_code=p.languag
 LEFT JOIN catalog_sets_mirror s ON s.language_code=c.language_code AND s.set_id=c.set_id
 LEFT JOIN catalog_sets_mirror es ON es.language_code='en' AND es.set_id=c.set_id
 WHERE p.resolution_status='NO_PRICE' AND c.language_code IN ('de','en','ja','zh-cn','zh-tw')
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing rt
+    WHERE rt.language_code=p.language_code AND rt.card_id=p.card_id
+      AND rt.variant_id=p.variant_id
+      AND rt.verification_state='VERIFIED_PRODUCT_ID'
+      AND rt.primary_provider<>'CARDTRADER'
+  )
+
 ORDER BY c.language_code,c.set_id,c.card_id,p.variant_id""")
 rows=[]
 for line in raw.splitlines():

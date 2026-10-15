@@ -52,6 +52,14 @@ CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
 WHERE p.language_code IN ('de','en','ja','zh-cn','zh-tw')
   AND (p.resolution_status='NO_PRICE' OR p.source='CARDMARKET_OFFICIAL_CT_IDENTITY')
   AND COALESCE(vi.cardmarket_product_id,i.cardmarket_product_id) IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing rt
+    WHERE rt.language_code=p.language_code AND rt.card_id=p.card_id
+      AND rt.variant_id=p.variant_id
+      AND rt.verification_state='VERIFIED_PRODUCT_ID'
+      AND rt.primary_provider<>'CARDMARKET'
+  )
+
   AND v.value->>'id'=p.variant_id
 ORDER BY p.language_code,p.card_id,p.variant_id""")
 

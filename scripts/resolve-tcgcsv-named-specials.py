@@ -34,6 +34,14 @@ raw=db("""SELECT c.card_id,c.set_id,c.name,p.variant_id,p.legacy_variant,c.varia
 FROM tcg_price_cache p
 JOIN catalog_cards_mirror c ON c.card_id=p.card_id AND c.language_code=p.language_code
 WHERE p.language_code='en' AND p.resolution_status='NO_PRICE'
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing rt
+    WHERE rt.language_code=p.language_code AND rt.card_id=p.card_id
+      AND rt.variant_id=p.variant_id
+      AND rt.verification_state='VERIFIED_PRODUCT_ID'
+      AND rt.primary_provider<>'TCGCSV_TCGPLAYER'
+  )
+
   AND c.set_id IN ('ex9','mep','mfb','me01','ex15','ex8')
 ORDER BY c.set_id,c.card_id,p.variant_id""")
 

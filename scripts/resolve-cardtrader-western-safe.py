@@ -121,6 +121,14 @@ def load_targets():
     FROM tcg_price_cache p JOIN catalog_cards_mirror c USING(card_id,language_code)
     CROSS JOIN LATERAL jsonb_array_elements(c.variants) v(value)
     WHERE p.language_code='en' AND p.resolution_status='NO_PRICE'
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing rt
+    WHERE rt.language_code=p.language_code AND rt.card_id=p.card_id
+      AND rt.variant_id=p.variant_id
+      AND rt.verification_state='VERIFIED_PRODUCT_ID'
+      AND rt.primary_provider<>'CARDTRADER'
+  )
+
       AND c.set_id IN ('bwp','tk-xy-b','tk-xy-w','mep') AND v.value->>'id'=p.variant_id
     ORDER BY c.set_id,c.local_id,p.variant_id) x"""
     return json.loads(retail.db(sql))
