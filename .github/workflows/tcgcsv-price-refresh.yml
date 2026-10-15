@@ -80,6 +80,10 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/refresh-pricecharting-exact.py --apply --report /tmp/cardyssey-pricecharting-weekly.json
 
+      - name: Assign exact DE/EN preferred sources
+        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
+        run: python3 scripts/assign-de-en-price-sources.py --apply --report /tmp/cardyssey-de-en-source-routing.json
+
       - name: Refresh verified TCGCSV prices
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/refresh-tcgcsv-price-cache.py
