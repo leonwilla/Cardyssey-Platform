@@ -211,7 +211,7 @@ export default function PriceMonitorPage(){
         <small style={{display:"block"}}>{r.referenceStatus==="CROSS_LANGUAGE_REFERENCE"?"Englischer Vergleichswert":"Ungeprüfter Referenzwert"}</small>
        </div>
        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <a className="ghostButton" href={"https://www.google.com/search?q="+encodeURIComponent((r.cardName??r.cardId)+" "+(r.cardNumber??"")+" "+(r.setId??"")+" pokemon cardmarket price")} target="_blank" rel="noopener noreferrer">Websuche ↗</a>
+        <a className="ghostButton" href={"https://www.google.com/search?q="+encodeURIComponent((r.cardName??r.cardId)+" "+(r.setId==="base1"&&r.cardNumber==="8"?"8/102":(r.cardNumber??""))+" "+(/1999.?2000|4th.?print/i.test((r.variantDetails??"")+" "+(r.failureReason??""))?"1999-2000":/1.?edition|1st.?edition/i.test(r.variantDetails??"")?"1. Edition":""))} target="_blank" rel="noopener noreferrer">Websuche ↗</a>
         <button className="ghostButton" type="button" onClick={()=>setDetailsId(detailsId===key?null:key)}>Details</button>
         <button className="primaryButton" type="button" onClick={()=>{setManualCase(r);setSourcePreview(null);setManualUrl("");setManualPrice("");setManualConfirmed(false);}}>Quelle eintragen</button>
        </div>
