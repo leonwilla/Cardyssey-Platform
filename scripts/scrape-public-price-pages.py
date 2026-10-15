@@ -15,6 +15,7 @@ DOMAINS={"tcgplayer.com":"TCGPLAYER","www.tcgplayer.com":"TCGPLAYER"}
 OPTIONAL_DOMAINS={"www.cardmarket.com":"CARDMARKET","www.pricecharting.com":"PRICECHARTING"}
 
 WAIT_SECONDS=10
+COOLDOWN_SECONDS=6*60*60
 
 class MetadataParser(HTMLParser):
  def __init__(self):
@@ -140,7 +141,7 @@ def main():
    status,page=guarded_cloudscraper_page(x.get("url","")) if args.cloudscraper else get_page(x.get("url",""))
    if status in ("BOT_CHALLENGE","HTTP_403","HTTP_429"):
     blocked_providers.add(provider)
-    if provider in allowed:health[provider]=time.time()+14*86400
+    if provider in allowed:health[provider]=time.time()+COOLDOWN_SECONDS
   amount,currency=analyze(page)
   row={k:x.get(k) for k in ("language","card_id","variant_id","url")}
   row.update(status=status,title=(page or {}).get("title"),amount=amount,currency=currency,
