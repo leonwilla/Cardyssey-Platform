@@ -184,6 +184,13 @@ LEFT JOIN catalog_cards_mirror e
   ON e.language_code='en' AND e.set_id=c.set_id AND e.local_id=c.local_id
 WHERE p.language_code IN ('de','en')
   AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE') OR p.source='CARDMARKET_OFFICIAL')
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing routing
+    WHERE routing.language_code=p.language_code AND routing.card_id=p.card_id
+      AND routing.variant_id=p.variant_id
+      AND routing.verification_state='VERIFIED_PRODUCT_ID'
+      AND routing.primary_provider<>'CARDMARKET'
+  )
 ORDER BY p.language_code,p.card_id,p.variant_id
 """
 for line in db(query).splitlines():
@@ -415,7 +422,7 @@ SET source='CARDMARKET_OFFICIAL',
     updated_at=NOW(),
     resolution_status='PRICE_FOUND',
     failure_detail='{q(detail)}',
-    next_attempt_at=NOW()+INTERVAL '7 days'
+    next_attempt_at=NOW()+INTERVAL '14 days'
 WHERE card_id='{q(row["card_id"])}'
   AND language_code='{q(row["language"])}'
   AND variant_id='{q(row["variant_id"])}';

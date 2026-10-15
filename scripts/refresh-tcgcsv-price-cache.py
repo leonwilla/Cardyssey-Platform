@@ -79,6 +79,13 @@ LEFT JOIN catalog_sets_mirror s
 WHERE p.source='TCGCSV_TCGPLAYER'
   AND p.resolution_status='PRICE_FOUND'
   AND p.base_eur IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM price_source_routing routing
+    WHERE routing.language_code=p.language_code AND routing.card_id=p.card_id
+      AND routing.variant_id=p.variant_id
+      AND routing.verification_state='VERIFIED_PRODUCT_ID'
+      AND routing.primary_provider<>'TCGCSV_TCGPLAYER'
+  )
 ORDER BY p.language_code,c.set_id,p.card_id,p.variant_id
 """)
 
