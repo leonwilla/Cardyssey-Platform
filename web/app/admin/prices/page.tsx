@@ -90,7 +90,7 @@ export default function PriceMonitorPage(){
   if(review.status==="fulfilled"&&review.value.ok)setReviews(await review.value.json() as PriceReview[]);
   else {setReviews([]);setMessage("Preisprüfliste derzeit nicht erreichbar. Bitte erneut aktualisieren.");}
   if(monitor.status==="fulfilled"&&monitor.value.ok)setData(await monitor.value.json() as ResponseData);
-  else setData(null);
+  else {setData(null);setMessage("Die Preis-Monitoring-Daten konnten nicht geladen werden. Das bedeutet nicht, dass keine offenen Karten vorhanden sind. Bitte erneut aktualisieren.");}
   setLoading(false);
  }
  const copyText=useMemo(()=>data?.items.map((item,index)=>
@@ -230,7 +230,7 @@ export default function PriceMonitorPage(){
   </section>}
   {activePanel==="coverage"&&user&&<AdminPriceCoverage />}
   {activePanel==="monitor"&&<section className="sectionBlock">
-   <div className="sectionTitle"><div><span className="eyebrowText">Arbeitsliste</span><h2>Offene Kartenvarianten</h2></div><span className="chip mutedChip">{data?.items.length??0} angezeigt</span></div>
+   <div className="sectionTitle"><div><span className="eyebrowText">Arbeitsliste</span><h2>Offene Kartenvarianten</h2></div><span className="chip mutedChip">{data?data.items.length+" angezeigt":"Keine Daten"}</span></div>
    <div className="filterRow" style={{marginBottom:16}}>
     <select value={language} onChange={e=>setLanguage(e.target.value)}>{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
     <select value={status} onChange={e=>setStatus(e.target.value)}>{STATUSES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
