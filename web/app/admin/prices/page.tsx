@@ -21,7 +21,7 @@ type PriceReview = {
  languageCode:string;cardId:string;variantId:string;searchStatus:string;
  searchQuery?:string|null;searchSteps:string;candidates:string;
  failureReason?:string|null;checkedAt:string;
- referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;ownerCount:number;ownedCopies:number;cardName?:string|null;cardNumber?:string|null;setId?:string|null;variantDetails?:string|null;
+ referencePriceEur?:number|null;referenceSource?:string|null;referenceStatus?:string|null;referenceVerification?:string|null;ownerCount:number;ownedCopies:number;cardName?:string|null;cardNumber?:string|null;setId?:string|null;variantDetails?:string|null;setName?:string|null;printedNumber?:string|null;
 };
 function diagnosticJson(value:string):unknown[] {
  try { const parsed:unknown=JSON.parse(value);return Array.isArray(parsed)?parsed:[]; } catch{return [];}
@@ -39,6 +39,14 @@ function variantLabel(details?:string|null){
 const LANGUAGES=[["","Alle Sprachen"],["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-tw","Chinesisch (trad.)"],["zh-cn","Chinesisch (vereinf.)"]];
 const STATUSES=[["","Alle offenen"],["STALE","> 8 Tage"],["NO_PRICE","NO_PRICE"],["NO_PUBLIC_PRICE","Kein öffentlicher Preis"],["PROVIDER_ERROR","PROVIDER_ERROR"]];
 
+function reviewIdentity(r:PriceReview){
+ const number=r.printedNumber??r.cardNumber??"?";
+ const set=r.setName&&r.setName!==r.setId?r.setName+" ("+(r.setId??"?")+")":r.setId??"?";
+ return (r.cardName??r.cardId)+" · "+number+" · "+set+" · "+r.languageCode.toUpperCase()+" · "+variantLabel(r.variantDetails);
+}
+function reviewSearch(r:PriceReview){
+ return "Pokémon "+reviewIdentity(r).replaceAll(" · "," ");
+}
 function date(value?:string|null){if(!value)return "Noch nie";return new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value));}
 function euro(value?:number|null){return value==null?"—":new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(value);}
 
@@ -135,7 +143,7 @@ export default function PriceMonitorPage(){
 
  const filteredReviews=reviews.filter(r=>(!ownedOnly||r.ownerCount>0)&&
   (!cardmarketOnly||r.searchStatus==="CARDMARKET_PRINT_REVIEW")&&
-  [r.cardName,r.cardId,r.setId,r.languageCode,r.searchQuery].join(" ").toLowerCase().includes(cardSearch.toLowerCase()));
+  [r.cardName,r.cardId,r.setId,r.setName,r.cardNumber,r.printedNumber,r.languageCode,variantLabel(r.variantDetails),r.searchQuery].join(" ").toLowerCase().includes(cardSearch.toLowerCase()));
  return <AppShell active="/admin/prices" user={user}>
   <section className="pageIntro"><div><span className="eyebrowText">Admin · Pricing</span><h1>Preise verwalten</h1><p>Prüfe einzelne Karten, finde Kataloglücken und kontrolliere die Synchronisierung – alles getrennt und übersichtlich.</p></div></section>
   {message&&<div className="statusPanel">{message}</div>}
@@ -160,10 +168,10 @@ export default function PriceMonitorPage(){
     <select aria-label="Sprache auswählen" value={language} onChange={e=>setLanguage(e.target.value)}>{LANGUAGES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
     <button className="ghostButton" type="button" onClick={()=>void load()} disabled={loading}>Aktualisieren</button>
     <label><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} /> Nur exakt gehaltene Druckvarianten</label>
-    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=>`[${r.searchStatus}] ${r.languageCode} ${r.cardId} ${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Besitzer: ${r.ownerCount} | Exemplare: ${r.ownedCopies} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
+    <button className="primaryButton" type="button" disabled={!reviews.length} onClick={()=>void navigator.clipboard.writeText(reviews.filter(r=>!ownedOnly||r.ownerCount>0).map(r=>`[${r.searchStatus}] ${reviewIdentity(r)} | cardId=${r.cardId} variantId=${r.variantId} | Suche: ${r.searchQuery??"—"} | Schritte: ${r.searchSteps} | Ursache: ${r.failureReason??"—"} | Besitzer: ${r.ownerCount} | Exemplare: ${r.ownedCopies} | Referenz: ${r.referencePriceEur??"—"} EUR (unbestätigt) | Kandidaten: ${r.candidates}`).join("\n"))}>Prüfliste kopieren</button>
    </div>
    {manualCase&&<form className="statusPanel" onSubmit={e=>{e.preventDefault();void saveManual();}} style={{display:"grid",gap:12,marginBottom:15}}>
-    <strong>Manuellen Variantenpreis eintragen: {manualCase.cardName??manualCase.cardId} · {manualCase.setId} · #{manualCase.cardNumber} · {manualCase.languageCode.toUpperCase()}</strong>
+    <strong>Manuellen Variantenpreis eintragen: {reviewIdentity(manualCase)}</strong>
     <p><strong>Genaue Druckvariante:</strong> {variantLabel(manualCase.variantDetails)} · ID {manualCase.variantId}</p>
     <p>Link einfügen und automatisch auswerten. Die Preisübernahme ist nur möglich, wenn jemand diese exakte Druckvariante besitzt und die Angaben bestätigt wurden.</p>
     <div className="filterRow">
@@ -204,9 +212,9 @@ export default function PriceMonitorPage(){
      return <article className="statusPanel" key={key} style={{padding:18}}>
       <div style={{display:"flex",gap:16,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap"}}>
        <div style={{flex:"1 1 230px"}}>
-        <strong style={{fontSize:18}}>{r.cardName??r.cardId}</strong>
-        <div style={{opacity:.8,marginTop:4}}>{r.setId} · Nr. {r.cardNumber} · {r.languageCode.toUpperCase()}</div>
-        <div style={{marginTop:4}}>{variantLabel(r.variantDetails)}</div>
+        <strong style={{fontSize:20}}>{r.cardName??r.cardId}</strong>
+        <div style={{fontSize:16,fontWeight:700,marginTop:5}}>Nr. {r.printedNumber??r.cardNumber??"?"} · {r.setName??r.setId} ({r.setId}) · {r.languageCode.toUpperCase()}</div>
+        <div style={{marginTop:4}}>Druckvariante: {variantLabel(r.variantDetails)}</div>
         <small>{r.ownerCount} Besitzer · {r.ownedCopies} Exemplare</small>
        </div>
        <div style={{flex:"0 1 200px"}}>
@@ -214,7 +222,7 @@ export default function PriceMonitorPage(){
         <small style={{display:"block"}}>{r.referenceStatus==="CROSS_LANGUAGE_REFERENCE"?"Englischer Vergleichswert":"Ungeprüfter Referenzwert"}</small>
        </div>
        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <a className="ghostButton" href={"https://www.google.com/search?q="+encodeURIComponent((r.cardName??r.cardId)+" "+(r.setId==="base1"&&r.cardNumber==="8"?"8/102":(r.cardNumber??""))+" "+(/1999.?2000|4th.?print/i.test((r.variantDetails??"")+" "+(r.failureReason??""))?"1999-2000":/1.?edition|1st.?edition/i.test(r.variantDetails??"")?"1. Edition":""))} target="_blank" rel="noopener noreferrer">Websuche ↗</a>
+        <a className="ghostButton" href={"https://www.google.com/search?q="+encodeURIComponent(reviewSearch(r))} target="_blank" rel="noopener noreferrer">Websuche ↗</a>
         <button className="ghostButton" type="button" onClick={()=>setDetailsId(detailsId===key?null:key)}>Details</button>
         <button className="primaryButton" type="button" onClick={()=>{setManualCase(r);setSourcePreview(null);setManualUrl("");setManualPrice("");setManualConfirmed(false);}}>Quelle eintragen</button>
        </div>

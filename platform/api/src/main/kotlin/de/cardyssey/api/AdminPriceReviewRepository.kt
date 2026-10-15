@@ -10,7 +10,8 @@ data class PriceReviewCase(
  val candidates:String,val failureReason:String?,val checkedAt:String,
  val referencePriceEur:Double?,val referenceSource:String?,val referenceStatus:String?,
  val referenceVerification:String?,val ownerCount:Long,val ownedCopies:Long,
- val cardName:String?,val cardNumber:String?,val setId:String?,val variantDetails:String?
+ val cardName:String?,val cardNumber:String?,val setId:String?,val variantDetails:String?,
+ val setName:String?,val printedNumber:String?
 )
 
 class AdminPriceReviewRepository(private val dataSource:HikariDataSource) {
@@ -20,7 +21,8 @@ class AdminPriceReviewRepository(private val dataSource:HikariDataSource) {
       r.price_eur,r.provider,r.verification_status,r.evidence->'verification'->'reasons' AS reference_verification,
       COALESCE(owners.owner_count,0) AS owner_count, COALESCE(owners.owned_copies,0) AS owned_copies,
       catalog.name AS card_name,catalog.local_id AS card_number,catalog.set_id,
-      physical.variant::text AS variant_details
+      physical.variant::text AS variant_details,
+      sets.name AS set_name,CASE WHEN sets.total_count > 0 THEN catalog.local_id || '/' || sets.total_count::text ELSE catalog.local_id END AS printed_number
       FROM price_review_cases p
       LEFT JOIN price_reference_candidates r ON r.language_code=p.language_code AND r.card_id=p.card_id AND r.variant_id=p.variant_id AND r.provider='POKEMONTCGAPI_REFERENCE'
       LEFT JOIN LATERAL (
@@ -31,6 +33,7 @@ class AdminPriceReviewRepository(private val dataSource:HikariDataSource) {
       ) owners ON TRUE
       LEFT JOIN catalog_cards_mirror catalog ON catalog.language_code=p.language_code
         AND catalog.card_id=p.card_id
+      LEFT JOIN catalog_sets_mirror sets ON sets.language_code=p.language_code AND sets.set_id=catalog.set_id
       LEFT JOIN LATERAL (
         SELECT v.value AS variant FROM jsonb_array_elements(catalog.variants) v(value)
         WHERE v.value->>'id'=p.variant_id LIMIT 1
@@ -51,7 +54,8 @@ class AdminPriceReviewRepository(private val dataSource:HikariDataSource) {
       rs.getString(6),rs.getString(7),rs.getString(8),rs.getString(9),
       rs.getBigDecimal(10)?.toDouble(),rs.getString(11),rs.getString(12),rs.getString(13),
       rs.getLong(14),rs.getLong(15),
-      rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19)))
+      rs.getString(16),rs.getString(17),rs.getString(18),rs.getString(19),
+      rs.getString(20),rs.getString(21)))
     }
    }
   }
