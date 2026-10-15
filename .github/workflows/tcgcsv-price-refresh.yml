@@ -2,7 +2,8 @@ name: Weekly TCGCSV Price Refresh
 
 on:
   schedule:
-    - cron: "17 4 * * 0"
+    # Twice monthly, ~14-16 days apart; keep the full catalog refresh off the weekly cadence.
+    - cron: "17 4 1,15 * *"
   workflow_dispatch:
 
 concurrency:

@@ -65,21 +65,31 @@ def main():
  p.add_argument("--output",type=Path,required=True)
  p.add_argument("--limit",type=int,default=25)
  p.add_argument("--apply-review",action="store_true")
+ p.add_argument("--provider-state",type=Path,default=Path("/home/tv/.local/state/cardyssey-queue/scrape-provider-state.json"))
  args=p.parse_args()
  rows=[json.loads(x) for x in args.input.read_text().splitlines() if x.strip()][:max(0,min(args.limit,100))]
+ args.provider_state.parent.mkdir(parents=True,exist_ok=True)
+ try: health=json.loads(args.provider_state.read_text())
+ except (FileNotFoundError,ValueError):health={}
  output=[];last_request=0;blocked_providers=set()
  for x in rows:
   provider=urllib.parse.urlsplit(x.get("url","")).hostname
-  if provider in DOMAINS:
+  if provider in DOMAINS and health.get(provider,0)>time.time():
+   status,page="PROVIDER_COOLDOWN",None
+  else:
+   status,page=None,None
+  if status is None and provider in DOMAINS:
    delay=WAIT_SECONDS-(time.monotonic()-last_request)
    if delay>0:time.sleep(delay)
    last_request=time.monotonic()
-  if provider in blocked_providers:
+  if status=="PROVIDER_COOLDOWN":pass
+  elif provider in blocked_providers:
    status,page="SKIPPED_PROVIDER_BLOCKED",None
   else:
    status,page=get_page(x.get("url",""))
    if status in ("BOT_CHALLENGE","HTTP_403","HTTP_429"):
     blocked_providers.add(provider)
+    if provider in DOMAINS:health[provider]=time.time()+14*86400
   amount,currency=analyze(page)
   row={k:x.get(k) for k in ("language","card_id","variant_id","url")}
   row.update(status=status,title=(page or {}).get("title"),amount=amount,currency=currency,
@@ -87,6 +97,9 @@ def main():
    checked_at=datetime.now(timezone.utc).isoformat())
   output.append(row);print(row["card_id"],status,flush=True)
  args.output.write_text(json.dumps(output,ensure_ascii=False,indent=2)+"\n")
+ tmp=args.provider_state.with_suffix(".tmp")
+ tmp.write_text(json.dumps(health,indent=2)+"\n")
+ tmp.replace(args.provider_state)
  if args.apply_review and output:
   payload="'"+json.dumps(output,ensure_ascii=False).replace("'","''")+"'"
   sql="""WITH inputs AS(SELECT jsonb_array_elements("""+payload+"""::jsonb) x),
