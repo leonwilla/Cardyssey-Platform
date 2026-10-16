@@ -1,0 +1,63 @@
+name: Scraper Source Connectivity Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scraper-connectivity-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
+    timeout-minutes: 8
+    steps:
+      - name: Read-only provider connectivity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p scraper-audit
+          python3 - <<'PY'
+          import datetime, json, ssl, urllib.error, urllib.request
+          from pathlib import Path
+          sources = {
+              "ebay_de_sold_search": "https://www.ebay.de/sch/i.html?_nkw=charizard+4%2F102&LH_Sold=1&LH_Complete=1",
+              "pricecharting_product": "https://www.pricecharting.com/game/pokemon-base-set/charizard-4",
+              "pricecharting_search": "https://www.pricecharting.com/search-products?q=charizard+base+set&type=prices",
+              "cardmarket_public_price_guide": "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json",
+          }
+          report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "checks": []}
+          for name, url in sources.items():
+              result = {"source": name, "url": url, "http_status": None, "reachable": False, "challenge_suspected": False}
+              try:
+                  req = urllib.request.Request(url, headers={"User-Agent": "Cardyssey/0.5 provider-connectivity-audit", "Accept": "text/html,application/json,*/*"})
+                  with urllib.request.urlopen(req, timeout=18) as response:
+                      chunk = response.read(24576)
+                      result["http_status"] = response.status
+                      result["content_type"] = response.headers.get("Content-Type", "")
+                      result["reachable"] = response.status == 200
+                      body = chunk.decode("utf-8", "replace").lower()
+                      result["challenge_suspected"] = any(s in body for s in ("cf-chl-", "just a moment...", "captcha challenge", "enable javascript and cookies"))
+                      result["bytes_sampled"] = len(chunk)
+                      if name == "pricecharting_product":
+                          result["sales_structure_hint"] = "sale date" in body or "sales" in body
+              except urllib.error.HTTPError as exc:
+                  result["http_status"] = exc.code
+                  result["error"] = "HTTP status " + str(exc.code)
+              except Exception as exc:
+                  result["error"] = type(exc).__name__ + ": " + str(exc)[:220]
+              report["checks"].append(result)
+              print(f"{name}: status={result['http_status']} reachable={result['reachable']} challenge={result['challenge_suspected']}")
+          Path("scraper-audit/report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+          PY
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-connectivity-audit
+          path: scraper-audit/report.json
+          if-no-files-found: warn
+          retention-days: 7
