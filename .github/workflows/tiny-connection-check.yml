@@ -1,0 +1,31 @@
+name: Tiny Connection Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tiny-connection-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tiny-connection-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: [self-hosted, linux, x64, cardyssey-android]
+    timeout-minutes: 5
+    steps:
+      - name: Check Tiny runtime (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Runner: $(uname -s) $(uname -m)"
+          echo "Docker:"
+          docker ps --format '{{.Names}} {{.Status}}' | grep -E '^cardyssey-(api|db) ' || true
+          echo "API health:"
+          curl --fail --silent --show-error --max-time 15 http://127.0.0.1:8081/api/v1/health >/dev/null
+          echo "Cardyssey API health: OK"
