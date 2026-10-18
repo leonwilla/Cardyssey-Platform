@@ -6,9 +6,10 @@
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
-    "lint": "next lint",
+    "lint": "eslint .",
     "prebuild": "node scripts/copy-ocr-assets.mjs",
-    "predev": "node scripts/copy-ocr-assets.mjs"
+    "predev": "node scripts/copy-ocr-assets.mjs",
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "next": "16.3.8",
@@ -20,6 +21,8 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
     "typescript": "latest"
   },
   "overrides": {
