@@ -47,6 +47,15 @@ const scanLanguages = [
 type ScanLanguage =
   (typeof scanLanguages)[number];
 
+type ScanCandidate = {
+  id: string;
+  name: string;
+  setName?: string | null;
+  setId?: string | null;
+  localId?: string | null;
+  recognizedLanguage?: string;
+};
+
 function scanLanguageLabel(
   code: string | undefined
 ) {
@@ -90,7 +99,7 @@ export default function ScanPage() {
     useState("");
 
   const [candidates, setCandidates] =
-    useState<any[]>([]);
+    useState<ScanCandidate[]>([]);
 
   const [languageCode, setLanguageCode] =
     useState<ScanLanguage["api"]>("de");
@@ -298,7 +307,7 @@ export default function ScanPage() {
               return (
                 data.candidates ?? []
               ).map(
-                (card: any) => ({
+                (card: ScanCandidate) => ({
                   ...card,
                   recognizedLanguage:
                     language.api,
@@ -310,7 +319,7 @@ export default function ScanPage() {
 
       if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
       const successful = recognized.filter(
-        (result): result is PromiseFulfilledResult<any[]> => result.status === "fulfilled"
+        (result): result is PromiseFulfilledResult<ScanCandidate[]> => result.status === "fulfilled"
       );
       if (successful.length === 0) {
         const failed = recognized.find((result) => result.status === "rejected");

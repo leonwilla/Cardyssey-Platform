@@ -13,10 +13,9 @@ Cardyssey von den anderen Projekten auf demselben Rechner.
 | `cardyssey-ebay-browser` | Nur für direkte eBay-Preise | Selenium/Chromium für den eBay-Collector | `127.0.0.1:7900` |
 | Cloudflare Tunnel | Ja für öffentliche Domains | Leitet `cardyssey.de` und `api.cardyssey.de` an die lokalen Dienste | abhängig von der Installation |
 
-Der aktuelle Stand von `platform/compose.yml` enthält nur Datenbank, API
-und eBay-Browser. Die Web-App ist dort noch nicht als Container definiert.
-Bis zur Containerisierung muss sie deshalb als separater Node-, systemd-
-oder PM2-Prozess auf Port 3000 laufen.
+Der Webcontainer ist nun im optionalen Docker-Compose-Profil `web-cutover` vorbereitet.
+Ohne ausdrückliche Aktivierung dieses Profils läuft die Webapp weiterhin als
+separater Node-Prozess. Einzelheiten und sichere Umstellung: `docs/web-docker-cutover.md`.
 
 ## Andere Projekte auf dem Tiny
 

@@ -668,7 +668,7 @@ export default function ChatPage() {
           const response = await fetch(`/api/cards/${encodeURIComponent(cardId!)}?language=${encodeURIComponent(language)}`, { signal: controller.signal, cache: "no-store" });
           if (!response.ok) throw new Error("Karte konnte zum Teilen nicht geladen werden.");
           const card = await response.json();
-          const variant = card.variants?.find((value: any) => value.id === params.get("variantId"));
+          const variant = card.variants?.find((value: { id: string }) => value.id === params.get("variantId"));
           if (!controller.signal.aborted) setPendingShare({
             key: card.id + ":" + language, cardId: card.id, languageCode: language,
             name: card.name, setId: card.setId, setName: card.setName, localId: card.localId,
