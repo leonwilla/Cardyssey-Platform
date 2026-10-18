@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { AppShell } from "@/components/AppShell";
 
 type ShopProduct = {
@@ -63,7 +64,7 @@ export default async function ShopPage() {
         <section className="cardGrid" aria-label="Aktuelles Sortiment">
           {products.map((product) => (
             <a className="cardTile" href={productLink(product)} key={product.id}>
-              {product.images?.[0]?.src && <img src={product.images[0].src} alt={product.images[0].alt || product.name} loading="lazy" style={{ width: "100%", height: 200, objectFit: "contain" }} />}
+              {product.images?.[0]?.src && <Image width={300} height={200} unoptimized src={product.images[0].src} alt={product.images[0].alt || product.name} loading="lazy" style={{ width: "100%", height: 200, objectFit: "contain" }} />}
               <strong>{product.name}</strong>
               <p>{productPrice(product) ?? "Preis im Shop ansehen"}</p>
               <span>{product.is_in_stock === false ? "Aktuell nicht auf Lager" : "Im Shop ansehen →"}</span>

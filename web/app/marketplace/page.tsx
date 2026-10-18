@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useMemo,
@@ -206,7 +208,7 @@ export default function MarketplacePage() {
                 >
                   <div className="marketImage">
                     {image ? (
-                      <img
+                      <Image width={280} height={390} unoptimized
                         src={image}
                         alt={listing.name}
                       />

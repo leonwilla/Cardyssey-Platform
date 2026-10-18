@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useMemo,
@@ -933,7 +935,7 @@ export function AddCardDialog({
                     >
                       <div className="addCardResultImage">
                         {image ? (
-                          <img
+                          <Image width={280} height={390} unoptimized
                             src={image}
                             alt=""
                           />
@@ -993,7 +995,7 @@ export function AddCardDialog({
             <div className="addCardSelected">
               <div className="addCardSelectedImage">
                 {selectedImage ? (
-                  <img
+                  <Image width={280} height={390} unoptimized
                     src={selectedImage}
                     alt={selected.name}
                   />

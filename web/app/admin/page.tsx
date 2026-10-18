@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -197,11 +198,45 @@ export default function AdminPage() {
   const [message, setMessage] =
     useState<string | null>(null);
 
-  useEffect(() => {
-    void initialize();
+
+
+
+
+  const loadUser = useCallback(async (id: string) => {
+    setDetailLoading(true);
+    setMessage(null);
+    setDuplicates(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/users/${
+            encodeURIComponent(id)
+          }`,
+          { cache: "no-store" }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Nutzerdetails konnten nicht geladen werden."
+        );
+      }
+
+      setDetail(
+        await response.json()
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Nutzerdetails konnten nicht geladen werden."
+      );
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
 
-  async function initialize() {
+  const initialize = useCallback(async () => {
     setLoading(true);
     setMessage(null);
 
@@ -297,7 +332,11 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router, loadUser]);
+
+  useEffect(() => {
+    void Promise.resolve().then(initialize);
+  }, [initialize]);
 
   async function loadUsers(
     query = search
@@ -343,39 +382,7 @@ export default function AdminPage() {
     }
   }
 
-  async function loadUser(id: string) {
-    setDetailLoading(true);
-    setMessage(null);
-    setDuplicates(null);
 
-    try {
-      const response =
-        await fetch(
-          `/api/admin/users/${
-            encodeURIComponent(id)
-          }`,
-          { cache: "no-store" }
-        );
-
-      if (!response.ok) {
-        throw new Error(
-          "Nutzerdetails konnten nicht geladen werden."
-        );
-      }
-
-      setDetail(
-        await response.json()
-      );
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Nutzerdetails konnten nicht geladen werden."
-      );
-    } finally {
-      setDetailLoading(false);
-    }
-  }
 
   async function deleteUserAccount(
     entry: AdminUser

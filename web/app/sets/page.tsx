@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useMemo,
@@ -145,7 +147,7 @@ function SetArtwork({
 }) {
   const candidates = useMemo(
     () => setImageCandidates(set),
-    [set.logo, set.symbol]
+    [set]
   );
 
   const [candidateIndex, setCandidateIndex] =
@@ -169,7 +171,7 @@ function SetArtwork({
       </span>
 
       {src && (
-        <img
+        <Image width={280} height={220} unoptimized
           src={src}
           alt=""
           loading="lazy"

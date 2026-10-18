@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
+
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -112,7 +115,7 @@ export default function WishlistPage() {
     setTargetPrice,
   ] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const [me, wishlist, market] =
       await Promise.all([
         fetch("/api/auth/me", {
@@ -148,11 +151,11 @@ export default function WishlistPage() {
     }
 
     setLoading(false);
-  }
+  }, [router]);
 
   useEffect(() => {
     void Promise.resolve().then(load);
-  }, []);
+  }, [load]);
 
   const matches =
     useMemo(() => {
@@ -394,7 +397,7 @@ export default function WishlistPage() {
               >
                 <div className="wishlistImage">
                   {image ? (
-                    <img
+                    <Image width={280} height={390} unoptimized
                       src={image}
                       alt={item.name}
                     />

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useState,
@@ -100,7 +102,7 @@ export function FriendWishlistSection({
                 key={item.id}
               >
                 {image ? (
-                  <img
+                  <Image width={280} height={390} unoptimized
                     src={image}
                     alt={item.name}
                   />

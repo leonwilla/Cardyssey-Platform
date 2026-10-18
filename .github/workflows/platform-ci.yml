@@ -49,8 +49,8 @@ jobs:
         run: npm ci
       - name: Typecheck web
         run: npm run typecheck
-      - name: Lint web
-        run: npm run lint
+      - name: Lint web (zero warnings)
+        run: npm run lint -- --max-warnings 0
       - name: Build web
         env:
           CARDYSSEY_API_URL: http://127.0.0.1:8081

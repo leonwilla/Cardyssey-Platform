@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type {
   PortfolioItem,
 } from "@/lib/types";
@@ -123,7 +124,7 @@ export function CardTile({
     >
       <div className="cardImageWrap">
         {image ? (
-          <img
+          <Image width={280} height={390} unoptimized
             src={image}
             alt={item.name}
             className="cardImage"

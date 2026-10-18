@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -57,7 +58,7 @@ export default function AdminChatPage() {
   const [error, setError] =
     useState<string | null>(null);
 
-  async function initialize() {
+  const initialize = useCallback(async () => {
     const me =
       await fetch(
         "/api/auth/me",
@@ -94,11 +95,11 @@ export default function AdminChatPage() {
         await response.json()
       );
     }
-  }
+  }, [router]);
 
   useEffect(() => {
     void Promise.resolve().then(initialize);
-  }, []);
+  }, [initialize]);
 
   async function search(
     event: FormEvent

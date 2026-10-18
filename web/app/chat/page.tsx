@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { SharedChatCard } from "@/components/SharedChatCard";
 
 import {
@@ -1516,8 +1518,8 @@ export default function ChatPage() {
               >
                 <span className="chatAvatar">
                   {group.imageUrl ? (
-                    <img
-                      src={groupImageSrc(group.imageUrl) ?? undefined}
+                    <Image width={96} height={96} unoptimized
+                      src={groupImageSrc(group.imageUrl) ?? ''}
                       alt=""
                       style={{
                         width: "100%",
@@ -1867,8 +1869,8 @@ export default function ChatPage() {
                 >
                   <span className="chatAvatar">
                     {activeGroup?.imageUrl ? (
-                      <img
-                        src={groupImageSrc(activeGroup.imageUrl) ?? undefined}
+                      <Image width={96} height={96} unoptimized
+                        src={groupImageSrc(activeGroup.imageUrl) ?? ''}
                         alt=""
                         style={{
                           width: "100%",

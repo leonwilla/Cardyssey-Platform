@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useState,
@@ -395,7 +397,7 @@ export default function AccountPage() {
               >
                 <div className="avatar large">
                   {user.avatarUrl ? (
-                    <img
+                    <Image width={96} height={96} unoptimized
                       src={user.avatarUrl}
                       alt="Profilbild"
                     />

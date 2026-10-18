@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { AdminPriceCoverage } from "@/components/AdminPriceCoverage";
@@ -75,19 +75,19 @@ export default function PriceMonitorPage(){
  const [loading,setLoading]=useState(true);
  const [message,setMessage]=useState<string|null>(null);
 
- useEffect(()=>{void initialize();},[]);
- useEffect(()=>{if(user)void load();},[language,status]);
 
- async function initialize(){
+
+
+ const initialize = useCallback(async () => {
   try{
    const meResponse=await fetch("/api/auth/me",{cache:"no-store"});
    if(meResponse.status===401){router.replace("/login");return;}
    const me=await meResponse.json() as User;
    if(me.canAdmin!==true&&me.role!=="ADMIN"&&me.role!=="FOUNDER"){router.replace("/account");return;}
-   setUser(me); await load();
+   setUser(me);
   }catch{setMessage("Preis-Monitor konnte nicht geladen werden.");setLoading(false);}
- }
- async function load(){
+ }, [router]);
+ const load = useCallback(async () => {
   setLoading(true);setMessage(null);
   const params=new URLSearchParams();if(language)params.set("language",language);if(status)params.set("status",status);
   const responses=await Promise.allSettled([
@@ -100,7 +100,9 @@ export default function PriceMonitorPage(){
   if(monitor.status==="fulfilled"&&monitor.value.ok)setData(await monitor.value.json() as ResponseData);
   else {setData(null);setMessage("Die Preis-Monitoring-Daten konnten nicht geladen werden. Das bedeutet nicht, dass keine offenen Karten vorhanden sind. Bitte erneut aktualisieren.");}
   setLoading(false);
- }
+ }, [language, status]);
+ useEffect(()=>{void Promise.resolve().then(initialize);},[initialize]);
+ useEffect(()=>{if(user)void Promise.resolve().then(load);},[user,load]);
  const copyText=useMemo(()=>data?.items.map((item,index)=>
   `${index+1}. [${item.currentStatus}] ${item.languageCode.toUpperCase()} | ${item.setName} | ${item.cardName} | #${item.cardNumber} | ${item.variant} | letzter Preis: ${euro(item.lastPriceEur)} | Quelle: ${item.source??"—"} | letzter erfolgreicher Sync: ${item.lastSuccessfulSync??"nie"} | Grund: ${item.failureDetail??"—"} | Identity: ${item.identityMethod??"keine"} | nächster Versuch: ${item.nextAttemptAt??"—"} | cardId=${item.cardId} | variantId=${item.variantId}`
  ).join("\n")??"",[data]);

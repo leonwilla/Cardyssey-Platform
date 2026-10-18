@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -31,7 +32,7 @@ export default function RegistrationAdminPage() {
   const [message, setMessage] =
     useState<string | null>(null);
 
-  async function initialize() {
+  const initialize = useCallback(async () => {
     setLoading(true);
     setMessage(null);
 
@@ -89,11 +90,11 @@ export default function RegistrationAdminPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router]);
 
   useEffect(() => {
     void Promise.resolve().then(initialize);
-  }, []);
+  }, [initialize]);
 
   async function setRegistrationEnabled(
     enabled: boolean

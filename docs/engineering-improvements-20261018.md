@@ -6,9 +6,10 @@ Bestehende Sprachen und Datenbank beibehalten: Kotlin/Compose Android, Kotlin/Kt
 ## In Arbeit / Feature-Branch
 - [x] Next.js-16-kompatible ESLint-Konfiguration und neuer TypeScript-Check eingerichtet.
 - [x] Web-CI um TypeScript-Pruefung und ESLint-Pruefung erweitert. Beide lokalen Tests laufen erfolgreich.
-- [x] Alle 23 zuletzt offenen ESLint-Fehler im Webcode beseitigt. Aktueller Stand: 0 Fehler, 40 Warnungen.
-- [ ] 40 nicht blockierende Warnungen nach und nach beheben (u. a. Bildoptimierung, Effect-Abhaengigkeiten).
-- [ ] Web-Build und Browser-Smoke-Tests isoliert auf dem neuen Server oder nach Freigabe von Speicherplatz ausfuehren. Keine Builds in der aktiven Next.js-Instanz.
+- [x] Alle 23 zuletzt offenen ESLint-Fehler im Webcode beseitigt.
+- [x] Alle 40 anschliessenden ESLint-Warnungen beseitigt, ohne Regeln zu deaktivieren. Aktueller Stand: 0 Fehler, 0 Warnungen.
+- [x] Isolierter Next.js-Produktions-Build und acht lokale HTTP-Smoke-Checks erfolgreich, ohne die aktive Next.js-Instanz zu veraendern.
+- [ ] Browser-/E2E-Tests mit Testaccount und interaktiven Funktionen folgen vor einer produktiven Freigabe; separater Next.js-Edge-Runtime-Deprecation-Hinweis spaeter pruefen.
 
 ## Geplante technische Arbeiten (noch nicht umgesetzt)
 - [x] Next.js-Webcontainer als optionales Docker-Compose-Profil vorbereitet und Compose-Konfiguration geprueft.

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useState,
@@ -264,7 +266,7 @@ export default function FriendProfilePage() {
                 title="Profilbild vergrößern"
               >
                 <div className="avatar large">
-                  <img
+                  <Image width={96} height={96} unoptimized
                     src={profile.avatarUrl}
                     alt="Profilbild"
                   />
@@ -333,7 +335,7 @@ export default function FriendProfilePage() {
                     ×
                   </button>
 
-                  <img
+                  <Image width={96} height={96} unoptimized
                     src={profile.avatarUrl}
                     alt={
                       profile.displayName
@@ -377,7 +379,7 @@ export default function FriendProfilePage() {
                         </span>
 
                         {image ? (
-                          <img
+                          <Image width={280} height={390} unoptimized
                             src={image}
                             alt={item.name}
                           />
@@ -446,7 +448,7 @@ export default function FriendProfilePage() {
                         >
                           <div className="cardImageWrap">
                             {image ? (
-                              <img
+                              <Image width={280} height={390} unoptimized
                                 className="cardImage"
                                 src={image}
                                 alt={card.name}

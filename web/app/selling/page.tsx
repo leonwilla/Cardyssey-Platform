@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
+
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -88,7 +91,7 @@ export default function SellingPage() {
   const [message, setMessage] =
     useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     const [
       me,
       collectionResponse,
@@ -125,11 +128,11 @@ export default function SellingPage() {
         await sellingResponse.json()
       );
     }
-  }
+  }, [router]);
 
   useEffect(() => {
     void Promise.resolve().then(load);
-  }, []);
+  }, [load]);
 
   const availableCollection =
     useMemo(() => {
@@ -465,7 +468,7 @@ export default function SellingPage() {
                   >
                     <div className="saleCardImage">
                       {image ? (
-                        <img
+                        <Image width={280} height={390} unoptimized
                           src={image}
                           alt={listing.name}
                         />

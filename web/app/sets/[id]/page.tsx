@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
@@ -191,7 +193,7 @@ export default function SetDetailsPage() {
             >
               <div className="cardImageWrap">
                 {image ? (
-                  <img
+                  <Image width={280} height={390} unoptimized
                     src={image}
                     alt={card.name}
                     className="cardImage"

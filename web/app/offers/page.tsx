@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useCallback,
   useEffect,
@@ -323,7 +325,7 @@ export default function OffersPage() {
                 >
                   <div className="offerImage">
                     {image ? (
-                      <img
+                      <Image width={280} height={390} unoptimized
                         src={image}
                         alt={
                           offer.name

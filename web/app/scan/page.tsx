@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import {
   useEffect,
   useMemo,
@@ -429,7 +431,7 @@ export default function ScanPage() {
               className="scannerMedia"
             />
           ) : image ? (
-            <img
+            <Image width={480} height={672} unoptimized
               src={image}
               alt="Aufgenommene Karte"
               className="scannerMedia contain"
