@@ -57,10 +57,6 @@ export default function AdminChatPage() {
   const [error, setError] =
     useState<string | null>(null);
 
-  useEffect(() => {
-    void initialize();
-  }, []);
-
   async function initialize() {
     const me =
       await fetch(
@@ -99,6 +95,10 @@ export default function AdminChatPage() {
       );
     }
   }
+
+  useEffect(() => {
+    void Promise.resolve().then(initialize);
+  }, []);
 
   async function search(
     event: FormEvent

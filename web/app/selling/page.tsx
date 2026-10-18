@@ -128,7 +128,7 @@ export default function SellingPage() {
   }
 
   useEffect(() => {
-    load();
+    void Promise.resolve().then(load);
   }, []);
 
   const availableCollection =

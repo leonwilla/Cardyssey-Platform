@@ -31,10 +31,6 @@ export default function RegistrationAdminPage() {
   const [message, setMessage] =
     useState<string | null>(null);
 
-  useEffect(() => {
-    void initialize();
-  }, []);
-
   async function initialize() {
     setLoading(true);
     setMessage(null);
@@ -94,6 +90,10 @@ export default function RegistrationAdminPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    void Promise.resolve().then(initialize);
+  }, []);
 
   async function setRegistrationEnabled(
     enabled: boolean

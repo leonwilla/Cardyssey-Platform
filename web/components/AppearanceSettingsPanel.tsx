@@ -26,9 +26,8 @@ export function AppearanceSettingsPanel() {
     useState<string | null>(null);
 
   useEffect(() => {
-    setSelected(
-      cachedAppearanceTheme()
-    );
+    const cached = cachedAppearanceTheme();
+    queueMicrotask(() => setSelected(cached));
 
     fetch("/api/appearance", {
       cache: "no-store",

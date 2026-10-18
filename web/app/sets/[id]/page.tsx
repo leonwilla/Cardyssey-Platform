@@ -42,10 +42,13 @@ export default function SetDetailsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setSet(null);
-    setItems([]);
-    setFallback(false);
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setLoading(true);
+      setSet(null);
+      setItems([]);
+      setFallback(false);
+    });
     async function get(path: string) {
       try {
         const response = await fetch(path, { cache: "no-store", signal: controller.signal });

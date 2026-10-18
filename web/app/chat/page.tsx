@@ -361,9 +361,11 @@ export default function ChatPage() {
       ).get("friend");
 
     if (initialFriend) {
-      setSelection({
-        kind: "friend",
-        id: initialFriend,
+      queueMicrotask(() => {
+        setSelection((current) => current ?? {
+          kind: "friend",
+          id: initialFriend,
+        });
       });
     }
 
@@ -386,9 +388,11 @@ export default function ChatPage() {
         }
       });
 
-    void loadThreads();
-    void loadGroups();
-    void loadRooms();
+    void Promise.resolve().then(() => {
+      void loadThreads();
+      void loadGroups();
+      void loadRooms();
+    });
   }, [
     loadGroups,
     loadRooms,
@@ -397,6 +401,9 @@ export default function ChatPage() {
   ]);
 
   useEffect(() => {
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
     if (selection) {
       return;
     }
@@ -423,6 +430,8 @@ export default function ChatPage() {
         id: threads[0].friendCode,
       });
     }
+    });
+    return () => { active = false; };
   }, [
     groups,
     rooms,
@@ -435,14 +444,16 @@ export default function ChatPage() {
       return;
     }
 
-    setShowGroupSettings(false);
-    setDraft("");
-    setReplyingTo(null);
-    setShareOpen(false);
+    queueMicrotask(() => {
+      setShowGroupSettings(false);
+      setDraft("");
+      setReplyingTo(null);
+      setShareOpen(false);
+    });
 
     if (selection.kind === "friend") {
-      setGroupDetail(null);
-      void loadFriendMessages(selection.id);
+      queueMicrotask(() => setGroupDetail(null));
+      void Promise.resolve().then(() => loadFriendMessages(selection.id));
 
       const interval =
         window.setInterval(
@@ -457,8 +468,10 @@ export default function ChatPage() {
     }
 
     if (selection.kind === "group") {
-      void loadGroupMessages(selection.id);
-      void loadGroupDetail(selection.id);
+      void Promise.resolve().then(() => {
+        void loadGroupMessages(selection.id);
+        void loadGroupDetail(selection.id);
+      });
 
       const interval =
         window.setInterval(
@@ -473,8 +486,8 @@ export default function ChatPage() {
         window.clearInterval(interval);
     }
 
-    setGroupDetail(null);
-    void loadCommunityMessages(selection.id);
+    queueMicrotask(() => setGroupDetail(null));
+    void Promise.resolve().then(() => loadCommunityMessages(selection.id));
 
     const interval =
       window.setInterval(
@@ -1310,8 +1323,7 @@ export default function ChatPage() {
       ]
     );
 
-  function ComposerExtras() {
-    return (
+  const composerExtras = (
       <>
         {replyingTo && (
           <div
@@ -1428,8 +1440,7 @@ export default function ChatPage() {
           </div>
         )}
       </>
-    );
-  }
+  );
 
   return (
     <AppShell
@@ -1808,7 +1819,7 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <ComposerExtras />
+              {composerExtras}
 
               <form
                 className="chatComposer"
@@ -2204,7 +2215,7 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <ComposerExtras />
+              {composerExtras}
 
               <form
                 className="chatComposer"
@@ -2418,7 +2429,7 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <ComposerExtras />
+              {composerExtras}
 
               <form
                 className="chatComposer"

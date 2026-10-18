@@ -151,7 +151,7 @@ export default function WishlistPage() {
   }
 
   useEffect(() => {
-    load();
+    void Promise.resolve().then(load);
   }, []);
 
   const matches =

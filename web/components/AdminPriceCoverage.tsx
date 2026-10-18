@@ -41,7 +41,10 @@ export function AdminPriceCoverage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(null); setGroups([]); setSelected(null); setPage(null); setMessage(null);
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setLoading(true); setError(null); setGroups([]); setSelected(null); setPage(null); setMessage(null);
+    });
     void (async () => {
       try {
         const params = new URLSearchParams();
@@ -60,7 +63,10 @@ export function AdminPriceCoverage() {
   useEffect(() => {
     if (!selected) return;
     const controller = new AbortController();
-    setDetailsLoading(true); setPage(null); setDetailError(null); setMessage(null);
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setDetailsLoading(true); setPage(null); setDetailError(null); setMessage(null);
+    });
     void (async () => {
       try {
         const params = new URLSearchParams({ language: selected.languageCode, setId: selected.setId, offset: String(offset) });

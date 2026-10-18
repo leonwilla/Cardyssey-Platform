@@ -244,17 +244,21 @@ export function AppShell({
   );
 
   useEffect(() => {
+    let cancelled = false;
     if (user !== undefined) {
       cachedShellUser = user;
-      setShellUser(user);
-      return;
+      queueMicrotask(() => {
+        if (!cancelled) setShellUser(user);
+      });
+      return () => { cancelled = true; };
     }
 
     if (cachedShellUser !== undefined) {
-      setShellUser(cachedShellUser);
+      const cached = cachedShellUser;
+      queueMicrotask(() => {
+        if (!cancelled) setShellUser(cached);
+      });
     }
-
-    let cancelled = false;
 
     fetch("/api/auth/me", {
       cache: "no-store",

@@ -19,15 +19,14 @@ export default function LoginPage() {
         window.location.search
       ).get("error");
 
-    setError(
-      code
-        ? code === "invalid_credentials"
-          ? "E-Mail oder Passwort ist falsch."
-          : code === "server_unavailable"
-            ? "Server momentan nicht erreichbar. Bitte versuche es gleich erneut."
-            : "Anmeldung fehlgeschlagen."
-        : null
-    );
+    const message = code
+      ? code === "invalid_credentials"
+        ? "E-Mail oder Passwort ist falsch."
+        : code === "server_unavailable"
+          ? "Server momentan nicht erreichbar. Bitte versuche es gleich erneut."
+          : "Anmeldung fehlgeschlagen."
+      : null;
+    queueMicrotask(() => setError(message));
   }, []);
 
   return (

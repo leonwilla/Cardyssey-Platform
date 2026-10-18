@@ -277,16 +277,12 @@ export default function CollectionPage() {
       params.get("addCard");
 
     if (cardId) {
-      setScannerCardId(
-        cardId
-      );
-
-      setScannerLanguage(
-        params.get("language") ||
-          "de"
-      );
-
-      setAdding(true);
+      const language = params.get("language") || "de";
+      queueMicrotask(() => {
+        setScannerCardId(cardId);
+        setScannerLanguage(language);
+        setAdding(true);
+      });
     }
   }, []);
 
@@ -531,11 +527,12 @@ export default function CollectionPage() {
         );
     }
 
-    setEbayLiveUnitEur(
-      storedValues
-    );
-    setEbayLoadError(null);
-    setEbayLoading(true);
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setEbayLiveUnitEur(storedValues);
+      setEbayLoadError(null);
+      setEbayLoading(true);
+    });
 
     const grouped =
       new Map<

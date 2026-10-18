@@ -154,8 +154,13 @@ export function AddCardDialog({
       return;
     }
 
-    setSelected(null);
-    setSelectedVariantId("");
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setSelected(null);
+      setSelectedVariantId("");
+    });
+    return () => { active = false; };
   }, [language, open]);
 
   useEffect(() => {
@@ -173,9 +178,13 @@ export function AddCardDialog({
       cleanQuery.length < 2 &&
       cleanNumber.length === 0
     ) {
-      setResults([]);
-      setSearching(false);
-      return;
+      let active = true;
+      queueMicrotask(() => {
+        if (!active) return;
+        setResults([]);
+        setSearching(false);
+      });
+      return () => { active = false; };
     }
 
     const controller =

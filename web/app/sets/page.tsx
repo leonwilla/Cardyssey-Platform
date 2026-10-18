@@ -152,7 +152,11 @@ function SetArtwork({
     useState(0);
 
   useEffect(() => {
-    setCandidateIndex(0);
+    let active = true;
+    queueMicrotask(() => {
+      if (active) setCandidateIndex(0);
+    });
+    return () => { active = false; };
   }, [set.id, candidates]);
 
   const src =

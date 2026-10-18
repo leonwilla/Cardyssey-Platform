@@ -127,18 +127,17 @@ export function CollectionItemEditor({
   useEffect(() => {
     if (!item) return;
 
-    setQuantity(
-      item.quantity
-    );
-
-    setCondition(
-      item.condition
-    );
-
-    setSelectedMarket(market);
-    setPricingQuote(null);
-    setPricingError(null);
-    setEbaySales([]);
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setQuantity(item.quantity);
+      setCondition(item.condition);
+      setSelectedMarket(market);
+      setPricingQuote(null);
+      setPricingError(null);
+      setEbaySales([]);
+    });
+    return () => { active = false; };
   }, [item, market]);
 
   useEffect(() => {
@@ -168,13 +167,15 @@ export function CollectionItemEditor({
       );
     }
 
-    setPricingLoading(true);
-    setPricingError(null);
-    setPricingQuote(null);
-
-    if (selectedMarket !== "EBAY") {
-      setEbaySales([]);
-    }
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      setPricingLoading(true);
+      setPricingError(null);
+      setPricingQuote(null);
+      if (selectedMarket !== "EBAY") {
+        setEbaySales([]);
+      }
+    });
 
     fetch(
       `/api/pricing/cards/${encodeURIComponent(item.cardId)}?${params.toString()}`,
