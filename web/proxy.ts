@@ -70,6 +70,7 @@ export function proxy(
     pathname === "/register" ||
     pathname === "/impressum" ||
     pathname === "/datenschutz" ||
+    pathname === "/opengraph-image" ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/downloads/") ||

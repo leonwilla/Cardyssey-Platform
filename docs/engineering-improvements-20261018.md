@@ -9,7 +9,8 @@ Bestehende Sprachen und Datenbank beibehalten: Kotlin/Compose Android, Kotlin/Kt
 - [x] Alle 23 zuletzt offenen ESLint-Fehler im Webcode beseitigt.
 - [x] Alle 40 anschliessenden ESLint-Warnungen beseitigt, ohne Regeln zu deaktivieren. Aktueller Stand: 0 Fehler, 0 Warnungen.
 - [x] Isolierter Next.js-Produktions-Build und acht lokale HTTP-Smoke-Checks erfolgreich, ohne die aktive Next.js-Instanz zu veraendern.
-- [ ] Browser-/E2E-Tests mit Testaccount und interaktiven Funktionen folgen vor einer produktiven Freigabe; separater Next.js-Edge-Runtime-Deprecation-Hinweis spaeter pruefen.
+- [ ] Browser-/E2E-Tests mit Testaccount und interaktiven Funktionen folgen vor einer produktiven Freigabe.
+- [x] Next.js Edge-Runtime-Deprecation behoben: OpenGraph-Bild nutzt Node.js. Zusaetzlich wurde die Bildroute ohne Login oeffentlich gemacht; getesteter PNG-Abruf HTTP 200, geschuetzte Sammlung leitet weiterhin zum Login.
 
 ## Geplante technische Arbeiten (noch nicht umgesetzt)
 - [x] Next.js-Webcontainer als optionales Docker-Compose-Profil vorbereitet und Compose-Konfiguration geprueft.

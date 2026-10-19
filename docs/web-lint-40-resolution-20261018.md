@@ -13,7 +13,7 @@
 
 ## Einschränkungen
 - Keine Anmeldung mit Testaccount, kein vollständiger E2E-Test mit echten Schreibvorgängen und keine manuellen visuellen Browserprüfungen durchgeführt.
-- Der Next.js-Build gibt einen separaten Hinweis aus, dass die Edge Runtime abgekündigt ist. Dieser Hinweis gehört NICHT zu den 40 erledigten ESLint-Warnungen und sollte bei einer späteren Aktualisierung des Proxy-/Middleware-Codes geprüft werden.
+- Nachtrag 19.10.2026: Der separate Edge-Runtime-Hinweis kam von `app/opengraph-image.tsx` und wurde behoben (`runtime = "nodejs"`). Die oeffentliche OpenGraph-Bildroute wurde im Proxy freigegeben. Isolierter Build ohne Edge-Warnung, PNG-Bild HTTP 200, Sammlung ohne Anmeldung weiter HTTP 307 zum Login.
 - Die Codeänderungen sind noch nicht auf `main` veröffentlicht und nicht produktiv aktiviert.
 - Tiny C: hat nur rund 2,4 GB frei. Der isolierte Build war deshalb auf `/dev/shm` ausgelagert.
 
