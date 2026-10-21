@@ -16,3 +16,28 @@ body.cardysseyAppPreview .ghostButton, body.cardysseyAppPreview .iconButton, bod
 body.cardysseyAppPreview .statCard, body.cardysseyAppPreview .cardTile, body.cardysseyAppPreview .setTile {background:#fffaf3; color:#1e2c26; border-color:#e0d3c2; box-shadow:none;}
 body.cardysseyAppPreview .pageIntro h1 {color:#1e2c26;}
 body.cardysseyAppPreview .eyebrowText {color:#e6512d;}
+/* Experimental palette: override legacy hardcoded dark surfaces, not just tokens. */
+body.cardysseyAppPreview .setCatalogControls, body.cardysseyAppPreview .setCatalogTile,body.cardysseyAppPreview .setCatalogSummary>div,
+body.cardysseyAppPreview .setCatalogIntro,body.cardysseyAppPreview .shopHero,body.cardysseyAppPreview .accountCard,
+body.cardysseyAppPreview .statusPanel,body.cardysseyAppPreview .scannerCandidate,
+body.cardysseyAppPreview .filterRow,body.cardysseyAppPreview .collectionSection,
+body.cardysseyAppPreview .scannerFrame,body.cardysseyAppPreview .scannerPanel,
+body.cardysseyAppPreview .themeChoice,body.cardysseyAppPreview .appearancePanel,
+body.cardysseyAppPreview .authTabs button.active {background:#fffaf3;color:#1e2c26;border-color:#dfd0be;box-shadow:none;}
+body.cardysseyAppPreview .setCatalogControls input,body.cardysseyAppPreview .setCatalogControls select,
+body.cardysseyAppPreview .setSearch input,body.cardysseyAppPreview .filterRow input,body.cardysseyAppPreview .filterRow select,
+body.cardysseyAppPreview input:not([type=checkbox]):not([type=radio]),body.cardysseyAppPreview select,
+body.cardysseyAppPreview textarea {background:#fffaf3!important;color:#1e2c26!important;border:1px solid #d9cbb9!important;}
+body.cardysseyAppPreview input::placeholder,body.cardysseyAppPreview textarea::placeholder {color:#69756c!important;opacity:1;}
+body.cardysseyAppPreview .setCatalogTile h3,body.cardysseyAppPreview .setCatalogStats strong,
+body.cardysseyAppPreview .setCatalogSummary strong,body.cardysseyAppPreview .scannerFrame h2,
+body.cardysseyAppPreview .scannerFrame h3,body.cardysseyAppPreview .cardTile strong,
+body.cardysseyAppPreview .accountCard h2,body.cardysseyAppPreview .statCard strong {color:#1e2c26;}
+body.cardysseyAppPreview .setCatalogTile span,body.cardysseyAppPreview .setCatalogTile p,
+body.cardysseyAppPreview .setCatalogStats span,body.cardysseyAppPreview .setCatalogSummary span,
+body.cardysseyAppPreview .scannerFrame p {color:#5f6c65;}
+body.cardysseyAppPreview .scanCorners {border-top-color:#e6512d;border-bottom-color:#e6512d;}
+body.cardysseyAppPreview .progress,body.cardysseyAppPreview .setProgressTrack {background:#e5dbcc;}
+body.cardysseyAppPreview .progress span,body.cardysseyAppPreview .setProgressBar {background:linear-gradient(90deg,#e6512d,#eda16e);}
+body.cardysseyAppPreview .authCard,body.cardysseyAppPreview .authCard h1,body.cardysseyAppPreview .authCard label {color:#1e2c26;}
+body.cardysseyAppPreview .bottomNav {background:#fffaf3;color:#1e2c26;}
