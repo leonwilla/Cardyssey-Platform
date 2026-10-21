@@ -14,7 +14,7 @@ export const ANDROID_RELEASE_METADATA_URL =
   "https://github.com/leonwilla/Cardyssey-Downloads/releases/latest/download/cardyssey-version.json";
 
 export const ANDROID_APK_DOWNLOAD_URL =
-  "https://github.com/leonwilla/Cardyssey-Downloads/releases/latest/download/cardyssey-latest.apk";
+  "/api/private/apk";
 
 export function formatAndroidReleaseDate(
   value: string

@@ -58,61 +58,29 @@ function secure(
   return response;
 }
 
-export function proxy(
-  request: NextRequest
-) {
-  const pathname =
-    request.nextUrl.pathname;
-
-  const isPublic =
-    pathname === "/" ||
-    pathname === "/preview-redesign" ||
-    pathname === "/preview-shop" ||
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/impressum" ||
-    pathname === "/datenschutz" ||
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/downloads/") ||
-    pathname === "/favicon.ico" ||
-    pathname.includes(".");
-
-  if (isPublic) {
-    return secure(
-      NextResponse.next()
-    );
+export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  // Assets and the authentication entry point remain reachable so approved users can sign in.
+  if (pathname === "/login" || pathname === "/impressum" || pathname === "/datenschutz" ||
+      pathname === "/api/auth/login" || pathname === "/api/auth/logout" ||
+      pathname === "/api/internal/private-access" || pathname.startsWith("/_next/") ||
+      pathname === "/favicon.ico" || pathname === "/cardyssey-emblem-gold.png" ||
+      pathname.startsWith("/images/") || pathname.startsWith("/landing/") ||
+      pathname.startsWith("/vendor/") || pathname.startsWith("/app-screenshots/")) {
+    return secure(NextResponse.next());
   }
-
-  const access =
-    request.cookies.get(
-      "cardyssey_access"
-    )?.value;
-
-  const refresh =
-    request.cookies.get(
-      "cardyssey_refresh"
-    )?.value;
-
-  if (!access && !refresh) {
-    const loginUrl =
-      request.nextUrl.clone();
-
-    loginUrl.pathname = "/login";
-    loginUrl.search = "";
-
-    return secure(
-      NextResponse.redirect(
-        loginUrl
-      )
-    );
+  if (pathname === "/register" || pathname === "/api/auth/register") {
+    return secure(NextResponse.redirect(new URL("/login",request.url)));
   }
-
-  return secure(
-    NextResponse.next()
-  );
+  const hasSession = request.cookies.has("cardyssey_access") || request.cookies.has("cardyssey_refresh");
+  if (!hasSession) return secure(NextResponse.redirect(new URL("/login",request.url)));
+  try {
+    const verification = await fetch(new URL("/api/internal/private-access",request.url), {
+      headers:{cookie: request.headers.get("cookie") ?? ""},cache:"no-store",
+    });
+    if (verification.status === 204) return secure(NextResponse.next());
+  } catch { /* fail closed */ }
+  return secure(NextResponse.redirect(new URL("/login?error=access_restricted",request.url)));
 }
 
-export const config = {
-  matcher: "/:path*",
-};
+export const config = {matcher:"/:path*"};
