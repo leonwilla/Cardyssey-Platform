@@ -89,7 +89,7 @@ export function Journey() {
           </h2>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:mt-20 lg:grid-cols-12 lg:gap-16">
+        <div className="mt-9 grid gap-5 sm:mt-14 lg:mt-20 lg:grid-cols-12 lg:gap-16">
           <div className="relative lg:col-span-5">
             <div aria-hidden className="absolute bottom-0 left-0 top-0 hidden w-px bg-border lg:block">
               <span
@@ -139,7 +139,7 @@ export function Journey() {
                         {step.text}
                       </p>
                     </div>
-                    <div className="mt-8 aspect-[4/5] overflow-hidden rounded-3xl sm:aspect-[4/3] lg:hidden">
+                    <div className="mt-6 aspect-[4/5] overflow-hidden rounded-2xl sm:mt-8 sm:aspect-[4/3] sm:rounded-3xl lg:hidden">
                       <StepPreview step={step} active />
                     </div>
                   </li>

@@ -22,8 +22,8 @@ function CardThumb({ card, className, sizes = '160px' }: { card: CollectorCard; 
 
 export function AppScreenshot({ asset }: { asset: MediaAsset }) {
   return (
-    <div className="flex size-full items-center justify-center bg-paper-deep p-6 sm:p-10">
-      <div className="relative h-full max-h-[620px] aspect-[9/19] overflow-hidden rounded-[2.25rem] border-[6px] border-foreground bg-background shadow-[0_30px_60px_-30px_rgba(29,41,36,0.7)]">
+    <div className="flex size-full items-center justify-center bg-paper-deep p-3 sm:p-6 lg:p-10">
+      <div className="relative h-full max-h-[620px] max-w-full aspect-[9/19] overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] border-[4px] sm:border-[6px] border-foreground bg-background shadow-[0_30px_60px_-30px_rgba(29,41,36,0.7)]">
         <Image src={asset.src} alt={asset.alt} fill sizes="320px" className="object-cover object-top" />
       </div>
     </div>

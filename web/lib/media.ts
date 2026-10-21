@@ -27,6 +27,8 @@ export const media = {
 /**
  * Optional real app screenshots for the scrollytelling steps.
  * When a value is set, it replaces the illustrated preview for that step.
+ * Upload validated screenshots under public/app-screenshots/ and use those paths.
+ * Prefer cropped screenshots with no personal information, and verify source fidelity.
  */
 export const appScreenshots: Record<'scannen' | 'sammeln' | 'marktpreise' | 'wunschliste', MediaAsset | null> = {
   scannen: null,

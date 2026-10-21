@@ -1,0 +1,1 @@
+Cardyssey homepage screenshot assets. Replace the null values in web/lib/media.ts with /app-screenshots/<file>. Use consented, redacted, authentic captures. Suggested: scannen.webp, sammeln.webp, marktpreise.webp, wunschliste.webp. Keep screenshot text accurate.
