@@ -58,7 +58,7 @@ export function Shop() {
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-sm text-muted-foreground">Das Sortiment ist im Aufbau.</p>
+          <p className="mt-5 text-sm text-muted-foreground">Das Sortiment wird aufgebaut. Produktverfügbarkeit und Preise findest du im Shop.</p>
         </div>
       </div>
     </section>

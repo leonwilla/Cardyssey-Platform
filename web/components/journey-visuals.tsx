@@ -51,7 +51,7 @@ export function ScanVisual({ active = true }: VisualProps) {
       </div>
       <div className="absolute bottom-5 left-5 right-5 w-fit rounded-full bg-background/95 px-4 py-2 text-sm font-medium">
         <span className="mr-2 inline-block size-2 rounded-full bg-primary" aria-hidden />
-        Karte erkannt – zur Sammlung hinzufügen?
+        Beispiel: Kartenerkennung · Ergebnis überprüfen
       </div>
     </div>
   )
@@ -76,6 +76,7 @@ export function CollectVisual() {
           </span>
         ))}
       </div>
+      <p className="mt-3 text-xs text-muted-foreground">Schematische Vorschau – echte Varianten werden in der App getrennt erfasst.</p>
       {/* Thumb width is derived from both available width and height so the rows never overflow the frame */}
       <div className="mt-5 min-h-0 flex-1 [container-type:size]">
         <div
@@ -125,7 +126,7 @@ export function MarketVisual({ active = true }: VisualProps) {
       <div className="flex flex-1 items-center gap-6 sm:gap-8">
         <CardThumb card={cards[4]} className="w-[36%] shrink-0 -rotate-3 rounded-lg" sizes="220px" />
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-[0.18em] text-foreground/60">Preisverlauf</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-foreground/60">Marktpreise · Vorschau</p>
           <p className="mt-1 font-serif text-3xl leading-none">{cards[4].name}</p>
           <svg
             viewBox="-6 0 312 160"
@@ -206,7 +207,7 @@ export function MissingVisual() {
       </div>
       <div className="mt-5 flex items-center gap-2 text-sm">
         <Heart className="size-4 fill-primary text-primary" aria-hidden />
-        <span>Fehlende Karten mit einem Tipp auf die Wunschliste setzen.</span>
+        <span>Wunschlisten-Vorschau · echte Setansichten folgen.</span>
       </div>
     </div>
   )

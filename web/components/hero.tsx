@@ -48,7 +48,7 @@ export function Hero() {
             <span className="font-medium text-foreground">Jetzt für Pokémon-Sammlungen.</span>{' '}
             Weitere Sammelkartenspiele sind geplant.
           </p>
-          <p className="font-serif text-base italic">Scanner · Sammlung · Marktpreise · Wunschliste · Community · Shop</p>
+          <p className="font-serif text-base italic">Pokémon-Sammlung · Scanner · Preise · Community · TCG-Shop</p>
         </div>
       </div>
     </section>

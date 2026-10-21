@@ -85,7 +85,7 @@ export function Journey() {
             id="reise-title"
             className="mt-4 text-balance font-serif text-5xl leading-[0.95] tracking-tight md:text-7xl"
           >
-            Eine Sammlung. <em className="text-primary">Vier Momente.</em>
+            Dein Hobby. <em className="text-primary">Vier Möglichkeiten.</em>
           </h2>
         </div>
 
