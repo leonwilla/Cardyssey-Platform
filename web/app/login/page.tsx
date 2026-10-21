@@ -20,7 +20,7 @@ export default function LoginPage() {
       ).get("error");
 
     setError(
-      code
+      code && code !== "access_restricted"
         ? code === "invalid_credentials"
           ? "E-Mail oder Passwort ist falsch."
           : code === "server_unavailable"

@@ -72,15 +72,18 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/register" || pathname === "/api/auth/register") {
     return secure(NextResponse.redirect(new URL("/login",request.url)));
   }
-  const hasSession = request.cookies.has("cardyssey_access") || request.cookies.has("cardyssey_refresh");
-  if (!hasSession) return secure(NextResponse.redirect(new URL("/login",request.url)));
+  const token = request.cookies.get("cardyssey_access")?.value;
+  if (!token) return secure(NextResponse.redirect(new URL("/login", request.url)));
   try {
-    const verification = await fetch(new URL("/api/internal/private-access",request.url), {
-      headers:{cookie: request.headers.get("cookie") ?? ""},cache:"no-store",
-    });
-    if (verification.status === 204) return secure(NextResponse.next());
+    const endpoint = (process.env.CARDYSSEY_API_URL || "http://127.0.0.1:8081").replace(/\/$/, "") + "/api/v1/me";
+    const verification = await fetch(endpoint, {headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+    if (verification.ok) {
+      const user = await verification.json() as {id?:string};
+      const ids = (process.env.CARDYSSEY_PRIVATE_USER_IDS || "").split(",").map(x=>x.trim());
+      if (user.id && ids.includes(user.id)) return secure(NextResponse.next());
+    }
   } catch { /* fail closed */ }
-  return secure(NextResponse.redirect(new URL("/login?error=access_restricted",request.url)));
+  return secure(NextResponse.redirect(new URL("/login",request.url)));
 }
 
 export const config = {matcher:"/:path*"};
