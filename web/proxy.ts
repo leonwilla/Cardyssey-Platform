@@ -62,7 +62,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   // Assets and the authentication entry point remain reachable so approved users can sign in.
   if (pathname === "/login" || pathname === "/impressum" || pathname === "/datenschutz" ||
-      pathname === "/api/auth/login" || pathname === "/api/auth/logout" ||
+      pathname === "/api/auth/login" || pathname === "/api/auth/logout" || pathname === "/api/auth/me" ||
       pathname === "/api/internal/private-access" || pathname.startsWith("/_next/") ||
       pathname === "/favicon.ico" || pathname === "/cardyssey-emblem-gold.png" ||
       pathname.startsWith("/images/") || pathname.startsWith("/landing/") ||
