@@ -68,6 +68,7 @@ export async function setAuthCookies(
       httpOnly: true,
       sameSite: "lax",
       secure,
+      ...(secure ? { domain: ".cardyssey.de" } : {}),
       path: "/",
       maxAge:
         payload.accessTokenExpiresInSeconds,
@@ -81,6 +82,7 @@ export async function setAuthCookies(
       httpOnly: true,
       sameSite: "lax",
       secure,
+      ...(secure ? { domain: ".cardyssey.de" } : {}),
       path: "/",
       maxAge:
         payload.refreshTokenExpiresInSeconds,
@@ -97,6 +99,7 @@ export async function clearAuthCookies() {
     {
       httpOnly: true,
       sameSite: "lax",
+      ...(process.env.NODE_ENV === "production" ? { domain: ".cardyssey.de", secure: true } : {}),
       path: "/",
       maxAge: 0,
     }
@@ -108,6 +111,7 @@ export async function clearAuthCookies() {
     {
       httpOnly: true,
       sameSite: "lax",
+      ...(process.env.NODE_ENV === "production" ? { domain: ".cardyssey.de", secure: true } : {}),
       path: "/",
       maxAge: 0,
     }
