@@ -585,8 +585,8 @@ export function CollectionItemEditor({
                   ? "CARDYSSEY eBay"
                   : pricingQuote.source ?? "eBay"}
                 {pricingQuote.sampleCount != null
-                  ? ` · ${pricingQuote.sampleCount} Verkäufe`
-                  : ""}
+                  ? ` · ${pricingQuote.sampleCount} ${pricingQuote.sampleCount === 1 ? "Verkauf" : "Verkäufe"} · letzte 30 Tage`
+                  : " · letzte 30 Tage"}
                 {pricingQuote.rangeLowEur != null &&
                 pricingQuote.rangeHighEur != null
                   ? ` · ${formatEur(pricingQuote.rangeLowEur)} – ${formatEur(pricingQuote.rangeHighEur)}`
@@ -601,7 +601,8 @@ export function CollectionItemEditor({
                   lineHeight: 1.45,
                 }}
               >
-                Marktfenster: bevorzugt letzte 30 Tage · bei weniger als 10 sauberen Verkäufen automatisch 60 bzw. 90 Tage · maximal 30 Verkäufe.
+                eBay-Median: passende Verkäufe der letzten 30 Tage (ohne Versand).
+                {pricingQuote.sampleCount === 1 ? " · Geringe Datenbasis" : ""}
               </p>
             </>
           )}
