@@ -31,7 +31,7 @@ export function Closing() {
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-4">
           <a
-            href="/register"
+            href="/register?design=preview"
             className="rounded-full bg-primary px-7 py-4 font-medium text-primary-foreground transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-12px_rgba(224,82,44,0.7)] motion-reduce:hover:translate-y-0"
           >
             Sammlung anlegen

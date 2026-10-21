@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeSync } from "@/components/ThemeSync";
+import { PreviewThemeSync } from "@/components/PreviewThemeSync";
+import "./app-preview.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cardyssey.de"),
@@ -26,5 +28,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="de"><body><ThemeSync />{children}</body></html>;
+  return <html lang="de"><body><ThemeSync /><PreviewThemeSync />{children}</body></html>;
 }

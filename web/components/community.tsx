@@ -30,7 +30,7 @@ export function Community() {
               Freundeschats sind verfügbar; weitere Community-Funktionen entwickeln wir Schritt für Schritt.
             </p>
             <a
-              href="/register"
+              href="/register?design=preview"
               className="group mt-8 inline-flex items-center gap-2 rounded-full border border-background/50 bg-background/10 px-6 py-3 font-medium text-background backdrop-blur-sm transition-colors hover:bg-background hover:text-foreground"
             >
               Die Community kennenlernen

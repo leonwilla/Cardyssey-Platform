@@ -1,0 +1,18 @@
+/* Opt-in bridge between the homepage redesign and live app functionality. */
+body.cardysseyAppPreview {
+  --navy: #f5efe5; --navy-card: #fffaf3; --navy-raised: #efe5d6; --vault: #eee4d5;
+  --cyan: #e6512d; --gold: #e6512d; --blue: #b9d5e7; --violet: #9678a5;
+  --text: #1e2c26; --secondary: #5f6c65; --muted: #6d7770; --border: #e0d3c2;
+  background: #f5efe5; color: #1e2c26;
+}
+body.cardysseyAppPreview .sidebar, body.cardysseyAppPreview .topbar {background: #efe6d9; border-color:#dbccba; color:#1e2c26; backdrop-filter:none;}
+body.cardysseyAppPreview .mainColumn, body.cardysseyAppPreview .content, body.cardysseyAppPreview .shell {background: #f5efe5; color:#1e2c26;}
+body.cardysseyAppPreview .authPage {background:#f5efe5;}
+body.cardysseyAppPreview .authCard {background:#fffaf3; border-color:#e0d3c2; box-shadow:0 24px 60px rgba(35,44,37,.10);}
+body.cardysseyAppPreview .authGlow {display:none;}
+body.cardysseyAppPreview .authForm input, body.cardysseyAppPreview .authTabs, body.cardysseyAppPreview .collectionSortControl input, body.cardysseyAppPreview .collectionSortControl select {background:#fffaf3; color:#1e2c26; border-color:#d9cbb9;}
+body.cardysseyAppPreview .primaryButton, body.cardysseyAppPreview .authSubmit {background:#e6512d; color:white; box-shadow:none;}
+body.cardysseyAppPreview .ghostButton, body.cardysseyAppPreview .iconButton, body.cardysseyAppPreview .filter {background:#fffaf3; color:#1e2c26; border-color:#d9cbb9;}
+body.cardysseyAppPreview .statCard, body.cardysseyAppPreview .cardTile, body.cardysseyAppPreview .setTile {background:#fffaf3; color:#1e2c26; border-color:#e0d3c2; box-shadow:none;}
+body.cardysseyAppPreview .pageIntro h1 {color:#1e2c26;}
+body.cardysseyAppPreview .eyebrowText {color:#e6512d;}

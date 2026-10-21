@@ -48,11 +48,11 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-5 lg:flex">
-          <a href="/login" className="text-sm text-foreground/75 hover:text-foreground">
+          <a href="/login?design=preview" className="text-sm text-foreground/75 hover:text-foreground">
             Anmelden
           </a>
           <a
-            href="/register"
+            href="/register?design=preview"
             className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-primary"
           >
             Sammlung anlegen
@@ -87,14 +87,14 @@ export function SiteHeader() {
             ))}
             <li className="grid grid-cols-2 gap-2 pt-3 pb-2">
               <a
-                href="/login"
+                href="/login?design=preview"
                 onClick={() => setOpen(false)}
                 className="block rounded-full border border-foreground/20 px-3 py-2.5 text-center text-xs font-medium sm:text-sm"
               >
                 Anmelden
               </a>
               <a
-                href="/register"
+                href="/register?design=preview"
                 onClick={() => setOpen(false)}
                 className="block rounded-full bg-foreground px-3 py-2.5 text-center text-xs font-medium sm:text-sm text-background"
               >
