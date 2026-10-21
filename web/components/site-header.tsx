@@ -75,28 +75,28 @@ export function SiteHeader() {
         <nav
           id="mobile-nav"
           aria-label="Mobile Navigation"
-          className="max-h-[calc(100svh-4rem)] overflow-y-auto border-t border-border/60 lg:hidden"
+          className="max-h-[min(75svh,480px)] overflow-y-auto border-t border-border/60 bg-background shadow-lg lg:hidden"
         >
-          <ul className="mx-auto flex max-w-7xl flex-col px-5 py-4 md:px-8">
+          <ul className="mx-auto flex max-w-7xl flex-col px-5 py-2 md:px-8">
             {nav.map((item) => (
               <li key={item.label} className="border-b border-border/50 last:border-b-0">
-                <a href={item.href} onClick={() => setOpen(false)} className="block py-3 font-serif text-3xl">
+                <a href={item.href} onClick={() => setOpen(false)} className="block py-2.5 text-base font-medium sm:text-lg">
                   {item.label}
                 </a>
               </li>
             ))}
-            <li className="grid gap-3 pt-5 sm:grid-cols-2">
+            <li className="grid grid-cols-2 gap-2 pt-3 pb-2">
               <a
                 href="/login"
                 onClick={() => setOpen(false)}
-                className="block rounded-full border border-foreground/20 px-5 py-3 text-center text-sm font-medium"
+                className="block rounded-full border border-foreground/20 px-3 py-2.5 text-center text-xs font-medium sm:text-sm"
               >
                 Anmelden
               </a>
               <a
                 href="/register"
                 onClick={() => setOpen(false)}
-                className="block rounded-full bg-foreground px-5 py-3 text-center text-sm font-medium text-background"
+                className="block rounded-full bg-foreground px-3 py-2.5 text-center text-xs font-medium sm:text-sm text-background"
               >
                 Sammlung anlegen
               </a>
