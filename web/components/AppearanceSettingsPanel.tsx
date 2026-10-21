@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import { previewThemeKey } from "./PreviewThemeSync";
+
 import {
   appearanceThemes,
   applyAppearanceTheme,
@@ -19,6 +21,8 @@ export function AppearanceSettingsPanel() {
       "OBSIDIAN_GOLD"
     );
 
+  const [experimental, setExperimental] = useState(false);
+
   const [saving, setSaving] =
     useState(false);
 
@@ -26,6 +30,7 @@ export function AppearanceSettingsPanel() {
     useState<string | null>(null);
 
   useEffect(() => {
+    setExperimental(window.localStorage.getItem(previewThemeKey) === "1");
     setSelected(
       cachedAppearanceTheme()
     );
@@ -159,6 +164,22 @@ export function AppearanceSettingsPanel() {
             </button>
           )
         )}
+      </div>
+
+      <div className="statusPanel" style={{marginTop:20,display:"grid",gap:12}}>
+        <strong>Neues helles Redesign (experimentell)</strong>
+        <p>Nur in diesem Browser testen. Dein gespeichertes dunkles Cardyssey-Design und die Android-App bleiben unverändert.</p>
+        <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+          <input type="checkbox" checked={experimental} onChange={event => {
+            const next = event.target.checked;
+            setExperimental(next);
+            if (next) window.localStorage.setItem(previewThemeKey, "1");
+            else window.localStorage.removeItem(previewThemeKey);
+            window.dispatchEvent(new Event("cardyssey-redesign-change"));
+          }} />
+          Helles Testdesign in der Webapp verwenden
+        </label>
+        <small>Du kannst jederzeit wieder ausschalten. Diese Einstellung wird nicht mit Android synchronisiert.</small>
       </div>
 
       {message && (
