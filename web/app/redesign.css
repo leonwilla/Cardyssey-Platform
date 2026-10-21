@@ -207,3 +207,13 @@
 .cardysseyRedesign {min-height:100vh; background:var(--background);color:var(--foreground);font-family:Arial,Helvetica,sans-serif;line-height:1.5;}
 .cardysseyRedesign *, .cardysseyRedesign *::before, .cardysseyRedesign *::after{box-sizing:border-box;}
 .cardysseyRedesign h1,.cardysseyRedesign h2,.cardysseyRedesign h3,.cardysseyRedesign p{margin-top:0;}
+
+/* Landing page uses isolated typography; restore list-reset missing from the host app stylesheet. */
+.cardysseyRedesign ul, .cardysseyRedesign ol {list-style:none; margin:0; padding:0;}
+.cardysseyRedesign li {list-style:none;}
+@media (max-width: 767px) {
+  /* Mobile GPUs struggle with stacked 3D transforms and color-dodge holograms. */
+  .cardysseyRedesign .tilt {transform:none !important; transform-style:flat; transition:none; will-change:auto; box-shadow:0 9px 20px -10px rgba(29,41,36,.35);}
+  .cardysseyRedesign .holo::after {display:none;}
+  .cardysseyRedesign .card-fan-item {transition:none !important; will-change:auto;}
+}

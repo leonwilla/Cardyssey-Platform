@@ -47,7 +47,7 @@ export function CardFan() {
               onPointerLeave={() => setHovered((h) => (h === i ? null : h))}
               aria-label={`${card.name} nach vorne holen`}
               aria-pressed={isActive}
-              className="absolute left-1/2 top-1/2 w-[46%] max-w-[290px] rounded-[4.5%/3.2%] transition-transform duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary motion-reduce:transition-none"
+              className="card-fan-item absolute left-1/2 top-1/2 w-[46%] max-w-[290px] rounded-[4.5%/3.2%] transition-transform duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary motion-reduce:transition-none"
               style={{
                 transform: `translate(-50%, -50%) translate(${x}%, ${y + lift}%) rotate(${rotate}deg) scale(${isActive ? 1.06 : hovered === i ? 0.98 : 0.94})`,
                 zIndex: 10 - Math.abs(offset),

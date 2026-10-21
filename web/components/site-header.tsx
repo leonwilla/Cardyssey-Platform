@@ -31,7 +31,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-5 md:px-8">
-        <Link href="/" aria-label="CARDYSSEY Startseite" className="rounded-md">
+        <Link href="/preview-redesign" aria-label="CARDYSSEY Vorschau-Startseite" className="rounded-md">
           <Logo />
         </Link>
 
@@ -87,7 +87,7 @@ export function SiteHeader() {
             ))}
             <li className="grid gap-3 pt-5 sm:grid-cols-2">
               <a
-                href="/register"
+                href="/login"
                 onClick={() => setOpen(false)}
                 className="block rounded-full border border-foreground/20 px-5 py-3 text-center text-sm font-medium"
               >
