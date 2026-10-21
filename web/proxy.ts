@@ -66,6 +66,7 @@ export function proxy(
 
   const isPublic =
     pathname === "/" ||
+    pathname === "/preview-redesign" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/impressum" ||
