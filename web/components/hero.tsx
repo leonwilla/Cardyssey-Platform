@@ -14,8 +14,8 @@ export function Hero() {
             Deine Karten verdienen ein <em className="text-primary">Zuhause.</em>
           </h1>
           <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-foreground/75">
-            Scannen, ordnen, verstehen, teilen. CARDYSSEY ist der Ort, an dem deine Sammlung lebt
-            – und an dem sie weiterwächst.
+            Pokémon-Karten scannen, Varianten sammeln und verfügbare Marktpreise vergleichen.
+            Mit Freunden vernetzen und im TCG-Shop stöbern – alles rund um dein Hobby.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
             <a

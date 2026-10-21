@@ -26,8 +26,8 @@ export function Community() {
               Sammeln ist schöner, wenn man es <em>teilen</em> kann.
             </h2>
             <p className="mt-6 max-w-lg text-pretty text-lg leading-relaxed text-background/90">
-              Zeig deine Lieblingsstücke, entdecke andere Sammlungen und komm mit Menschen ins
-              Gespräch, die genauso für Karten brennen wie du.
+              Tausche dich mit Freunden aus, teile Karten und entdecke gemeinsam neue Favoriten.
+              Freundeschats sind verfügbar; weitere Community-Funktionen entwickeln wir Schritt für Schritt.
             </p>
             <a
               href="/register"

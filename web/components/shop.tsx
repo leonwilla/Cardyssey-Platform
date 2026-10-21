@@ -4,10 +4,10 @@ import { media } from '@/lib/media'
 
 /** Category structure for the upcoming catalogue – no products or prices yet. */
 const categories = [
-  { id: 'booster', title: 'Booster-Packs', text: 'Einzelne Booster für die nächste Ziehung.' },
-  { id: 'displays', title: 'Displays & Boxen', text: 'Displays, Elite-Trainer-Boxen und Sets.' },
-  { id: 'schutz', title: 'Hüllen & Toploader', text: 'Schutz für Karten, die dir wichtig sind.' },
-  { id: 'aufbewahrung', title: 'Ordner & Aufbewahrung', text: 'Ordner, Deckboxen und Sammelboxen.' },
+  { id: 'einzelkarten', title: 'Einzelkarten', text: 'Karten für deine Sammlung entdecken.' },
+  { id: 'displays', title: 'Booster & Displays', text: 'Originalversiegelte Booster, Displays und Boxen.' },
+  { id: 'figuren', title: 'Figuren & Plüsch', text: 'Sammlerartikel und Geschenkideen.' },
+  { id: 'zubehoer', title: 'Zubehör', text: 'Hüllen, Toploader und Aufbewahrung.' },
 ]
 
 export function Shop() {
@@ -33,8 +33,8 @@ export function Shop() {
             Alles für die nächste Etappe – <em className="text-primary">gleich nebenan.</em>
           </h2>
           <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-foreground/75">
-            Neue Booster, sichere Hüllen, der passende Ordner: Im CARDYSSEY-Shop findest du
-            Nachschub direkt dort, wo deine Sammlung wohnt.
+            Pokémon, Yu-Gi-Oh! und Dragon Ball: Im CARDYSSEY-Shop entstehen Angebote für Einzelkarten,
+            originalversiegelte Produkte und Sammlerzubehör. Das Sortiment befindet sich im Aufbau.
           </p>
 
           <ul className="mt-10 grid gap-3 sm:grid-cols-2">

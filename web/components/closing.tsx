@@ -13,7 +13,7 @@ export function Closing() {
           </div>
           <div className="relative z-10 w-40 md:w-52">
             <div className="animate-float-slow" style={{ animationDelay: '-2s' }}>
-              <TiltCard src={cards[2].src} alt="Illustrierte Sammelkarte Ignis Fox" sizes="220px" intensity={18} />
+              <TiltCard src={cards[2].src} alt="Pokémon-Sammelkarte" sizes="220px" intensity={18} />
             </div>
           </div>
           <div className="absolute left-1/2 w-32 translate-x-[15%] md:w-44">
