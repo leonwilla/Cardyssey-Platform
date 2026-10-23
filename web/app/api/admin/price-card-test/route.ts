@@ -1,9 +1,8 @@
+import {priceMonitorAllowed} from '@/lib/server/price-monitor-access';
 import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {authenticatedBackendFetch,readBackendJson} from '@/lib/server/cardyssey-api';
 export const runtime='nodejs';export const dynamic='force-dynamic';const exec=promisify(execFile);
 async function handle(req:Request,action:'start'|'status'){
- const r=await authenticatedBackendFetch('/api/v1/me');if(!r.ok)return Response.json({error:'unauthorized'},{status:401});
- const u=await readBackendJson(r) as {id?:string;role?:string;canAdmin?:boolean}|null;
- if(!u?.id||!(process.env.CARDYSSEY_PRIVATE_USER_IDS??'').split(',').includes(u.id)||!(u.role==='FOUNDER'||u.role==='ADMIN'||u.canAdmin))return Response.json({error:'forbidden'},{status:403});
+ if(!await priceMonitorAllowed())return Response.json({error:'forbidden'},{status:403});
  const p=action==='start'?await req.json().catch(()=>({})):Object.fromEntries(new URL(req.url).searchParams);
  if(typeof p.cardId!=='string'||!/^[a-zA-Z0-9_-]{2,90}$/.test(p.cardId))return Response.json({error:'invalid_card'},{status:400});
  if(action==='start'&&(typeof p.query!=='string'||p.query.length<3||p.query.length>160))return Response.json({error:'invalid_query'},{status:400});

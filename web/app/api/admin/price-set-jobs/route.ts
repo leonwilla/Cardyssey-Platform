@@ -1,9 +1,10 @@
+import {priceMonitorAllowed} from '@/lib/server/price-monitor-access';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {authenticatedBackendFetch,readBackendJson} from '@/lib/server/cardyssey-api';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 const exec=promisify(execFile);
-async function authorized(){const r=await authenticatedBackendFetch('/api/v1/me');if(!r.ok)return false;const u=await readBackendJson(r) as {id?:string;role?:string;canAdmin?:boolean}|null;return Boolean(u?.id&&(process.env.CARDYSSEY_PRIVATE_USER_IDS??'').split(',').includes(u.id)&&(u.role==='ADMIN'||u.role==='FOUNDER'||u.canAdmin));}
+async function authorized(){return priceMonitorAllowed()}
 async function handle(request:Request,action:'start'|'status'){
  if(!await authorized())return Response.json({error:'forbidden'},{status:403});
  const setId=action==='start'?(await request.json().catch(()=>({}))).setId:new URL(request.url).searchParams.get('setId');
