@@ -4,7 +4,7 @@ import sys,json,subprocess,os,time,fcntl
 from pathlib import Path
 BASE=Path('/home/tv/cardyssey-ebay-collector');JOBS=BASE/'admin-set-runs';JOBS.mkdir(exist_ok=True)
 action=sys.argv[1];setid=sys.argv[2]
-if setid not in {'30th','30th-c','mep'}:sys.exit('UNSUPPORTED_EBAY_SET')
+if setid not in {'30th','30th-c','mep','sv01','sv02'}:sys.exit('UNSUPPORTED_EBAY_SET')
 job=JOBS/setid
 if action=='start':
  lock=JOBS/'launch.lock'
@@ -13,7 +13,15 @@ if action=='start':
   existing=[p for p in JOBS.glob('*/progress.json') if json.loads(p.read_text()).get('status')=='RUNNING']
   active=subprocess.run(['pgrep','-f','^python3 -u anniversary_batch.py'],capture_output=True,text=True).returncode==0
   if active or existing:print(json.dumps({'error':'EBAY_BROWSER_BUSY','active':True}));sys.exit(0)
-  allcards=json.loads((BASE/'anniversary-20261021'/'manifest.json').read_text());selected=[c for c in allcards if c['set_id']==setid]
+  if setid in ('sv01','sv02'):
+   from subprocess import check_output
+   denom=198 if setid=='sv01' else 193
+   name='Karmesin & Purpur' if setid=='sv01' else 'Entwicklungen in Paldea'
+   sql=f"SELECT COALESCE(json_agg(t),'[]') FROM (SELECT card_id,name,local_id,set_id,variants FROM catalog_cards_mirror WHERE language_code='de' AND set_id='{setid}' AND local_id ~ '^[0-9]+$' AND local_id::int <= {denom} ORDER BY local_id::int) t"
+   selected=json.loads(check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-Atc',sql],text=True,timeout=15))
+   for c in selected:c.update(denominator=denom,set_name=name)
+  else:
+   allcards=json.loads((BASE/'anniversary-20261021'/'manifest.json').read_text());selected=[c for c in allcards if c['set_id']==setid]
   if not selected:print(json.dumps({'error':'NO_CARDS'}));sys.exit(0)
   job.mkdir(exist_ok=True)
   # New run, preserve previous batch audit.
