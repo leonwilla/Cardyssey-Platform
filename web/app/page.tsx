@@ -13,7 +13,7 @@ export default function Home() {
     <header className="tcgHeader"><div className="tcgWrap tcgHeaderInner">
       <Link href="/" className="tcgBrand"><BrandMark/><span>Cardyssey</span></Link>
       <nav className="tcgNav" aria-label="Hauptnavigation"><a href="#app">Die App</a><a href="#shop">Der Shop</a><a href="#funktionen">Funktionen</a><a href="#community">Community</a><a href="#ausblick">Ausblick</a></nav>
-      <div className="tcgHeaderActions"><Link href="/login" className="tcgLogin">Anmelden</Link><Link href="/register" className="tcgButton tcgButtonSmall">Kostenlos starten ↗</Link></div>
+      <div className="tcgHeaderActions"><Link href="/preview-redesign" className="tcgLogin" title="Neues Startseiten-Design ansehen">Neues Design ↗</Link><Link href="/login" className="tcgLogin">Anmelden</Link><Link href="/register" className="tcgButton tcgButtonSmall">Kostenlos starten ↗</Link></div>
     </div></header>
     <main>
       <section className="tcgHero" id="plattform"><div className="tcgWrap tcgHeroGrid">

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 
 type ShopProduct = {
@@ -53,6 +54,7 @@ export default async function ShopPage() {
   const products = await loadProducts();
   return (
     <AppShell active="/shop">
+      <div style={{marginBottom:18}}><Link href="/preview-shop" className="ghostButton" style={{display:"inline-flex",alignItems:"center",textDecoration:"none"}}>Neues Shop-Design ansehen ↗</Link></div>
       <section className="pageIntro"><div><span className="eyebrowText">Shop</span><h1>Cards & Collectibles</h1><p>Entdecke das aktuelle Cardyssey-Sortiment. Warenkorb und Bestellung findest du direkt im Shop.</p></div></section>
       <section className="shopHero"><div><span className="eyebrowText">Cardyssey Shop</span><h2>Für deine Sammlung.</h2><p>Sammelkarten und Zubehör an einem Ort.</p><a className="primaryButton inline" href={shopUrl}>Zum Shop</a></div><div className="shopOrb" /></section>
       {products === null ? (

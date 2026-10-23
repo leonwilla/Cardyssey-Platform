@@ -11,6 +11,7 @@ export default function Page() {
   return (
     <div className="cardysseyRedesign">
       <SiteHeader />
+      <div style={{padding:"10px 24px",fontSize:13,textAlign:"right"}}><a href="/" style={{textDecoration:"underline"}}>← Bisherige Startseite</a></div>
       <main>
         <Hero />
         <Journey />

@@ -11,6 +11,7 @@ const groups = [
 ]
 export default function ShopDesignPreview(){return <div className="cardysseyRedesign" style={{minHeight:'100vh'}}>
  <SiteHeader/>
+ <div className="mx-auto max-w-7xl px-5 pt-5 md:px-8"><Link href="https://shop.cardyssey.de/" className="text-sm font-medium underline underline-offset-4">← Zum bisherigen Shop</Link></div>
  <main className="mx-auto max-w-7xl px-5 py-12 md:px-8 md:py-20">
   <span className="text-sm font-semibold uppercase tracking-widest text-primary">Shop · Designvorschau</span>
   <div className="mt-5 grid items-center gap-8 md:grid-cols-2 md:gap-14">
