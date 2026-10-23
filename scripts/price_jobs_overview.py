@@ -9,7 +9,7 @@ jobs=[]
 for parent in [root/'anniversary-precise-search-20261023',*(root/'admin-set-runs'/s for s in names)]:
  p=parent/'progress.json'
  if not p.exists():continue
- data=json.loads(p.read_text());results=data.get('results',[]);total=data.get('total',0);status=data.get('status','UNKNOWN');running=bool(active) and (parent.name=='anniversary-precise-search-20261023' or status=='RUNNING')
+ data=json.loads(p.read_text());results=data.get('results',[]);total=data.get('total',0);status=data.get('status','UNKNOWN');running=bool(active) and status=="RUNNING" and parent.name!="anniversary-precise-search-20261023"
  if status=='RUNNING' and not running:status='INTERRUPTED'
  elapsed=max(1,time.time()-p.stat().st_ctime)
  eta=None # No reliable start timestamp for historical batch; do not invent ETA
