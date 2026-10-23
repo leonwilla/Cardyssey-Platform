@@ -95,6 +95,7 @@ export default function PriceMonitorPage(){
  const [message,setMessage]=useState<string|null>(null);
 
  useEffect(()=>{void initialize();},[]);
+ useEffect(()=>{if(user)void refreshAnniversary();},[user?.id]);
  useEffect(()=>{if(user)void load();},[language,status]);
 
  async function initialize(){
@@ -168,7 +169,7 @@ export default function PriceMonitorPage(){
   {message&&<div className="statusPanel">{message}</div>}
   <div className="filterRow" style={{marginBottom:22,gap:12}}>
    <button type="button" className={activePanel==="review"?"primaryButton":"ghostButton"} onClick={()=>setActivePanel("review")}>Karten prüfen</button>
-   <button type="button" className={activePanel==="anniversary"?"primaryButton":"ghostButton"} onClick={()=>setActivePanel("anniversary")}>30 Jahre · eBay ({remainingAnniversary.length})</button>
+   <button type="button" className={activePanel==="anniversary"?"primaryButton":"ghostButton"} onClick={()=>setActivePanel("anniversary")}>30 Jahre · eBay ({anniversaryLive===null?"…":remainingAnniversary.length})</button>
    <button type="button" className={activePanel==="coverage"?"primaryButton":"ghostButton"} onClick={()=>setActivePanel("coverage")}>Alle Kataloglücken</button>
    <button type="button" className={activePanel==="monitor"?"primaryButton":"ghostButton"} onClick={()=>setActivePanel("monitor")}>Synchronisierung</button>
   </div>
@@ -266,11 +267,11 @@ export default function PriceMonitorPage(){
     <select aria-label="Batch-Ergebnis" value={anniversaryStatus} onChange={e=>setAnniversaryStatus(e.target.value)}><option value="">Alle Ergebnisse</option>{["NO_MATCHING_SALES_30D","CATALOG_VARIANT_REVIEW","FETCH_INCOMPLETE","SET_NUMBER_REVIEW"].map(v=><option key={v} value={v}>{v}</option>)}</select>
     <button type="button" className="ghostButton" onClick={()=>void navigator.clipboard.writeText(remainingAnniversary.filter(x=>(!anniversaryStatus||x.status===anniversaryStatus)&&[x.name,x.cardId,x.query??"",x.number].join(" ").toLowerCase().includes(anniversaryQuery.toLowerCase())).map(x=>`${x.cardId} ${x.name} ${x.number} [${x.status}] | Suche: ${x.query??"nicht gestartet"} | Pflichtbegriffe: ${x.required.join(", ")} | geprüft: ${x.parsed} | passend: ${x.matched} | Ablehnungen: ${JSON.stringify(x.rejected)} | Abruf: ${x.fetchStatus}`).join("\n"))}>Angezeigte Fälle kopieren</button>
    </div>
-   <div style={{display:"grid",gap:12}}>{remainingAnniversary.filter(x=>(!anniversaryStatus||x.status===anniversaryStatus)&&[x.name,x.cardId,x.query??"",x.number].join(" ").toLowerCase().includes(anniversaryQuery.toLowerCase())).map(x=><article className="statusPanel" key={x.cardId} style={{padding:16}}>
+   {anniversaryLoading&&anniversaryLive===null?<div className="statusPanel">Aktuelle eBay-Preise werden abgeglichen …</div>:<div style={{display:"grid",gap:12}}>{remainingAnniversary.filter(x=>(!anniversaryStatus||x.status===anniversaryStatus)&&[x.name,x.cardId,x.query??"",x.number].join(" ").toLowerCase().includes(anniversaryQuery.toLowerCase())).map(x=><article className="statusPanel" key={x.cardId} style={{padding:16}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><div><strong>{x.name} · {x.expectedNumber}</strong><div><small>{x.cardId} · {x.setId} · {x.status} · Abruf: {x.fetchStatus??"—"}</small></div></div><button type="button" className="ghostButton" onClick={()=>setAnniversaryExpanded(anniversaryExpanded===x.cardId?null:x.cardId)}>{anniversaryExpanded===x.cardId?"Schließen":"Suchdetails"}</button></div>
     <p style={{marginTop:8}}>Gefundene Anzeigen: {x.parsed} · passende Verkäufe nach Filter: {x.matched} · Ablehnungen: {Object.entries(x.rejected).map(([k,v])=>`${k}: ${v}`).join(" · ")||"keine protokolliert"}</p>
     {anniversaryExpanded===x.cardId&&<div style={{marginTop:12}}><p><strong>Suchanfrage:</strong> {x.query??"Nicht ausgeführt – zur manuellen Identitätsprüfung zurückgestellt"}</p><p><strong>Pflichtbegriffe:</strong> {x.required.join(", ")||"keine zusätzlichen"} · Sprache: {x.language} · Zeitfenster: {x.maxAgeDays} Tage · Mindestverkäufe: {x.minSales}</p><p><strong>Filterregeln:</strong> {x.rule}</p><p><strong>Erfasste Druckvarianten:</strong> {x.variants.map(v=>`${v.type} (${v.id})`).join("; ")||"keine"}</p><p><strong>Seitenabrufe:</strong> {x.pages.length?x.pages.map(y=>`Seite ${y.page}: ${y.status} (${y.parsed_count??0} Anzeigen)`).join(" · "):"nicht ausgeführt"}</p>{x.note&&<p><strong>Hinweis:</strong> {x.note}</p>}<p><strong>Ablehnungsgründe:</strong> {JSON.stringify(x.rejected)}</p><div style={{marginTop:12}}><strong>COLLECTOR_REJECTED – Einzelursachen (historische Suche):</strong>{Object.keys(x.collectorReasons??{}).length?<ul style={{marginTop:8,paddingLeft:22}}>{Object.entries(x.collectorReasons??{}).sort((a,b)=>b[1]-a[1]).map(([reason,count])=><li key={reason}>{({REQUIRED_TOKEN_MISSING:"Pflichtbegriff im Angebot fehlt",OFFER_OR_STRIKETHROUGH_PRICE:"Preisvorschlag / durchgestrichener Preis",LANGUAGE_MISMATCH_OR_UNKNOWN:"Sprache unklar oder nicht Deutsch",SALE_TOO_OLD:"Verkauf älter als 30 Tage",BUNDLE_GRADED_OR_REPLICA:"Bundle, bewertete Karte oder Reprint",NO_DATED_SOLD_MARKER:"Kein eindeutiger Verkaufsnachweis",INVALID_SALE_DATE:"Verkaufsdatum nicht lesbar",FUTURE_SALE_DATE:"Verkaufsdatum in der Zukunft",INVALID_OR_NON_EUR_PRICE:"Preis fehlt oder ist ungültig",EXCLUDED_TOKEN:"Ausgeschlossener Suchbegriff",UNSPECIFIED:"Sonstiger / nicht protokollierter Grund"} as Record<string,string>)[reason]??reason}: <strong>{count}</strong></li>)}</ul>:<p>Keine Einzelgründe im archivierten Bericht verfügbar.</p>}<small>Ein Angebot kann mehrere Ablehnungsgründe besitzen; die Summe kann deshalb größer als COLLECTOR_REJECTED sein. Basis: unveränderte historische Suchdaten.</small></div><small>Sammler-Scraper-Titel/Anzeigen sind keine unabhängig bestätigten eBay-Transaktionen; Versand wird im Median nicht berücksichtigt.</small></div>}
-   </article>)}</div>
+   </article>)}</div>}
   </section>}
   {activePanel==="coverage"&&user&&<AdminPriceCoverage />}
   {activePanel==="monitor"&&<section className="sectionBlock">
