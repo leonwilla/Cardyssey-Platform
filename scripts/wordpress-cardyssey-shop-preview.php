@@ -9,6 +9,14 @@
  */
 if (!defined('ABSPATH')) { exit; }
 
+// Use Cardyssey branding instead of the default WordPress tab icon.
+add_filter('get_site_icon_url', function ($url) {
+    return 'https://cardyssey.de/cardyssey-emblem-gold.png';
+}, 20);
+add_action('wp_head', function () {
+    echo '<link rel="icon" type="image/png" href="https://cardyssey.de/cardyssey-emblem-gold.png">';
+}, 2);
+
 function cardyssey_preview_enabled() {
     if (is_admin() || (function_exists('wp_doing_ajax') && wp_doing_ajax())) return false;
     return isset($_COOKIE['cardyssey_shop_design']) && $_COOKIE['cardyssey_shop_design'] === 'preview';
