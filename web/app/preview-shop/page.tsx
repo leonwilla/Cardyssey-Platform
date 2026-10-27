@@ -73,10 +73,10 @@ export default async function ShopDesignPreview() {
           </div>
         </section>
         <section aria-label="Produktkategorien" className="mt-16">
-          <h2 className="font-serif text-4xl">Kategorien</h2>
+          <h2 className="font-serif text-4xl">Was suchst du?</h2><p className="mt-3 text-muted-foreground">Einzelkarten nach Erweiterung entdecken oder das weitere Sortiment durchstöbern.</p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {categories.map(c => <a href="#produkte" key={c.name} className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary">
-              <h3 className="font-serif text-xl">{c.name}</h3>
+            {categories.map(c => <a href={c.name === "Einzelkarten" ? "/preview-shop/sets" : "#produkte"} key={c.name} className="rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary">
+              <h3 className="font-serif text-xl">{c.name} ↗</h3>
               <p className="mt-3 text-sm text-muted-foreground">{c.note}</p>
             </a>)}
           </div>
