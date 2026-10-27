@@ -122,7 +122,7 @@ export function Journey() {
                     <div
                       className={cn(
                         'transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none',
-                        isActive ? 'lg:translate-y-0 lg:opacity-100' : 'lg:translate-y-2 lg:opacity-35',
+                        isActive ? 'lg:translate-y-0 lg:opacity-100' : 'lg:translate-y-2 lg:opacity-85',
                       )}
                     >
                       <p className="flex items-center gap-3 text-sm text-muted-foreground">
