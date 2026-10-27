@@ -57,13 +57,12 @@ export async function POST(request:Request){
   const product={
    type:"simple",sku,name:[name,localId,setName,variant,condition].join(" · "),
    status:input.action==="publish"?"publish":"draft",
-   catalog_visibility:"visible",manage_stock:true,stock_quantity:input.action==="unpublish"?0:quantity,
+   catalog_visibility:"visible",manage_stock:true,stock_quantity:quantity,
    stock_status:input.action==="unpublish"||quantity===0?"outofstock":"instock",
    backorders:"no",sold_individually:false,
    regular_price:Number.isFinite(price)&&price>0?price.toFixed(2):"",
    description:(photoUrl?"Eigenes Foto des angebotenen Exemplars. ":"Referenzbild, nicht das tatsächlich angebotene Exemplar. ")+"Zustand: "+condition+".",
    attributes:[{name:"Sprache",visible:true,variation:false,options:[language]},{name:"Variante",visible:true,variation:false,options:[variant]},{name:"Zustand",visible:true,variation:false,options:[condition]}],
-   categories:[],
    meta_data:[{key:"_cardyssey_card_id",value:cardId},{key:"_cardyssey_set_id",value:setId},{key:"_cardyssey_language",value:language}],
    ...(image?{images:[{src:image}]}:{})
   };
@@ -75,7 +74,7 @@ export async function POST(request:Request){
   if(categoryResponse.ok){
     const all=await categoryResponse.json() as Array<{id:number;name:string}>;
     const found=Array.isArray(all)?all.find(c=>c.name.toLocaleLowerCase("de")===setName.toLocaleLowerCase("de")):null;
-    if(found)product.categories.push({id:found.id} as never);
+    if(found)Object.assign(product,{categories:[{id:found.id}]});
   }
   const target=existing?new URL("/wp-json/wc/v3/products/"+existing.id,shop):api;
   const result=await fetch(target,{method:existing?"PUT":"POST",headers,body:JSON.stringify(product),signal:AbortSignal.timeout(20000),cache:"no-store"});
