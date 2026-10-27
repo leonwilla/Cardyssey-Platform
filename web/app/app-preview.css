@@ -41,3 +41,120 @@ body.cardysseyAppPreview .progress,body.cardysseyAppPreview .setProgressTrack {b
 body.cardysseyAppPreview .progress span,body.cardysseyAppPreview .setProgressBar {background:linear-gradient(90deg,#e6512d,#eda16e);}
 body.cardysseyAppPreview .authCard,body.cardysseyAppPreview .authCard h1,body.cardysseyAppPreview .authCard label {color:#1e2c26;}
 body.cardysseyAppPreview .bottomNav {background:#fffaf3;color:#1e2c26;}
+
+
+/* Light preview: shared surfaces for collection, catalog, scanner, dialogs and shop. */
+body.cardysseyAppPreview {
+  color-scheme: light;
+}
+body.cardysseyAppPreview .shell {
+  background: #f5efe5;
+}
+body.cardysseyAppPreview .sidebar,
+body.cardysseyAppPreview .topbar {
+  background: #fffaf3;
+  border-color: #dfd0be;
+}
+body.cardysseyAppPreview .navItem,
+body.cardysseyAppPreview .bottomItem {
+  color: #546159;
+}
+body.cardysseyAppPreview .navItem:hover,
+body.cardysseyAppPreview .bottomItem:hover {
+  background: #f2e7d9;
+  color: #1e2c26;
+}
+body.cardysseyAppPreview .navItem.active,
+body.cardysseyAppPreview .bottomItem.active,
+body.cardysseyAppPreview .filter.active {
+  background: #fbe4d7;
+  border-color: #ebaf96;
+  color: #aa3b1f;
+}
+body.cardysseyAppPreview .navIcon,
+body.cardysseyAppPreview .sidebarFoot,
+body.cardysseyAppPreview .segmented,
+body.cardysseyAppPreview .authTabs {
+  background: #f2e8da;
+  border-color: #dfd0be;
+  color: #1e2c26;
+}
+body.cardysseyAppPreview .segmented button,
+body.cardysseyAppPreview .authTabs button {
+  color: #55635b;
+}
+body.cardysseyAppPreview .segmented button.selected,
+body.cardysseyAppPreview .authTabs button.active {
+  background: #fbe4d7;
+  color: #a63c21;
+}
+body.cardysseyAppPreview .heroStat,
+body.cardysseyAppPreview .shopHero {
+  background: #fffaf3;
+  border-color: #dfd0be;
+}
+body.cardysseyAppPreview .heroStat strong,
+body.cardysseyAppPreview .price,
+body.cardysseyAppPreview .cardEditHint {
+  color: #b64224;
+}
+body.cardysseyAppPreview .chip {
+  background: #f1e7dc;
+  color: #514d45;
+  border-color: #ded0c1;
+}
+body.cardysseyAppPreview .mutedChip,
+body.cardysseyAppPreview .muted {
+  color: #5d6a61;
+}
+body.cardysseyAppPreview .cardImageWrap,
+body.cardysseyAppPreview .shopOrb {
+  background: #eee4d5;
+  border-color: #d9cbb9;
+}
+body.cardysseyAppPreview .qtyBadge {
+  background: #fffaf3;
+  color: #1e2c26;
+  border-color: #d9cbb9;
+}
+body.cardysseyAppPreview .editorModal {
+  background: #fffaf3;
+  color: #1e2c26;
+  border-color: #dfd0be;
+  box-shadow: 0 28px 90px rgba(37, 43, 35, .22);
+}
+body.cardysseyAppPreview .editorHeader p,
+body.cardysseyAppPreview .statusPanel {
+  color: #536158;
+}
+body.cardysseyAppPreview .modalBackdrop {
+  background: rgba(29, 41, 36, .44);
+}
+body.cardysseyAppPreview .errorPanel,
+body.cardysseyAppPreview .authError {
+  background: #fff0ec;
+  border-color: #e3a599;
+  color: #8c2d21;
+}
+body.cardysseyAppPreview .interactiveCard:hover,
+body.cardysseyAppPreview .ghostButton:hover,
+body.cardysseyAppPreview .filter:hover {
+  border-color: #e6512d;
+  box-shadow: 0 8px 25px rgba(82, 65, 45, .09);
+}
+body.cardysseyAppPreview :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #e6512d;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  body.cardysseyAppPreview .bottomNav {
+    background: #fffaf3;
+    border-color: #dfd0be;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.cardysseyAppPreview .interactiveCard {
+    transition: none;
+  }
+}
