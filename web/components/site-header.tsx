@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { Logo } from '@/components/logo'
 
 const nav = [
-  { href: '#scannen', label: 'Scanner' },
-  { href: '#sammeln', label: 'Sammlung' },
-  { href: '#marktpreise', label: 'Marktpreise' },
-  { href: '#community', label: 'Community' },
-  { href: '#shop', label: 'Shop' },
+  { href: '/preview-redesign#scannen', label: 'Scanner' },
+  { href: '/preview-redesign#sammeln', label: 'Sammlung' },
+  { href: '/preview-redesign#marktpreise', label: 'Marktpreise' },
+  { href: '/preview-redesign#community', label: 'Community' },
+  { href: '/preview-redesign#shop', label: 'Shop' },
 ]
 
 export function SiteHeader() {
@@ -52,10 +52,10 @@ export function SiteHeader() {
             Anmelden
           </a>
           <a
-            href="/register?design=preview"
+            href="/login?design=preview"
             className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-primary"
           >
-            Sammlung anlegen
+            Zur Sammlung
           </a>
         </div>
 
@@ -94,11 +94,11 @@ export function SiteHeader() {
                 Anmelden
               </a>
               <a
-                href="/register?design=preview"
+                href="/login?design=preview"
                 onClick={() => setOpen(false)}
                 className="block rounded-full bg-foreground px-3 py-2.5 text-center text-xs font-medium sm:text-sm text-background"
               >
-                Sammlung anlegen
+                Zur Sammlung
               </a>
             </li>
           </ul>
