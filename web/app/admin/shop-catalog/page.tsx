@@ -27,6 +27,7 @@ export default function ShopCatalog(){
  const key=(card:Card)=>[language,setId,card.id].join("|");
  const select=(card:Card)=>{const k=key(card);setSelected(old=>old[k]?Object.fromEntries(Object.entries(old).filter(([id])=>id!==k)):{...old,[k]:{card,setId,setName:details?.name||setId,language,variant:"Normal",condition:"Near Mint",quantity:0,price:"",enabled:false,photoUrl:""}})};
  const addCondition=(id:string)=>{const source=selected[id];if(!source)return;const available=conditions.find(c=>!Object.values(selected).some(x=>x.card.id===source.card.id&&x.setId===source.setId&&x.language===source.language&&x.variant===source.variant&&x.condition===c));if(!available){setError("Für diese Variante sind bereits alle Zustände ausgewählt.");return;}const next=id+"|"+source.variant+"|"+available;setSelected(old=>({...old,[next]:{...source,condition:available,quantity:0,price:"",enabled:false}}))};
+ const addEntireSet=()=>{if(!details?.cards.length)return;setSelected(old=>{const next={...old};for(const card of details.cards){const id=key(card);if(!next[id])next[id]={card,setId,setName:details.name,language,variant:"Normal",condition:"Near Mint",quantity:0,price:"",enabled:false,photoUrl:""};}return next;});};
  const change=(id:string,patch:Partial<Listing>)=>setSelected(old=>({...old,[id]:{...old[id],...patch}}));
  const filtered=useMemo(()=>details?.cards.filter(c=>[c.name,c.localId,c.id].join(" ").toLowerCase().includes(search.toLowerCase()))??[],[details,search]);
  const entries=Object.entries(selected);
@@ -54,6 +55,7 @@ export default function ShopCatalog(){
  <label>Karte suchen<input style={fieldStyle} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name oder 010" /></label>
  </div>
  {error&&<div role="alert" className="statusPanel errorPanel">{error}</div>}
+ {details && <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}><span className="muted">{filtered.length} von {details.cards.length} Karten</span><button type="button" className="ghostButton" onClick={addEntireSet}>Alle Karten dieses Sets als Entwürfe vormerken</button></div>}
  <div className="cardGrid">{filtered.map(card=>{const id=key(card),chosen=!!selected[id];return <button type="button" key={card.id} onClick={()=>select(card)} className="cardTile interactiveCard" style={{textAlign:"left",outline:chosen?"2px solid var(--cyan)":undefined}}>
  <div className="cardImageWrap">{card.imageBase?<img loading="lazy" className="cardImage" src={card.imageBase.replace(/\/$/,"")+"/high.webp"} alt={card.name}/>:<span>Kein Bild</span>}</div><div className="cardMeta"><strong>{card.name}</strong><span className="muted">#{card.localId}</span><span className="chip">{chosen?"✓ Ausgewählt":"+ Zum Shop hinzufügen"}</span></div>
  </button>})}</div>
