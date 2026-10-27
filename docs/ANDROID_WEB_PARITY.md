@@ -26,3 +26,15 @@ Reviewed in GitHub on 2026-10-27. Code inspection, not a device test.
 - An Android light palette needs an explicit new backend theme enum, DTO serializer and version-compatible migration, plus UI review. Do not change this blindly.
 - Live feature equality, artwork licensing, WooCommerce connection, and device/build tests are not yet confirmed.
 - Keep public registration and production publication blocked until explicit approval.
+
+## Implemented in Android main (unbuilt)
+- Native bottom navigation now has a Shop destination that opens the protected WooCommerce storefront in the browser.
+- Android adds CREAM_ORANGE as an optional fifth appearance value, with Material3 light colors and readable system bars; the four legacy dark palettes are preserved.
+- CREAM_ORANGE remains device-local until the backend and web appearance API explicitly support it. Existing cross-device dark-theme synchronization remains supported.
+- Web mobile bottom navigation includes Shop.
+
+## Release blockers
+- Android Gradle build / compose compile, web TypeScript build, tests on phones and desktop.
+- Full scanner/collection/variant/price end-to-end comparison with live server; feature presence alone does not prove parity.
+- WordPress private-gate login in an external Android browser must be validated before treating Android Shop navigation as functional.
+- No store products should be made public during parity testing.
