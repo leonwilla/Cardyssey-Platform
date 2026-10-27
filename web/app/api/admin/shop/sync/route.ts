@@ -63,9 +63,20 @@ export async function POST(request:Request){
    regular_price:Number.isFinite(price)&&price>0?price.toFixed(2):"",
    description:(photoUrl?"Eigenes Foto des angebotenen Exemplars. ":"Referenzbild, nicht das tatsächlich angebotene Exemplar. ")+"Zustand: "+condition+".",
    attributes:[{name:"Sprache",visible:true,variation:false,options:[language]},{name:"Variante",visible:true,variation:false,options:[variant]},{name:"Zustand",visible:true,variation:false,options:[condition]}],
+   categories:[],
    meta_data:[{key:"_cardyssey_card_id",value:cardId},{key:"_cardyssey_set_id",value:setId},{key:"_cardyssey_language",value:language}],
    ...(image?{images:[{src:image}]}:{})
   };
+  // Reuse a pre-existing set category; never create public taxonomy as a side effect of product editing.
+  const cats=new URL("/wp-json/wc/v3/products/categories",shop);
+  cats.searchParams.set("search",setName);
+  cats.searchParams.set("per_page","100");
+  const categoryResponse=await fetch(cats,{headers,signal:AbortSignal.timeout(12000),cache:"no-store"});
+  if(categoryResponse.ok){
+    const all=await categoryResponse.json() as Array<{id:number;name:string}>;
+    const found=Array.isArray(all)?all.find(c=>c.name.toLocaleLowerCase("de")===setName.toLocaleLowerCase("de")):null;
+    if(found)product.categories.push({id:found.id} as never);
+  }
   const target=existing?new URL("/wp-json/wc/v3/products/"+existing.id,shop):api;
   const result=await fetch(target,{method:existing?"PUT":"POST",headers,body:JSON.stringify(product),signal:AbortSignal.timeout(20000),cache:"no-store"});
   if(!result.ok)return Response.json({error:"woocommerce_write_failed",status:result.status},{status:502});
