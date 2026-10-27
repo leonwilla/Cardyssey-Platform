@@ -34,3 +34,15 @@
 - Test Node.js/Brotli security update on the Tiny before launching publicly.
 
 **No claim of live deployment or functioning WooCommerce synchronization until independently tested on the Tiny.**
+
+## Prepared direct WooCommerce API integration (not enabled)
+
+- Route: `POST /api/admin/shop/sync`, permitted only to approved private-beta admins/founder.
+- Supports `draft`, `publish`, `unpublish`. Requires matching-origin request and WooCommerce API keys.
+- Looks up by stable card/language/set/variant/condition SKU before updating; rejects ambiguous results.
+- WordPress WooCommerce REST API credentials must have read/write products access, be stored in server-only environment variables (never `NEXT_PUBLIC_`), and be scoped to the shop.
+- Set `CARDYSSEY_WC_URL=https://shop.cardyssey.de`, `CARDYSSEY_WC_CONSUMER_KEY`, `CARDYSSEY_WC_CONSUMER_SECRET`.
+- After audit, live backup and testing, explicitly set `CARDYSSEY_WC_SYNC_ENABLED=true`. **Do not enable it before verification.**
+- Requests fail closed if credentials or opt-in are absent; no products are published during coding.
+- Frontend editor has buttons for draft/publish/unpublish, returning descriptive errors until enabled.
+- Full catalog staging in the editor is not a durable bulk import. A separate paginated, rate-limited background reconciliation worker and media rights checks are still required.
