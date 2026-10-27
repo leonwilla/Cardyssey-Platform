@@ -46,3 +46,30 @@
 - Requests fail closed if credentials or opt-in are absent; no products are published during coding.
 - Frontend editor has buttons for draft/publish/unpublish, returning descriptive errors until enabled.
 - Full catalog staging in the editor is not a durable bulk import. A separate paginated, rate-limited background reconciliation worker and media rights checks are still required.
+
+## Large initial import tooling (prepared, not executed)
+
+`python3 scripts/shop_catalog_bootstrap.py --language de` is a **read-only dry-run**.
+After database backup, rights review and controlled staging test, use
+`python3 scripts/shop_catalog_bootstrap.py --language de --apply --limit 20` and inspect
+results before a full `--apply`.
+
+Required environment:
+`CARDYSSEY_API_URL`, `CARDYSSEY_ADMIN_TOKEN`,
+`CARDYSSEY_WC_URL`, `CARDYSSEY_WC_CONSUMER_KEY`, `CARDYSSEY_WC_CONSUMER_SECRET`.
+
+The script stages catalog cards as **unpublished, hidden, zero-stock** WooCommerce
+products and creates category roots for Einzelkarten, Booster, Displays,
+Elite Trainer Boxen, Kollektionen & Boxen, Zubehör. Per-card set categories
+are created under Einzelkarten. It checkpoints successful products and does
+not upload card art pending image rights and endpoint audit. It does not guess
+foil/edition/condition. **Catalog placeholder SKUs and sellable listing SKUs
+are intentionally distinct**, so staging a card cannot accidentally replace
+an offer; shop presentation should bind catalog entries to offers by Cardyssey
+card/set/language metadata instead of assuming identical Woo products.
+
+WooCommerce native stock management is enabled for listings. Native WooCommerce
+order processing should decrement purchased product stock once configured.
+Validate the shop's order status settings, overselling/holding and restock
+behavior for refunds/cancellations before enabling sales. **Do not implement
+a second stock decrement hook** on top of WooCommerce native stock handling.
