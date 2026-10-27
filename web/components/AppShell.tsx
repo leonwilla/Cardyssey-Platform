@@ -45,6 +45,7 @@ const mobileNav: readonly [
   ["/collection", "Sammlung", "collection"],
   ["/scan", "Scannen", "scan"],
   ["/sets", "Sets", "sets"],
+  ["/shop", "Shop", "shop"],
   ["/friends", "Community", "friends"],
   ["/account", "Account", "account"],
 ];
