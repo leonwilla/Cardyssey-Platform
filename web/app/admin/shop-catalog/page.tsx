@@ -32,7 +32,7 @@ export default function ShopCatalog(){
   const rows:string[]=[];
   const keys=new Set<string>();
   for(const [id,l] of entries){
-    const amount=Number(l.price.replace(",","."));if(l.photoUrl && !/^https:\\/\\//i.test(l.photoUrl.trim())){setError("Eigene Fotos müssen eine HTTPS-Bildadresse haben.");return;}if(l.enabled&&(!Number.isFinite(amount)||amount<=0||!Number.isInteger(l.quantity)||l.quantity<1)){setError("Für freigegebene Karten bitte positiven Preis und Bestand ab 1 festlegen.");return;}
+    const amount=Number(l.price.replace(",","."));if(l.photoUrl && !/^https:\/\//i.test(l.photoUrl.trim())){setError("Eigene Fotos müssen eine HTTPS-Bildadresse haben.");return;}if(l.enabled&&(!Number.isFinite(amount)||amount<=0||!Number.isInteger(l.quantity)||l.quantity<1)){setError("Für freigegebene Karten bitte positiven Preis und Bestand ab 1 festlegen.");return;}
     const title=[l.card.name,l.card.localId,l.setName,l.variant,l.condition].join(" · ");
     const image=l.photoUrl.trim() || (l.card.imageBase?l.card.imageBase.replace(/\/$/,"")+"/high.webp":"");
     const sku="CDY-"+escSku(l.language+"-"+l.setId+"-"+l.card.id+"-"+l.variant+"-"+l.condition);if(keys.has(sku)){setError("Doppelte Kartenvariante/Zustand erkannt. Bitte pro Kombination nur einen Eintrag exportieren.");return;}keys.add(sku);
@@ -61,7 +61,8 @@ export default function ShopCatalog(){
  <label>Zustand<select style={fieldStyle} value={l.condition} onChange={e=>change(id,{condition:e.target.value})}>{conditions.map(x=><option key={x}>{x}</option>)}</select></label>
  <label>Stückzahl<input style={fieldStyle} type="number" min="0" value={l.quantity} onChange={e=>change(id,{quantity:Number(e.target.value)})}/></label>
  <label>VK-Preis €<input style={fieldStyle} inputMode="decimal" value={l.price} onChange={e=>change(id,{price:e.target.value})} placeholder="2,50"/></label>
- <label>Eigenes Foto (HTTPS-URL, optional)<input style={fieldStyle} type="url" value={l.photoUrl} onChange={e=>change(id,{photoUrl:e.target.value})} placeholder="https://…"/></label>\n <label>Verkauf freigeben<select style={fieldStyle} value={l.enabled?"yes":"no"} onChange={e=>change(id,{enabled:e.target.value==="yes"})}><option value="no">Nein</option><option value="yes">Ja, nach Prüfung</option></select></label>
+ <label>Eigenes Foto (HTTPS-URL, optional)<input style={fieldStyle} type="url" value={l.photoUrl} onChange={e=>change(id,{photoUrl:e.target.value})} placeholder="https://…"/></label>
+ <label>Verkauf freigeben<select style={fieldStyle} value={l.enabled?"yes":"no"} onChange={e=>change(id,{enabled:e.target.value==="yes"})}><option value="no">Nein</option><option value="yes">Ja, nach Prüfung</option></select></label>
  </div><div style={{display:"flex",gap:10,marginTop:12,flexWrap:"wrap"}}><button type="button" className="ghostButton" onClick={()=>addCondition(id)}>+ Weiteren Zustand hinzufügen</button><button type="button" className="ghostButton" onClick={()=>setSelected(old=>Object.fromEntries(Object.entries(old).filter(([k])=>k!==id)))}>Eintrag entfernen</button></div><small className="muted">{l.photoUrl?"Eigenes Exemplarfoto":"Referenzbild – zeigt nicht den tatsächlichen Kartenzustand"}</small></div>)}
  <button type="button" className="primaryButton" onClick={download}>WooCommerce-CSV herunterladen</button></section>}
  <p className="muted" style={{marginTop:24}}>Import über WordPress → Produkte → Importieren. Prüfe Karte, Bild, Sprache, Variante und Bestandsführung vor Veröffentlichung. Offizielle/TCGdex-Bild-URLs lassen sich nur importieren, wenn WooCommerce die URL abrufen darf und die Bildrechte geklärt sind. Der Import synchronisiert noch keine vorhandenen Angebote und darf nicht blind mehrfach wiederholt werden.</p>
