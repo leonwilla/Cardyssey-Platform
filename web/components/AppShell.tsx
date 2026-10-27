@@ -347,6 +347,11 @@ export function AppShell({
                 </span>
               </Link>
 
+              <Link href="/admin/shop-catalog" className={active === "/admin/shop-catalog" ? "navItem active adminNavItem" : "navItem adminNavItem"}>
+                <span className="navIcon"><NavGlyph name="shop" /></span>
+                <span>Kartenkatalog → Shop</span>
+              </Link>
+
               <Link
                 href="/admin/shop-listings"
                 className={active === "/admin/shop-listings" ? "navItem active adminNavItem" : "navItem adminNavItem"}
