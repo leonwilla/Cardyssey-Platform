@@ -41,8 +41,7 @@ export default async function RegisterPage({
         </h1>
 
         <p>
-          Erstelle deinen zentralen
-          Cardyssey-Account.
+          Die öffentliche Registrierung startet nach der privaten Testphase.
         </p>
 
         <div className="authTabs">
@@ -58,55 +57,11 @@ export default async function RegisterPage({
           </a>
         </div>
 
-        <form
-          className="authForm"
-          method="post"
-          action="/api/auth/register"
-        >
-          <label>
-            Anzeigename
-            <input
-              name="displayName"
-              required
-              maxLength={100}
-              autoComplete="name"
-            />
-          </label>
-
-          <label>
-            E-Mail
-            <input
-              type="email"
-              name="email"
-              required
-              autoComplete="email"
-            />
-          </label>
-
-          <label>
-            Passwort
-            <input
-              type="password"
-              name="password"
-              required
-              minLength={12}
-              autoComplete="new-password"
-            />
-          </label>
-
-          {error && (
-            <div className="authError">
-              {error}
-            </div>
-          )}
-
-          <button
-            className="primaryButton authSubmit"
-            type="submit"
-          >
-            Account erstellen
-          </button>
-        </form>
+        <div className="statusPanel" role="status">
+          <strong>Registrierung während der privaten Testphase geschlossen.</strong>
+          <p>Cardyssey ist aktuell nur für freigeschaltete Testaccounts verfügbar. Sobald die öffentliche Registrierung startet, kannst du hier deinen Account erstellen.</p>
+          <a className="primaryButton inline" href="/login?design=preview">Zur Anmeldung</a>
+        </div>
       </section>
     </main>
   );
