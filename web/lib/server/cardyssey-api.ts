@@ -217,9 +217,13 @@ async function refreshSession():
    * Jeder wartende Route-Handler setzt die neuen
    * Cookies in seiner eigenen Response.
    */
-  await setAuthCookies(
-    payload
-  );
+  // Cookies cannot be mutated from a Server Component/render context.
+  // Refresh must be performed in a Route Handler (such as /api/auth/renew).
+  try {
+    await setAuthCookies(payload);
+  } catch (error) {
+    if (!(error instanceof Error) || !/cookie|immutable|render/i.test(error.message)) throw error;
+  }
 
   return payload;
 }
