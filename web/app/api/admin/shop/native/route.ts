@@ -29,7 +29,11 @@ export async function GET(){
 }
 export async function POST(request:Request){
  if(!await isAdmin())return rejection("forbidden",403);
- if(request.headers.get("origin")!==new URL(request.url).origin)return rejection("origin_mismatch",403);
+ const origin=request.headers.get("origin");
+ // Public origin differs from internal Next.js URL behind the reverse proxy.
+ // Accept only the explicitly configured public Cardyssey origin (or same-origin locally).
+ const allowedOrigins=new Set([new URL(request.url).origin,process.env.CARDYSSEY_PUBLIC_ORIGIN||"https://cardyssey.de"]);
+ if(!origin||!allowedOrigins.has(origin))return rejection("origin_mismatch",403);
  let data:ProductInput;
  try{data=await request.json()}catch{return rejection("invalid_json")}
  const cardId=clean(data.cardId,100),setId=clean(data.setId,100),name=clean(data.name),language=clean(data.language,12),variant=clean(data.variant,60),condition=clean(data.condition,30);
