@@ -43,3 +43,36 @@
 .businessShopClassic .businessShopSetCount>span{display:none}
 @media(max-width:850px){.businessShopHero{grid-template-columns:1fr;padding:38px 6%;min-height:auto}.businessShopHeroArtwork{display:none}.businessShopModern .businessShopMain{padding-top:20px}}
 @media(max-width:560px){.businessShopHeroStats{gap:20px}.businessShopModern .businessShopMain .cardGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.businessShopModern .businessShopMain button.cardTile{min-height:160px;padding:15px}.businessShopHero{margin-bottom:36px}}
+
+/* Modern theme follows the existing /preview-redesign design system:
+   paper #f4eee4, forest ink #1d2924, ember #e0522c, pale blue #c6dbe9. */
+.businessShopModern{color-scheme:light;background:#f4eee4;color:#1d2924;font-family:Arial,Helvetica,sans-serif}
+.businessShopModern .businessShopHeader{background:#f4eee4;color:#1d2924;border-color:#ded4c5;box-shadow:none}
+.businessShopModern .businessShopBrand{color:#1d2924;font-weight:500;letter-spacing:-.035em;font-size:25px}
+.businessShopModern .businessShopBrand span{color:#526057;border-color:#cfc6b9;font-size:11px;font-weight:700;letter-spacing:.16em}
+.businessShopModern .businessShopDesignSwitch{border-color:#c9bdab}
+.businessShopModern .businessShopDesignSwitch button[aria-pressed="true"]{background:#1d2924;color:#f4eee4}
+.businessShopModern .businessShopHero{border:0;box-shadow:none;border-radius:0;background:#f4eee4;padding:55px 2% 52px;min-height:475px}
+.businessShopModern .businessShopHeroEyebrow,.businessShopModern .businessShopSectionHeading>span{color:#e0522c}
+.businessShopModern .businessShopHero h1{color:#1d2924;font-size:clamp(49px,6.2vw,90px);letter-spacing:-.058em;max-width:630px}
+.businessShopModern .businessShopHero h1 em{color:#e0522c;font-style:italic}
+.businessShopModern .businessShopHero p{color:#52615b;font-size:18px;max-width:510px}
+.businessShopModern .businessShopHeroAction{background:#1d2924;color:#fff8ef;border-radius:100px}
+.businessShopModern .businessShopHeroAction:hover{background:#e0522c;color:white}
+.businessShopModern .businessShopHeroStats{color:#65716a}
+.businessShopModern .businessShopHeroStats strong{color:#1d2924}
+.businessShopModern .businessShopHeroArtwork{height:340px}
+.businessShopModern .businessShopHeroArtwork:before{content:"";position:absolute;width:390px;height:290px;background:#c6dbe9;border-radius:50%;z-index:0}
+.businessShopModern .businessShopHeroCardBack{background:linear-gradient(135deg,#cfd9c1,#e9dfcf);border-color:#faf7f1;box-shadow:0 22px 50px #1d292426}
+.businessShopModern .businessShopHeroCardFront{background:linear-gradient(145deg,#fbf7f0,#c6dbe9);border-color:#fffaf2;box-shadow:0 25px 55px #1d29242b}
+.businessShopModern .businessShopSectionHeading h2,.businessShopModern .businessShopCatalogTitle{color:#1d2924}
+.businessShopModern .businessShopSectionHeading p{color:#58635d}
+.businessShopModern .businessShopMain .cardTile{background:#fbf7f0;border:1px solid #d9cdbb;color:#1d2924;box-shadow:0 8px 24px #1d29240b}
+.businessShopModern .businessShopMain .cardTile:hover{border-color:#e0522c;box-shadow:0 14px 30px #1d292421}
+.businessShopModern .businessShopSetIcon{color:#e0522c}
+.businessShopModern .businessShopSetCount{color:#58635d}
+.businessShopModern .businessShopSetCount>span{color:#e0522c}
+.businessShopModern .businessShopMain select,.businessShopModern .businessShopMain input{background:#fbf7f0;color:#1d2924;border-color:#d9cdbb}
+.businessShopModern .businessShopMain .ghostButton{background:#fbf7f0;border:1px solid #d9cdbb;color:#1d2924}
+.businessShopModern .businessShopFooter{background:#e9dfcf;color:#52615b;border-color:#d9cdbb}
+@media(max-width:700px){.businessShopModern .businessShopHero{padding:22px 0 30px;min-height:0}}
