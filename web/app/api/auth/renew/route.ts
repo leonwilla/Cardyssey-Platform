@@ -12,7 +12,5 @@ export async function GET(request:Request){
  const url=new URL(request.url);
  const destination=safeDestination(url.searchParams.get("returnTo"));
  const session=await authenticatedBackendFetch("/api/v1/me");
- const response=Response.redirect(session.ok?destination:"https://cardyssey.de/login",303);
- response.headers.set("Cache-Control","no-store");
- return response;
+ return new Response(null,{status:303,headers:{"Location":session.ok?destination:"https://cardyssey.de/login","Cache-Control":"no-store"}});
 }
