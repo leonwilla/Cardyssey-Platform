@@ -37,7 +37,8 @@ run_tv git worktree add --detach "$release" "$target"
 for file in web/.env.production web/.env.local web/.env; do
   [[ ! -f "$ROOT/$file" ]] || run_tv cp -p "$ROOT/$file" "$release/$file"
 done
-run_tv ln -s "$ROOT/web/node_modules" "$release/web/node_modules"
+# Turbopack requires dependencies inside the release project root.
+run_tv bash -c 'cd "$1/web" && npm ci --no-audit --no-fund' _ "$release"
 echo "== Building candidate without touching the running .next =="
 run_tv bash -c 'cd "$1/web" && npm run build' _ "$release"
 [[ -s "$release/web/.next/BUILD_ID" ]] || { echo "Missing BUILD_ID; refusing cutover."; exit 1; }
