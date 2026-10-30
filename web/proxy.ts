@@ -60,6 +60,27 @@ function secure(
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isStoreHost = request.headers.get("host")?.split(":")[0]?.toLowerCase() === "shop.cardyssey.de";
+  if (isStoreHost) {
+    const asset = pathname.startsWith("/_next/") || pathname === "/cardyssey-emblem-gold.png" || pathname === "/favicon.ico";
+    if (asset) return secure(NextResponse.next());
+    if (pathname === "/login") return secure(NextResponse.redirect("https://cardyssey.de/login"));
+    const storefront = pathname === "/" || pathname === "/business-shop";
+    const catalogRead = (pathname === "/api/sets" || pathname.startsWith("/api/sets/") || pathname === "/api/shop/offers") && request.method === "GET";
+    if (!storefront && !catalogRead) return secure(new NextResponse("Not Found", {status:404}));
+    const access = request.cookies.get("cardyssey_access")?.value;
+    if (!access) return secure(NextResponse.redirect("https://cardyssey.de/login"));
+    try {
+      const endpoint = (process.env.CARDYSSEY_API_URL || "http://127.0.0.1:8081").replace(/\/$/, "") + "/api/v1/me";
+      const response = await fetch(endpoint,{headers:{Authorization:"Bearer "+access},cache:"no-store"});
+      if (!response.ok) return secure(NextResponse.redirect("https://cardyssey.de/login"));
+      const user = await response.json() as {id?:string};
+      const allowed = (process.env.CARDYSSEY_PRIVATE_USER_IDS || "").split(",").map(x=>x.trim());
+      if (!user.id || !allowed.includes(user.id)) return secure(NextResponse.redirect("https://cardyssey.de/login"));
+    } catch {return secure(NextResponse.redirect("https://cardyssey.de/login"));}
+    if (pathname === "/") return secure(NextResponse.rewrite(new URL("/business-shop", request.url)));
+    return secure(NextResponse.next());
+  }
   // Assets and the authentication entry point remain reachable so approved users can sign in.
   if (pathname === "/login" || pathname === "/register" || pathname === "/impressum" || pathname === "/datenschutz" ||
       pathname === "/api/auth/login" || pathname === "/api/auth/logout" || pathname === "/api/auth/me" ||
