@@ -3,6 +3,7 @@ import {useEffect,useMemo,useState} from "react";
 import {useRouter} from "next/navigation";
 import {AppShell} from "@/components/AppShell";
 import type {User} from "@/lib/types";
+import {SetPhotoManager} from "./SetPhotoManager";
 
 type SetItem={id:string;name:string;officialCount?:number;totalCount?:number};
 type Card={id:string;name:string;localId:string;imageBase?:string|null};
@@ -75,6 +76,7 @@ export default function ShopCatalog(){
  <label>Erweiterung<select style={fieldStyle} value={setId} onChange={e=>{setSetId(e.target.value);setSearch("")}}><option value="">Set auswählen</option>{sets.map(s=><option key={s.id} value={s.id}>{s.name} ({s.officialCount||s.totalCount||"–"})</option>)}</select></label>
  <label>Karte suchen<input style={fieldStyle} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name oder 010" /></label>
  </div>
+ {setId&&<SetPhotoManager setId={setId} language={language} offers={savedOffers}/>}
  {error&&<div role="alert" className="statusPanel errorPanel">{error}</div>}{notice&&<div role="status" className="statusPanel">{notice}</div>}
  {details && <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}><span className="muted">{filtered.length} von {details.cards.length} Karten</span><button type="button" className="ghostButton" onClick={addEntireSet}>Alle Karten dieses Sets als Entwürfe vormerken</button></div>}
  <div className="cardGrid">{filtered.map(card=>{const id=key(card),chosen=!!selected[id];return <button type="button" key={card.id} onClick={()=>select(card)} className="cardTile interactiveCard" style={{textAlign:"left",outline:chosen?"2px solid var(--cyan)":undefined}}>
