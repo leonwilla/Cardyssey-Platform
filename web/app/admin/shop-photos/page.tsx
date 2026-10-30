@@ -1,8 +1,8 @@
 "use client";
-import {useEffect,useState} from "react";
+import {Suspense,useEffect,useState} from "react";
 import {useSearchParams} from "next/navigation";
 type Photo={id:string;name:string;uploadedAt:string;size:number;setId:string;language:string};
-export default function SetPhotosPage(){
+function SetPhotosContent(){
  const params=useSearchParams();
  const setId=params.get("setId")||"",language=params.get("language")||"de";
  const [photos,setPhotos]=useState<Photo[]>([]),[error,setError]=useState(""),[busy,setBusy]=useState(false),[done,setDone]=useState(0);
@@ -39,3 +39,5 @@ export default function SetPhotosPage(){
   </>}
  </main>
 }
+
+export default function SetPhotosPage(){return <Suspense fallback={<p>Fotoverwaltung wird geladen …</p>}><SetPhotosContent/></Suspense>}
