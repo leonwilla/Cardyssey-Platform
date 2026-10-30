@@ -22,7 +22,7 @@ export async function cleanupOfferPhotos(offerId:number){
  await shopSql(`DELETE FROM cardyssey_shop.offer_media WHERE offer_id=${offerId}`);
  let removed=0;
  for(const url of urls){
-  try{const u=new URL(url);const parts=u.pathname.split("/");if(u.hostname==="cardyssey.de"&&parts.length===8&&parts[1]==="api"&&parts[2]==="shop"&&parts[3]==="set-photo"){if(await deleteUnreferencedPhoto(parts[4],parts[5],parts[6]))removed++}}catch{}
+  try{const u=new URL(url);const parts=u.pathname.split("/");if(u.hostname==="cardyssey.de"&&parts.length===7&&parts[1]==="api"&&parts[2]==="shop"&&parts[3]==="set-photo"){if(await deleteUnreferencedPhoto(parts[4],parts[5],parts[6]))removed++}}catch{}
  }
  return removed;
 }
