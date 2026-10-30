@@ -54,3 +54,11 @@ Keine neuen Shell-Dienste, Portweiterleitungen oder öffentlichen DNS-Routen dur
 - Tunnel und SSH werden nach Reboot wieder erreichbar; keine Direktverbindung auf 22/2222 aus dem Internet.
 - Cloudflare-Sitzung und Linux-Konto sind getrennt dokumentiert; Recovery funktioniert.
 - Firmencomputer nur nutzen, soweit organisatorisch erlaubt. Bei Sperre nicht ausweichen oder umgehen.
+
+## Fertig vorbereitete Repository-Skripte
+
+- `bash scripts/check-cardyssey-browser-ssh.sh` – lesender Statuscheck, keine Änderungen.
+- `sudo bash scripts/install-cardyssey-browser-ssh.sh` – installiert einen systemd-Dienst für einen **bereits konfigurierten** Cloudflare Tunnel, nachdem `/etc/cardyssey/cloudflared.env` root-only angelegt, das vertrauliche Tunnel-Token eingetragen und `cloudflared` aus offizieller Quelle installiert wurde.
+- Weder ein DNS-Eintrag noch Cloudflare-Access-Anwendung oder Tunnel-Credentials werden durch GitHub-Code automatisch angelegt. Diese Schritte im Cloudflare-Konto durchführen und anschließend Anwendung, Identität/Benutzerzuordnung und MFA prüfen.
+- Während der Erstinbetriebnahme Tailscale-/AnyDesk-/lokalen Notzugang beibehalten. `sshd` und Passwortauthentisierung nicht blind verändern.
+- Kein Test aus einem Unternehmensnetz ohne Erlaubnis. Bei Blockade nicht versuchen, Unternehmensrichtlinien zu umgehen.
