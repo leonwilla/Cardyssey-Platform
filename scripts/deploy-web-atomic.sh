@@ -34,7 +34,8 @@ for file in web/.env.production web/.env.local web/.env; do
     cp -p "$ROOT/$file" "$release/$file"
   fi
 done
-ln -s "$ROOT/web/node_modules" "$release/web/node_modules"
+# Turbopack rejects node_modules symlinks outside the project root.
+(cd "$release/web" && npm ci --no-audit --no-fund)
 echo "== Building release $(basename "$release") while the old web service keeps running =="
 (cd "$release/web" && npm run build)
 test -s "$release/web/.next/BUILD_ID" || { echo "Release has no BUILD_ID"; exit 1; }
