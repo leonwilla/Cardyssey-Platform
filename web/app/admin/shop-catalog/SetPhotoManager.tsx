@@ -9,6 +9,7 @@ export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:strin
  const candidates=offers.filter(o=>o.set_id===setId&&o.language===language);
  const load=async()=>{try{const r=await fetch("/api/admin/shop/set-photos?setId="+encodeURIComponent(setId)+"&language="+encodeURIComponent(language),{cache:"no-store"});if(!r.ok)throw Error("Fotos konnten nicht geladen werden");setPhotos(await r.json());setError("")}catch(e){setError(String(e))}};
  useEffect(()=>{void load()},[setId,language]);
+ async function removePhoto(photoId:string){if(busy)return;if(!confirm("Foto dauerhaft entfernen? Falls es einem Angebot zugeordnet ist, wird die Zuordnung ebenfalls entfernt."))return;setBusy(photoId);setError("");try{const r=await fetch("/api/admin/shop/photo-delete",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({language,setId,id:photoId,detach:true})});if(!r.ok)throw Error((await r.json()).error||"Foto konnte nicht gelöscht werden");await load();setSuccess("Foto entfernt.")}catch(e){setError(String(e))}finally{setBusy("")}}
  async function assign(photoId:string){
   const offerId=Number(selection[photoId]);if(!offerId)return;
   setBusy(photoId);setError("");setSuccess("");
@@ -34,7 +35,7 @@ export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:strin
      {candidates.map(o=><option value={o.id} key={o.id}>{o.title} · {o.variant} · {o.condition}</option>)}
     </select>
     <select aria-label={"Bildtyp für "+photo.name} style={{width:"100%",marginBottom:10,minHeight:36}} value={roles[photo.id]||"front"} onChange={e=>setRoles(old=>({...old,[photo.id]:e.target.value}))}><option value="front">Vorderseite</option><option value="back">Rückseite</option><option value="detail">Detailfoto</option></select>
-    <button type="button" className="ghostButton" disabled={!selection[photo.id]||!!busy} onClick={()=>void assign(photo.id)}>Foto zuordnen</button>{selection[photo.id]&&<button type="button" className="ghostButton" style={{marginTop:8}} onClick={()=>onEditOffer?.(Number(selection[photo.id]))}>Angebot bearbeiten →</button>}
+    <button type="button" className="ghostButton" disabled={!selection[photo.id]||!!busy} onClick={()=>void assign(photo.id)}>Foto zuordnen</button><button type="button" className="ghostButton" disabled={!!busy} onClick={()=>void removePhoto(photo.id)}>Foto löschen</button>{selection[photo.id]&&<button type="button" className="ghostButton" style={{marginTop:8}} onClick={()=>onEditOffer?.(Number(selection[photo.id]))}>Angebot bearbeiten →</button>}
    </div>)}
   </div>
   {!candidates.length&&<p className="muted">Lege zunächst mindestens ein Shopangebot für dieses Set als Entwurf an. Anschließend kannst du Bilder zuweisen.</p>}
