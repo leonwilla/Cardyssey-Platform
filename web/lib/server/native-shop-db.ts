@@ -1,27 +1,23 @@
 import "server-only";
-import { spawn } from "node:child_process";
+import {spawn} from "node:child_process";
 
-/**
- * Transitional DB adapter using the PostgreSQL CLI on the host.
- * No user input is interpolated into SQL. Arguments are encoded as
- * SQL literals are escaped; the client credentials go into child process\n * environment, never command arguments.
- * Disabled unless CARDYSSEY_NATIVE_SHOP_DB_ENABLED=true.
- * A dedicated DB role with privileges on cardyssey_shop only is required.
- */
-export async function shopSql(statement: string): Promise<string> {
- if (process.env.CARDYSSEY_NATIVE_SHOP_DB_ENABLED !== "true") throw new Error("native_shop_disabled");
- if (!statement.trim()) throw new Error("empty_sql");
- const url = process.env.CARDYSSEY_SHOP_DATABASE_URL;
- if (!url) throw new Error("shop_db_missing");
- return new Promise((resolve,reject)=>{
-  const parsed=new URL(url);\n  if(parsed.protocol!=="postgresql:"||parsed.hostname!=="127.0.0.1"||parsed.port!=="5433")throw new Error("invalid_shop_db_host");\n  const child=spawn("psql",["-X","-q","-v","ON_ERROR_STOP=1","-A","-t","-c",statement],{stdio:["ignore","pipe","pipe"],env:{...process.env,PGCONNECT_TIMEOUT:"5",PGHOST:parsed.hostname,PGPORT:parsed.port,PGUSER:decodeURIComponent(parsed.username),PGPASSWORD:decodeURIComponent(parsed.password),PGDATABASE:decodeURIComponent(parsed.pathname.slice(1))}});
-  let stdout="",stderr="";
-  child.stdout.on("data",(v:Buffer)=>{stdout+=v.toString();if(stdout.length>1_000_000)child.kill()});
-  child.stderr.on("data",(v:Buffer)=>{stderr+=v.toString().slice(0,400)});
-  child.on("error",()=>reject(new Error("psql_unavailable")));
-  child.on("close",code=>code===0?resolve(stdout.trim()):reject(new Error("shop_database_query_failed")));
+/** Native shop PostgreSQL adapter. Only loopback, never external SQL input. */
+export async function shopSql(statement:string):Promise<string>{
+ if(process.env.CARDYSSEY_NATIVE_SHOP_DB_ENABLED!=="true")throw Error("native_shop_disabled");
+ const raw=process.env.CARDYSSEY_SHOP_DATABASE_URL;
+ if(!raw)throw Error("shop_database_unconfigured");
+ const url=new URL(raw);
+ if(url.protocol!=="postgresql:"||url.hostname!=="127.0.0.1"||url.port!=="5433")throw Error("invalid_db_host");
+ return await new Promise<string>((resolve,reject)=>{
+  const child=spawn("psql",["-X","-q","-v","ON_ERROR_STOP=1","-A","-t","-c",statement],{
+   stdio:["ignore","pipe","pipe"],
+   env:{...process.env,PGCONNECT_TIMEOUT:"5",PGHOST:"127.0.0.1",PGPORT:"5433",PGUSER:decodeURIComponent(url.username),PGPASSWORD:decodeURIComponent(url.password),PGDATABASE:decodeURIComponent(url.pathname.slice(1))}
+  });
+  let out="";
+  child.stdout.on("data",(v:Buffer)=>{out+=v.toString();if(out.length>1000000)child.kill()});
+  child.stderr.on("data",()=>{});
+  child.on("error",()=>reject(Error("psql_unavailable")));
+  child.on("close",code=>code===0?resolve(out.trim()):reject(Error("shop_query_failed")));
  });
 }
-export function sqlLiteral(input: string): string {
- return "'"+input.replaceAll("'","''")+"'";
-}
+export const sqlLiteral=(v:string)=>"'"+v.replaceAll("'","''")+"'";
