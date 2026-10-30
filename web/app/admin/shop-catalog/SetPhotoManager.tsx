@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 type Photo={id:string;name:string;uploadedAt:string;size:number};
 type Offer={id:number;title:string;set_id:string;language:string;variant:string;condition:string;card_id:string};
 export function SetPhotoManager({setId,language,offers}:{setId:string;language:string;offers:Offer[]}){
- const [photos,setPhotos]=useState<Photo[]>([]),[error,setError]=useState(""),[selection,setSelection]=useState<Record<string,string>>({}),[busy,setBusy]=useState("");
+ const [photos,setPhotos]=useState<Photo[]>([]),[error,setError]=useState(""),[selection,setSelection]=useState<Record<string,string>>({}),[roles,setRoles]=useState<Record<string,string>>({}),[busy,setBusy]=useState("");
  const link="https://cardyssey.de/admin/shop-photos?setId="+encodeURIComponent(setId)+"&language="+encodeURIComponent(language);
  const qr="https://api.qrserver.com/v1/create-qr-code/?size=210x210&data="+encodeURIComponent(link);
  const candidates=offers.filter(o=>o.set_id===setId&&o.language===language);
@@ -12,7 +12,7 @@ export function SetPhotoManager({setId,language,offers}:{setId:string;language:s
  async function assign(photoId:string){
   const offerId=Number(selection[photoId]);if(!offerId)return;
   setBusy(photoId);setError("");
-  try{const r=await fetch("/api/admin/shop/assign-photo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({photoId,offerId})});if(!r.ok)throw Error((await r.json()).error||"Zuordnung fehlgeschlagen");setSelection(old=>({...old,[photoId]:""}))}catch(e){setError(String(e))}finally{setBusy("")}
+  try{const r=await fetch("/api/admin/shop/assign-photo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({photoId,offerId,role:roles[photoId]||"front"})});if(!r.ok)throw Error((await r.json()).error||"Zuordnung fehlgeschlagen");setSelection(old=>({...old,[photoId]:""}))}catch(e){setError(String(e))}finally{setBusy("")}
  }
  return <section className="accountCard" style={{margin:"22px 0",display:"block"}}>
   <h2>Handyfotos für dieses Set</h2>
@@ -33,6 +33,7 @@ export function SetPhotoManager({setId,language,offers}:{setId:string;language:s
      <option value="">Angebot auswählen</option>
      {candidates.map(o=><option value={o.id} key={o.id}>{o.title} · {o.variant} · {o.condition}</option>)}
     </select>
+    <select aria-label={"Bildtyp für "+photo.name} style={{width:"100%",marginBottom:10,minHeight:36}} value={roles[photo.id]||"front"} onChange={e=>setRoles(old=>({...old,[photo.id]:e.target.value}))}><option value="front">Vorderseite</option><option value="back">Rückseite</option><option value="detail">Detailfoto</option></select>
     <button type="button" className="ghostButton" disabled={!selection[photo.id]||!!busy} onClick={()=>void assign(photo.id)}>Foto zuordnen</button>
    </div>)}
   </div>
