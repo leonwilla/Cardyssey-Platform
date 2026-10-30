@@ -22,6 +22,7 @@ export async function GET(){
   const result=await shopSql(`SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
    SELECT o.id,o.sku,p.title,p.set_id,p.card_id,p.language,o.variant,o.condition,o.price_minor,o.stock_quantity,o.status,o.updated_at,(SELECT m.media_url FROM cardyssey_shop.offer_media m WHERE m.offer_id=o.id AND m.is_owned_photo ORDER BY m.position,m.id LIMIT 1) AS photo_url, (SELECT count(*) FROM cardyssey_shop.offer_media m WHERE m.offer_id=o.id AND m.is_owned_photo) AS photo_count
    FROM cardyssey_shop.offers o JOIN cardyssey_shop.products p ON p.id=o.product_id
+   WHERE o.status <> 'archived'
    ORDER BY o.updated_at DESC LIMIT 500
   ) t`);
   return Response.json(JSON.parse(result||"[]"),{headers:{"Cache-Control":"no-store"}});
