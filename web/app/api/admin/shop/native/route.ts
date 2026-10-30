@@ -69,9 +69,13 @@ export async function POST(request:Request){
   // The admin manages a single primary media record per offer. Reference artwork
   // is explicitly distinguished from a photo of the actual item.
   const media=photoUrl||imageUrl;
-  await shopSql(`DELETE FROM cardyssey_shop.offer_media WHERE offer_id=${offerId};
-    ${media?`INSERT INTO cardyssey_shop.offer_media(offer_id,media_url,is_owned_photo,rights_verified,position)
-    VALUES (${offerId},${q(media)},${photoUrl?"TRUE":"FALSE"},FALSE,0);`:""}`);
+  // Never erase set-uploaded pictures when adjusting stock, price or status.
+  // Reference images are replaceable; uploaded photos remain attached.
+  if(media){
+    await shopSql(`INSERT INTO cardyssey_shop.offer_media(offer_id,media_url,is_owned_photo,rights_verified,position)
+    SELECT ${offerId},${q(media)},${photoUrl?"TRUE":"FALSE"},FALSE,0
+    WHERE NOT EXISTS(SELECT 1 FROM cardyssey_shop.offer_media WHERE offer_id=${offerId} AND media_url=${q(media)})`);
+  }
   return Response.json({ok:true,id:offerId,sku,status:nextStatus});
  }catch{return rejection("native_shop_write_failed",503)}
 }
