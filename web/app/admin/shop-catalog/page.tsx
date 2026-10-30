@@ -24,7 +24,7 @@ export default function ShopCatalog(){
  const [message,setMessage]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const [source,setSource]=useState<"saved"|"local">("saved");
  const selected=editing?drafts[editing]:undefined;
- const draftKeys=Object.keys(drafts);
+ const draftKeys=Object.keys(drafts).filter(k=>{const d=drafts[k];return !offers.some(o=>o.card_id===d.card.id&&o.set_id===d.setId&&o.language===d.language&&o.variant===d.variant&&o.condition===d.condition)});
  const filteredOffers=useMemo(()=>offers.filter(o=>(status==="all"||o.status===status)&&[o.title,o.card_id,o.set_id,o.language,o.variant,o.condition].join(" ").toLowerCase().includes(query.toLowerCase())),[offers,status,query]);
  const filteredCards=useMemo(()=>cards.filter(c=>[c.name,c.id,c.localId].join(" ").toLowerCase().includes(query.toLowerCase())),[cards,query]);
  const fetchOffers=async()=>{const r=await fetch("/api/admin/shop/native",{cache:"no-store"});if(!r.ok)throw Error("Bestand konnte nicht geladen werden");setOffers(await r.json() as Offer[])};
