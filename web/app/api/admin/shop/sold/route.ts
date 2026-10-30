@@ -1,5 +1,6 @@
 import {isShopAdmin} from "@/lib/server/shop-photos";
-import {shopSql,sqlLiteral} from "@/lib/server/native-shop-db";
+import {shopSql} from "@/lib/server/native-shop-db";
+import {cleanupOfferPhotos} from "@/lib/server/shop-photo-cleanup";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 
@@ -23,6 +24,7 @@ export async function POST(request:Request){
   )
   SELECT COALESCE((SELECT id::text FROM archived),'')`);
   if(!row)return Response.json({error:"not_found_or_reserved"},{status:409});
-  return Response.json({ok:true,id:Number(row)});
+  let cleanupWarning=false;try{await cleanupOfferPhotos(id)}catch{cleanupWarning=true}
+  return Response.json({ok:true,id:Number(row),cleanupWarning});
  }catch{return Response.json({error:"archive_failed"},{status:503})}
 }
