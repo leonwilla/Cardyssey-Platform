@@ -25,6 +25,9 @@ export default function ShopCatalog(){
  const [draftRestored,setDraftRestored]=useState(false);
  const [savedOffers,setSavedOffers]=useState<Array<{id:number;sku:string;title:string;set_id:string;card_id:string;language:string;variant:string;condition:string;price_minor:number|null;stock_quantity:number;status:string;photo_url?:string|null}>>([]);
  const [savedError,setSavedError]=useState("");
+ const [section,setSection]=useState<"inventory"|"catalog"|"photos"|"editor">("inventory");
+ const [activeEdit,setActiveEdit]=useState<string|null>(null);
+ const [draftSearch,setDraftSearch]=useState("");
  const [savedSearch,setSavedSearch]=useState("");
  const [savedStatus,setSavedStatus]=useState("all");
  const filteredSaved=savedOffers.filter(o=>(savedStatus==="all"||o.status===savedStatus)&&[o.title,o.card_id,o.set_id,o.language,o.variant,o.condition,o.sku].join(" ").toLocaleLowerCase().includes(savedSearch.toLocaleLowerCase()));
@@ -34,7 +37,9 @@ export default function ShopCatalog(){
   const card:Card={id:offer.card_id,name:offer.title,localId:offer.card_id};
   const id=[offer.language,offer.set_id,offer.card_id,offer.variant,offer.condition].join("|");
   setSelected(old=>({...old,[id]:{card,setId:offer.set_id,setName:offer.set_id,language:offer.language,variant:offer.variant,condition:offer.condition,quantity:offer.stock_quantity,price:offer.price_minor==null?"":(offer.price_minor/100).toFixed(2),enabled:offer.status==="published",photoUrl:offer.photo_url||""}}));
-  setNotice("Das gespeicherte Angebot wurde unten zur Bearbeitung übernommen. Änderungen werden erst mit Speichern oder Online stellen übernommen.");
+  setActiveEdit(id);setSection("editor");
+  setNotice("Angebot geöffnet. Änderungen werden erst nach dem Speichern übernommen.");
+  window.scrollTo({top:0,behavior:"smooth"});
  };
  const refreshSaved=async()=>{try{const r=await fetch("/api/admin/shop/native",{cache:"no-store"});if(!r.ok)throw Error("Gespeicherte Angebote konnten nicht geladen werden");const rows=await r.json();setSavedOffers(Array.isArray(rows)?rows:[]);setSavedError("")}catch(e){setSavedError(e instanceof Error?e.message:String(e))}};
  useEffect(()=>{if(allowed)void refreshSaved()},[allowed]);
@@ -52,6 +57,7 @@ export default function ShopCatalog(){
  const syncDraftBatch=async()=>{if(syncing)return;const entries=Object.entries(selected);if(!entries.length)return;setError("");setNotice("");setSyncing("batch");let completed=0;try{for(const [,l] of entries){setBatchProgress(completed+" / "+entries.length);const response=await fetch("/api/admin/shop/native",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cardId:l.card.id,setId:l.setId,name:l.card.name,setName:l.setName,localId:l.card.localId,language:l.language,variant:l.variant,condition:l.condition,quantity:l.quantity,price:l.price,photoUrl:l.photoUrl,imageUrl:l.card.imageBase?l.card.imageBase.replace(/\/$/,"")+"/high.webp":"",action:"draft"})});const data=await response.json() as {error?:string};if(!response.ok)throw Error(data.error||"Shop-Import fehlgeschlagen");completed++;}setNotice(completed+" Kartenentwürfe in Cardyssey gespeichert.");void refreshSaved();}catch(e){setError("Import nach "+completed+" Artikeln gestoppt: "+(e instanceof Error?e.message:String(e))+". Bereits importierte Entwürfe bleiben erhalten.");}finally{setBatchProgress("");setSyncing(null)}};
  const filtered=useMemo(()=>details?.cards.filter(c=>[c.name,c.localId,c.id].join(" ").toLowerCase().includes(search.toLowerCase()))??[],[details,search]);
  const entries=Object.entries(selected);
+ const displayEntries=entries.filter(([id,l])=>(!activeEdit||id===activeEdit)&&[l.card.name,l.card.localId,l.setName,l.variant,l.condition].join(" ").toLocaleLowerCase().includes(draftSearch.toLocaleLowerCase()));
  const download=()=>{setError("");if(!entries.length){setError("Bitte Karten auswählen.");return;}
   const headers=["Type","SKU","Name","Published","Is featured?","Visibility in catalog","Short description","Description","In stock?","Stock","Backorders allowed?","Sold individually?","Regular price","Categories","Images","Attribute 1 name","Attribute 1 value(s)","Attribute 1 visible","Attribute 1 global","Attribute 2 name","Attribute 2 value(s)","Attribute 2 visible","Attribute 2 global","Attribute 3 name","Attribute 3 value(s)","Attribute 3 visible","Attribute 3 global"];
   const rows:string[]=[];
@@ -69,20 +75,26 @@ export default function ShopCatalog(){
  const fieldStyle={minHeight:40,border:"1px solid var(--border)",borderRadius:10,padding:"6px 10px",background:"var(--navy-card)",color:"var(--text)",width:"100%"} as const;
  return <AppShell active="/admin"><section className="pageIntro"><div><span className="eyebrowText">Shop-Verwaltung</span><h1>Gewerblicher Kartenkatalog → Webshop</h1><p>Nur Unternehmensbestand verwalten: Set und Karte auswählen, Variante, Zustand, Stückzahl und Verkaufspreis festlegen. Private Nutzerangebote bleiben getrennt.</p></div></section>
  {!allowed?<div className="statusPanel">{loading?"Zugriff wird geprüft …":error||"Keine Berechtigung"}</div>:<>
+ <nav aria-label="Shopverwaltung Bereiche" style={{display:"flex",gap:10,flexWrap:"wrap",margin:"20px 0 26px"}}>
+ {([["inventory","Gespeicherte Angebote"],["catalog","Karten hinzufügen"],["photos","Set-Fotos & QR-Code"],["editor","Entwürfe bearbeiten ("+entries.length+")"]] as const).map(([id,label])=><button key={id} type="button" className={section===id?"primaryButton":"ghostButton"} onClick={()=>{setSection(id);setActiveEdit(null)}}>{label}</button>)}
+ </nav>
+ {section==="inventory"&&<>
  <section className="accountCard" style={{marginBottom:22}}><h2>Gewerbliche Angebote ({savedOffers.length})</h2><p className="muted">{publishedCount} veröffentlicht · {savedOffers.length-publishedCount} nicht veröffentlicht · {stockCount} Stück Lagerbestand</p><div style={{display:"flex",gap:10,flexWrap:"wrap",margin:"12px 0"}}><input aria-label="Gespeicherte Angebote durchsuchen" style={{...fieldStyle,maxWidth:320}} placeholder="Name, Karte, Set, SKU suchen…" value={savedSearch} onChange={e=>setSavedSearch(e.target.value)}/><select aria-label="Status filtern" style={{...fieldStyle,maxWidth:220}} value={savedStatus} onChange={e=>setSavedStatus(e.target.value)}><option value="all">Alle Status</option><option value="published">Veröffentlicht</option><option value="draft">Entwürfe / offline</option></select></div><button type="button" className="ghostButton" onClick={()=>void refreshSaved()}>Aktualisieren</button>{savedError&&<p role="alert">{savedError}</p>}<div style={{maxHeight:250,overflowY:"auto",marginTop:12}}>{filteredSaved.map(o=><p key={o.id}><strong>{o.title}</strong> · {o.language} · {o.variant} · {o.condition} · {o.stock_quantity} Stück · {o.price_minor==null?"Kein Preis":(o.price_minor/100).toLocaleString("de-DE",{style:"currency",currency:"EUR"})} · {o.status} <button type="button" className="ghostButton" disabled={!!syncing} onClick={()=>editSaved(o)}>Bearbeiten</button></p>)}</div></section>
- <div className="statusPanel"><strong>Sicherer Entwurfsmodus:</strong> Die direkte Synchronisierung speichert Angebote im Cardyssey-Shop. Ohne bestätigten Bestand und Preis bleibt das Angebot ein Entwurf. Der Warenkorb und Zahlungen sind weiterhin deaktiviert. CSV ist nur ein Legacy-Export.</div>
+ </>}
+ {section==="catalog"&&<div className="statusPanel"><strong>Sicherer Entwurfsmodus:</strong> Die direkte Synchronisierung speichert Angebote im Cardyssey-Shop. Ohne bestätigten Bestand und Preis bleibt das Angebot ein Entwurf. Der Warenkorb und Zahlungen sind weiterhin deaktiviert. CSV ist nur ein Legacy-Export.</div>
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,margin:"22px 0"}}>
  <label>Sprache<select style={fieldStyle} value={language} onChange={e=>setLanguage(e.target.value)}>{languages.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
  <label>Erweiterung<select style={fieldStyle} value={setId} onChange={e=>{setSetId(e.target.value);setSearch("")}}><option value="">Set auswählen</option>{sets.map(s=><option key={s.id} value={s.id}>{s.name} ({s.officialCount||s.totalCount||"–"})</option>)}</select></label>
  <label>Karte suchen<input style={fieldStyle} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name oder 010" /></label>
  </div>
- {setId&&<SetPhotoManager setId={setId} language={language} offers={savedOffers}/>}
+ {section==="photos"&&setId&&<SetPhotoManager setId={setId} language={language} offers={savedOffers}/>}
+ {section==="photos"&&!setId&&<p className="statusPanel">Bitte oben Sprache und Erweiterung auswählen.</p>}
  {error&&<div role="alert" className="statusPanel errorPanel">{error}</div>}{notice&&<div role="status" className="statusPanel">{notice}</div>}
- {details && <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}><span className="muted">{filtered.length} von {details.cards.length} Karten</span><button type="button" className="ghostButton" onClick={addEntireSet}>Alle Karten dieses Sets als Entwürfe vormerken</button></div>}
- <div className="cardGrid">{filtered.map(card=>{const id=key(card),chosen=!!selected[id];return <button type="button" key={card.id} onClick={()=>select(card)} className="cardTile interactiveCard" style={{textAlign:"left",outline:chosen?"2px solid var(--cyan)":undefined}}>
+ {section==="catalog"&&details && <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}><span className="muted">{filtered.length} von {details.cards.length} Karten</span><button type="button" className="ghostButton" onClick={addEntireSet}>Alle Karten dieses Sets als Entwürfe vormerken</button></div>}
+ {section==="catalog"&&<div className="cardGrid">{filtered.map(card=>{const id=key(card),chosen=!!selected[id];return <button type="button" key={card.id} onClick={()=>select(card)} className="cardTile interactiveCard" style={{textAlign:"left",outline:chosen?"2px solid var(--cyan)":undefined}}>
  <div className="cardImageWrap">{card.imageBase?<img loading="lazy" className="cardImage" src={card.imageBase.replace(/\/$/,"")+"/high.webp"} alt={card.name}/>:<span>Kein Bild</span>}</div><div className="cardMeta"><strong>{card.name}</strong><span className="muted">#{card.localId}</span><span className="chip">{chosen?"✓ Ausgewählt":"+ Zum Shop hinzufügen"}</span></div>
- </button>})}</div>
- {entries.length>0&&<section className="sectionBlock"><h2>Ausgewählte Karten ({entries.length})</h2>{entries.map(([id,l])=><div key={id} className="accountCard" style={{display:"block",margin:"12px 0"}}>
+ </button>})}</div>}
+ {section==="editor"&&<section className="sectionBlock"><h2>Entwürfe bearbeiten ({entries.length})</h2><p className="muted">Öffne einen Eintrag zum Bearbeiten. Die übrigen vorgemerkten Karten bleiben gespeichert.</p>{activeEdit&&<button className="ghostButton" type="button" onClick={()=>setActiveEdit(null)}>← Zurück zu allen Entwürfen</button>}<input aria-label="Entwürfe suchen" style={{...fieldStyle,maxWidth:440,margin:"14px 0"}} value={draftSearch} placeholder="Entwurf nach Name oder Nummer suchen" onChange={e=>setDraftSearch(e.target.value)}/>{!activeEdit&&<div style={{maxHeight:280,overflowY:"auto",display:"grid",gap:7,marginBottom:15}}>{entries.filter(([,l])=>[l.card.name,l.card.localId,l.setName].join(" ").toLowerCase().includes(draftSearch.toLowerCase())).map(([id,l])=><button className="ghostButton" style={{textAlign:"left"}} key={id} type="button" onClick={()=>setActiveEdit(id)}>{l.card.name} · {l.card.localId} · {l.setName} ({l.language}) · Bearbeiten</button>)}</div>}{activeEdit&&displayEntries.map(([id,l])=><div key={id} className="accountCard" style={{display:"block",margin:"12px 0"}}>
  <strong>{l.card.name} · {l.card.localId} · {l.setName} ({l.language})</strong>
  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginTop:12}}>
  <label>Variante<select style={fieldStyle} value={l.variant} onChange={e=>change(id,{variant:e.target.value})}>{variants.map(x=><option key={x}>{x}</option>)}</select></label>
