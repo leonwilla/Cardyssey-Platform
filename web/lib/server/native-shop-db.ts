@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 /**
  * Transitional DB adapter using the PostgreSQL CLI on the host.
  * No user input is interpolated into SQL. Arguments are encoded as
- * JSON and passed via psql -v, then converted with quote_literal.
+ * SQL literals are escaped; the client credentials go into child process\n * environment, never command arguments.
  * Disabled unless CARDYSSEY_NATIVE_SHOP_DB_ENABLED=true.
  * A dedicated DB role with privileges on cardyssey_shop only is required.
  */
@@ -14,7 +14,7 @@ export async function shopSql(statement: string): Promise<string> {
  const url = process.env.CARDYSSEY_SHOP_DATABASE_URL;
  if (!url) throw new Error("shop_db_missing");
  return new Promise((resolve,reject)=>{
-  const child=spawn("psql",[url,"-X","-q","-v","ON_ERROR_STOP=1","-A","-t","-c",statement],{stdio:["ignore","pipe","pipe"],env:{...process.env,PGCONNECT_TIMEOUT:"5"}});
+  const parsed=new URL(url);\n  if(parsed.protocol!=="postgresql:"||parsed.hostname!=="127.0.0.1"||parsed.port!=="5433")throw new Error("invalid_shop_db_host");\n  const child=spawn("psql",["-X","-q","-v","ON_ERROR_STOP=1","-A","-t","-c",statement],{stdio:["ignore","pipe","pipe"],env:{...process.env,PGCONNECT_TIMEOUT:"5",PGHOST:parsed.hostname,PGPORT:parsed.port,PGUSER:decodeURIComponent(parsed.username),PGPASSWORD:decodeURIComponent(parsed.password),PGDATABASE:decodeURIComponent(parsed.pathname.slice(1))}});
   let stdout="",stderr="";
   child.stdout.on("data",(v:Buffer)=>{stdout+=v.toString();if(stdout.length>1_000_000)child.kill()});
   child.stderr.on("data",(v:Buffer)=>{stderr+=v.toString().slice(0,400)});
