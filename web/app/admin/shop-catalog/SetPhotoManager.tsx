@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 type Photo={id:string;name:string;uploadedAt:string;size:number};
 type Offer={id:number;title:string;set_id:string;language:string;variant:string;condition:string;card_id:string};
-export function SetPhotoManager({setId,language,offers}:{setId:string;language:string;offers:Offer[]}){
+export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:string;language:string;offers:Offer[];onEditOffer?:(id:number)=>void}){
  const [photos,setPhotos]=useState<Photo[]>([]),[error,setError]=useState(""),[selection,setSelection]=useState<Record<string,string>>({}),[roles,setRoles]=useState<Record<string,string>>({}),[busy,setBusy]=useState("");
  const link="https://cardyssey.de/admin/shop-photos?setId="+encodeURIComponent(setId)+"&language="+encodeURIComponent(language);
  const qr="https://api.qrserver.com/v1/create-qr-code/?size=210x210&data="+encodeURIComponent(link);
@@ -34,7 +34,7 @@ export function SetPhotoManager({setId,language,offers}:{setId:string;language:s
      {candidates.map(o=><option value={o.id} key={o.id}>{o.title} · {o.variant} · {o.condition}</option>)}
     </select>
     <select aria-label={"Bildtyp für "+photo.name} style={{width:"100%",marginBottom:10,minHeight:36}} value={roles[photo.id]||"front"} onChange={e=>setRoles(old=>({...old,[photo.id]:e.target.value}))}><option value="front">Vorderseite</option><option value="back">Rückseite</option><option value="detail">Detailfoto</option></select>
-    <button type="button" className="ghostButton" disabled={!selection[photo.id]||!!busy} onClick={()=>void assign(photo.id)}>Foto zuordnen</button>
+    <button type="button" className="ghostButton" disabled={!selection[photo.id]||!!busy} onClick={()=>void assign(photo.id)}>Foto zuordnen</button>{selection[photo.id]&&<button type="button" className="ghostButton" style={{marginTop:8}} onClick={()=>onEditOffer?.(Number(selection[photo.id]))}>Angebot bearbeiten →</button>}
    </div>)}
   </div>
   {!candidates.length&&<p className="muted">Lege zunächst mindestens ein Shopangebot für dieses Set als Entwurf an. Anschließend kannst du Bilder zuweisen.</p>}
