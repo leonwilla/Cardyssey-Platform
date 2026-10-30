@@ -10,3 +10,36 @@
 .businessShopModern .businessShopMain .cardTile:hover{transform:translateY(-3px);box-shadow:0 15px 35px #0006}
 .businessShopClassic{background:#11130f}
 @media(max-width:700px){.businessShopModern .businessShopMain .pageIntro{padding:24px 18px}}
+
+/* Distinct modern storefront composition; classic retains the compact catalog. */
+.businessShopModern .businessShopMain{max-width:1370px;padding-top:30px}
+.businessShopHero{position:relative;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(240px,.9fr);align-items:center;min-height:410px;overflow:hidden;padding:54px 7%;margin-bottom:54px;border:1px solid #5d4a28;border-radius:26px;background:radial-gradient(ellipse at 80% 42%,#66502b99,transparent 55%),linear-gradient(110deg,#1b211b,#2b251b 75%,#222219);box-shadow:0 24px 65px #0006}
+.businessShopHeroContent{position:relative;z-index:2}
+.businessShopHeroEyebrow,.businessShopSectionHeading>span{letter-spacing:.18em;font-size:11px;font-weight:800;color:#e6be77}
+.businessShopHero h1{font-size:clamp(38px,5vw,70px);line-height:1.07;margin:16px 0 18px;letter-spacing:-.055em;max-width:700px}
+.businessShopHero h1 em{color:#dfb86c;font-style:normal}
+.businessShopHero p{color:#c9c4b8;max-width:530px;font-size:16px;line-height:1.7}
+.businessShopHeroAction{display:inline-flex;align-items:center;gap:24px;margin-top:24px;padding:13px 22px;border-radius:12px;background:#e5bd73;color:#201b13;text-decoration:none;font-weight:800}
+.businessShopHeroAction:hover{background:#ffdc98}
+.businessShopHeroStats{display:flex;gap:36px;flex-wrap:wrap;margin-top:32px;color:#c3b8a4;font-size:12px}
+.businessShopHeroStats strong{display:block;color:#f5e7c9;font-size:20px;margin-bottom:3px}
+.businessShopHeroArtwork{height:320px;position:relative;display:flex;align-items:center;justify-content:center}
+.businessShopHeroCard{width:205px;height:280px;border-radius:19px;position:absolute;box-shadow:0 25px 36px #0008}
+.businessShopHeroCardBack{transform:translate(50px,4px) rotate(17deg);background:linear-gradient(145deg,#9d6d27,#2d2923 52%,#7b5e34);border:3px solid #d2ae65}
+.businessShopHeroCardFront{z-index:1;transform:translate(-35px,0) rotate(-10deg);display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#383a31,#0e1414 70%);border:4px solid #d9b77c}
+.businessShopHeroCardFront img{width:130px;height:130px;object-fit:contain}
+.businessShopSectionHeading{margin:0 0 24px}
+.businessShopSectionHeading h2{font-size:clamp(27px,3.5vw,39px);letter-spacing:-.035em;margin:7px 0}
+.businessShopSectionHeading p{color:#bdb6a8;margin:0}
+.businessShopModern .businessShopCatalogTitle{font-size:17px;color:#e8d8b8;margin:30px 0 18px}
+.businessShopModern .businessShopMain .cardGrid{grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:16px}
+.businessShopModern .businessShopMain button.cardTile{display:flex;flex-direction:column;gap:20px;text-align:left;min-height:190px;padding:22px;cursor:pointer}
+.businessShopSetIcon{font-size:25px;color:#dcab5b}
+.businessShopSetCount{display:flex;align-items:center;justify-content:space-between;margin-top:auto;color:#b9b3a7;font-size:13px}
+.businessShopSetCount>span{font-size:20px;color:#ddb56f}
+.businessShopClassic .businessShopHero,.businessShopClassic .businessShopSectionHeading{display:none}
+.businessShopClassic .businessShopSetIcon{display:none}
+.businessShopClassic .businessShopSetCount{display:inline}
+.businessShopClassic .businessShopSetCount>span{display:none}
+@media(max-width:850px){.businessShopHero{grid-template-columns:1fr;padding:38px 6%;min-height:auto}.businessShopHeroArtwork{display:none}.businessShopModern .businessShopMain{padding-top:20px}}
+@media(max-width:560px){.businessShopHeroStats{gap:20px}.businessShopModern .businessShopMain .cardGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.businessShopModern .businessShopMain button.cardTile{min-height:160px;padding:15px}.businessShopHero{margin-bottom:36px}}
