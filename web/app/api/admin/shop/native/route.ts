@@ -4,7 +4,7 @@ import {shopSql,sqlLiteral} from "@/lib/server/native-shop-db";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 
-type ProductInput={cardId:string;setId:string;name:string;language:string;variant:string;condition:string;quantity:number;price:string;action:"draft"|"publish"|"unpublish"};
+type ProductInput={cardId:string;setId:string;name:string;language:string;variant:string;condition:string;quantity:number;price:string;photoUrl?:string;imageUrl?:string;action:"draft"|"publish"|"unpublish"};
 const languages=new Set(["de","en","ja","ko","zh-cn","zh-tw"]);
 const conditions=new Set(["Near Mint","Excellent","Good","Light Played","Played","Poor"]);
 const clean=(v:unknown,max=150)=>typeof v==="string"?v.trim().slice(0,max):"";
@@ -20,7 +20,7 @@ export async function GET(){
  if(!await isAdmin())return rejection("forbidden",403);
  try{
   const result=await shopSql(`SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
-   SELECT o.id,o.sku,p.title,p.set_id,p.card_id,p.language,o.variant,o.condition,o.price_minor,o.stock_quantity,o.status,o.updated_at
+   SELECT o.id,o.sku,p.title,p.set_id,p.card_id,p.language,o.variant,o.condition,o.price_minor,o.stock_quantity,o.status,o.updated_at,(SELECT m.media_url FROM cardyssey_shop.offer_media m WHERE m.offer_id=o.id AND m.is_owned_photo ORDER BY m.position,m.id LIMIT 1) AS photo_url
    FROM cardyssey_shop.offers o JOIN cardyssey_shop.products p ON p.id=o.product_id
    ORDER BY o.updated_at DESC LIMIT 500
   ) t`);
@@ -43,6 +43,10 @@ export async function POST(request:Request){
  if(raw&&!/^(?:0|[1-9]\d{0,7})(?:\.\d{1,2})?$/.test(raw))return rejection("invalid_price");
  const priceMinor=raw?Math.round(Number(raw)*100):null;
  if(data.action==="publish"&&(!priceMinor||quantity===0))return rejection("stock_and_price_required");
+ const photoUrl=clean(data.photoUrl,1800);
+ const imageUrl=clean(data.imageUrl,1800);
+ const isSafeImage=(url:string)=>{if(!url)return true;try{const parsed=new URL(url);return parsed.protocol==="https:"&&!parsed.username&&!parsed.password&&url.length<1800}catch{return false}};
+ if(!isSafeImage(photoUrl)||!isSafeImage(imageUrl))return rejection("invalid_image_url");
  const sku="CDY-"+Buffer.from(JSON.stringify([language,setId,cardId,variant,condition])).toString("hex").toUpperCase();
  if(sku.length>500)return rejection("sku_too_long");
  const q=sqlLiteral;
@@ -60,6 +64,14 @@ export async function POST(request:Request){
   VALUES (${productId},${q(sku)},${q(variant)},${q(condition)},${price},${quantity},${q(nextStatus)})
   ON CONFLICT(sku) DO UPDATE SET price_minor=EXCLUDED.price_minor,stock_quantity=EXCLUDED.stock_quantity,status=EXCLUDED.status,version=cardyssey_shop.offers.version+1,updated_at=now()
   RETURNING id`);
-  return Response.json({ok:true,id:Number(result),sku,status:nextStatus});
+  const offerId=Number(result);
+  if(!Number.isSafeInteger(offerId)||offerId<1)throw Error("invalid_offer_id");
+  // The admin manages a single primary media record per offer. Reference artwork
+  // is explicitly distinguished from a photo of the actual item.
+  const media=photoUrl||imageUrl;
+  await shopSql(`DELETE FROM cardyssey_shop.offer_media WHERE offer_id=${offerId};
+    ${media?`INSERT INTO cardyssey_shop.offer_media(offer_id,media_url,is_owned_photo,rights_verified,position)
+    VALUES (${offerId},${q(media)},${photoUrl?"TRUE":"FALSE"},FALSE,0);`:""}`);
+  return Response.json({ok:true,id:offerId,sku,status:nextStatus});
  }catch{return rejection("native_shop_write_failed",503)}
 }
