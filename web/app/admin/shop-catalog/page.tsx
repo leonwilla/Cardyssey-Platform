@@ -22,7 +22,7 @@ export default function ShopCatalog(){
  const [batchProgress,setBatchProgress]=useState("");
  const [notice,setNotice]=useState("");
  const [draftRestored,setDraftRestored]=useState(false);
- const [savedOffers,setSavedOffers]=useState<Array<{id:number;sku:string;title:string;set_id:string;card_id:string;language:string;variant:string;condition:string;price_minor:number|null;stock_quantity:number;status:string}>>([]);
+ const [savedOffers,setSavedOffers]=useState<Array<{id:number;sku:string;title:string;set_id:string;card_id:string;language:string;variant:string;condition:string;price_minor:number|null;stock_quantity:number;status:string;photo_url?:string|null}>>([]);
  const [savedError,setSavedError]=useState("");
  const [savedSearch,setSavedSearch]=useState("");
  const [savedStatus,setSavedStatus]=useState("all");
@@ -32,7 +32,7 @@ export default function ShopCatalog(){
  const editSaved=(offer:(typeof savedOffers)[number])=>{
   const card:Card={id:offer.card_id,name:offer.title,localId:offer.card_id};
   const id=[offer.language,offer.set_id,offer.card_id,offer.variant,offer.condition].join("|");
-  setSelected(old=>({...old,[id]:{card,setId:offer.set_id,setName:offer.set_id,language:offer.language,variant:offer.variant,condition:offer.condition,quantity:offer.stock_quantity,price:offer.price_minor==null?"":(offer.price_minor/100).toFixed(2),enabled:offer.status==="published",photoUrl:""}}));
+  setSelected(old=>({...old,[id]:{card,setId:offer.set_id,setName:offer.set_id,language:offer.language,variant:offer.variant,condition:offer.condition,quantity:offer.stock_quantity,price:offer.price_minor==null?"":(offer.price_minor/100).toFixed(2),enabled:offer.status==="published",photoUrl:offer.photo_url||""}}));
   setNotice("Das gespeicherte Angebot wurde unten zur Bearbeitung übernommen. Änderungen werden erst mit Speichern oder Online stellen übernommen.");
  };
  const refreshSaved=async()=>{try{const r=await fetch("/api/admin/shop/native",{cache:"no-store"});if(!r.ok)throw Error("Gespeicherte Angebote konnten nicht geladen werden");const rows=await r.json();setSavedOffers(Array.isArray(rows)?rows:[]);setSavedError("")}catch(e){setSavedError(e instanceof Error?e.message:String(e))}};
