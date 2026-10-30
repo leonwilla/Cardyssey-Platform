@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 type Photo={id:string;name:string;uploadedAt:string;size:number};
 type Offer={id:number;title:string;set_id:string;language:string;variant:string;condition:string;card_id:string};
 export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:string;language:string;offers:Offer[];onEditOffer?:(id:number)=>void}){
- const [photos,setPhotos]=useState<Photo[]>([]),[error,setError]=useState(""),[selection,setSelection]=useState<Record<string,string>>({}),[roles,setRoles]=useState<Record<string,string>>({}),[busy,setBusy]=useState("");
+ const [photos,setPhotos]=useState<Photo[]>([]),[success,setSuccess]=useState(""),[error,setError]=useState(""),[selection,setSelection]=useState<Record<string,string>>({}),[roles,setRoles]=useState<Record<string,string>>({}),[busy,setBusy]=useState("");
  const link="https://cardyssey.de/admin/shop-photos?setId="+encodeURIComponent(setId)+"&language="+encodeURIComponent(language);
  const qr="https://api.qrserver.com/v1/create-qr-code/?size=210x210&data="+encodeURIComponent(link);
  const candidates=offers.filter(o=>o.set_id===setId&&o.language===language);
@@ -11,8 +11,8 @@ export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:strin
  useEffect(()=>{void load()},[setId,language]);
  async function assign(photoId:string){
   const offerId=Number(selection[photoId]);if(!offerId)return;
-  setBusy(photoId);setError("");
-  try{const r=await fetch("/api/admin/shop/assign-photo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({photoId,offerId,role:roles[photoId]||"front"})});if(!r.ok)throw Error((await r.json()).error||"Zuordnung fehlgeschlagen");setSelection(old=>({...old,[photoId]:""}))}catch(e){setError(String(e))}finally{setBusy("")}
+  setBusy(photoId);setError("");setSuccess("");
+  try{const r=await fetch("/api/admin/shop/assign-photo",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({photoId,offerId,role:roles[photoId]||"front"})});if(!r.ok)throw Error((await r.json()).error||"Zuordnung fehlgeschlagen");setSuccess("Foto wurde dem Angebot zugeordnet. Es erscheint nach der Aktualisierung im Shop, sobald das Angebot veröffentlicht ist.");setSelection(old=>({...old,[photoId]:""}))}catch(e){setError(String(e))}finally{setBusy("")}
  }
  return <section className="accountCard" style={{margin:"22px 0",display:"block"}}>
   <h2>Handyfotos für dieses Set</h2>
@@ -23,8 +23,8 @@ export function SetPhotoManager({setId,language,offers,onEditOffer}:{setId:strin
     <button type="button" className="ghostButton" onClick={()=>void load()}>Fotos aktualisieren</button>
    </div>
   </div>
-  {error&&<p role="alert">{error}</p>}
-  <p className="muted">{photos.length} Fotos hochgeladen · {candidates.length} gespeicherte Angebote in diesem Set</p>
+  {error&&<p role="alert">{error}</p>}{success&&<p role="status" style={{border:"1px solid #53705d",borderRadius:8,padding:10}}>{success}</p>}
+  <p className="muted">{photos.length} Fotos hochgeladen · {candidates.length} gespeicherte Angebote in diesem Set. Wichtig: Ein Foto muss einem Angebot zugeordnet werden, bevor es im Shop erscheint.</p>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:14}}>
    {photos.map(photo=><div key={photo.id} style={{border:"1px solid var(--border)",borderRadius:12,padding:10}}>
     <img src={"/api/shop/set-photo/"+language+"/"+setId+"/"+photo.id} alt={photo.name} style={{width:"100%",height:170,objectFit:"contain"}}/>
