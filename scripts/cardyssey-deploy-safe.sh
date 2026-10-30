@@ -38,6 +38,15 @@ for file in web/.env.production web/.env.local web/.env; do
   [[ ! -f "$ROOT/$file" ]] || run_tv cp -p "$ROOT/$file" "$release/$file"
 done
 # Turbopack requires dependencies inside the release project root.
+# Generated OpenAPI TS model files may be untracked in Git; the live build has them.
+# Preserve repository files and fill only missing generated files from the working tree.
+if [[ -d "$ROOT/web/lib/generated/cardyssey" ]]; then
+  install -d -o tv -g tv "$release/web/lib/generated/cardyssey"
+  run_tv cp -a -n "$ROOT/web/lib/generated/cardyssey/." "$release/web/lib/generated/cardyssey/"
+else
+  echo "Missing generated Cardyssey API client in working tree" >&2
+  exit 1
+fi
 run_tv bash -c 'cd "$1/web" && npm ci --no-audit --no-fund' _ "$release"
 echo "== Building candidate without touching the running .next =="
 run_tv bash -c 'cd "$1/web" && npm run build' _ "$release"
