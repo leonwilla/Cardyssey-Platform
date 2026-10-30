@@ -16,6 +16,10 @@ services:
     networks:
       - cardyssey-internal
 
+    # Localhost-only access for native Cardyssey shop database queries.
+    ports:
+      - "127.0.0.1:5433:5432"
+
     mem_limit: 1g
 
     healthcheck:
