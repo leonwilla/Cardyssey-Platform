@@ -29,7 +29,7 @@ const nav: readonly [
   ["/collection", "Sammlung", "collection"],
   ["/scan", "Scannen", "scan"],
   ["/sets", "Sets", "sets"],
-  ["/shop", "Shop", "shop"],
+  ["/shop", "Nutzer-Shop", "shop"],
   ["/marketplace", "Marktplatz", "marketplace"],
   ["/offers", "Angebote", "offers"],
   ["/friends", "Community", "friends"],
