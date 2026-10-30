@@ -43,8 +43,21 @@ sudo install -d -m 755 /etc/systemd/system/cardyssey-web.service.d
 printf '[Service]\nEnvironmentFile=/home/tv/.config/cardyssey/native-shop.env\n' | sudo tee /etc/systemd/system/cardyssey-web.service.d/native-shop.conf >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl restart cardyssey-web.service
-echo "== Health checks =="
+echo "== Health checks (bounded startup wait) =="
+ready=0
+for attempt in {1..15}; do
+  if curl -fsS -m 3 http://127.0.0.1:3000/login >/dev/null 2>&1; then ready=1; break; fi
+  sleep 2
+done
+if [[ "$ready" != 1 ]]; then
+  echo "Cardyssey web did not become ready; showing service diagnostics." >&2
+  sudo systemctl status cardyssey-web.service --no-pager -l >&2 || true
+  sudo journalctl -u cardyssey-web.service -n 60 --no-pager >&2 || true
+  exit 1
+fi
 sudo systemctl is-active cardyssey-web.service
-curl -fsS -m 15 http://127.0.0.1:3000/login >/dev/null
-curl -sS -m 15 -o /dev/null -w 'Shop auth status: %{http_code}\n' http://127.0.0.1:3000/api/admin/shop/native
-echo "DONE. Shop DB online. Native admin requires existing admin session; no checkout enabled."
+echo "== PostgreSQL loopback =="
+pg_isready -h 127.0.0.1 -p 5433 || true
+echo "== Native shop auth protection =="
+curl -sS -m 15 -o /dev/null -w 'Unauthenticated admin HTTP: %{http_code}\\n' http://127.0.0.1:3000/api/admin/shop/native
+echo "DONE. No WordPress services or volumes changed."
