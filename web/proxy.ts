@@ -97,6 +97,11 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/vendor/") || pathname.startsWith("/app-screenshots/")) {
     return secure(NextResponse.next());
   }
+  // Native clients send a bearer token, not browser cookies.
+  // Both handlers perform their own backend user and allowlist checks.
+  if (pathname === "/api/android/release" || pathname === "/api/private/apk") {
+    return secure(NextResponse.next());
+  }
   if (pathname === "/api/auth/register") {
     return secure(NextResponse.redirect(new URL("/login",request.url)));
   }
