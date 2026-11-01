@@ -3,6 +3,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -147,6 +148,9 @@ export default function CollectionPage() {
 
   const router =
     useRouter();
+
+  const lastForegroundRefresh = useRef(0);
+  const foregroundRefreshInFlight = useRef(false);
 
   const [market, setMarket] =
     useState<"TCG" | "EBAY">(
@@ -506,6 +510,36 @@ export default function CollectionPage() {
       cancelled = true;
     };
   }, [router]);
+
+  // The API is the shared source for Android and Web. Reconcile the
+  // collection when users return from another tab/device. Do not replace
+  // the current view while an editor is actively changing a card.
+  useEffect(() => {
+    async function refreshOnReturn() {
+      if (document.visibilityState !== "visible" ||
+          editing || adding || saving ||
+          foregroundRefreshInFlight.current) return;
+
+      const now = Date.now();
+      if (now - lastForegroundRefresh.current < 15_000) return;
+      lastForegroundRefresh.current = now;
+      foregroundRefreshInFlight.current = true;
+      try {
+        await loadCollection();
+      } catch {
+        // Keep the last successfully loaded collection on network errors.
+      } finally {
+        foregroundRefreshInFlight.current = false;
+      }
+    }
+
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
+    };
+  }, [editing, adding, saving]);
 
   useEffect(() => {
     if (
