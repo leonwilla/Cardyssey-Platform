@@ -49,6 +49,15 @@ prune_old_releases() {
   run_tv git -C "$ROOT" worktree prune || :
 }
 prune_old_releases
+# A WSL ext4 disk can have abundant free space while the Windows host is
+# completely full. Abort before npm creates another large release.
+if [[ -d /mnt/c ]]; then
+  host_free_kb="$(df -Pk /mnt/c | awk 'NR==2 {print $4}')"
+  if [[ "$host_free_kb" =~ ^[0-9]+$ ]] && (( host_free_kb < 5242880 )); then
+    echo "Windows C: has less than 5 GiB free; skipping deployment safely." >&2
+    exit 0
+  fi
+fi
 # Prevent a broken commit from generating another ~800 MB worktree every
 # minute. A new commit can be attempted immediately; failed ones wait 6h.
 failure_marker=/home/tv/.config/cardyssey/web-deploy-failure
