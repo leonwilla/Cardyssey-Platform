@@ -23,6 +23,52 @@ active="$(systemctl show -p WorkingDirectory --value "$SERVICE")"
 if [[ -z "$active" || ! -d "$active" ]]; then
   echo "Previous working directory not found; refusing deployment." >&2; exit 1
 fi
+# Bound disk use: only retain the live release and the two newest
+# successful/rollback candidates. Remove via git worktree first to keep
+# Git metadata consistent. Never remove current live WorkingDirectory.
+prune_old_releases() {
+  local live_root candidate keep=0
+  live_root="$(systemctl show -p WorkingDirectory --value "$SERVICE")"
+  live_root="${live_root%/web}"
+  local -a candidates=()
+  mapfile -t candidates < <(find "$ROOT/releases" -mindepth 1 -maxdepth 1 -type d -name 'web-*' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)
+  local dir
+  for dir in "${candidates[@]}"; do
+    [[ "$dir" == "$live_root" ]] && continue
+    if (( keep < 2 )); then
+      keep=$((keep + 1))
+      continue
+    fi
+    [[ "$dir" == "$ROOT/releases"/web-* ]] || continue
+    # Do not follow symbolic links or delete unrelated directories.
+    [[ ! -L "$dir" ]] || continue
+    run_tv git -C "$ROOT" worktree remove --force "$dir" || {
+      echo "Unable to remove old worktree $dir safely" >&2
+    }
+  done
+  run_tv git -C "$ROOT" worktree prune || :
+}
+prune_old_releases
+# Prevent a broken commit from generating another ~800 MB worktree every
+# minute. A new commit can be attempted immediately; failed ones wait 6h.
+failure_marker=/home/tv/.config/cardyssey/web-deploy-failure
+if [[ -r "$failure_marker" ]]; then
+  read -r failed_target failed_at < "$failure_marker" || :
+  if [[ "${failed_target:-}" == "$target" ]] && [[ "${failed_at:-}" =~ ^[0-9]+$ ]] &&
+     (( $(date +%s) - failed_at < 21600 )); then
+    echo "Skipping failed commit within six-hour cooldown: $target"
+    exit 0
+  fi
+fi
+record_failure() {
+  install -d -m 755 /home/tv/.config/cardyssey
+  printf '%s %s\n' "$target" "$(date +%s)" > "$failure_marker"
+  chown tv:tv "$failure_marker"
+  if [[ -n "${release:-}" && -d "$release" ]]; then
+    run_tv git -C "$ROOT" worktree remove --force "$release" || :
+  fi
+}
+trap record_failure ERR
 # A release marker prevents rebuilding the same commit on every timer tick.
 marker=/home/tv/.config/cardyssey/web-deployed-commit
 if [[ -r "$marker" && "$(cat "$marker")" == "$target" ]] && systemctl is-active --quiet "$SERVICE"; then
@@ -66,15 +112,18 @@ install -d -m 755 "$(dirname "$OVERRIDE")"
 printf '[Service]\nWorkingDirectory=%s/web\n' "$release" > "$OVERRIDE"
 systemctl daemon-reload
 echo "== Switching service =="
-if ! systemctl restart "$SERVICE"; then rollback;exit 1;fi
+if ! systemctl restart "$SERVICE"; then rollback;record_failure;exit 1;fi
 healthy=0
 for attempt in {1..25}; do
   if curl -fsS -m 3 http://127.0.0.1:3000/login >/dev/null 2>&1; then healthy=1;break;fi
   sleep 2
 done
-if [[ "$healthy" != 1 ]] || ! systemctl is-active --quiet "$SERVICE";then rollback;exit 1;fi
+if [[ "$healthy" != 1 ]] || ! systemctl is-active --quiet "$SERVICE";then rollback;record_failure;exit 1;fi
 install -d -m 755 /home/tv/.config/cardyssey
 printf '%s\n' "$target" > "$marker"
 chown tv:tv "$marker"
 rm -f "$saved"
+rm -f "$failure_marker"
+trap - ERR
+prune_old_releases
 echo "== Deployed ${target:0:12}; old release preserved: $active =="
