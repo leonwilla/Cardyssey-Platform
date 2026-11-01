@@ -535,9 +535,13 @@ export default function CollectionPage() {
 
     document.addEventListener("visibilitychange", refreshOnReturn);
     window.addEventListener("focus", refreshOnReturn);
+    // Keep two open devices in sync while the collection page is visible.
+    // The shared backend remains authoritative; no provider scraping here.
+    const interval = window.setInterval(refreshOnReturn, 15_000);
     return () => {
       document.removeEventListener("visibilitychange", refreshOnReturn);
       window.removeEventListener("focus", refreshOnReturn);
+      window.clearInterval(interval);
     };
   }, [editing, adding, saving]);
 
