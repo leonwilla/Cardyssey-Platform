@@ -10,6 +10,9 @@ import {
   useRouter,
 } from "next/navigation";
 
+import {WishlistCatalogPicker} from "@/components/WishlistCatalogPicker";
+import "@/components/WishlistCatalogPicker.css";
+
 import {
   AppShell,
 } from "@/components/AppShell";
@@ -333,6 +336,7 @@ export default function WishlistPage() {
       active="/wishlist"
       user={user}
     >
+      <WishlistCatalogPicker onAdded={load}/>
       <div className="pageHeader">
         <div>
           <span className="eyebrowText">

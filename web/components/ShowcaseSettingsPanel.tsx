@@ -371,6 +371,13 @@ export function ShowcaseSettingsPanel() {
         </p>
       </div>
 
+      <div className="showcaseSaveTop">
+        <button type="button" className="primaryButton" onClick={save} disabled={saving}>
+          {saving ? "Speichert …" : "Showcase speichern"}
+        </button>
+        {message && <span role="status">{message}</span>}
+      </div>
+
       {selected.length > 0 && (
         <div className="showcaseSelected">
           {selected.map(
