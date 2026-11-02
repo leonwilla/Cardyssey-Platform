@@ -46,6 +46,11 @@ def main():
         gh("release", "download", tag, "-R", REPO,
            "-p", "cardyssey-version.json", "-D", directory)
         metadata = json.loads((Path(directory) / "cardyssey-version.json").read_text())
+        # Never roll back a newer APK deployed directly by Android CI.
+        if METADATA_TARGET.is_file():
+            installed = json.loads(METADATA_TARGET.read_text())
+            if installed.get("versionCode", 0) > metadata.get("versionCode", 0):
+                return
         sha = metadata["sha256"].lower()
         if metadata.get("versionCode", 0) <= 0 or metadata.get("sizeBytes", 0) <= 0:
             raise RuntimeError("Invalid release version or size")
