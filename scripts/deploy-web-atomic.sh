@@ -34,6 +34,12 @@ for file in web/.env.production web/.env.local web/.env; do
     cp -p "$ROOT/$file" "$release/$file"
   fi
 done
+# Version metadata and APK are runtime data, not tracked in Git.
+if [[ -f "$ROOT/web/private-downloads/cardyssey-version.json" && -f "$ROOT/web/private-downloads/cardyssey-latest.apk" ]]; then
+  mkdir -p "$release/web/private-downloads"
+  cp -p "$ROOT/web/private-downloads/cardyssey-version.json" "$release/web/private-downloads/"
+  cp -p "$ROOT/web/private-downloads/cardyssey-latest.apk" "$release/web/private-downloads/"
+fi
 # Turbopack rejects node_modules symlinks outside the project root.
 (cd "$release/web" && npm ci --no-audit --no-fund)
 echo "== Building release $(basename "$release") while the old web service keeps running =="

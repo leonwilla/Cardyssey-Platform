@@ -7,12 +7,14 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
-TARGET = ROOT / "web/public/downloads/cardyssey-latest.apk"
+TARGET = ROOT / "web/private-downloads/cardyssey-latest.apk"
+METADATA_TARGET = ROOT / "web/private-downloads/cardyssey-version.json"
 SHA_FILE = ROOT / ".last-android-apk-sha"
 REPO = "leonwilla/Cardyssey-Downloads"
 
@@ -21,6 +23,16 @@ def gh(*args):
     return subprocess.run(
         ["gh", *args], check=True, text=True, capture_output=True
     ).stdout
+
+
+def publish_metadata(source: Path):
+    METADATA_TARGET.parent.mkdir(parents=True, exist_ok=True)
+    temporary = METADATA_TARGET.with_suffix(".json.tmp")
+    try:
+        shutil.copyfile(source, temporary)
+        os.replace(temporary, METADATA_TARGET)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def main():
@@ -35,6 +47,8 @@ def main():
            "-p", "cardyssey-version.json", "-D", directory)
         metadata = json.loads((Path(directory) / "cardyssey-version.json").read_text())
         sha = metadata["sha256"].lower()
+        if metadata.get("versionCode", 0) <= 0 or metadata.get("sizeBytes", 0) <= 0:
+            raise RuntimeError("Invalid release version or size")
         commit = metadata["commit"]
         if not isinstance(commit, str) or len(commit) != 40 or len(sha) != 64:
             raise RuntimeError("Invalid release metadata")
@@ -47,6 +61,10 @@ def main():
             if hashlib.sha256(TARGET.read_bytes()).hexdigest() == sha:
                 if not SHA_FILE.is_file() or SHA_FILE.read_text().strip() != commit:
                     SHA_FILE.write_text(commit)
+                if not METADATA_TARGET.is_file() or METADATA_TARGET.read_bytes() != (Path(directory) / "cardyssey-version.json").read_bytes():
+                    METADATA_TARGET.parent.mkdir(parents=True, exist_ok=True)
+                    publish_metadata(Path(directory) / "cardyssey-version.json")
+                    print(f"APK release metadata refreshed: {tag}")
                 # Unchanged checks run every two minutes; avoid unbounded logs.
                 return
 
@@ -69,6 +87,7 @@ def main():
             os.replace(temporary, TARGET)
         finally:
             temporary.unlink(missing_ok=True)
+        publish_metadata(Path(directory) / "cardyssey-version.json")
         SHA_FILE.write_text(commit)
         print(f"APK updated: {tag}, {commit[:8]}, {apk.stat().st_size} bytes")
 

@@ -92,6 +92,12 @@ run_tv git worktree add --detach "$release" "$target"
 for file in web/.env.production web/.env.local web/.env; do
   [[ ! -f "$ROOT/$file" ]] || run_tv cp -p "$ROOT/$file" "$release/$file"
 done
+# Version metadata and APK are runtime data, not tracked in Git.
+if [[ -f "$ROOT/web/private-downloads/cardyssey-version.json" && -f "$ROOT/web/private-downloads/cardyssey-latest.apk" ]]; then
+  mkdir -p "$release/web/private-downloads"
+  cp -p "$ROOT/web/private-downloads/cardyssey-version.json" "$release/web/private-downloads/"
+  cp -p "$ROOT/web/private-downloads/cardyssey-latest.apk" "$release/web/private-downloads/"
+fi
 # Turbopack requires dependencies inside the release project root.
 # Generated OpenAPI TS model files may be untracked in Git; the live build has them.
 # Preserve repository files and fill only missing generated files from the working tree.
