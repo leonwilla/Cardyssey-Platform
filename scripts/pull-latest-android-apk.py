@@ -47,7 +47,7 @@ def main():
             if hashlib.sha256(TARGET.read_bytes()).hexdigest() == sha:
                 if not SHA_FILE.is_file() or SHA_FILE.read_text().strip() != commit:
                     SHA_FILE.write_text(commit)
-                print(f"APK current: {tag}, {commit[:8]}")
+                # Unchanged checks run every two minutes; avoid unbounded logs.
                 return
 
         gh("release", "download", tag, "-R", REPO,
