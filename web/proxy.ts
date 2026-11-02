@@ -73,7 +73,7 @@ export async function proxy(request: NextRequest) {
     if (asset) return secure(NextResponse.next());
     if (pathname === "/login") return secure(NextResponse.redirect("https://cardyssey.de/login"));
     const storefront = pathname === "/" || pathname === "/business-shop";
-    const catalogRead = (pathname === "/api/sets" || pathname.startsWith("/api/sets/") || pathname === "/api/shop/offers" || pathname === "/api/shop/wishlist-matches") && request.method === "GET";
+    const catalogRead = (pathname === "/api/sets" || pathname.startsWith("/api/sets/") || pathname === "/api/shop/offers" || pathname === "/api/shop/wishlist-matches" || pathname === "/api/auth/me" || pathname === "/api/wishlist" || pathname.startsWith("/api/wishlist/")) && (request.method === "GET" || (pathname.startsWith("/api/wishlist/") && request.method === "DELETE") || (pathname === "/api/wishlist" && request.method === "POST"));
     if (!storefront && !catalogRead) return secure(new NextResponse("Not Found", {status:404}));
     const access = request.cookies.get("cardyssey_access")?.value;
     if (!access) return renewal(request);
