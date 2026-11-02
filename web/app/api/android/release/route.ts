@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   try {
     const raw = await readFile(
-      path.join(process.cwd(), "private-downloads", "cardyssey-version.json"),
+      path.join(process.env.CARDYSSEY_PRIVATE_RELEASE_DIR || "/home/tv/cardshop/web/private-downloads", "cardyssey-version.json"),
       "utf8"
     );
     const metadata = JSON.parse(raw) as Record<string, unknown>;

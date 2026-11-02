@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return new Response("Forbidden", { status: 403 });
 
   try {
-    const apk = await readFile(path.join(process.cwd(), "private-downloads", "cardyssey-latest.apk"));
+    const apk = await readFile(path.join(process.env.CARDYSSEY_PRIVATE_RELEASE_DIR || "/home/tv/cardshop/web/private-downloads", "cardyssey-latest.apk"));
     return new Response(apk, {
       headers: {
         "Content-Type": "application/vnd.android.package-archive",
