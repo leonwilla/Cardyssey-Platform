@@ -234,6 +234,8 @@ export default function ChatPage() {
 
   const [shareCards, setShareCards] =
     useState<PortfolioItem[]>([]);
+  const [shareQuery,setShareQuery]=useState("");
+  const [shareSet,setShareSet]=useState("");
 
   const loadThreads =
     useCallback(async () => {
@@ -1374,6 +1376,7 @@ export default function ChatPage() {
               </button>
             </div>
 
+            <div className="chatShareFilters"><label>Set<select value={shareSet} onChange={e=>setShareSet(e.target.value)}><option value="">Alle Sets</option>{Array.from(new Set(shareCards.map(c=>c.setName||c.setId||"Unbekanntes Set"))).sort((a,b)=>a.localeCompare(b,"de")).map(name=><option key={name} value={name}>{name}</option>)}</select></label><label>Karte suchen<input value={shareQuery} onChange={e=>setShareQuery(e.target.value)} placeholder="Name, Nummer oder Variante …" /></label></div>
             {shareLoading ? (
               <div className="muted">
                 Sammlung wird geladen …
@@ -1389,7 +1392,7 @@ export default function ChatPage() {
                   gap: "7px",
                 }}
               >
-                {shareCards
+                {shareCards.filter(item=>(!shareSet||(item.setName||item.setId||"Unbekanntes Set")===shareSet)&&([item.name,item.localId,item.cardId,item.variant].join(" ").toLowerCase().includes(shareQuery.toLowerCase()))).slice(0,90)
                   .map((item) => (
                     <button
                       type="button"
@@ -1404,9 +1407,7 @@ export default function ChatPage() {
                         textAlign: "left",
                       }}
                     >
-                      <span className="chatAvatar">
-                        {initials(item.name)}
-                      </span>
+                      {item.imageBase?<img className="chatShareThumb" src={item.imageBase.replace(/\/$/,"")+"/low.webp"} alt="" loading="lazy"/>:<span className="chatAvatar">{initials(item.name)}</span>}
                       <span className="chatThreadText">
                         <strong>
                           {item.name}
