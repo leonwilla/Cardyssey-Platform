@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS cardyssey_shop.products (
  CHECK ((type='card' AND card_id IS NOT NULL AND set_id IS NOT NULL AND language IS NOT NULL)
  OR (type <> 'card' AND card_id IS NULL AND set_id IS NULL AND language IS NULL))
 );
+-- Sealed products (booster, display, ETB) can belong to a set without a card ID.
+ALTER TABLE cardyssey_shop.products ADD COLUMN IF NOT EXISTS associated_set_id TEXT;
+ALTER TABLE cardyssey_shop.products ADD COLUMN IF NOT EXISTS associated_language TEXT;
 CREATE TABLE IF NOT EXISTS cardyssey_shop.categories (
  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  parent_id BIGINT REFERENCES cardyssey_shop.categories(id) ON DELETE RESTRICT,
