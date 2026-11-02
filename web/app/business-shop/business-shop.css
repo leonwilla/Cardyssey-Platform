@@ -148,3 +148,5 @@
 .shopSetArtwork{overflow:hidden}
 .shopSetPreviewImage{height:114px;max-width:42%;object-fit:contain;filter:drop-shadow(0 8px 7px #1d292433);transform:rotate(-7deg)}
 .shopProductArt .shopSetPreviewImage{height:100%;max-width:100%;transform:none}
+
+.shopWishlistMatches{margin:20px 0 40px;padding:26px;border:1px solid #d9cdbb;border-radius:22px;background:#fbf7f0;color:#1d2924}.shopWishlistHeading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:20px}.shopWishlistHeading span{color:#c4502b;font-size:11px;font-weight:800;letter-spacing:.15em}.shopWishlistHeading h2{margin:8px 0;font-size:clamp(24px,3vw,34px)}.shopWishlistHeading p{color:#53645b}.shopWishlistHeading a{color:#c4502b}.shopWishlistVariant{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#965021}@media(max-width:700px){.shopWishlistMatches{padding:16px}.shopWishlistHeading{align-items:flex-start;flex-direction:column}}

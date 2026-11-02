@@ -5,6 +5,7 @@ import "./business-shop.css";
 type SetItem={id:string;name:string;officialCount?:number;totalCount?:number;logo?:string|null;symbol?:string|null};
 type CardItem={id:string;name:string;localId?:string;imageBase?:string|null};
 type SetDetail={name:string;cards:CardItem[]};
+type WishlistMatch=Offer & {wishlistName:string;priority:string;variantVerified:boolean};
 type Offer={id:number;card_id:string;set_id:string;language:string;variant:string;condition:string;price_minor:number;available_quantity:number;title?:string;image_url?:string|null};
 function SetArtwork({setId,language,cardId}:{setId:string;language:string;cardId?:string}){
  const [image,setImage]=useState<string|null>(null);
@@ -20,6 +21,7 @@ export default function ShopPage(){
  const [sets,setSets]=useState<SetItem[]>([]),[detail,setDetail]=useState<SetDetail|null>(null),[loading,setLoading]=useState(true);
  const [detailLoading,setDetailLoading]=useState(false);
  const [offers,setOffers]=useState<Offer[]>([]);
+ const [wishlistMatches,setWishlistMatches]=useState<WishlistMatch[]>([]),[wishlistCount,setWishlistCount]=useState<number|null>(null);
  const [mode,setMode]=useState<"sets"|"listings">("sets"),[onlyStock,setOnlyStock]=useState(true),[sort,setSort]=useState("name");
  const [design,setDesign]=useState<"classic"|"modern">("modern");
  useEffect(()=>{const stored=window.localStorage.getItem("cardyssey.businessShop.design");if(stored==="classic"||stored==="modern")setDesign(stored)},[]);
@@ -27,6 +29,7 @@ export default function ShopPage(){
  useEffect(()=>{const abort=new AbortController();setSetId("");setDetail(null);setDetailLoading(false);setError("");setLoading(true);fetch("/api/sets?language="+encodeURIComponent(language),{signal:abort.signal,cache:"no-store"}).then(async res=>{if(!res.ok)throw Error("Katalog konnte nicht geladen werden");return res.json()}).then(v=>{if(!abort.signal.aborted)setSets(Array.isArray(v)?v:[])}).catch(e=>{if(!abort.signal.aborted)setError(String(e))}).finally(()=>{if(!abort.signal.aborted)setLoading(false)});return()=>abort.abort()},[language]);
  useEffect(()=>{const ctl=new AbortController();fetch("/api/shop/offers?language="+encodeURIComponent(language),{signal:ctl.signal,cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Verkaufsbestand konnte nicht geladen werden");return r.json()}).then(v=>{if(!ctl.signal.aborted)setOffers(Array.isArray(v)?v:[])}).catch(e=>{if(!ctl.signal.aborted){setOffers([]);setError(e instanceof Error?e.message:String(e))}});return()=>ctl.abort()},[language]);
  useEffect(()=>{if(!setId)return;const abort=new AbortController();setDetailLoading(true);setDetail(null);fetch("/api/sets/"+encodeURIComponent(setId)+"?language="+encodeURIComponent(language),{signal:abort.signal,cache:"no-store"}).then(async res=>{if(!res.ok)throw Error("Set nicht erreichbar");return res.json()}).then(v=>{if(!abort.signal.aborted)setDetail(v)}).catch(e=>{if(!abort.signal.aborted)setError(String(e))}).finally(()=>{if(!abort.signal.aborted)setDetailLoading(false)});return()=>abort.abort()},[setId,language]);
+ useEffect(()=>{const ctl=new AbortController();fetch("/api/shop/wishlist-matches",{signal:ctl.signal,cache:"no-store",credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(v=>{if(ctl.signal.aborted)return;if(v){setWishlistCount(v.wishlistCount);setWishlistMatches(Array.isArray(v.matches)?v.matches:[]);}}).catch(()=>{});return()=>ctl.abort()},[]);
  const match=useMemo(()=>query.trim().toLocaleLowerCase(),[query]);
  const offeredSetIds=new Set(offers.filter(o=>o.available_quantity>0).map(o=>o.set_id));
  const visibleSets=sets.filter(s=>s.name.toLocaleLowerCase().includes(match)&&(!onlyStock||offeredSetIds.has(s.id))).sort((a,b)=>sort==="count"?(b.officialCount??b.totalCount??0)-(a.officialCount??a.totalCount??0):a.name.localeCompare(b.name,"de"));
@@ -41,6 +44,7 @@ export default function ShopPage(){
  <a className="businessShopHeroAction" href="#shop-katalog">Sets entdecken <span aria-hidden="true">→</span></a>
  <div className="businessShopHeroStats"><span><strong>{sets.length}</strong> Sets im Katalog</span><span><strong>{offers.length}</strong> aktuelle Verkaufsangebote</span></div></div>
  <div className="businessShopHeroArtwork" aria-hidden="true"><div className="businessShopHeroCard businessShopHeroCardBack"></div><div className="businessShopHeroCard businessShopHeroCardFront"><img src="/cardyssey-emblem-gold.png" alt=""/></div><span className="businessShopHeroHalo"></span></div></div>}
+ {wishlistCount!==null && <section className="shopWishlistMatches" aria-label="Persönliche Wunschlisten-Angebote"><div className="shopWishlistHeading"><div><span>FÜR DICH GEFUNDEN</span><h2>Von deiner Wunschliste im Shop</h2><p>{wishlistMatches.length?`Wir haben ${wishlistMatches.length} passende Angebote zu deinen ${wishlistCount} Wunschlisten-Karten gefunden.`:`Du hast ${wishlistCount} Karten auf deiner Wunschliste. Aktuell gibt es dafür keine sicheren Lager-Treffer.`}</p></div><Link href="https://cardyssey.de/wishlist">Wunschliste öffnen</Link></div>{wishlistMatches.length>0&&<div className="shopProductGrid">{wishlistMatches.slice(0,6).map(o=><div key={o.id}><span className="shopWishlistVariant">{o.variantVerified?"Karte gefunden":"Druckvariante prüfen"}</span><OfferTile offer={o} language={o.language} setName={o.set_id}/></div>)}</div>}</section>}
  <div id="shop-katalog" className="businessShopSectionHeading"><span>DEIN KARTENKATALOG</span><h2>{mode==="listings"?"Verfügbare Einzelkarten":setId?(detail?.name||"Set entdecken"):"Erweiterungen entdecken"}</h2><p>Wie bei einem TCG-Marktplatz: nach Sets suchen, verfügbare Karten finden und Angebote vergleichen.</p></div>
  <section className="pageIntro" style={{display:design==="modern"?"none":undefined}}><div><span className="eyebrowText">Cardyssey · Gewerblicher Webshop</span><h1>Cardyssey Webshop · Einzelkarten</h1><p>Hier werden ausschließlich Angebote aus dem gewerblichen Cardyssey-Warenbestand angezeigt. Das Nutzerinventar bleibt unabhängig. Bestellungen und Zahlungen sind derzeit deaktiviert.</p></div></section>
 
