@@ -16,7 +16,7 @@ function SetArtwork({setId,language,cardId}:{setId:string;language:string;cardId
  return image?<img className="shopSetPreviewImage" src={image} alt="" loading="lazy"/>:<span className="shopSetMark" aria-hidden="true">✦</span>;
 }
 function OfferTile({offer,language,setName}:{offer:Offer;language:string;setName:string}){
- return <article className="shopProduct"><div className="shopProductArt">{offer.image_url?<img src={offer.image_url} alt={offer.title||offer.card_id} loading="lazy"/>:<SetArtwork setId={offer.set_id} language={language} cardId={offer.card_id}/>}</div><div className="shopProductInfo"><span className="shopProductMeta">{setName} · {language.toUpperCase()}</span><h4>{offer.title||offer.card_id}</h4><p>{offer.variant} · {offer.condition}</p><div className="shopProductBottom"><strong>{(offer.price_minor/100).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</strong><small>{offer.available_quantity} verfügbar</small></div></div></article>;
+ return <article className="shopProduct"><div className="shopProductArt">{offer.image_url?<img src={offer.image_url} alt={offer.title||offer.card_id} loading="lazy"/>:<SetArtwork setId={offer.set_id} language={language} cardId={offer.card_id}/>}</div><div className="shopProductInfo"><span className="shopProductMeta">{setName} · {language.toUpperCase()}</span><h4>{offer.title||offer.card_id}</h4><p>{offer.product_type==="sealed"?"Originalverpacktes Produkt":offer.product_type==="accessory"?"Zubehör":offer.variant+" · "+offer.condition}</p><div className="shopProductBottom"><strong>{(offer.price_minor/100).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</strong><small>{offer.available_quantity} verfügbar</small></div></div></article>;
 }
 const languages=[["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-cn","Chinesisch (vereinfacht)"],["zh-tw","Chinesisch (traditionell)"]];
 export default function ShopPage(){
@@ -42,7 +42,7 @@ export default function ShopPage(){
  const offeredSetIds=new Set(offers.filter(o=>o.available_quantity>0).map(o=>o.set_id));
  const visibleSets=sets.filter(s=>s.name.toLocaleLowerCase().includes(match)&&offeredSetIds.has(s.id)).sort((a,b)=>sort==="count"?(b.officialCount??b.totalCount??0)-(a.officialCount??a.totalCount??0):a.name.localeCompare(b.name,"de"));
  const visibleCards=(detail?.cards||[]).filter(c=>(c.name+" "+(c.localId||"")).toLocaleLowerCase().includes(match)&&(!onlyStock||offers.some(o=>o.card_id===c.id&&o.set_id===setId)));
- const visibleOffers=offers.filter(o=>(o.title+" "+o.card_id+" "+(sets.find(s=>s.id===o.set_id)?.name||"")).toLocaleLowerCase().includes(match)).sort((a,b)=>sort==="price-asc"?a.price_minor-b.price_minor:sort==="price-desc"?b.price_minor-a.price_minor:(a.title||"").localeCompare(b.title||"","de"));
+ const visibleOffers=offers.filter(o=>(o.product_type||"card")==="card").filter(o=>(o.title+" "+o.card_id+" "+(sets.find(s=>s.id===o.set_id)?.name||"")).toLocaleLowerCase().includes(match)).sort((a,b)=>sort==="price-asc"?a.price_minor-b.price_minor:sort==="price-desc"?b.price_minor-a.price_minor:(a.title||"").localeCompare(b.title||"","de"));
  const showSet=(id:string)=>{setSetId(id);setMode("sets");setQuery("");window.scrollTo({top:0,behavior:"smooth"})};
  const goHome=()=>{setShopView("home");setSetId("");setQuery("");window.history.replaceState(null,"", "/");window.scrollTo({top:0,behavior:"smooth"})};
  const goCatalog=()=>{setSetId("");setQuery("");window.scrollTo({top:0,behavior:"smooth"})};
@@ -63,7 +63,7 @@ export default function ShopPage(){
    <h3>Unser Sortiment</h3>
    <div className="shopCategoryTree" aria-label="Produktkategorien">
      <div className="shopCategoryTitle"><span className="shopCategoryEmblem">✦</span><strong>Pokémon</strong></div>
-     <button className={category==="pokemon"&&mode==="sets"?"active":""} onClick={()=>{setCategory("pokemon");setMode("sets");setSetId("");setQuery("")}}>Sets <span>{sets.length}</span></button>
+     <button className={category==="pokemon"&&mode==="sets"?"active":""} onClick={()=>{setCategory("pokemon");setMode("sets");setSetId("");setQuery("")}}>Sets <span>{offeredSetIds.size}</span></button>
      <button className={category==="pokemon"&&mode==="listings"?"active":""} onClick={()=>{setCategory("pokemon");setMode("listings");setSetId("");setQuery("")}}>Einzelkarten <span>{offers.length}</span></button>
      <button className={category==="pokemon"&&mode==="plush"?"active":""} onClick={()=>{setCategory("pokemon");setMode("plush");setSetId("");setQuery("")}}>Merch & Zubehör <small>Demnächst</small></button>
      <div className="shopCategoryTitle shopCategoryOther"><span className="shopCategoryEmblem">☠</span><strong>One Piece</strong><small>In Vorbereitung</small></div>
