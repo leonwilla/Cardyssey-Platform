@@ -330,60 +330,15 @@ export function AppShell({
           )}
 
           {canAdmin && (
-            <>
-              <Link
-                href="/admin"
-                className={
-                  active === "/admin"
-                    ? "navItem active adminNavItem"
-                    : "navItem adminNavItem"
-                }
-              >
-                <span className="navIcon">
-                  <NavGlyph name="admin" />
-                </span>
-
-                <span>
-                  Control Center
-                </span>
-              </Link>
-
-              <Link href="/admin/shop-catalog" className={active === "/admin/shop-catalog" ? "navItem active adminNavItem" : "navItem adminNavItem"}>
-                <span className="navIcon"><NavGlyph name="shop" /></span>
-                <span>Kartenkatalog → Shop</span>
-              </Link>
-
-              <Link
-                href="/admin/prices"
-                className={
-                  active === "/admin/prices"
-                    ? "navItem active adminNavItem"
-                    : "navItem adminNavItem"
-                }
-              >
-                <span className="navIcon">
-                  <NavGlyph name="marketplace" />
-                </span>
-                <span>Preis-Monitoring</span>
-              </Link>
-
-              <Link
-                href="/admin/chat"
-                className={
-                  active === "/admin/chat"
-                    ? "navItem active adminNavItem"
-                    : "navItem adminNavItem"
-                }
-              >
-                <span className="navIcon">
-                  <NavGlyph name="friends" />
-                </span>
-
-                <span>
-                  Chat-Moderation
-                </span>
-              </Link>
-            </>
+            <div className="adminNavGroup">
+              <details className="adminNavDetails adminNavMain" open={active.startsWith("/admin/") || undefined}>
+                <summary><span className="navIcon"><NavGlyph name="admin" /></span><span>Control Center</span><span aria-hidden="true">▾</span></summary>
+                <Link href="/admin" className={active === "/admin" ? "navItem active" : "navItem"}>Übersicht</Link>
+                <Link href="/admin/shop-catalog" className={active === "/admin/shop-catalog" ? "navItem active" : "navItem"}>Kartenkatalog → Shop</Link>
+                <Link href="/admin/prices" className={active === "/admin/prices" ? "navItem active" : "navItem"}>Preis-Monitoring</Link>
+                <Link href="/admin/chat" className={active === "/admin/chat" ? "navItem active" : "navItem"}>Chat-Moderation</Link>
+              </details>
+            </div>
           )}
         </nav>
 

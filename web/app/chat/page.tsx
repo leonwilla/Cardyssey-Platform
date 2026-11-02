@@ -185,6 +185,12 @@ export default function ChatPage() {
 
   const [rooms, setRooms] =
     useState<CommunityRoom[]>([]);
+  const [showCommunityDirectory,setShowCommunityDirectory]=useState(false);
+  const [joinedRoomIds,setJoinedRoomIds]=useState<string[]>([]);
+  const [roomSearch,setRoomSearch]=useState("");
+  useEffect(()=>{try{const stored=JSON.parse(window.localStorage.getItem("cardyssey.chat.joinedRooms")||"[]");if(Array.isArray(stored))setJoinedRoomIds(stored.filter((x):x is string=>typeof x==="string"))}catch{}},[]);
+  function toggleJoinedRoom(id:string){setJoinedRoomIds(prev=>{const next=prev.includes(id)?prev.filter(x=>x!==id):[...prev,id];window.localStorage.setItem("cardyssey.chat.joinedRooms",JSON.stringify(next));return next})}
+
 
   const [selection, setSelection] =
     useState<ChatSelection | null>(null);
@@ -409,14 +415,6 @@ export default function ChatPage() {
       return;
     }
 
-    if (rooms.length > 0) {
-      setSelection({
-        kind: "community",
-        id: rooms[0].id,
-      });
-      return;
-    }
-
     if (threads.length > 0) {
       setSelection({
         kind: "friend",
@@ -425,7 +423,6 @@ export default function ChatPage() {
     }
   }, [
     groups,
-    rooms,
     selection,
     threads,
   ]);
@@ -1599,19 +1596,9 @@ export default function ChatPage() {
             ))
           )}
 
-          <div className="chatListHead">
-            <strong>Community</strong>
-            <span>
-              {rooms.length}
-            </span>
-          </div>
-
-          {rooms.length === 0 ? (
-            <p className="muted">
-              Noch keine Community-Räume verfügbar.
-            </p>
-          ) : (
-            rooms.map((room) => (
+          <div className="chatListHead"><strong>Meine Community-Räume</strong><span>{rooms.filter(r=>joinedRoomIds.includes(r.id)).length}</span></div>
+          {rooms.filter(r=>joinedRoomIds.includes(r.id)).map(room=>(
+            <div className="chatDirectoryRow" key={room.id}>
               <button
                 type="button"
                 key={room.id}
@@ -1621,12 +1608,7 @@ export default function ChatPage() {
                     ? "chatThread active"
                     : "chatThread"
                 }
-                onClick={() =>
-                  setSelection({
-                    kind: "community",
-                    id: room.id,
-                  })
-                }
+                onClick={() => {setSelection({kind:"community",id:room.id});setShowCommunityDirectory(false)}}
               >
                 <span className="chatAvatar">
                   #
@@ -1653,8 +1635,14 @@ export default function ChatPage() {
                   </b>
                 )}
               </button>
-            ))
-          )}
+              <button className="chatRoomJoin" title="Raum aus meiner Liste entfernen" onClick={()=>toggleJoinedRoom(room.id)}>−</button>
+            </div>
+          ))}
+          <button type="button" className="chatBrowseRooms" onClick={()=>setShowCommunityDirectory(v=>!v)} aria-expanded={showCommunityDirectory}>
+            {showCommunityDirectory?"Raumverzeichnis schließen":"+ Community-Räume entdecken"} <small>{rooms.length} verfügbar</small>
+          </button>
+          {showCommunityDirectory&&<div className="chatDirectory"><input type="search" value={roomSearch} onChange={e=>setRoomSearch(e.target.value)} placeholder="Sprache, Raum oder Set suchen" aria-label="Community-Räume durchsuchen" />
+          {rooms.filter(room=>(room.name+" "+room.languageCode+" "+(room.setName||"")).toLowerCase().includes(roomSearch.toLowerCase())).slice(0,30).map(room=><div className="chatDirectoryRow" key={room.id}><button className="chatThread" onClick={()=>setSelection({kind:"community",id:room.id})}><span className="chatAvatar">#</span><span className="chatThreadText"><strong>{room.name}</strong><small>{room.languageCode.toUpperCase()}{room.setName?" · "+room.setName:""}</small></span></button><button className="chatRoomJoin" title={joinedRoomIds.includes(room.id)?"Entfernen":"Zu meinen Räumen hinzufügen"} onClick={()=>toggleJoinedRoom(room.id)}>{joinedRoomIds.includes(room.id)?"✓":"+"}</button></div>)}</div>}
         </aside>
 
         <section className="chatRoom">
