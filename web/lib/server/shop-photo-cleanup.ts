@@ -10,7 +10,7 @@ export async function deleteUnreferencedPhoto(language:string,setId:string,id:st
  if(inUse==="t")return false;
  const dir=path.join(SHOP_PHOTO_ROOT,language,setId);
  let meta:StoredPhoto;
- try{meta=JSON.parse(await readFile(path.join(dir,id+".json"),"utf8")))}catch{return false}
+ try{meta=JSON.parse(await readFile(path.join(dir,id+".json"),"utf8"))}catch{return false}
  const ext=meta.contentType==="image/png"?"png":meta.contentType==="image/webp"?"webp":"jpg";
  await unlink(path.join(dir,id+"."+ext));
  await unlink(path.join(dir,id+".json"));
