@@ -102,3 +102,21 @@ of cards with prices remains **disabled** until the initial data-quality audit.
 If eBay blocks purchase history or omits a paid amount, the listing remains
 a reference only. It is not a price. Weekly and manual full runs share the same
 one-browser lock and preserve historical observations.
+
+## Acquisition source routing and repeatable human corrections
+
+German cards marked exactly `Häufig` or `Ungewöhnlich` use the existing
+variant-matched TCGdex/Cardmarket price route. They are excluded from the
+normal eBay review queue and skipped by automatic eBay set scans, including
+weekly incremental runs. Rarer, illustration, holo-rare, EX/ultra, and promo
+cards remain eBay eligible. Existing historical eBay transactions are kept,
+and an authorized manual eBay test remains possible. No PriceCharting values
+are chosen as a fallback for bulk cards.
+
+`ebay_listing_feedback` stores admin decisions by card ID + sold listing ID,
+including the exact listing title and optional explanation. It **never** edits
+existing transaction/price rows or teaches the parser automatically. The
+structured examples are meant to be grouped into parser rule changes and
+regression tests, to prevent an overly broad correction from breaking
+unrelated cards. Valid categories: wrong card, valid specific sale,
+selection listing, wrong print, unknown paid price, or other.

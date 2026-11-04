@@ -9,6 +9,7 @@ from price_history import save_sales, stored_sales, choose_median
 from incremental_scan import scan_window,mark_success
 from offer_references import store_offer_candidates
 from purchase_history import audit_purchase_history
+from source_policy import load_bulk_ids
 
 ROOT=Path(__file__).resolve().parent
 QUERY="""SELECT jsonb_agg(to_jsonb(c) ORDER BY priority,card_id) FROM (
@@ -255,9 +256,22 @@ def main():
         state={'total':len(cards),'results':[], 'pricing_rule':'rolling_history_v1', 'status':'RUNNING', 'started_at':time.time(), 'run_start_done':0}
         atomic_json(statefile,state)
     done={r['card_id'] for r in state['results']}
+    bulk_ids=load_bulk_ids(db)
     for card in cards:
         if card['card_id'] in done:continue
         directory=args.out/card['card_id'];directory.mkdir(exist_ok=True)
+        if card['card_id'] in bulk_ids:
+            outcome={'card_id':card['card_id'],'name':card['name'],
+                'set_id':card['set_id'],'status':'BULK_TCG_ONLY',
+                'fetch_status':'SKIPPED','pricing_source':'TCG_CARDMARKET',
+                'reason':'COMMON_OR_UNCOMMON_CARD',
+                'note':'TCG/ Cardmarket reference; existing eBay sales remain stored'}
+            state['results'].append(outcome)
+            state.update(status='RUNNING',finished=len(state['results']),checked_at=datetime.now(timezone.utc).isoformat())
+            state['counts']=dict(collections.Counter(x['status'] for x in state['results']))
+            atomic_json(statefile,state)
+            print(json.dumps(outcome,ensure_ascii=False),flush=True)
+            continue
         if card['set_id']!='mep' and (not str(card['local_id']).isdigit() or int(card['local_id'])>int(card.get('denominator',128))):
             outcome={'card_id':card['card_id'],'name':card['name'],'set_id':card['set_id'],'status':'SET_NUMBER_REVIEW','fetch_status':'SKIPPED','nm_candidates':0}
             state['results'].append(outcome);state.update(status='RUNNING',finished=len(state['results']));state['counts']=dict(collections.Counter(r['status'] for r in state['results']));atomic_json(statefile,state)

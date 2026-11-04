@@ -30,6 +30,10 @@ if action=='start':
   cursor_target=BASE/'incremental_scan.py'
   if cursor_source.is_file() and (not cursor_target.exists() or hashlib.sha256(cursor_source.read_bytes()).digest()!=hashlib.sha256(cursor_target.read_bytes()).digest()):
    shutil.copy2(cursor_source,cursor_target)
+  policy_source=Path('/home/tv/cardshop/scripts/ebay-collector/source_policy.py')
+  policy_target=BASE/'source_policy.py'
+  if policy_source.is_file() and (not policy_target.exists() or hashlib.sha256(policy_source.read_bytes()).digest()!=hashlib.sha256(policy_target.read_bytes()).digest()):
+   shutil.copy2(policy_source,policy_target)
   purchase_source=Path('/home/tv/cardshop/scripts/ebay-collector/purchase_history.py')
   purchase_target=BASE/'purchase_history.py'
   if purchase_source.is_file() and (not purchase_target.exists() or hashlib.sha256(purchase_source.read_bytes()).digest()!=hashlib.sha256(purchase_target.read_bytes()).digest()):

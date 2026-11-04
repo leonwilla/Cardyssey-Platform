@@ -78,7 +78,12 @@ try:
    references[card_id]=json.loads(data)
 except (subprocess.CalledProcessError,subprocess.TimeoutExpired,ValueError):pass
 items=[]
+# Bulk cards remain visible on the TCG tab, not the rare/special eBay queue.
+# Do not delete existing eBay observations or previously reviewed evidence.
+bulk_raw=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-Atc',"SELECT card_id FROM catalog_cards_mirror WHERE language_code='de' AND lower(trim(rarity)) IN ('häufig','ungewöhnlich','common','uncommon');"],timeout=15,text=True)
+bulk_ids=set(bulk_raw.splitlines())
 for card_id,c in cards.items():
+ if card_id in bulk_ids:continue
  r=results.get(card_id,{});price=prices.get(card_id)
  review=reviews.get(card_id,{'status':'AUTO','refreshDays':7,'showOfferReferences':True,'note':''})
  offers=references.get(card_id,[])
@@ -103,15 +108,20 @@ for card_id,c in cards.items():
 catalog_sql="SELECT set_id,count(*) FROM catalog_cards_mirror WHERE language_code='de' AND set_id IN ('30th','30th-c','mep','sv01','sv02') GROUP BY set_id"
 catalog_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',catalog_sql],timeout=12,text=True)
 catalog_counts={setid:int(count) for line in catalog_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
+bulk_sql="SELECT set_id,count(*) FROM catalog_cards_mirror WHERE language_code='de' AND lower(trim(rarity)) IN ('häufig','ungewöhnlich','common','uncommon') AND set_id IN ('30th','30th-c','mep','sv01','sv02') GROUP BY set_id"
+bulk_counts_raw=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',bulk_sql],timeout=12,text=True)
+bulk_counts={setid:int(count) for line in bulk_counts_raw.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
+for setid,count in bulk_counts.items():catalog_counts[setid]=max(0,catalog_counts.get(setid,0)-count)
 # eBay MEP group covers only anniversary-related 094–101, not the entire promo series.
 catalog_counts['mep']=8
 # Report eBay coverage separately from fallback reference prices.
 fallback_sql="""SELECT c.set_id,count(*) FROM catalog_cards_mirror c WHERE c.language_code='de'
  AND c.set_id IN ('30th','30th-c','mep','sv01','sv02')
+ AND lower(trim(COALESCE(c.rarity,''))) NOT IN ('häufig','ungewöhnlich','common','uncommon')
  AND (c.set_id <> 'mep' OR c.local_id BETWEEN '094' AND '101')
  AND EXISTS (SELECT 1 FROM tcg_price_cache t WHERE t.card_id=c.card_id
              AND t.language_code=c.language_code AND t.base_eur>0)
  GROUP BY c.set_id"""
 fallback_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',fallback_sql],timeout=12,text=True)
 fallback_counts={setid:int(count) for line in fallback_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
-print(json.dumps({'catalogCounts':catalog_counts,'fallbackCounts':fallback_counts,'items':items,'runs':[{'name':p.name,'status':json.loads((p/'progress.json').read_text()).get('status')} for p in runs]},ensure_ascii=False))
+print(json.dumps({'catalogCounts':catalog_counts,'bulkCounts':bulk_counts,'fallbackCounts':fallback_counts,'items':items,'runs':[{'name':p.name,'status':json.loads((p/'progress.json').read_text()).get('status')} for p in runs]},ensure_ascii=False))
