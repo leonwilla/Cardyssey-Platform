@@ -21,6 +21,11 @@ class RollingEbayPriceTests(unittest.TestCase):
         x=choose_median([self.make(400,1),self.make(401,2),self.make(600,3)],self.today)
         self.assertEqual((x['window_days'],x['median_eur']),(730,2))
 
+    def test_recent_single_sale_stays_in_30day_window(self):
+        result=choose_median([self.make(14,1)],self.today)
+        self.assertEqual(result['window_days'],30)
+        self.assertTrue(result['low_sample'])
+
     def test_single_sale_is_kept_when_no_three_exist(self):
         x=choose_median([self.make(2500,10)],self.today)
         self.assertEqual((x['sample_count'],x['median_eur'],x['low_sample']),(1,10,True))

@@ -73,8 +73,14 @@ def choose_median(sales, today=None, desired_samples=3):
             selected = (days, label, matches)
             break
     if selected is None:
-        days, label = windows_for(min(day for day, _, _ in valid), today)[-1]
-        selected = (days, label, [s for _, _, s in valid])
+        # Even if no window reaches three sales, do not label a recent lone
+        # sale as "1 Jahr": select the *shortest* window containing the most
+        # observed sold items, with low_sample clearly flagged.
+        fallback=[]
+        for days, label in windows_for(min(day for day, _, _ in valid), today):
+            matches=[source for day, _, source in valid if (today-day).days <= days]
+            if matches:fallback.append((days,label,matches))
+        selected=max(fallback,key=lambda x:(len(x[2]),-x[0]))
     days, label, matches = selected
     amounts = [float(s['sold_eur']) for s in matches]
     return dict(window_days=days,window_label=label,sample_count=len(matches),

@@ -60,17 +60,20 @@ if action=='start':
    archive=JOBS/(setid+'-history-'+str(int(time.time())));job.rename(archive);job.mkdir()
   if resume:
    previous['status']='QUEUED'
+   previous['started_at']=time.time()
+   previous['run_start_done']=len(previous.get('results',[]))
    previous_file.write_text(json.dumps(previous,ensure_ascii=False))
   else:
    (job/'manifest.json').write_text(json.dumps(selected,ensure_ascii=False))
-   (job/'progress.json').write_text(json.dumps({'status':'QUEUED','total':len(selected),'results':[]}))
+   (job/'progress.json').write_text(json.dumps({'status':'QUEUED','total':len(selected),'results':[],'started_at':time.time(),'run_start_done':0}))
   log=(job/'runner.log').open('a')
   subprocess.Popen(['python3','-u','anniversary_batch.py','--out',str(job)],cwd=str(BASE),stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,start_new_session=True)
   print(json.dumps({'started':True,'total':len(selected)}))
 elif action=='status':
  p=job/'progress.json';d=json.loads(p.read_text()) if p.exists() else {'status':'NOT_STARTED','results':[]}
- results=d.get('results',[]);total=d.get('total',len(results));started=job.stat().st_mtime if job.exists() else None
- elapsed=max(1,time.time()-started) if started else None
- remaining=round(elapsed/max(1,len(results))*(total-len(results))) if results and d.get('status')=='RUNNING' else None
+ results=d.get('results',[]);total=d.get('total',len(results))
+ started=d.get('started_at');completed_since_start=len(results)-d.get('run_start_done',0)
+ elapsed=max(1,time.time()-started) if isinstance(started,(int,float)) else None
+ remaining=round(elapsed/completed_since_start*(total-len(results))) if elapsed and completed_since_start>0 and d.get('status')=='RUNNING' else None
  print(json.dumps({'status':d.get('status','NOT_STARTED'),'finished':len(results),'total':total,'counts':d.get('counts',{}),'estimatedRemainingSeconds':remaining,'last':results[-1] if results else None}))
 else:sys.exit('BAD_ACTION')

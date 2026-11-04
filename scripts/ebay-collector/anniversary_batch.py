@@ -248,7 +248,7 @@ def main():
     if state.get('pricing_rule') != 'rolling_history_v1':
         audit=args.out/('previous-progress-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'.json')
         atomic_json(audit,state)
-        state={'total':len(cards),'results':[], 'pricing_rule':'rolling_history_v1', 'status':'RUNNING'}
+        state={'total':len(cards),'results':[], 'pricing_rule':'rolling_history_v1', 'status':'RUNNING', 'started_at':time.time(), 'run_start_done':0}
         atomic_json(statefile,state)
     done={r['card_id'] for r in state['results']}
     for card in cards:
