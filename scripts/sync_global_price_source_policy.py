@@ -93,7 +93,16 @@ ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
  selected_price_source=EXCLUDED.selected_price_source,
  selected_price_eur=EXCLUDED.selected_price_eur,
  price_status=EXCLUDED.price_status,price_checked_at=EXCLUDED.price_checked_at,
- policy_updated_at=now();
+ policy_updated_at=now()
+ WHERE (global_price_source_policy.set_id,global_price_source_policy.rarity,
+        global_price_source_policy.price_class,global_price_source_policy.preferred_market,
+        global_price_source_policy.preferred_provider_family,
+        global_price_source_policy.selected_price_source,global_price_source_policy.selected_price_eur,
+        global_price_source_policy.price_status,global_price_source_policy.price_checked_at)
+ IS DISTINCT FROM
+       (EXCLUDED.set_id,EXCLUDED.rarity,EXCLUDED.price_class,EXCLUDED.preferred_market,
+        EXCLUDED.preferred_provider_family,EXCLUDED.selected_price_source,EXCLUDED.selected_price_eur,
+        EXCLUDED.price_status,EXCLUDED.price_checked_at);
 """
 REPORT="""SELECT jsonb_build_object(
  'languages',jsonb_object_agg(language_code,stats),

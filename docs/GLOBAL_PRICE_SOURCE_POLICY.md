@@ -86,7 +86,7 @@ Historische Verkäufe werden bei Änderungen der Quellenstrategie nicht gelösch
 
 - `V55__global_price_source_policy.sql`: persistente Quelle pro Sprache,
   Katalogkarte und Druckvariante; `global_price_policy_sync`: Auditstatus.
-- `scripts/sync_global_price_source_policy.py`: idempotenter Upsert aus
+- `scripts/sync_global_price_source_policy.py`: idempotenter, bei unveränderten Datensätzen WAL-/Speicherplatz-sparender Upsert aus
   `catalog_cards_mirror` + `tcg_price_cache`, keine externen Anfragen und keine
   Preisänderungen. Aktualisiert auch fehlende Karten-/Druckdaten.
 - `GlobalPriceSourcePolicy.kt` und `PricingRoutes.kt`: gemeinsame API-Regel;
