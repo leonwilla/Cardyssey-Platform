@@ -11,6 +11,8 @@ for parent in [root/'anniversary-precise-search-20261023',*(root/'admin-set-runs
  if not p.exists():continue
  data=json.loads(p.read_text());results=data.get('results',[]);total=data.get('total',0);status=data.get('status','UNKNOWN');running=bool(active) and status=="RUNNING" and parent.name!="anniversary-precise-search-20261023"
  if status=='RUNNING' and not running:status='INTERRUPTED'
+ # Finished scans belong in stored card reports, not the live task panel.
+ if status=='COMPLETE':continue
  elapsed=max(1,time.time()-p.stat().st_ctime)
  eta=None # No reliable start timestamp for historical batch; do not invent ETA
  jobs.append({'id':parent.name,'name':'30 Jahre – fehlende eBay-Preise' if parent.name=='anniversary-precise-search-20261023' else names.get(parent.name,parent.name),'status':status,'done':len(results),'total':total,'counts':data.get('counts',{}),'etaSeconds':eta,'running':running})
