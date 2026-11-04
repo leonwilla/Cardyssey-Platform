@@ -30,6 +30,20 @@ class GlobalPolicyTests(unittest.TestCase):
   value=query("""SELECT count(*) FROM global_price_source_policy
     WHERE variant_id='__NO_EXACT_PRINT__' AND (selected_price_eur IS NOT NULL OR price_status<>'NO_EXACT_VARIANT')""")
   self.assertEqual(value,'0')
+ def test_asian_localized_rarity_codes_are_bulk(self):
+  wrong=query("""SELECT count(*) FROM global_price_source_policy
+    WHERE (language_code='ko' AND lower(trim(rarity)) IN ('c','u')
+      OR language_code='ja' AND lower(trim(rarity)) IN ('rare_c','rare_u','rare_c_c','rare_u_c'))
+      AND price_class <> 'BULK'""")
+  self.assertEqual(wrong,'0')
+  present=query("""SELECT count(*) FROM global_price_source_policy
+    WHERE language_code='ko' AND lower(trim(rarity)) IN ('c','u') AND price_class='BULK'""")
+  self.assertGreater(int(present),1000)
+ def test_unknown_rarity_is_not_assumed_special(self):
+  wrong=query("""SELECT count(*) FROM global_price_source_policy
+    WHERE lower(trim(coalesce(rarity,''))) IN ('','none','keine','unknown','n/a','unbekannt')
+    AND price_class <> 'RARITY_UNVERIFIED'""")
+  self.assertEqual(wrong,'0')
  def test_bulk_german_price_is_exact_normal_variant(self):
   row=query("""SELECT p.selected_price_eur,p.selected_price_source,p.price_class
     FROM global_price_source_policy p JOIN catalog_cards_mirror c
