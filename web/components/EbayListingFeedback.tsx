@@ -8,12 +8,12 @@ const options=[
  ['PAID_PRICE_UNKNOWN','Verkaufspreis nicht nachweisbar'],
  ['OTHER','Anderer Fehler']
 ] as const;
-export function EbayListingFeedback({cardId,itemId,title}:{cardId:string;itemId:string;title:string}){
+export function EbayListingFeedback({cardId,itemId,title,initialFeedback}:{cardId:string;itemId:string;title:string;initialFeedback?:{decision:string;note:string}|null}){
  const [open,setOpen]=useState(false);
- const [decision,setDecision]=useState<string>('OTHER');
- const [note,setNote]=useState('');
+ const [decision,setDecision]=useState<string>(initialFeedback?.decision??'OTHER');
+ const [note,setNote]=useState(initialFeedback?.note??'');
  const [saving,setSaving]=useState(false);
- const [message,setMessage]=useState('');
+ const [message,setMessage]=useState(initialFeedback?'Bereits als Prüfbeispiel gespeichert':'');
  if(!/^[0-9]{9,15}$/.test(itemId))return null;
  async function save(){setSaving(true);setMessage('');try{
   const r=await fetch('/api/admin/price-listing-feedback',{method:'POST',headers:{'Content-Type':'application/json'},

@@ -3,7 +3,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {EbayListingFeedback} from '@/components/EbayListingFeedback';
 
 type Kind='CONFIRMED_SINGLE'|'MULTI_SELECTION'|'COLLECTOR_EXCLUDED'|'IDENTITY_UNCLEAR';
-type SearchItem={itemId:string;title:string;url?:string|null;soldDate?:string|null;displayedPrice?:number|null;imageUrl?:string|null;kind:Kind;collectorExclusions:string;imageVerified:boolean};
+type SearchItem={itemId:string;title:string;url?:string|null;soldDate?:string|null;displayedPrice?:number|null;imageUrl?:string|null;kind:Kind;collectorExclusions:string;imageVerified:boolean;feedback?:{decision:string;note:string}|null};
 type Transaction={variant:string;displayedPrice:string;quantity:string;purchasedAt:string};
 type Offer={itemId:string;title:string;url:string;displayedPrice?:number|null;purchaseStatus?:string|null;otherCardPurchasesHidden?:number;transactions:Transaction[]};
 type Evidence={cardId:string;run:string;query?:string;totalSearchResults:number;reviewableCount:number;irrelevantCount:number;counts:Record<Kind|'OTHER_CARD',number>;results:SearchItem[];offers:Offer[]};
@@ -39,7 +39,7 @@ export function EbayAllSearchEvidence({cardId}:{cardId:string}){
     <p style={{fontSize:12,margin:0}}>Angezeigt: {items.length} von {data.results.length} relevanten Angeboten. Andere Karten wurden automatisch entfernt.</p>
     <div style={{maxHeight:620,overflowY:'auto',display:'grid',gap:8,paddingRight:4}}>{items.map((item,i)=><div key={`${item.itemId}-${i}`} style={{display:'flex',gap:12,padding:10,border:'1px solid var(--border)',borderRadius:10,alignItems:'flex-start'}}>
       {item.imageUrl&&<a href={item.url||'#'} target="_blank" rel="noopener noreferrer" style={{width:62,flexShrink:0}}><img loading="lazy" referrerPolicy="no-referrer" src={item.imageUrl} alt="eBay-Kartenfoto" style={{width:62,height:85,objectFit:'contain'}}/></a>}
-      <div style={{minWidth:0,display:'grid',gap:4,fontSize:13}}><a href={item.url||'#'} target="_blank" rel="noopener noreferrer">{item.title||item.itemId}</a><strong>{kindText[item.kind]}</strong><small>{item.soldDate?`eBay-Verkaufsdatum: ${item.soldDate}`:'Kein Verkaufsdatum'} · {money(item.displayedPrice)} · ID: {item.itemId}</small>{item.collectorExclusions&&<small>Collector-Ausschluss: {item.collectorExclusions.replaceAll(';',', ')}</small>}<EbayListingFeedback cardId={cardId} itemId={item.itemId} title={item.title}/></div>
+      <div style={{minWidth:0,display:'grid',gap:4,fontSize:13}}><a href={item.url||'#'} target="_blank" rel="noopener noreferrer">{item.title||item.itemId}</a><strong>{kindText[item.kind]}</strong><small>{item.soldDate?`eBay-Verkaufsdatum: ${item.soldDate}`:'Kein Verkaufsdatum'} · {money(item.displayedPrice)} · ID: {item.itemId}</small>{item.collectorExclusions&&<small>Collector-Ausschluss: {item.collectorExclusions.replaceAll(';',', ')}</small>}<EbayListingFeedback cardId={cardId} itemId={item.itemId} title={item.title} initialFeedback={item.feedback}/></div>
      </div>)}</div>
    </>:<>
     <p style={{fontSize:12,margin:0}}>Hier stehen die gespeicherten Auswahlangebote und nur Transaktionen, die zu dieser Karte gehören. Verkäufe anderer Karten bleiben ausgeblendet. Ein Gesamtverkaufszähler ist kein Nachweis für den Verkauf genau dieser Karte.</p>

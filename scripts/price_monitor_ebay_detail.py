@@ -50,6 +50,13 @@ def evidence(card_id):
     # not for the human review queue. Keep the count, exclude the rows.
     counts={k:sum(row['kind']==k for row in results) for k in KINDS}
     relevant=[row for row in results if row['kind']!='OTHER_CARD']
+    feedback_sql="SELECT ebay_item_id,decision,note FROM ebay_listing_feedback WHERE card_id='"+card_id+"' AND language_code='de';"
+    feedback_out=subprocess.run(['docker','exec','cardyssey-db','psql','-X','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',feedback_sql],capture_output=True,text=True,check=True,timeout=12)
+    feedback={}
+    for line in feedback_out.stdout.splitlines():
+        parts=line.split('|',2)
+        if len(parts)==3:feedback[parts[0]]={'decision':parts[1],'note':parts[2]}
+    for item in relevant:item['feedback']=feedback.get(item['itemId'])
     sql="""SELECT COALESCE(jsonb_agg(jsonb_build_object(
        'itemId',r.ebay_item_id,'title',r.title,'url',r.listing_url,
        'displayedPrice',r.displayed_price_eur,'purchaseStatus',p.status,
