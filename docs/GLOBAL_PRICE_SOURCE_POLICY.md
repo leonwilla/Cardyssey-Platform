@@ -25,10 +25,17 @@ weiterhin die TCG-Preisquellen gemäß seinen bestehenden Limits/Zeitfenstern.
 
 | Kartenklasse | Quellenstrategie | eBay |
 |---|---|---|
-| Häufig / Ungewöhnlich / Common / Uncommon | Sprach- und druckvariantenpassende TCG- bzw. regionale Marktwerte | Nicht für automatische eBay-Setläufe; explizite Admin-Einzeltests bleiben möglich |
+| Häufig / Ungewöhnlich / Common / Uncommon / C / U / rare_c / rare_u / 1–2 Diamanten | Sprach- und druckvariantenpassende TCG- bzw. regionale Marktwerte | Nicht für automatische eBay-Setläufe; explizite Admin-Einzeltests bleiben möglich |
 | Selten / Holo / Illustration / Ultra / EX / Promo | DE/EN: nachgewiesene eBay-Verkäufe, sonst passende TCG-Referenz. Asien: regionale Märkte | Vorhandene DE-Collector-Jobs; keine globale aggressive Abfrage |
 | Seltenheit fehlt | `RARITY_UNVERIFIED`, keine automatische Bulk-Einstufung | Separate Prüfliste |
 | Physische Druckvariante fehlt | `NO_EXACT_VARIANT`, kein erfundener Variantpreis | Druckidentität nacharbeiten |
+
+Die japanischen Katalog-Codes `rare_c`, `rare_u`, `rare_c_c`, `rare_u_c`,
+die koreanischen Codes `C` und `U` und die `One/Two Diamond`-Seltenheiten
+(einschließlich `Une/Deux Diamant`) gelten ebenso als Bulk. Das ist keine
+heuristische Schätzung aus einem Bild, sondern beruht auf der gespeicherten
+Seltenheitsstufe. `None`, `Keine`, leere und unbekannte Seltenheiten sind
+`RARITY_UNVERIFIED` – niemals automatisch Spezial- oder Bulk-Karten.
 
 **Providerpriorität:**
 - DE: direkte Cardmarket-Quellen → TCGdex/Cardmarket-Referenzen; keine
@@ -51,6 +58,18 @@ Fremdwährungspreis.
 ## Bestand und tatsächliche Lücken
 
 Maschinenlesbarer Stand: `docs/global-price-source-coverage.json`.
+
+**Geprüfter Bestand zum 04.11.2026** (Sprach-/Set-Kombinationen: 1121):
+
+| Sprache | Sets | Katalogkarten | Druckvarianten/Platzhalter | Bulk | Bulk mit Marktpreis | Nicht bepreisbar | Ohne exakte Druckvariante |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| DE | 163 | 20.537 | 32.549 | 18.728 | 17.048 | 3.330 | 0 |
+| EN | 216 | 23.771 | 36.545 | 20.851 | 19.232 | 2.975 | 0 |
+| JA | 343 | 26.181 | 29.485 | 11.147 | 3.000 | 22.036 | 7.766 |
+| KO | 262 | 20.011 | 20.011 | 7.517 | 1.621 | 17.340 | 7.497 |
+| ZH-CN | 1 | 48 | 48 | 0 | 0 | 34 | 0 |
+| ZH-TW | 136 | 14.666 | 15.653 | 2.569 | 108 | 14.687 | 7.229 |
+
 Er enthält pro Sprache die Zahl der Katalogkarten, Sets, Varianten bzw.
 Platzhalter, Bulk-Prints mit/ohne Preis, fehlende Seltenheiten und fehlende
 Druckidentitäten. Das Live-Monitoring erreicht die Werte über das geschützte

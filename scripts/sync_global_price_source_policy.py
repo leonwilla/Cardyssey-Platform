@@ -9,7 +9,7 @@ import argparse,json,subprocess
 from pathlib import Path
 
 LANGUAGES=('de','en','ja','ko','zh-cn','zh-tw')
-BULK_RARITIES=('häufig','ungewöhnlich','common','uncommon')
+BULK_RARITIES=('häufig', 'ungewöhnlich', 'common', 'uncommon', 'c', 'u', 'rare_c', 'rare_u', 'rare_c_c', 'rare_u_c', 'one diamond', 'two diamond', 'une diamant', 'deux diamant')
 
 SQL="""
 WITH catalog AS (
@@ -22,8 +22,8 @@ WITH catalog AS (
  WHERE c.language_code IN ('de','en','ja','ko','zh-cn','zh-tw')
 ), classified AS (
  SELECT *, CASE
-  WHEN rarity_key IN ('häufig','ungewöhnlich','common','uncommon') THEN 'BULK'
-  WHEN rarity_key='' THEN 'RARITY_UNVERIFIED'
+  WHEN rarity_key IN ('häufig','ungewöhnlich','common','uncommon','c','u','rare_c','rare_u','rare_c_c','rare_u_c','one diamond','two diamond','une diamant','deux diamant') THEN 'BULK'
+  WHEN rarity_key IN ('','none','keine','unknown','n/a','unbekannt') THEN 'RARITY_UNVERIFIED'
   ELSE 'SPECIAL' END AS price_class
  FROM catalog
 ), candidates AS (

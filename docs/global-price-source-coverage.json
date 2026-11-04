@@ -19,9 +19,9 @@
         "TCGDEX_CATALOG_CACHE": 40,
         "CARDMARKET_OFFICIAL_CT_IDENTITY": 1
       },
-      "bulkPrints": 18067,
+      "bulkPrints": 18728,
       "bulkWithPrice": 17048,
-      "rarityUnknown": 1,
+      "rarityUnknown": 284,
       "noExactVariant": 0
     },
     "en": {
@@ -44,9 +44,9 @@
         "TCGCSV_TCGPLAYER_NAMED_SPECIAL": 2,
         "CARDMARKET_OFFICIAL_CT_IDENTITY": 12
       },
-      "bulkPrints": 19564,
+      "bulkPrints": 20851,
       "bulkWithPrice": 19232,
-      "rarityUnknown": 1,
+      "rarityUnknown": 645,
       "noExactVariant": 0
     },
     "ja": {
@@ -68,9 +68,9 @@
         "CARDTRADER_EDITION_INFERRED": 80,
         "CARDTRADER_EDITION_INFERRED_PCG": 9
       },
-      "bulkPrints": 7116,
-      "bulkWithPrice": 1428,
-      "rarityUnknown": 8506,
+      "bulkPrints": 11147,
+      "bulkWithPrice": 3000,
+      "rarityUnknown": 11453,
       "noExactVariant": 7766
     },
     "ko": {
@@ -91,8 +91,8 @@
         "CARDTRADER_KO_NM": 2335,
         "WEB_BLACKROSE_KO": 13
       },
-      "bulkPrints": 122,
-      "bulkWithPrice": 0,
+      "bulkPrints": 7517,
+      "bulkWithPrice": 1621,
       "rarityUnknown": 7555,
       "noExactVariant": 7497
     },
@@ -107,7 +107,7 @@
       },
       "bulkPrints": 0,
       "bulkWithPrice": 0,
-      "rarityUnknown": 0,
+      "rarityUnknown": 48,
       "noExactVariant": 0
     },
     "zh-tw": {
@@ -124,12 +124,12 @@
       },
       "bulkPrints": 2569,
       "bulkWithPrice": 108,
-      "rarityUnknown": 11012,
+      "rarityUnknown": 11986,
       "noExactVariant": 7229
     }
   },
-  "generatedAt": "2026-11-04T16:24:21.636452+00:00",
+  "generatedAt": "2026-11-04T16:33:09.086005+00:00",
   "totalPrints": 134291,
   "missingPrints": 60402,
-  "totalBulkPrints": 47438
+  "totalBulkPrints": 60812
 }

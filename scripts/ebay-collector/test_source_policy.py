@@ -3,7 +3,7 @@ from unittest.mock import Mock
 from source_policy import is_bulk_rarity,ebay_required,load_bulk_ids
 class SourceRoutingTests(unittest.TestCase):
  def test_bulk_only_common_and_uncommon(self):
-  for value in ('Häufig','Ungewöhnlich','COMMON','uncommon'):
+  for value in ('Häufig','Ungewöhnlich','COMMON','uncommon','C','U','rare_c','rare_u_c','One Diamond','Deux Diamant'):
    self.assertTrue(is_bulk_rarity(value))
    self.assertFalse(ebay_required({'rarity':value}))
  def test_rare_and_special_stay_ebay_eligible(self):

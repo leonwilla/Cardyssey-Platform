@@ -10,7 +10,7 @@ extra=" AND c.local_id BETWEEN '094' AND '101'" if source=='ebay' and setid=='me
 if source=='ebay':
     # Bulk values belong to TCG/Cardmarket. Keep the rare/special eBay review
     # queue focused; archived eBay sales are never deleted.
-    extra+=" AND lower(trim(COALESCE(c.rarity,''))) NOT IN ('häufig','ungewöhnlich','common','uncommon')"
+    extra+=" AND lower(trim(COALESCE(c.rarity,''))) NOT IN ('häufig','ungewöhnlich','common','uncommon','c','u','rare_c','rare_u','rare_c_c','rare_u_c','one diamond','two diamond','une diamant','deux diamant')"
 filter_source="AND p.source='CARDYSSEY_EBAY'" if source=='ebay' else ''
 if source=='tcg':
     # Global materialized source policy selects only a language- and print-

@@ -8,10 +8,14 @@ import java.util.Locale
 /** Central across all supported catalog sets and languages; exact print only. */
 internal object GlobalPriceSourceRules {
     val supportedLanguages = setOf("de", "en", "ja", "ko", "zh-cn", "zh-tw")
-    private val bulkRarities = setOf("häufig", "ungewöhnlich", "common", "uncommon")
+    private val bulkRarities = setOf(
+        "häufig", "ungewöhnlich", "common", "uncommon", "c", "u",
+        "rare_c", "rare_u", "rare_c_c", "rare_u_c",
+        "one diamond", "two diamond", "une diamant", "deux diamant"
+    )
 
     fun priceClass(rarity: String?): String = when {
-        rarity.isNullOrBlank() -> "RARITY_UNVERIFIED"
+        rarity.isNullOrBlank() || rarity.trim().lowercase(Locale.ROOT) in setOf("none","keine","unknown","n/a","unbekannt") -> "RARITY_UNVERIFIED"
         rarity.trim().lowercase(Locale.ROOT) in bulkRarities -> "BULK"
         else -> "SPECIAL"
     }
