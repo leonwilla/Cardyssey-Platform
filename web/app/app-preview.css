@@ -168,3 +168,129 @@ body.cardysseyAppPreview .navItem.active,body.cardysseyAppPreview .bottomItem.ac
 body.cardysseyAppPreview .heroStat strong,body.cardysseyAppPreview .price,body.cardysseyAppPreview .cardEditHint{color:var(--light-accent)}
 body.cardysseyAppPreview .primaryButton,body.cardysseyAppPreview .authSubmit{background:var(--light-accent);color:white}
 body.cardysseyAppPreview .sidebar .navIcon{background:var(--light-tint)}
+
+/* Light-mode surface audit: preserve the dark layout while replacing legacy
+   opaque dark panels with accessible light surfaces across the whole webapp. */
+body.cardysseyAppPreview {
+  --light-page:#f6f1e9;
+  --light-card:#fffdf8;
+  --light-panel:#fdf9f2;
+  --light-subtle:#eee6d9;
+  --light-outline:#ddd0c0;
+  --light-ink:#22312b;
+  --light-muted:#56695f;
+  --navy:var(--light-page);
+  --navy-card:var(--light-card);
+  --navy-raised:var(--light-subtle);
+  --vault:var(--light-panel);
+  --text:var(--light-ink);
+  --secondary:var(--light-muted);
+  --muted:#64736b;
+  --border:var(--light-outline);
+  --border-bright:#c6b49f;
+  color:var(--light-ink);
+  background:var(--light-page);
+  color-scheme:light;
+}
+body.cardysseyAppPreview .mainColumn,
+body.cardysseyAppPreview .content,
+body.cardysseyAppPreview .shell { background:var(--light-page); color:var(--light-ink); }
+body.cardysseyAppPreview .sidebar,
+body.cardysseyAppPreview .topbar {background:var(--light-card);color:var(--light-ink);border-color:var(--light-outline)}
+body.cardysseyAppPreview .accountTabs,
+body.cardysseyAppPreview .segmented,
+body.cardysseyAppPreview .offerTabs,
+body.cardysseyAppPreview .marketplaceSections {
+  background:var(--light-subtle);
+  border:1px solid var(--light-outline);
+  box-shadow:none;
+}
+body.cardysseyAppPreview .accountTabs button,
+body.cardysseyAppPreview .segmented button,
+body.cardysseyAppPreview .offerTabs button,
+body.cardysseyAppPreview .marketplaceSections button {color:var(--light-muted)}
+body.cardysseyAppPreview .accountTabs button:hover,
+body.cardysseyAppPreview .segmented button:hover,
+body.cardysseyAppPreview .marketplaceSections button:hover {background:var(--light-card);color:var(--light-ink)}
+body.cardysseyAppPreview .accountTabs button.active,
+body.cardysseyAppPreview .segmented button.selected,
+body.cardysseyAppPreview .offerTabs button.active,
+body.cardysseyAppPreview .marketplaceSections button.active {
+  color:var(--light-accent);
+  background:var(--light-card);
+  box-shadow:0 1px 5px #30241913,inset 0 0 0 1px color-mix(in srgb,var(--light-accent) 28%,transparent);
+}
+body.cardysseyAppPreview .friendCodePanel,
+body.cardysseyAppPreview .accountCard,
+body.cardysseyAppPreview .statusPanel,
+body.cardysseyAppPreview .accountTabPanel,
+body.cardysseyAppPreview .appearancePanel,
+body.cardysseyAppPreview .themeChoice,
+body.cardysseyAppPreview .brightnessChooser,
+body.cardysseyAppPreview .friendSection,
+body.cardysseyAppPreview .friendRow,
+body.cardysseyAppPreview .marketCard,
+body.cardysseyAppPreview .chatPanel,
+body.cardysseyAppPreview .chatSidebar,
+body.cardysseyAppPreview .chatThread,
+body.cardysseyAppPreview .chatComposer,
+body.cardysseyAppPreview .chatBrowseRooms {
+  background:var(--light-card);
+  color:var(--light-ink);
+  border-color:var(--light-outline);
+  box-shadow:none;
+}
+body.cardysseyAppPreview .accountTabPanel,
+body.cardysseyAppPreview .appearancePanel,
+body.cardysseyAppPreview .friendSection {background:transparent}
+body.cardysseyAppPreview .friendCodePanel {
+  border-color:color-mix(in srgb,var(--light-accent) 36%,var(--light-outline));
+  background:color-mix(in srgb,var(--light-accent) 5%,var(--light-card));
+}
+body.cardysseyAppPreview .friendCodePanel strong,
+body.cardysseyAppPreview .friendCodePanel .eyebrowText {color:var(--light-accent)}
+body.cardysseyAppPreview .friendCodePanel p,
+body.cardysseyAppPreview .accountCard p,
+body.cardysseyAppPreview .themeChoice small,
+body.cardysseyAppPreview .brightnessChooser small {color:var(--light-muted)}
+body.cardysseyAppPreview .accountCard h2,
+body.cardysseyAppPreview .appearancePanel h2,
+body.cardysseyAppPreview .friendSection h2,
+body.cardysseyAppPreview .statusPanel strong {color:var(--light-ink)}
+body.cardysseyAppPreview .themeChoice:hover,
+body.cardysseyAppPreview .themeChoice.selected {
+  background:color-mix(in srgb,var(--light-accent) 5%,var(--light-card));
+  border-color:var(--light-accent);
+  box-shadow:0 5px 20px #30241912;
+}
+body.cardysseyAppPreview .themeChoice.selected strong,
+body.cardysseyAppPreview .themeChoice.selected .themeChoiceLabel {color:var(--light-accent)}
+body.cardysseyAppPreview .brightnessChoices {background:var(--light-subtle)}
+body.cardysseyAppPreview .brightnessChoices button {color:var(--light-muted)}
+body.cardysseyAppPreview .brightnessChoices button[aria-pressed="true"] {
+  background:var(--light-accent);
+  color:#fff;
+  box-shadow:0 2px 6px #30241920;
+}
+body.cardysseyAppPreview .ghostButton,
+body.cardysseyAppPreview .iconButton {background:var(--light-card);color:var(--light-ink);border-color:var(--light-outline)}
+body.cardysseyAppPreview .friendRow a,
+body.cardysseyAppPreview .friendRow strong {color:var(--light-ink)}
+body.cardysseyAppPreview .friendRow span {color:var(--light-muted)}
+body.cardysseyAppPreview .navIcon {background:var(--light-subtle);color:var(--light-accent);border-color:var(--light-outline)}
+body.cardysseyAppPreview .navItem.active .navIcon {background:var(--light-tint);color:var(--light-accent)}
+body.cardysseyAppPreview .sidebarFoot {background:var(--light-subtle);color:var(--light-ink);border-color:var(--light-outline)}
+body.cardysseyAppPreview .adminNavMain>summary {background:var(--light-card);color:var(--light-ink);border-color:var(--light-outline)}
+body.cardysseyAppPreview .adminNavMain[open]>summary {color:var(--light-accent)}
+body.cardysseyAppPreview .adminNavDetails summary,
+body.cardysseyAppPreview .sideNavSubmenu summary {color:var(--light-muted)}
+body.cardysseyAppPreview :is(input,select,textarea):not([type="checkbox"]):not([type="radio"]) {
+  background:var(--light-card)!important;
+  color:var(--light-ink)!important;
+  border-color:var(--light-outline)!important;
+}
+body.cardysseyAppPreview :is(input,select,textarea)::placeholder {color:#748079!important}
+@media(max-width:760px){
+  body.cardysseyAppPreview .bottomNav {background:var(--light-card);border-color:var(--light-outline)}
+  body.cardysseyAppPreview .accountTabs {background:var(--light-subtle)}
+}
