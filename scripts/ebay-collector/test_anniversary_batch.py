@@ -1,16 +1,31 @@
 import unittest
 import tempfile
 import json
+from datetime import datetime,timezone
 from unittest.mock import patch
 from datetime import date
 from pathlib import Path
-from anniversary_batch import exact_number,select_rows,import_result,search_query,explicit_print_variant
+from anniversary_batch import exact_number,select_rows,import_result,search_query,explicit_print_variant,recent_verified_report
 
 class AnniversaryTests(unittest.TestCase):
     def card(self,set_id='30th'):
         return dict(card_id='30th-001',name='Owei',local_id='001',set_id=set_id,variants=[dict(id='generated',type='normal')])
     def row(self,i='1',**changes):
         return dict(dict(item_id=i,title='Owei 001/128 Deutsch NM',eligible=True,language='de',condition='nm',sold_date=date.today().isoformat(),price_eur=1.0),**changes)
+    def test_reuses_recent_complete_sold_pages_without_old_date_cutoff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d=Path(tmp)
+            report=dict(config=dict(query='Tannza 001/198',language='de',max_age_days=30),
+                collected_at=datetime.now(timezone.utc).isoformat(),pages=[dict(status='OK')],
+                rows=[dict(exclusions='SALE_TOO_OLD',eligible=False),
+                      dict(exclusions='OFFER_OR_STRIKETHROUGH_PRICE;SALE_TOO_OLD',eligible=False)])
+            (d/'sales.json').write_text(json.dumps(report))
+            replay=recent_verified_report(d,'Tannza 001/198')
+            self.assertTrue(replay['reused_recent_sales_page'])
+            self.assertTrue(replay['rows'][0]['eligible'])
+            self.assertFalse(replay['rows'][1]['eligible'])
+            self.assertIsNone(recent_verified_report(d,'Other card'))
+
     def test_search_queries_include_print_identity(self):
         self.assertEqual(search_query(self.card('30th-c')), 'Owei 001/030 30 Jahre')
         self.assertEqual(search_query(self.card('30th')), 'Owei 001/128 30 Jahre')
@@ -49,30 +64,35 @@ class AnniversaryTests(unittest.TestCase):
         self.assertIsNone(explicit_print_variant('Raichu Holo Deutsch NM'))
         self.assertIsNone(explicit_print_variant('Raichu Reverse Non-Holo NM'))
 
-    def test_modern_reverse_print_imports_only_explicit_sales(self):
+    def test_modern_print_defaults_normal_and_keeps_reverse_separate(self):
         card=dict(card_id='sv02-064',name='Raichu',local_id='064',set_id='sv02',
                   denominator=193,set_name='Entwicklungen in Paldea',
                   variants=[dict(id='normal-id',type='Normal',legacyVariant='NORMAL'),
                             dict(id='reverse-id',type='Reverse',legacyVariant='REVERSE')])
         explicit=self.row('reverse',url='test',title='Raichu 064/193 Entwicklungen in Paldea Reverse Holo Deutsch NM')
-        unmarked=self.row('unmarked',url='test',title='Raichu 064/193 Entwicklungen in Paldea Deutsch NM')
+        unmarked=self.row('unmarked',url='test',condition='unknown',title='Raichu 064/193 Entwicklungen in Paldea Deutsch')
         report=dict(pages=[dict(status='OK')],rows=[explicit,unmarked])
         def fake_db(query):
             if query.startswith('SELECT variants'):return json.dumps(card['variants'])
             if query.startswith('SELECT COALESCE'):return '[]'
             return ''
-        with tempfile.TemporaryDirectory() as temp,patch('anniversary_batch.db',side_effect=fake_db) as db:
+        today=date.today().isoformat()
+        def fake_history(card_id,variant_id):
+            key='reverse' if variant_id=='reverse-id' else 'unmarked'
+            return [dict(item_id=key,sold_on=today,sold_eur=1.0,title=key,url='test',condition_assumed=key=='unmarked')]
+        with tempfile.TemporaryDirectory() as temp, \
+             patch('anniversary_batch.db',side_effect=fake_db) as db, \
+             patch('anniversary_batch.save_sales') as save, \
+             patch('anniversary_batch.stored_sales',side_effect=fake_history):
             outcome=import_result(report,card,Path(temp))
             self.assertEqual(outcome['status'],'IMPORTED')
-            self.assertEqual(outcome['variant_id'],'reverse-id')
-            self.assertEqual(outcome['sample_count'],1)
+            self.assertEqual({v['variant_id'] for v in outcome['variants_imported']},{'reverse-id','normal-id'})
+            self.assertEqual(save.call_count,2)
+            normal_rows=next(c.args[2] for c in save.call_args_list if c.args[1]=='normal-id')
+            self.assertTrue(normal_rows[0]['condition_assumed'])
+            self.assertTrue(normal_rows[0]['variant_assumed'])
             inserts=[c.args[0] for c in db.call_args_list if c.args[0].startswith('BEGIN; INSERT')]
-            self.assertEqual(len(inserts),1)
-            self.assertIn("'reverse-id'",inserts[0])
-        with patch('anniversary_batch.db') as db:
-            outcome=import_result(dict(pages=[dict(status='OK')],rows=[unmarked]),card,Path('/unused'))
-            self.assertEqual(outcome['status'],'CATALOG_VARIANT_REVIEW')
-            db.assert_not_called()
+            self.assertEqual(len(inserts),2)
 
     def test_image_identity_can_substitute_number_but_not_condition_or_language(self):
         card=dict(card_id='sv02-064',name='Raichu',local_id='064',set_id='sv02',
@@ -80,14 +100,14 @@ class AnniversaryTests(unittest.TestCase):
         row=self.row(title='Raichu Entwicklungen in Paldea Deutsch NM',image_identity_verified=True)
         selected,_=select_rows(dict(rows=[row]),card)
         self.assertEqual(len(selected),1)
-        for change in (dict(image_identity_verified=False),dict(condition='unknown'),dict(language='en'),dict(title='Raichu 065/193 Entwicklungen in Paldea Deutsch NM')):
+        for change in (dict(image_identity_verified=False),dict(language='en'),dict(title='Raichu 065/193 Entwicklungen in Paldea Deutsch NM')):
             selected,_=select_rows(dict(rows=[row|change]),card)
             self.assertFalse(selected,change)
 
     def test_no_matching_sales_is_not_mislabeled_as_variant_error(self):
         with patch('anniversary_batch.db') as db:
             out=import_result(dict(pages=[dict(status='OK')],rows=[]),self.card(),Path('/unused'))
-            self.assertEqual(out['status'],'NO_MATCHING_SALES_30D')
+            self.assertEqual(out['status'],'NO_MATCHING_SALES')
             db.assert_not_called()
 
     def test_unknown_variant_never_writes(self):
@@ -98,7 +118,8 @@ class AnniversaryTests(unittest.TestCase):
     def test_identity_condition_and_duplicate_filters(self):
         r=self.row()
         rows,reasons=select_rows(dict(rows=[r,r,self.row('2',condition='unknown'),self.row('3',title='Owei 001/128 reverse Deutsch NM'),self.row('4',title='Kokowei 001/128 Deutsch NM')]),self.card())
-        self.assertEqual(len(rows),1);self.assertEqual(sum(reasons.values()),3)
+        self.assertEqual(len(rows),2);self.assertEqual(sum(reasons.values()),2)
+        self.assertTrue(next(x for x in rows if x['item_id']=='2')['condition_assumed'])
     def test_complete_sets_and_other_card_numbers_rejected(self):
         titles=['Owei 001/128 bis 052/128 Komplettset DE NM','Owei 001/128 030/128 Deutsch NM','Owei 001/128 Deutsch NM']
         rows=[self.row(str(i),title=t) for i,t in enumerate(titles)]

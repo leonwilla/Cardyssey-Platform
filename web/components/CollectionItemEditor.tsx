@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import { EbayPriceHistoryChart } from "@/components/EbayPriceHistoryChart";
+
 import type {
   PortfolioItem,
 } from "@/lib/types";
@@ -45,6 +47,8 @@ type PricingQuote = {
   referenceEur?: number | null;
   referenceNote?: string | null;
   recentSales?: EbayRecentSale[];
+  priceWindowLabel?: string | null;
+  lowSample?: boolean | null;
 };
 
 function nullableFiniteNumber(
@@ -219,6 +223,8 @@ export function CollectionItemEditor({
             ),
           referenceEur: nullableFiniteNumber(data?.referenceEur),
           referenceNote: typeof data?.referenceNote === "string" ? data.referenceNote : null,
+          priceWindowLabel: typeof data?.priceWindowLabel === "string" ? data.priceWindowLabel : null,
+          lowSample: data?.lowSample === true,
           recentSales:
             Array.isArray(data?.recentSales)
               ? data.recentSales
@@ -581,8 +587,8 @@ export function CollectionItemEditor({
                   lineHeight: 1.45,
                 }}
               >
-                eBay-Median: passende Verkäufe der letzten 30 Tage (ohne Versand).
-                {pricingQuote.sampleCount === 1 ? " · Geringe Datenbasis" : ""}
+                eBay-Median: passende Verkäufe im Zeitraum {pricingQuote.priceWindowLabel ?? "30 Tage"} (ohne Versand).
+                {pricingQuote.lowSample || pricingQuote.sampleCount === 1 ? " · Geringe Datenbasis" : ""}
               </p>
             </>
           )}
@@ -707,6 +713,10 @@ export function CollectionItemEditor({
               })}
             </div>
           </div>
+        )}
+
+        {selectedMarket === "EBAY" && item.variantSpec?.id && (
+          <EbayPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
         )}
 
         <div className="editorActions">

@@ -410,3 +410,5 @@ body.cardysseyAppPreview .editorModal .editorActions :is(button,a) {
 @media(max-width:560px){
   body.cardysseyAppPreview .editorModal .editorActions {grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+body.cardysseyAppPreview .ebayHistoryPanel{margin-top:20px;padding:18px;border:1px solid var(--light-outline);background:var(--light-subtle);border-radius:16px}

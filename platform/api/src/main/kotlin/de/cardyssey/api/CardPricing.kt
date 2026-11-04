@@ -45,6 +45,9 @@ data class CardPriceQuoteResponse(
     val trend30dPercent: Double? = null,
     val updatedAtMs: Long? = null,
     val recentSales: List<EbayRecentSaleResponse> = emptyList(),
+    val priceWindowDays: Int? = null,
+    val priceWindowLabel: String? = null,
+    val lowSample: Boolean? = null,
     // Informational only; not a substitute for a verified physical print quote.
     val referenceEur: Double? = null,
     val referenceNote: String? = null,

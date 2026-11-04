@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily update for Cardyssey eBay medians based on stored sold history
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=10min
+Unit=cardyssey-ebay-reprice.service
+
+[Install]
+WantedBy=timers.target

@@ -24,6 +24,10 @@ if action=='start':
   parser_target=BASE/'ebay_sold.py'
   if parser_source.is_file() and hashlib.sha256(parser_source.read_bytes()).digest()!=hashlib.sha256(parser_target.read_bytes()).digest():
    shutil.copy2(parser_source,parser_target)
+  history_source=Path('/home/tv/cardshop/scripts/ebay-collector/price_history.py')
+  history_target=BASE/'price_history.py'
+  if history_source.is_file() and (not history_target.exists() or hashlib.sha256(history_source.read_bytes()).digest()!=hashlib.sha256(history_target.read_bytes()).digest()):
+   shutil.copy2(history_source,history_target)
   # A crashed worker must not block every future set run forever.
   # Preserve all completed card results and mark stale work as interrupted.
   for progress in JOBS.glob('*/progress.json'):

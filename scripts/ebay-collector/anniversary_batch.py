@@ -5,6 +5,7 @@ from datetime import date,datetime,timezone
 from pathlib import Path
 from import_preview import db,sql
 from ebay_sold import atomic_json
+from price_history import save_sales, stored_sales, choose_median
 
 ROOT=Path(__file__).resolve().parent
 QUERY="""SELECT jsonb_agg(to_jsonb(c) ORDER BY priority,card_id) FROM (
@@ -57,7 +58,7 @@ def exact_number(title,card):
 
 def contradictory_print_or_multi_card(title,card):
     # Do not confuse one card with collection sets, lots or multiple numbered prints.
-    if re.search(r'\b(?:komplettset|komplett[ -]?set|complete[ -]?set|full[ -]?set|master[ -]?set|30\s+karten|mehrere\s+karten|konvolut|sammlung|kartenpaket|lot|bundle)\b',title,re.I):
+    if re.search(r'\b(?:komplettset|komplett[ -]?set|complete[ -]?set|full[ -]?set|master[ -]?set|30\s+karten|mehrere\s+karten|konvolut|sammlung|kartenpaket|lot|bundle|auswahl|choose|select\s+your|pick\s+your)\b',title,re.I):
         return True
     denominator=int(card.get('denominator',128))
     numbers=re.findall(r'(?<![\w/])(\d{1,3})\s*/\s*0*'+str(denominator)+r'(?!\w)',title)
@@ -93,9 +94,9 @@ def audit_listing_images(report,card):
                for n in (number-1,number+1) if 1<=n<=int(card.get('denominator',193))]
     candidates=[]
     for r in report.get('rows',[]):
-        if len(candidates)>=16:break
+        if len(candidates)>=8:break
         title=r.get('title','')
-        if (not r.get('image_url') or
+        if (not r.get('image_url') or exact_number(title,card) or
             not all(re.search(r'(?<!\w)'+re.escape(t)+r'(?!\w)',title,re.I) for t in card['name'].split()) or
             contradictory_print_or_multi_card(title,card)):
             continue
@@ -137,11 +138,14 @@ def select_rows(report,card):
               or re.search(r'jumbo|oversiz|sealed|versiegelt|\b(?:bundle|lot|konvolut|mehrere karten|[2-9]x)\b|\s\+\s',title,re.I)
               or (card['set_id'] not in ('sv01','sv02') and re.search(r'reverse|non.?holo|nicht.?holo',title,re.I))):
             reason='OTHER_PRINT_OR_SEALED'
-        elif r.get('condition')!='nm':reason='CONDITION_NOT_NM'
-        elif not r.get('sold_date') or not 0 <= (date.today()-date.fromisoformat(r['sold_date'])).days<=30:reason='SALE_DATE_INVALID'
+        elif r.get('condition')=='conflict':reason='CONDITION_CONFLICT'
+        elif not r.get('sold_date') or not date.fromisoformat(r['sold_date'])<=date.today():reason='SALE_DATE_INVALID'
         elif not 0<float(r.get('price_eur') or 0)<100000:reason='PRICE_INVALID'
         if reason:rejected[reason]+=1
-        else:found[r['item_id']]=r
+        else:
+            r['condition_assumed']=r.get('condition')=='unknown'
+            r['history_condition']='NEAR_MINT' if r.get('condition') in ('unknown','nm','mint') else str(r.get('condition')).upper()
+            found[r['item_id']]=r
     return sorted(found.values(),key=lambda r:(r['sold_date'],r['item_id']),reverse=True),dict(rejected)
 
 def import_result(report,card,directory):
@@ -153,35 +157,82 @@ def import_result(report,card,directory):
         return outcome|{'status':'SET_NUMBER_REVIEW'}
     if not report.get('pages') or report['pages'][-1]['status']!='OK':
         return outcome|{'status':'FETCH_INCOMPLETE'}
-    if len(rows)<1:return outcome|{'status':'NO_MATCHING_SALES_30D'}
-    if len(variants)==1 and variants[0]['id']!='generated' and variants[0]['type'].lower()=='holo':
-        chosen_variant=variants[0]
-    elif card['set_id'] in ('sv01','sv02') and len(variants)>1:
-        # Never attribute an unmarked sale to Normal or Reverse. If the title
-        # explicitly names ONE print, use only those sales for that print.
-        hinted={explicit_print_variant(r['title']) for r in rows if explicit_print_variant(r['title'])}
-        if len(hinted)!=1:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
-        hint=next(iter(hinted))
-        matches=[v for v in variants if v.get('legacyVariant')==hint and v.get('id')!='generated']
-        if len(matches)!=1:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
-        chosen_variant=matches[0]
-        rows=[r for r in rows if explicit_print_variant(r['title'])==hint]
-    else:
-        return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
-    outcome['variant_matched_sales']=len(rows)
-    variant=chosen_variant['id'];card_id=card['card_id']
+    if len(rows)<1:return outcome|{'status':'NO_MATCHING_SALES'}
+    # Assign every sold individual listing to a catalog print. Unmarked
+    # modern-set singles are assumed Normal; reverse/holo must be explicit.
+    by_variant={}
+    for row in rows:
+        hint=explicit_print_variant(row['title'])
+        if len(variants)==1 and variants[0].get('id')!='generated':
+            selected=variants[0]
+            # A title naming a conflicting print must not be silently accepted.
+            if hint and selected.get('legacyVariant') in ('NORMAL','REVERSE') and hint!=selected['legacyVariant']:
+                continue
+        else:
+            if hint is None:
+                # A bare "Holo" is not safely identifiable as a Normal print.
+                if re.search(r'\bholo\b',row['title'],re.I):continue
+                hint='NORMAL'
+            matches=[v for v in variants if v.get('legacyVariant')==hint and v.get('id')!='generated']
+            if len(matches)!=1:continue
+            selected=matches[0]
+        match=by_variant.setdefault(selected['id'],[])
+        row['variant_assumed']=explicit_print_variant(row['title']) is None
+        match.append(row)
+    if not by_variant:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
+    card_id=card['card_id']
     current=json.loads(db('SELECT variants FROM catalog_cards_mirror WHERE language_code=\'de\' AND card_id='+sql(card_id)+';'))
     if current!=variants:return outcome|{'status':'CATALOG_CHANGED'}
-    prices=[r['price_eur'] for r in rows];median=statistics.median(prices)
-    sales=[dict(itemId=r['item_id'],title=r['title'],soldPriceEur=r['price_eur'],rawCondition='Near Mint (Angebotstitel)',endedAt=r['sold_date']+'T00:00:00Z',url=r['url']) for r in rows[:10]]
-    key='card_id='+sql(card_id)+" AND language_code='de' AND variant_id="+sql(variant)
-    backup=directory/'previous-cache.json'
-    if not backup.exists():backup.write_text(db("SELECT COALESCE(jsonb_agg(to_jsonb(t)),'[]') FROM ebay_price_cache t WHERE "+key+';'))
-    values=','.join(str(round(p,4)) for p in (median,min(prices),max(prices)))
-    db('BEGIN; INSERT INTO ebay_price_cache(card_id,language_code,variant_id,source,base_eur,range_low_eur,range_high_eur,sample_count,recent_sales,updated_at) VALUES ('+sql(card_id)+",'de',"+sql(variant)+",'CARDYSSEY_EBAY',"+values+','+str(len(rows))+','+sql(json.dumps(sales))+"::jsonb,NOW()) ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET source=EXCLUDED.source,base_eur=EXCLUDED.base_eur,range_low_eur=EXCLUDED.range_low_eur,range_high_eur=EXCLUDED.range_high_eur,sample_count=EXCLUDED.sample_count,recent_sales=EXCLUDED.recent_sales,updated_at=NOW(); DELETE FROM ebay_price_refresh_state WHERE "+key+'; COMMIT;')
-    audit=outcome|{'status':'IMPORTED','variant_id':variant,'nm_median_eur':median,'sample_count':len(rows),'sales':sales,'imported_at':datetime.now(timezone.utc).isoformat()}
+    imported=[]
+    for variant,all_rows in by_variant.items():
+        # Keep explicit lower-condition sales in the historic series, but never
+        # blend them with the Near Mint market value.
+        save_sales(card_id,variant,all_rows)
+        existing=stored_sales(card_id,variant)
+        calculation=choose_median(existing)
+        if not calculation:continue
+        recent=calculation['recent_sales']
+        sales=[dict(itemId=r['item_id'],title=r['title'],soldPriceEur=float(r['sold_eur']),
+            rawCondition='Near Mint (angenommen)' if r.get('condition_assumed') else 'Near Mint (Titel)',
+            endedAt=str(r['sold_on'])[:10]+'T00:00:00Z',url=r['url']) for r in recent]
+        key='card_id='+sql(card_id)+" AND language_code='de' AND variant_id="+sql(variant)
+        backup=directory/('previous-cache-'+re.sub(r'[^a-zA-Z0-9_-]','_',variant)+'.json')
+        if not backup.exists():backup.write_text(db("SELECT COALESCE(jsonb_agg(to_jsonb(t)),'[]') FROM ebay_price_cache t WHERE "+key+';'))
+        # Cardyssey stores the unconditioned base and applies 0.92 for Near Mint.
+        values=','.join(str(round(v/0.92,4)) for v in (calculation['median_eur'],calculation['min_eur'],calculation['max_eur']))
+        db('BEGIN; INSERT INTO ebay_price_cache(card_id,language_code,variant_id,source,base_eur,range_low_eur,range_high_eur,sample_count,recent_sales,price_window_days,price_window_label,low_sample,updated_at) VALUES ('+sql(card_id)+",'de',"+sql(variant)+",'CARDYSSEY_EBAY',"+values+','+str(calculation['sample_count'])+','+sql(json.dumps(sales,ensure_ascii=False))+"::jsonb,"+str(calculation['window_days'])+','+sql(calculation['window_label'])+','+('TRUE' if calculation['low_sample'] else 'FALSE')+",NOW()) ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET source=EXCLUDED.source,base_eur=EXCLUDED.base_eur,range_low_eur=EXCLUDED.range_low_eur,range_high_eur=EXCLUDED.range_high_eur,sample_count=EXCLUDED.sample_count,recent_sales=EXCLUDED.recent_sales,price_window_days=EXCLUDED.price_window_days,price_window_label=EXCLUDED.price_window_label,low_sample=EXCLUDED.low_sample,updated_at=NOW(); DELETE FROM ebay_price_refresh_state WHERE "+key+'; COMMIT;')
+        imported.append(dict(variant_id=variant,median_eur=calculation['median_eur'],
+            sample_count=calculation['sample_count'],window_days=calculation['window_days'],
+            window_label=calculation['window_label'],low_sample=calculation['low_sample']))
+    audit=outcome|{'status':'IMPORTED' if imported else 'HISTORY_ONLY',
+        'variants_imported':imported,'historical_sales_collected':sum(map(len,by_variant.values())),
+        'imported_at':datetime.now(timezone.utc).isoformat()}
     atomic_json(directory/'import-audit.json',audit)
-    return {k:v for k,v in audit.items() if k!='sales'}
+    return audit
+
+def recent_verified_report(directory, query, max_hours=24):
+    """Reuse complete, recent sold-page reports instead of re-fetching eBay.
+
+    A prior 30-day client cutoff never deletes historic page observations;
+    remove only that obsolete cutoff while preserving all other rejections.
+    """
+    path=directory/'sales.json'
+    if not path.is_file():return None
+    try:
+        report=json.loads(path.read_text())
+        config=report.get('config',{})
+        if config.get('query')!=query or config.get('language')!='de':return None
+        if not report.get('pages') or report['pages'][-1].get('status')!='OK':return None
+        collected=datetime.fromisoformat(report['collected_at'].replace('Z','+00:00'))
+        if not 0 <= (datetime.now(timezone.utc)-collected).total_seconds() <= max_hours*3600:return None
+        for row in report.get('rows',[]):
+            exclusions=[x for x in str(row.get('exclusions') or '').split(';') if x and x!='SALE_TOO_OLD']
+            row['exclusions']=';'.join(exclusions)
+            row['eligible']=not exclusions
+        report['config']['max_age_days']=36500
+        report['reused_recent_sales_page']=True
+        return report
+    except (ValueError,TypeError,KeyError,OSError):return None
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--out',type=Path,default=ROOT/'anniversary-20261021');args=ap.parse_args()
@@ -194,10 +245,10 @@ def main():
     state=json.loads(statefile.read_text()) if statefile.exists() else {'total':len(cards),'results':[]}
     # Re-evaluate earlier runs with the newly requested 30-day / minimum-one rule.
     # Preserve previous results as audit before replacing their results.
-    if state.get('pricing_rule') != '30d_min1_v1':
+    if state.get('pricing_rule') != 'rolling_history_v1':
         audit=args.out/('previous-progress-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'.json')
         atomic_json(audit,state)
-        state={'total':len(cards),'results':[], 'pricing_rule':'30d_min1_v1', 'status':'RUNNING'}
+        state={'total':len(cards),'results':[], 'pricing_rule':'rolling_history_v1', 'status':'RUNNING'}
         atomic_json(statefile,state)
     done={r['card_id'] for r in state['results']}
     for card in cards:
@@ -210,19 +261,22 @@ def main():
             continue
         number=card['local_id'] if card['set_id']=='mep' else card['local_id']+'/'+str(30 if card['set_id']=='30th-c' else card.get('denominator',128))
         query=search_query(card)
-        cmd=['bash',str(ROOT/'run-tiny.sh'),'--query',query,'--language','de','--pages','1','--max-age-days','30','--min-sales','1']
+        cmd=['bash',str(ROOT/'run-tiny.sh'),'--query',query,'--language','de','--pages','1','--max-age-days','36500','--min-sales','1']
         # Broad discovery must not pre-reject alternate spacing, language or promo identifiers.
         # select_rows enforces language, name, print ID and condition before import.
         env=dict(os.environ,EBAY_OUTPUT_DIR=str(directory),EBAY_LOCK_WAIT='180')
-        fetch='RUNNER_ERROR';report={}
-        for attempt in range(2):
-            if attempt:time.sleep(60)
-            with (directory/'run.log').open('a') as log:
-                result=subprocess.run(cmd,env=env,stdout=log,stderr=subprocess.STDOUT)
-            path=directory/'sales.json'
-            report=json.loads(path.read_text()) if path.exists() else {}
-            fetch=(report.get('pages') or [{}])[-1].get('status','RUNNER_ERROR')
-            if fetch not in ('SERVICE_ERROR','ERROR','RUNNER_ERROR'):break
+        report=recent_verified_report(directory,query)
+        fetch='OK' if report is not None else 'RUNNER_ERROR'
+        if report is None:
+            report={}
+            for attempt in range(2):
+                if attempt:time.sleep(60)
+                with (directory/'run.log').open('a') as log:
+                    subprocess.run(cmd,env=env,stdout=log,stderr=subprocess.STDOUT)
+                path=directory/'sales.json'
+                report=json.loads(path.read_text()) if path.exists() else {}
+                fetch=(report.get('pages') or [{}])[-1].get('status','RUNNER_ERROR')
+                if fetch not in ('SERVICE_ERROR','ERROR','RUNNER_ERROR'):break
         if fetch in ('LOGIN_REQUIRED','BLOCKED','WRONG_BROWSER_PROFILE'):
             state.update(status='STOPPED_'+fetch,next_card=card['card_id'],checked_at=datetime.now(timezone.utc).isoformat())
             atomic_json(statefile,state);print(json.dumps({'status':state['status'],'card_id':card['card_id']}),flush=True);return
@@ -247,6 +301,8 @@ def main():
             atomic_json(statefile,state)
             print('STOPPED_SERVICE_ERRORS: three consecutive unsuccessful fetches',flush=True)
             return
-        time.sleep(20)
+        # Serial, paced browser requests: reduce idle time modestly, but slow
+        # down after upstream errors instead of parallelizing eBay requests.
+        time.sleep(30 if fetch!='OK' else 15)
     state.update(status='COMPLETE',checked_at=datetime.now(timezone.utc).isoformat());atomic_json(statefile,state)
 if __name__=='__main__':main()

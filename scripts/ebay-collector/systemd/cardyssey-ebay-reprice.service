@@ -1,0 +1,9 @@
+[Unit]
+Description=Recompute Cardyssey eBay card medians from sold-history database (no eBay requests)
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tv/cardshop
+ExecStart=/usr/bin/python3 /home/tv/cardshop/scripts/ebay-collector/reprice_history.py
+TimeoutStartSec=900

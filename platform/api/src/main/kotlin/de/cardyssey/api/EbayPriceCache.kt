@@ -21,7 +21,10 @@ data class CachedEbayPrice(
     val rangeHighEur: Double,
     val sampleCount: Int,
     val updatedAtMs: Long,
-    val recentSales: List<EbayRecentSaleResponse> = emptyList()
+    val recentSales: List<EbayRecentSaleResponse> = emptyList(),
+    val priceWindowDays: Int = 30,
+    val priceWindowLabel: String = "30 Tage",
+    val lowSample: Boolean = false
 )
 
 class EbayPriceCacheRepository(
@@ -47,7 +50,10 @@ class EbayPriceCacheRepository(
                     range_high_eur,
                     sample_count,
                     updated_at,
-                    recent_sales::text AS recent_sales
+                    recent_sales::text AS recent_sales,
+                    price_window_days,
+                    price_window_label,
+                    low_sample
                 FROM ebay_price_cache
                 WHERE card_id = ?
                   AND language_code = ?
@@ -80,7 +86,10 @@ class EbayPriceCacheRepository(
                             .getObject("updated_at", OffsetDateTime::class.java)
                             .toInstant()
                             .toEpochMilli(),
-                        recentSales = recentSales.take(10)
+                        recentSales = recentSales.take(10),
+                        priceWindowDays = result.getInt("price_window_days"),
+                        priceWindowLabel = result.getString("price_window_label") ?: "30 Tage",
+                        lowSample = result.getBoolean("low_sample")
                     )
                 }
             }
@@ -478,7 +487,10 @@ class CachedEbayPricingService(
             rangeLowEur = rangeLowEur * condition.factor,
             rangeHighEur = rangeHighEur * condition.factor,
             updatedAtMs = updatedAtMs,
-            recentSales = recentSales.take(10)
+            recentSales = recentSales.take(10),
+            priceWindowDays = priceWindowDays,
+            priceWindowLabel = priceWindowLabel,
+            lowSample = lowSample
         )
 
     private fun emptyQuote(

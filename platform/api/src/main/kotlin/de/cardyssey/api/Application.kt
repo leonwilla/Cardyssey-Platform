@@ -744,7 +744,8 @@ fun Application.module() {
             catalog = cardCatalog,
             pricing = tcgPricing,
             ebayPricing = ebayPricing,
-            referenceCache = tcgPriceCache
+            referenceCache = tcgPriceCache,
+            dataSource = database
         )
     }
 }

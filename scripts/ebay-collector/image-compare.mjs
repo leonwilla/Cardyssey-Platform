@@ -3,6 +3,8 @@
 // Dry-run evidence only. Caller decides whether to import.
 import sharp from '../../web/node_modules/sharp/dist/index.cjs';
 import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
 
 const allowed=(value,kind)=>{
  try {
@@ -14,6 +16,13 @@ const allowed=(value,kind)=>{
 };
 async function fetchImage(url,kind){
  if(!allowed(url,kind))throw Error('UNTRUSTED_URL');
+ // Public official reference images repeat across many searches (as neighbors).
+ // Cache only these, not seller photos, to reduce network requests substantially.
+ const cacheDir='/home/tv/.cache/cardyssey-card-references';
+ const cacheFile=kind==='reference'?path.join(cacheDir,createHash('sha256').update(url).digest('hex')+'.img'):null;
+ if(cacheFile){
+   try{const cached=fs.readFileSync(cacheFile);if(cached.length>2000&&cached.length<=2500000)return cached;}catch{}
+ }
  for(let i=0;i<3;i++){
   const r=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(9000),headers:{'User-Agent':'CardysseyImageIdentityAudit/1.0'}});
   if(r.status>=300&&r.status<400){const next=new URL(r.headers.get('location')||'',url).href;if(!allowed(next,kind))throw Error('UNTRUSTED_REDIRECT');url=next;continue;}
@@ -22,6 +31,9 @@ async function fetchImage(url,kind){
   const data=Buffer.from(await r.arrayBuffer());if(data.length>2500000)throw Error('TOO_LARGE');
   const meta=await sharp(data,{limitInputPixels:12e6}).metadata();
   if(meta.width<100||meta.height<100)throw Error('SMALL_IMAGE');
+  if(cacheFile){
+    try{fs.mkdirSync(cacheDir,{recursive:true,mode:0o700});fs.writeFileSync(cacheFile,data,{mode:0o600});}catch{}
+  }
   return data;
  }
  throw Error('REDIRECT_LOOP');
