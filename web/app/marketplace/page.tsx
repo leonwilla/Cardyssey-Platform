@@ -144,6 +144,15 @@ export default function MarketplacePage() {
       active="/marketplace"
       user={user}
     >
+      <section className="marketplaceStoreLink" aria-label="Cardyssey Webshop">
+        <div className="marketplaceStoreMark" aria-hidden="true">✦</div>
+        <div className="marketplaceStoreCopy">
+          <span>DER OFFIZIELLE CARDYSSEY STORE</span>
+          <strong>Du suchst eine bestimmte Karte?</strong>
+          <p>Entdecke unser Shopsortiment und passende Fundstücke für deine Wunschliste – mit demselben Cardyssey-Konto.</p>
+        </div>
+        <a className="marketplaceStoreAction" href="https://shop.cardyssey.de/">Zum Webshop <span aria-hidden="true">↗</span></a>
+      </section>
       <div className="marketplaceSections" role="tablist" aria-label="Marktplatz-Bereiche">
         <button role="tab" aria-selected={marketTab==="offers"} className={marketTab==="offers"?"active":""} onClick={()=>setMarketTab("offers")}>Meine Angebote</button>
         <button role="tab" aria-selected={marketTab==="browse"} className={marketTab==="browse"?"active":""} onClick={()=>setMarketTab("browse")}>Karten entdecken</button>
