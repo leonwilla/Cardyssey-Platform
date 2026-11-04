@@ -1,6 +1,6 @@
 import {
   getLatestAndroidRelease,
-} from "@/lib/android-release";
+} from "@/lib/server/android-release-server";
 
 export async function GET() {
   const release =
@@ -23,7 +23,7 @@ export async function GET() {
     {
       headers: {
         "Cache-Control":
-          "public, max-age=60, s-maxage=300",
+          "private, no-store",
       },
     }
   );
