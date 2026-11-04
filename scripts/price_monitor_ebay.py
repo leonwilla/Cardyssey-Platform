@@ -37,4 +37,13 @@ catalog_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U',
 catalog_counts={setid:int(count) for line in catalog_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
 # eBay MEP group covers only anniversary-related 094–101, not the entire promo series.
 catalog_counts['mep']=8
-print(json.dumps({'catalogCounts':catalog_counts,'items':items,'runs':[{'name':p.name,'status':json.loads((p/'progress.json').read_text()).get('status')} for p in runs]},ensure_ascii=False))
+# Report eBay coverage separately from fallback reference prices.
+fallback_sql="""SELECT c.set_id,count(*) FROM catalog_cards_mirror c WHERE c.language_code='de'
+ AND c.set_id IN ('30th','30th-c','mep','sv01','sv02')
+ AND (c.set_id <> 'mep' OR c.local_id BETWEEN '094' AND '101')
+ AND EXISTS (SELECT 1 FROM tcg_price_cache t WHERE t.card_id=c.card_id
+             AND t.language_code=c.language_code AND t.base_eur>0)
+ GROUP BY c.set_id"""
+fallback_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',fallback_sql],timeout=12,text=True)
+fallback_counts={setid:int(count) for line in fallback_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
+print(json.dumps({'catalogCounts':catalog_counts,'fallbackCounts':fallback_counts,'items':items,'runs':[{'name':p.name,'status':json.loads((p/'progress.json').read_text()).get('status')} for p in runs]},ensure_ascii=False))
