@@ -211,7 +211,7 @@ def import_result(report,card,directory):
     atomic_json(directory/'import-audit.json',audit)
     return audit
 
-def recent_verified_report(directory, query, max_hours=24):
+def recent_verified_report(directory, query, max_hours=24, sold_since=None):
     """Reuse complete, recent sold-page reports instead of re-fetching eBay.
 
     A prior 30-day client cutoff never deletes historic page observations;
@@ -222,7 +222,8 @@ def recent_verified_report(directory, query, max_hours=24):
     try:
         report=json.loads(path.read_text())
         config=report.get('config',{})
-        if config.get('query')!=query or config.get('language')!='de' or config.get('sold_since'):return None
+        if config.get('query')!=query or config.get('language')!='de' or config.get('sold_since')!=sold_since:return None
+        if sold_since and report.get('incremental_boundary_reached') is not True:return None
         if not report.get('pages') or report['pages'][-1].get('status')!='OK':return None
         collected=datetime.fromisoformat(report['collected_at'].replace('Z','+00:00'))
         if not 0 <= (datetime.now(timezone.utc)-collected).total_seconds() <= max_hours*3600:return None
@@ -282,7 +283,7 @@ def main():
         # Broad discovery must not pre-reject alternate spacing, language or promo identifiers.
         # select_rows enforces language, name, print ID and condition before import.
         env=dict(os.environ,EBAY_OUTPUT_DIR=str(directory),EBAY_LOCK_WAIT='180')
-        report=None if since else recent_verified_report(directory,query)
+        report=recent_verified_report(directory,query,sold_since=since)
         fetch='OK' if report is not None else 'RUNNER_ERROR'
         if report is None:
             report={}

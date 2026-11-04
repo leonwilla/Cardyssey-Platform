@@ -12,6 +12,21 @@ class AnniversaryTests(unittest.TestCase):
         return dict(card_id='30th-001',name='Owei',local_id='001',set_id=set_id,variants=[dict(id='generated',type='normal')])
     def row(self,i='1',**changes):
         return dict(dict(item_id=i,title='Owei 001/128 Deutsch NM',eligible=True,language='de',condition='nm',sold_date=date.today().isoformat(),price_eur=1.0),**changes)
+    def test_incremental_reuse_requires_identical_cutoff_and_complete_boundary(self):
+        from anniversary_batch import recent_verified_report
+        from datetime import datetime,timezone
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)
+            report={'config':{'query':'Raichu 064/193','language':'de','sold_since':'2026-11-02'},
+                    'pages':[{'status':'OK'}],'collected_at':datetime.now(timezone.utc).isoformat(),
+                    'incremental_boundary_reached':True,'rows':[]}
+            (path/'sales.json').write_text(json.dumps(report))
+            self.assertIsNotNone(recent_verified_report(path,'Raichu 064/193',sold_since='2026-11-02'))
+            self.assertIsNone(recent_verified_report(path,'Raichu 064/193',sold_since='2026-11-01'))
+            report['incremental_boundary_reached']=False
+            (path/'sales.json').write_text(json.dumps(report))
+            self.assertIsNone(recent_verified_report(path,'Raichu 064/193',sold_since='2026-11-02'))
+
     def test_reuses_recent_complete_sold_pages_without_old_date_cutoff(self):
         with tempfile.TemporaryDirectory() as tmp:
             d=Path(tmp)
