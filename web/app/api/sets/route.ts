@@ -15,7 +15,10 @@ export async function GET(request: Request) {
 
   const data = await readBackendJson(response);
 
-  return Response.json(data, {
+  // TCGdex returns the expansion catalog chronologically (oldest first).
+  // Present newest expansions first to every web dropdown and catalog consumer.
+  // Preserve upstream errors untouched.
+  return Response.json(response.ok && Array.isArray(data) ? [...data].reverse() : data, {
     status: response.status,
   });
 }

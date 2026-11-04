@@ -18,6 +18,18 @@ function SetArtwork({setId,language,cardId}:{setId:string;language:string;cardId
 function OfferTile({offer,language,setName}:{offer:Offer;language:string;setName:string}){
  return <article className="shopProduct"><div className="shopProductArt">{offer.image_url?<img src={offer.image_url} alt={offer.title||offer.card_id} loading="lazy"/>:<span className="shopProductPlaceholder"><img src="/cardyssey-emblem-gold.png" alt=""/><small>Produktfoto folgt</small></span>}</div><div className="shopProductInfo"><span className="shopProductMeta">{setName} · {language.toUpperCase()}</span><h4>{offer.title||offer.card_id}</h4><p>{offer.product_type==="sealed"?"Originalverpacktes Produkt":offer.product_type==="accessory"?"Zubehör":offer.variant+" · "+offer.condition}</p><div className="shopProductBottom"><strong>{(offer.price_minor/100).toLocaleString("de-DE",{style:"currency",currency:"EUR"})}</strong><small>{offer.available_quantity} verfügbar</small></div></div></article>;
 }
+// Expansion identifiers encode their release eras; preserve numeric order within each era.
+// This is a fallback for the shop's stock-only catalog, which has no release-date field.
+const setEraOrder:Record<string,number>={base:1,jungle:1,fossil:1,neo:2,ecard:3,ex:4,dp:5,pl:6,hgss:7,bw:8,xy:9,sm:10,swsh:11,sv:12,me:13};
+function setChronology(id:string){
+ const value=id.toLowerCase();
+ if(value==='30th'||value==='30th-c'||value==='mep')return 14000;
+ const era=Object.keys(setEraOrder).filter(prefix=>value.startsWith(prefix)).sort((a,b)=>b.length-a.length)[0];
+ if(!era)return -1;
+ const suffix=value.slice(era.length);
+ const number=Number.parseInt(suffix.match(/^\d+/)?.[0]||'0',10);
+ return setEraOrder[era]*1000+number;
+}
 const languages=[["de","Deutsch"],["en","Englisch"],["ja","Japanisch"],["ko","Koreanisch"],["zh-cn","Chinesisch (vereinfacht)"],["zh-tw","Chinesisch (traditionell)"]];
 export default function ShopPage(){
  const [language,setLanguage]=useState("de"),[setId,setSetId]=useState(""),[query,setQuery]=useState(""),[error,setError]=useState("");
@@ -29,7 +41,8 @@ export default function ShopPage(){
  const loadShopWishlist=()=>fetch("/api/wishlist",{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(v=>setShopWishes(Array.isArray(v)?v:[])).catch(()=>{});
  useEffect(()=>{fetch("/api/auth/me",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(setShopUser).catch(()=>{});loadShopWishlist()},[]);
  async function removeShopWish(id:string){const r=await fetch("/api/wishlist/"+encodeURIComponent(id),{method:"DELETE"});if(r.ok)loadShopWishlist()}
- const [mode,setMode]=useState<"sets"|"listings"|"plush">("sets"),[category,setCategory]=useState<"pokemon"|"onepiece">("pokemon"),[onlyStock,setOnlyStock]=useState(true),[sort,setSort]=useState("name");
+ const [mode,setMode]=useState<"sets"|"listings"|"plush">("sets"),[category,setCategory]=useState<"pokemon"|"onepiece">("pokemon"),[onlyStock,setOnlyStock]=useState(true),[sort,setSort]=useState("newest");
+ useEffect(()=>{setSort(mode==="sets"?"newest":"name")},[mode]);
  const [design,setDesign]=useState<"classic"|"modern">("modern");
  const [accountMenuOpen,setAccountMenuOpen]=useState(false);
  const [signingOut,setSigningOut]=useState(false);
@@ -59,7 +72,7 @@ export default function ShopPage(){
  useEffect(()=>{const ctl=new AbortController();fetch("/api/shop/wishlist-matches",{signal:ctl.signal,cache:"no-store",credentials:"same-origin"}).then(r=>r.ok?r.json():null).then(v=>{if(ctl.signal.aborted)return;if(v){setWishlistCount(v.wishlistCount);setWishlistMatches(Array.isArray(v.matches)?v.matches:[]);}}).catch(()=>{});return()=>ctl.abort()},[]);
  const match=useMemo(()=>query.trim().toLocaleLowerCase(),[query]);
  const offeredSetIds=new Set(offers.filter(o=>o.available_quantity>0).map(o=>o.set_id));
- const visibleSets=(sets.length?sets:Array.from(offeredSetIds).filter(Boolean).map(id=>({id,name:id,officialCount:0,totalCount:0,logo:null}))).filter(s=>s.name.toLocaleLowerCase().includes(match)&&offeredSetIds.has(s.id)).sort((a,b)=>sort==="count"?(b.officialCount??b.totalCount??0)-(a.officialCount??a.totalCount??0):a.name.localeCompare(b.name,"de"));
+ const visibleSets=(sets.length?sets:Array.from(offeredSetIds).filter(Boolean).map(id=>({id,name:id,officialCount:0,totalCount:0,logo:null}))).filter(s=>s.name.toLocaleLowerCase().includes(match)&&offeredSetIds.has(s.id)).sort((a,b)=>sort==="count"?(b.officialCount??b.totalCount??0)-(a.officialCount??a.totalCount??0):sort==="newest"?(setChronology(b.id)-setChronology(a.id)||a.name.localeCompare(b.name,"de")):a.name.localeCompare(b.name,"de"));
  const visibleCards=(detail?.cards||[]).filter(c=>(c.name+" "+(c.localId||"")).toLocaleLowerCase().includes(match)&&(!onlyStock||offers.some(o=>o.card_id===c.id&&o.set_id===setId)));
  const visibleOffers=offers.filter(o=>(o.product_type||"card")==="card").filter(o=>(o.title+" "+o.card_id+" "+(sets.find(s=>s.id===o.set_id)?.name||"")).toLocaleLowerCase().includes(match)).sort((a,b)=>sort==="price-asc"?a.price_minor-b.price_minor:sort==="price-desc"?b.price_minor-a.price_minor:(a.title||"").localeCompare(b.title||"","de"));
  const showSet=(id:string)=>{setSetId(id);setMode("sets");setQuery("");window.scrollTo({top:0,behavior:"smooth"})};
@@ -92,7 +105,7 @@ export default function ShopPage(){
    {category==="pokemon"&&mode!=="plush"&&<label>Sprache<select value={language} onChange={e=>setLanguage(e.target.value)}>{languages.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>}
    {category==="pokemon"&&mode!=="plush"&&<label>Suche<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Kartenname, Nummer, Set …"/></label>}
 
-   {category==="pokemon"&&mode!=="plush"&&<label>Sortierung<select value={sort} onChange={e=>setSort(e.target.value)}>{mode==="listings"?<><option value="name">Name A–Z</option><option value="price-asc">Preis aufsteigend</option><option value="price-desc">Preis absteigend</option></>:<><option value="name">Setname A–Z</option><option value="count">Meiste Karten</option></>}</select></label>}
+   {category==="pokemon"&&mode!=="plush"&&<label>Sortierung<select value={sort} onChange={e=>setSort(e.target.value)}>{mode==="listings"?<><option value="name">Name A–Z</option><option value="price-asc">Preis aufsteigend</option><option value="price-desc">Preis absteigend</option></>:<><option value="newest">Neueste Sets zuerst</option><option value="name">Setname A–Z</option><option value="count">Meiste Karten</option></>}</select></label>}
    <div className="shopSidebarNote"><strong>Cardyssey Store</strong><p>Hier findest du ausschließlich gewerbliche Angebote. Der Nutzer-Marktplatz bleibt getrennt.</p></div>
   </aside>
   <section className="shopBrowseContent">

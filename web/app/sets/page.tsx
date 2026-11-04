@@ -63,6 +63,7 @@ function isSetLanguage(
 }
 
 type SetSort =
+  | "newest"
   | "owned-first"
   | "progress-desc"
   | "progress-asc"
@@ -208,7 +209,7 @@ export default function SetsPage() {
     useState<ProgressFilter>("all");
 
   const [sort, setSort] =
-    useState<SetSort>("owned-first");
+    useState<SetSort>("newest");
 
   useEffect(() => {
     let cancelled = false;
@@ -495,9 +496,14 @@ export default function SetsPage() {
         "de"
       );
 
+    // Catalog order is newest-first from /api/sets; keep it as the default.
+    const chronologicalOrder = new Map(catalog.map((set, index) => [set.id, index]));
     return [...filtered].sort(
       (a, b) => {
         switch (sort) {
+          case "newest":
+            return (chronologicalOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (chronologicalOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER);
           case "progress-desc": {
             const diff =
               progressRatio(b) -
@@ -548,6 +554,7 @@ export default function SetsPage() {
     query,
     progressFilter,
     sets,
+    catalog,
     sort,
   ]);
 
@@ -643,6 +650,7 @@ export default function SetsPage() {
                 )
               }
             >
+              <option value="newest">Neueste Sets zuerst</option>
               <option value="owned-first">
                 Begonnene zuerst
               </option>
