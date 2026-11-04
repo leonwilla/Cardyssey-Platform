@@ -114,16 +114,17 @@ def save_sales(card_id, variant_id, rows, *, language='de'):
             condition_assumed=bool(r.get('condition_assumed')),
             variant_assumed=bool(r.get('variant_assumed')),
             title=str(r['title']),url=r['url'],image_url=r.get('image_url'),
-            basis='image_and_title' if r.get('image_identity_verified') else 'title_and_number'))
+            basis='purchase_history_variant_price' if r.get('source')=='EBAY_PURCHASE_HISTORY' else ('image_and_title' if r.get('image_identity_verified') else 'title_and_number'),
+            quantity=int(r.get('quantity') or 1),evidence_type=r.get('source','SOLD_SEARCH')))
     query = '''INSERT INTO ebay_sold_history
       (card_id,language_code,variant_id,ebay_item_id,sold_on,sold_eur,
-       condition_label,condition_assumed,variant_assumed,title,listing_url,image_url,identity_basis)
+       condition_label,condition_assumed,variant_assumed,title,listing_url,image_url,identity_basis,quantity,evidence_type)
       SELECT ''' + sql(card_id) + ',' + sql(language) + ',' + sql(variant_id) + ''',
       s.item_id,s.sold_on::date,s.price,s.condition,s.condition_assumed,
-      s.variant_assumed,s.title,s.url,s.image_url,s.basis
-      FROM jsonb_to_recordset(''' + sql(json.dumps([dict(item_id=r['item_id'],sold_on=r['date'],price=r['price'],condition=r['condition'],condition_assumed=r['condition_assumed'],variant_assumed=r['variant_assumed'],title=r['title'],url=r['url'],image_url=r['image_url'],basis=r['basis']) for r in saved],ensure_ascii=False)) + '''::jsonb)
+      s.variant_assumed,s.title,s.url,s.image_url,s.basis,s.quantity,s.evidence_type
+      FROM jsonb_to_recordset(''' + sql(json.dumps([dict(item_id=r['item_id'],sold_on=r['date'],price=r['price'],condition=r['condition'],condition_assumed=r['condition_assumed'],variant_assumed=r['variant_assumed'],title=r['title'],url=r['url'],image_url=r['image_url'],basis=r['basis'],quantity=r['quantity'],evidence_type=r['evidence_type']) for r in saved],ensure_ascii=False)) + '''::jsonb)
       AS s(item_id text,sold_on text,price numeric,condition text,condition_assumed boolean,
-           variant_assumed boolean,title text,url text,image_url text,basis text)
+           variant_assumed boolean,title text,url text,image_url text,basis text,quantity int,evidence_type text)
       ON CONFLICT(card_id,language_code,variant_id,ebay_item_id) DO UPDATE SET
         last_collected_at=now(),title=EXCLUDED.title,
         image_url=COALESCE(EXCLUDED.image_url,ebay_sold_history.image_url);

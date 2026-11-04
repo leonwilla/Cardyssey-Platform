@@ -2,7 +2,7 @@
 import {useEffect,useState} from 'react';
 
 type Review={status:string;refreshDays:number;showOfferReferences:boolean;note:string};
-type Reference={title:string;url:string;price:number|null;seenAt?:string};
+type Reference={title:string;url:string;price:number|null;itemId?:string;purchaseHistoryStatus?:string|null;purchaseRowsCount?:number;purchaseRows?:{variant:string;displayedPrice:string;quantity:string;purchasedAt:string}[];seenAt?:string};
 const defaults:Review={status:'AUTO',refreshDays:7,showOfferReferences:true,note:''};
 const euros=(v:number|null)=>v==null?'Preis unbekannt':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(v);
 export function EbayPriceReviewPanel({cardId,initial,offers}:{cardId:string;initial?:Review;offers?:Reference[]}){
@@ -37,8 +37,13 @@ export function EbayPriceReviewPanel({cardId,initial,offers}:{cardId:string;init
   </label>
   <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}><button type="button" className="primaryButton" disabled={saving} onClick={()=>void save()}>{saving?'Speichert …':'Einordnung speichern'}</button>{saved&&<small aria-live="polite">{saved}</small>}</div>
   {review.showOfferReferences&&<div style={{borderTop:'1px solid var(--border)',paddingTop:12}}><strong>Mögliche Auswahlangebote ({offers?.length??0})</strong>
-   <p style={{fontSize:12}}>Der Anzeigenpreis und Gesamtverkaufszähler belegen keinen Verkauf dieser einzelnen Karte. Diese Daten fließen ausdrücklich nicht in den Median ein.</p>
-   {(offers??[]).length?<div style={{display:'grid',gap:8}}>{offers?.map((o,i)=><a key={`${o.url}-${i}`} href={o.url} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>{o.title} · angezeigter Preis: {euros(o.price)} (unbestätigt)</a>)}</div>:<small>Für diese Karte wurden noch keine möglichen Auswahlangebote separat erfasst. Ältere Suchprotokolle werden schrittweise nachgetragen.</small>}
+   <p style={{fontSize:12}}>Der Gesamtverkaufszähler belegt keinen Verkauf dieser Karte. Nur eine Transaktion mit eindeutigem Kartendruck, Datum und bezahltem Preis wird als Kartenverkauf in den Median übernommen. Käuferdaten werden nicht gespeichert.</p>
+   {(offers??[]).length?<div style={{display:'grid',gap:10}}>{offers?.map((o,i)=><div key={`${o.url}-${i}`} style={{border:'1px solid var(--border)',borderRadius:10,padding:10,display:'grid',gap:6}}>
+    <a href={o.url} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>{o.title} · Angebotspreis: {euros(o.price)} (keine Verkaufspreis-Bestätigung)</a>
+    <small style={{fontWeight:700}}>{o.purchaseHistoryStatus==='VERIFIED_ROWS'?'Kaufübersicht geprüft: Transaktionen gefunden':o.purchaseHistoryStatus==='NO_VISIBLE_PRICE'?'Kaufübersicht geprüft: bezahlter Preis nicht sichtbar':o.purchaseHistoryStatus==='NO_PURCHASE_ROWS'?'Keine Transaktionen sichtbar':o.purchaseHistoryStatus==='UNSAFE_LAYOUT'?'Unbekanntes eBay-Layout – manuell prüfen':o.purchaseHistoryStatus==='BLOCKED'||o.purchaseHistoryStatus==='LOGIN_REQUIRED'?'Kaufübersicht nicht zugänglich':o.purchaseHistoryStatus==='UNAVAILABLE'?'eBay-Kaufübersicht nicht erreichbar':'Kaufübersicht noch nicht geprüft'} {o.purchaseRowsCount?`· ${o.purchaseRowsCount} Transaktionen`:''}</small>
+    {(o.purchaseRows??[]).length>0&&<div style={{display:'grid',gap:4}}>{o.purchaseRows?.map((tx,j)=><small key={j} style={{display:'block'}}>{tx.variant} · {tx.displayedPrice} · {tx.quantity}× · {tx.purchasedAt}</small>)}</div>}
+    {o.itemId&&<a href={`https://www.ebay.de/bin/purchaseHistory?item=${encodeURIComponent(o.itemId)}`} target="_blank" rel="noopener noreferrer" style={{fontSize:12}}>Kaufübersicht bei eBay öffnen und kontrollieren ↗</a>}
+   </div>)}</div>:<small>Für diese Karte wurden noch keine möglichen Auswahlangebote separat erfasst. Ältere Suchprotokolle werden schrittweise nachgetragen.</small>}
   </div>}
  </div>;
 }

@@ -66,3 +66,39 @@ influence eBay medians until individual sale-and-print evidence exists.
 
 The monitor presents actual Near Mint eBay median prices with the API's
 0.92 factor applied rather than mistakenly displaying the Mint base value.
+
+## Sold-choice purchase-history identity audit
+
+For eBay multiple-choice/selection listings, the collector opens the existing
+buyer-privacy-safe eBay `bin/purchaseHistory?item=...` page **using the existing
+serial Selenium browser**, and only reads its purchase history table. No eBay
+buyer usernames, cookies or entire pages are saved. A shared per-listing
+`ebay_purchase_history_check` cache prevents repeated browser fetches for
+cards appearing in the same listing; completed checks are refreshed weekly,
+blocked/unavailable checks may retry after one day.
+
+A purchase-history row is importable only when the specific purchased **print
+name and exact numerator/denominator**, a **visible EUR unit price**, quantity,
+purchase date, set and German language agree. Price text such as "Als
+Aktionsangebot verkauft" never becomes an invented price; listing-level
+asking prices and total-sold counters are ignored. Sale IDs are deterministic
+and duplicate-protected. Quantity is retained for audit but does not
+multiply a single observed transaction into fabricated sales. Condition
+and Normal print can still be *assumed* under the documented policy; explicit
+Reverse and other mismatches stay separate.
+
+When a search for card A exposes an itemized purchase of card B, the collector
+may also import the evidenced sale for card B in the **same verified set**,
+without waiting for B's name to appear in eBay's search title. Every
+cross-card import records its target and status in the original card's search
+audit. Successful imports are visible in the shared history and current median.
+
+In the Admin price monitor, "Prüfbedarf" filters cards needing human review,
+and individual offer references show checked history variants, sold-price text,
+status and a link to eBay's purchase history. Explicit admin review flags and
+7/14/30 day snoozes remain independent from sale-price data. Automatic hiding
+of cards with prices remains **disabled** until the initial data-quality audit.
+
+If eBay blocks purchase history or omits a paid amount, the listing remains
+a reference only. It is not a price. Weekly and manual full runs share the same
+one-browser lock and preserve historical observations.

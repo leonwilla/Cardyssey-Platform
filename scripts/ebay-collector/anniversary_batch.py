@@ -8,6 +8,7 @@ from ebay_sold import atomic_json
 from price_history import save_sales, stored_sales, choose_median
 from incremental_scan import scan_window,mark_success
 from offer_references import store_offer_candidates
+from purchase_history import audit_purchase_history
 
 ROOT=Path(__file__).resolve().parent
 QUERY="""SELECT jsonb_agg(to_jsonb(c) ORDER BY priority,card_id) FROM (
@@ -179,7 +180,7 @@ def import_result(report,card,directory):
             if len(matches)!=1:continue
             selected=matches[0]
         match=by_variant.setdefault(selected['id'],[])
-        row['variant_assumed']=explicit_print_variant(row['title']) is None
+        row['variant_assumed']=row.get('variant_assumed') if row.get('source')=='EBAY_PURCHASE_HISTORY' else explicit_print_variant(row['title']) is None
         match.append(row)
     if not by_variant:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
     card_id=card['card_id']
@@ -311,7 +312,28 @@ def main():
         if fetch=='OK':
             try:offer_candidates=store_offer_candidates(report,card)
             except (OSError,ValueError,subprocess.CalledProcessError):pass
+            try:
+                report=audit_purchase_history(report,card,cards)
+            except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
+                report['purchaseHistoryAudit']={'status':'UNAVAILABLE','errorType':type(error).__name__}
+            atomic_json(directory/'sales.json',report)
+        cross_imports=[]
+        cross_sales={}
+        for entry in report.get('purchaseHistoryCrossCardSales',[]):
+            cross_sales.setdefault(entry['cardId'],{})[entry['sale']['item_id']]=entry['sale']
+        for target_id,sales_by_id in cross_sales.items():
+            target=next((c for c in cards if c['card_id']==target_id),None)
+            if not target:continue
+            evidence_directory=args.out/'cross-card-purchase-evidence'/target_id
+            evidence_directory.mkdir(parents=True,exist_ok=True)
+            try:
+                imported=import_result({'pages':[{'status':'OK'}],'rows':list(sales_by_id.values())},target,evidence_directory)
+                cross_imports.append({'cardId':target_id,'status':imported.get('status'),'count':len(sales_by_id)})
+            except (OSError,ValueError,subprocess.CalledProcessError):
+                cross_imports.append({'cardId':target_id,'status':'CROSS_CARD_IMPORT_REVIEW_REQUIRED','count':len(sales_by_id)})
         outcome=import_result(report,card,directory)|{'fetch_status':fetch,
+            'cross_card_imports':cross_imports,
+            'purchase_history':report.get('purchaseHistoryAudit',{}),
             'offer_candidates':offer_candidates,
             'image_audit':report.get('imageAudit',{}),
             'scan_mode':'INCREMENTAL' if since else 'FULL',
