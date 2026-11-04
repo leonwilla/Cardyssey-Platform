@@ -149,7 +149,7 @@ def sync(report_path):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('--report',default='/home/tv/cardshop/docs/global-price-source-coverage.json')
+    parser.add_argument('--report',default='/home/tv/.cache/cardyssey/global-price-source-coverage.json')
     args=parser.parse_args()
     result=sync(args.report)
     print(json.dumps({k:result[k] for k in ('totalPrints','totalBulkPrints','missingPrints','sets')},ensure_ascii=False))

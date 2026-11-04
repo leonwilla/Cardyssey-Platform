@@ -57,7 +57,10 @@ Fremdwährungspreis.
 
 ## Bestand und tatsächliche Lücken
 
-Maschinenlesbarer Stand: `docs/global-price-source-coverage.json`.
+Maschinenlesbarer GitHub-Snapshot (Stand bei Veröffentlichung): `docs/global-price-source-coverage.json`.
+Der tägliche Job schreibt seinen Laufzeitbericht außerhalb des Git-Repositories nach
+`/home/tv/.cache/cardyssey/global-price-source-coverage.json`, damit es keine
+ständig veränderten Dateien auf `main` gibt.
 
 **Geprüfter Bestand zum 04.11.2026** (Sprach-/Set-Kombinationen: 1121):
 
