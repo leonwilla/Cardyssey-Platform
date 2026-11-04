@@ -14,17 +14,18 @@ query=f"""SELECT COALESCE(json_agg(t),'[]') FROM (SELECT c.card_id as \"cardId\"
  CASE WHEN e.base_eur IS NOT NULL THEN 'CARDYSSEY_EBAY' ELSE tc.source END AS source,
  COALESCE(e.updated_at,tc.updated_at) AS "updatedAt",e.base_eur AS "ebayPrice",
  tc.base_eur AS "fallbackPrice",tc.source AS "fallbackSource",
- tc.variant_id AS "fallbackVariantId",e.sample_count AS sales
+ tc.variant_id AS "fallbackVariantId",tc.legacy_variant AS "fallbackVariant",e.sample_count AS sales
  FROM catalog_cards_mirror c
  LEFT JOIN LATERAL (SELECT base_eur,updated_at,sample_count FROM ebay_price_cache e
    WHERE e.card_id=c.card_id AND e.language_code=c.language_code
    AND e.source='CARDYSSEY_EBAY' AND e.base_eur>0 ORDER BY e.updated_at DESC LIMIT 1) e ON TRUE
- LEFT JOIN LATERAL (SELECT base_eur,source,updated_at,variant_id FROM tcg_price_cache p
+ LEFT JOIN LATERAL (SELECT base_eur,source,updated_at,variant_id,legacy_variant FROM tcg_price_cache p
    WHERE p.card_id=c.card_id AND p.language_code=c.language_code AND p.base_eur>0
    ORDER BY CASE WHEN p.source LIKE 'CARDMARKET%' THEN 0
                  WHEN p.source LIKE 'POKEMONTCGIO_CARDMARKET%' THEN 1
                  WHEN p.source LIKE 'TCGCSV%' OR p.source LIKE '%TCGPLAYER%' THEN 2
                  ELSE 3 END,
+            CASE WHEN p.legacy_variant='NORMAL' THEN 0 WHEN p.legacy_variant='REVERSE' THEN 1 ELSE 2 END,
             p.updated_at DESC LIMIT 1) tc ON TRUE
  WHERE c.set_id={q(setid)} AND c.language_code={q(language)} {extra}
  ORDER BY c.local_id,c.card_id
