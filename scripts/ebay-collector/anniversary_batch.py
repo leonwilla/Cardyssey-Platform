@@ -78,12 +78,60 @@ def explicit_print_variant(title):
     if reverse and normal:return None
     return 'REVERSE' if reverse else 'NORMAL' if normal else None
 
+def audit_listing_images(report,card):
+    """Verify card ART identity with two adjacent-print negative controls.
+
+    Only a positive high-confidence score can replace a missing printed number.
+    Language, NM condition, single-card sale, and print variant remain independent
+    requirements. This cannot certify physical foil or card condition.
+    """
+    if card['set_id'] not in ('sv01','sv02') or not str(card['local_id']).isdigit():
+        return report
+    number=int(card['local_id'])
+    reference=f"https://assets.tcgdex.net/de/sv/{card['set_id']}/{number:03d}/high.webp"
+    negatives=[f"https://assets.tcgdex.net/de/sv/{card['set_id']}/{n:03d}/high.webp"
+               for n in (number-1,number+1) if 1<=n<=int(card.get('denominator',193))]
+    candidates=[]
+    for r in report.get('rows',[]):
+        if len(candidates)>=16:break
+        title=r.get('title','')
+        if (not r.get('image_url') or
+            not all(re.search(r'(?<!\w)'+re.escape(t)+r'(?!\w)',title,re.I) for t in card['name'].split()) or
+            contradictory_print_or_multi_card(title,card)):
+            continue
+        candidates.append({'id':r['item_id'],'url':r['image_url']})
+    if not candidates:return report
+    script=ROOT.parent/'cardshop'/'scripts'/'ebay-collector'/'image-compare.mjs'
+    if not script.is_file():
+        script=Path('/home/tv/cardshop/scripts/ebay-collector/image-compare.mjs')
+    try:
+        process=subprocess.run(['node',str(script)],input=json.dumps(dict(reference=reference,
+            negativeReferences=negatives,items=candidates)),capture_output=True,text=True,timeout=110)
+        if process.returncode!=0:raise ValueError('COMPARISON_FAILED')
+        audit=json.loads(process.stdout)
+        results={r['id']:r for r in audit.get('items',[])}
+        for row in report.get('rows',[]):
+            comparison=results.get(row.get('item_id'))
+            if comparison:
+                row['image_match_score']=comparison.get('edge')
+                row['image_competing_score']=comparison.get('competingEdge')
+                row['image_match_margin']=comparison.get('margin')
+                row['image_identity_verified']=comparison.get('verified') is True
+        report['imageAudit']={'status':'COMPLETE','tested':len(results),
+            'verified':sum(r.get('verified') is True for r in results.values()),
+            'scope':'art_only_no_variant_condition_verification'}
+    except (OSError,ValueError,subprocess.TimeoutExpired):
+        report['imageAudit']={'status':'UNAVAILABLE','tested':0,'verified':0}
+    return report
+
 def select_rows(report,card):
     rejected=collections.Counter();found={}
     for r in report.get('rows',[]):
         reason=None;title=r['title']
         if not r.get('eligible') or r.get('language')!='de':reason='COLLECTOR_REJECTED'
-        elif not exact_number(title,card):reason='CARD_NUMBER_OR_SET_UNCLEAR'
+        elif not (exact_number(title,card) or (r.get('image_identity_verified') is True
+                and not re.search(r'(?<![\w/])\d+\s*/\s*\d+(?!\w)',title))):
+            reason='CARD_NUMBER_OR_SET_UNCLEAR'
         elif not all(re.search(r'(?<!\w)'+re.escape(t)+r'(?!\w)',title,re.I) for t in card['name'].split()):reason='NAME_MISMATCH'
         elif (contradictory_print_or_multi_card(title,card)
               or re.search(r'jumbo|oversiz|sealed|versiegelt|\b(?:bundle|lot|konvolut|mehrere karten|[2-9]x)\b|\s\+\s',title,re.I)
@@ -178,7 +226,11 @@ def main():
         if fetch in ('LOGIN_REQUIRED','BLOCKED','WRONG_BROWSER_PROFILE'):
             state.update(status='STOPPED_'+fetch,next_card=card['card_id'],checked_at=datetime.now(timezone.utc).isoformat())
             atomic_json(statefile,state);print(json.dumps({'status':state['status'],'card_id':card['card_id']}),flush=True);return
-        outcome=import_result(report,card,directory)|{'fetch_status':fetch}
+        if fetch=='OK':
+            report=audit_listing_images(report,card)
+            atomic_json(directory/'sales.json',report)
+        outcome=import_result(report,card,directory)|{'fetch_status':fetch,
+            'image_audit':report.get('imageAudit',{})}
         state['results'].append(outcome);state.update(status='RUNNING',finished=len(state['results']),checked_at=datetime.now(timezone.utc).isoformat())
         state['counts']=dict(collections.Counter(r['status'] for r in state['results']))
         atomic_json(statefile,state)

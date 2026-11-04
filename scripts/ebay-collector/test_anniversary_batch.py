@@ -74,6 +74,16 @@ class AnniversaryTests(unittest.TestCase):
             self.assertEqual(outcome['status'],'CATALOG_VARIANT_REVIEW')
             db.assert_not_called()
 
+    def test_image_identity_can_substitute_number_but_not_condition_or_language(self):
+        card=dict(card_id='sv02-064',name='Raichu',local_id='064',set_id='sv02',
+                  denominator=193,set_name='Entwicklungen in Paldea',variants=[])
+        row=self.row(title='Raichu Entwicklungen in Paldea Deutsch NM',image_identity_verified=True)
+        selected,_=select_rows(dict(rows=[row]),card)
+        self.assertEqual(len(selected),1)
+        for change in (dict(image_identity_verified=False),dict(condition='unknown'),dict(language='en'),dict(title='Raichu 065/193 Entwicklungen in Paldea Deutsch NM')):
+            selected,_=select_rows(dict(rows=[row|change]),card)
+            self.assertFalse(selected,change)
+
     def test_no_matching_sales_is_not_mislabeled_as_variant_error(self):
         with patch('anniversary_batch.db') as db:
             out=import_result(dict(pages=[dict(status='OK')],rows=[]),self.card(),Path('/unused'))

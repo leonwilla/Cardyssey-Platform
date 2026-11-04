@@ -1695,6 +1695,7 @@ export default function CollectionPage() {
       <CollectionItemEditor
         item={editing}
         market={market}
+        displayedUnitEur={editing ? (market === "EBAY" && Object.prototype.hasOwnProperty.call(ebayLiveUnitEur, editing.key) ? ebayLiveUnitEur[editing.key] : singleValueEur(editing, market)) : undefined}
         busy={saving}
         onClose={
           () =>

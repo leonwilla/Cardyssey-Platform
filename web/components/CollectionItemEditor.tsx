@@ -83,6 +83,7 @@ type Props = {
   item: PortfolioItem | null;
   market: Market;
   busy: boolean;
+  displayedUnitEur?: number | null;
   onClose: () => void;
   onSave:
     (
@@ -98,6 +99,7 @@ export function CollectionItemEditor({
   item,
   market,
   busy,
+  displayedUnitEur,
   onClose,
   onSave,
   onDelete,
@@ -299,14 +301,16 @@ export function CollectionItemEditor({
    * reinen Zusammenfassung ohne Verkaufsdetails zeigen wir keinen alten
    * gespeicherten Wert und keinen unbestätigten Durchschnitt an.
    */
-  const unitValue =
-    selectedMarket === "EBAY"
-      ? pricingQuote !== null &&
-        ebaySales.length > 0
-        ? liveUnitValue
-        : null
-      : liveUnitValue ??
-        storedUnitValue;
+  // The collection overview is the source of truth for the value shown when
+  // opening an unchanged item. A fresh quote is shown only for a changed
+  // condition/market, preventing 0.02 € on the tile vs 0.06 € in the dialog.
+  const showingCollectionValue =
+    selectedMarket === market && condition === currentItem.condition;
+  const unitValue = showingCollectionValue && displayedUnitEur !== undefined
+    ? displayedUnitEur
+    : selectedMarket === "EBAY"
+      ? pricingQuote !== null && ebaySales.length > 0 ? liveUnitValue : null
+      : storedUnitValue ?? liveUnitValue;
 
   const positionValue =
     unitValue == null
@@ -413,17 +417,7 @@ export function CollectionItemEditor({
         <div className="editorField">
           <span>Preismarkt</span>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 6,
-              padding: 4,
-              border: "1px solid rgba(38,58,85,.85)",
-              borderRadius: 12,
-              background: "#09111e",
-            }}
-          >
+          <div className="editorMarketSwitch">
             {(["TCG", "EBAY"] as const).map(
               (value) => (
                 <button
@@ -433,21 +427,7 @@ export function CollectionItemEditor({
                     setSelectedMarket(value)
                   }
                   disabled={busy}
-                  style={{
-                    minHeight: 42,
-                    border: 0,
-                    borderRadius: 9,
-                    cursor: "pointer",
-                    fontWeight: 850,
-                    background:
-                      selectedMarket === value
-                        ? "rgba(85,221,246,.14)"
-                        : "transparent",
-                    color:
-                      selectedMarket === value
-                        ? "var(--cyan)"
-                        : "var(--secondary)",
-                  }}
+                  className={selectedMarket === value ? "selected" : ""}
                 >
                   {value === "EBAY"
                     ? "eBay"
@@ -530,7 +510,7 @@ export function CollectionItemEditor({
           <div>
             <span>
               {selectedMarket === "EBAY"
-                ? "eBay-Mittelwert pro Karte"
+                ? "eBay-Median pro Karte"
                 : "TCG-Marktwert pro Karte"}
             </span>
             <strong>

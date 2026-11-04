@@ -358,3 +358,55 @@ body.cardysseyAppPreview .collectionSetCard {
   body.cardysseyAppPreview .collectionToolbar .syncBadge { justify-self: start; }
   body.cardysseyAppPreview .collectionSetCard { padding: 19px; }
 }
+
+/* Consistent collection editor surfaces, text and bottom action alignment. */
+body.cardysseyAppPreview .editorModal {
+  background:var(--light-card);
+  color:var(--light-ink);
+  border:1px solid var(--light-outline);
+  border-radius:24px;
+  box-shadow:0 24px 80px #292b2426;
+}
+body.cardysseyAppPreview .editorInfo>div,
+body.cardysseyAppPreview .editorValuePanel>div,
+body.cardysseyAppPreview .quantityControl,
+body.cardysseyAppPreview .editorMarketSwitch {
+  background:var(--light-subtle);
+  color:var(--light-ink);
+  border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .editorValuePanel strong {color:var(--light-accent)}
+body.cardysseyAppPreview .editorMarketSwitch button,
+body.cardysseyAppPreview .quantityControl button {color:var(--light-ink);background:transparent}
+body.cardysseyAppPreview .editorMarketSwitch button.selected {
+  color:var(--light-accent);
+  background:var(--light-card);
+  box-shadow:0 1px 5px #27262018;
+}
+body.cardysseyAppPreview .editorModal .dangerButton {
+  background:#fff0eb;
+  border-color:#e8bbae;
+  color:#a23824;
+}
+body.cardysseyAppPreview .editorModal .editorActions {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  align-items:stretch;
+  gap:9px;
+}
+body.cardysseyAppPreview .editorModal .editorActions>div {display:contents}
+body.cardysseyAppPreview .editorModal .editorActions :is(button,a) {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:46px;
+  width:100%;
+  padding:8px 12px;
+  border-radius:12px;
+  font-size:13px;
+  text-align:center;
+  text-decoration:none;
+}
+@media(max-width:560px){
+  body.cardysseyAppPreview .editorModal .editorActions {grid-template-columns:repeat(2,minmax(0,1fr))}
+}

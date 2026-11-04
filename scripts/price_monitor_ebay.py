@@ -27,7 +27,9 @@ for run in runs:
    # Candidate photos are evidence for human/image-assist review, not proof.
    detail['imageCandidates']=[{'title':row.get('title','')[:160],
        'imageUrl':row.get('image_url'), 'listingUrl':row.get('url'),
-       'exclusions':row.get('exclusions') or '', 'saleDate':row.get('sold_date')}
+       'exclusions':row.get('exclusions') or '', 'saleDate':row.get('sold_date'),
+       'imageMatchScore':row.get('image_match_score'),
+       'imageIdentityVerified':row.get('image_identity_verified') is True}
        for row in report.get('rows',[]) if row.get('image_url')][:8]
 
   results[r['card_id']]=detail
