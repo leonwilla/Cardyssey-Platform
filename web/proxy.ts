@@ -104,7 +104,7 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/login") return secure(NextResponse.redirect("https://cardyssey.de/login"));
     if (pathname === "/datenschutz" || pathname === "/impressum" || (pathname === "/api/auth/logout" && request.method === "POST")) return secure(NextResponse.next());
     const storefront = pathname === "/" || pathname === "/business-shop";
-    const publishedReads = (pathname === "/api/sets" || pathname.startsWith("/api/sets/") || pathname === "/api/shop/offers") && request.method === "GET";
+    const publishedReads = (pathname === "/api/sets" || pathname.startsWith("/api/sets/") || pathname === "/api/shop/offers" || pathname === "/api/shop/catalog-sets") && request.method === "GET";
     const personalReads = (pathname === "/api/shop/wishlist-matches" || pathname === "/api/auth/me" || pathname === "/api/wishlist" || pathname.startsWith("/api/wishlist/")) && (request.method === "GET" || (pathname.startsWith("/api/wishlist/") && request.method === "DELETE") || (pathname === "/api/wishlist" && request.method === "POST"));
     if (!storefront && !publishedReads && !personalReads) return secure(new NextResponse("Not Found",{status:404}));
     const preview = await validPreview(request.cookies.get(SHOP_PREVIEW_COOKIE)?.value);
