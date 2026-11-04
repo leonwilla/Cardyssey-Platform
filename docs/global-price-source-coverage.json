@@ -1,0 +1,135 @@
+{
+  "sets": 1121,
+  "languages": {
+    "de": {
+      "sets": 163,
+      "cards": 20537,
+      "prints": 32549,
+      "missing": 3330,
+      "sources": {
+        "TCGDEX": 19108,
+        "NO_PRICE": 3330,
+        "TCGDEX_FAMILY": 520,
+        "TCGDEX_SHARED": 1543,
+        "CARDMARKET_WEB": 5,
+        "TCGDEX_CATALOG": 7980,
+        "TCGDEX_SHARED_HOLO": 5,
+        "CARDMARKET_OFFICIAL": 14,
+        "CARDMARKET_DE_NM_WEB": 3,
+        "TCGDEX_CATALOG_CACHE": 40,
+        "CARDMARKET_OFFICIAL_CT_IDENTITY": 1
+      },
+      "bulkPrints": 18067,
+      "bulkWithPrice": 17048,
+      "rarityUnknown": 1,
+      "noExactVariant": 0
+    },
+    "en": {
+      "sets": 216,
+      "cards": 23771,
+      "prints": 36545,
+      "missing": 2975,
+      "sources": {
+        "TCGDEX": 20583,
+        "NO_PRICE": 2975,
+        "TCGDEX_FAMILY": 523,
+        "TCGDEX_SHARED": 1630,
+        "TCGDEX_CATALOG": 8631,
+        "TCGCSV_TCGPLAYER": 1416,
+        "TCGDEX_SHARED_HOLO": 5,
+        "CARDMARKET_OFFICIAL": 41,
+        "TCGDEX_CATALOG_CACHE": 22,
+        "POKEMONTCGIO_TCGPLAYER": 159,
+        "POKEMONTCGIO_CARDMARKET": 546,
+        "TCGCSV_TCGPLAYER_NAMED_SPECIAL": 2,
+        "CARDMARKET_OFFICIAL_CT_IDENTITY": 12
+      },
+      "bulkPrints": 19564,
+      "bulkWithPrice": 19232,
+      "rarityUnknown": 1,
+      "noExactVariant": 0
+    },
+    "ja": {
+      "sets": 343,
+      "cards": 26181,
+      "prints": 29485,
+      "missing": 22036,
+      "sources": {
+        "NO_PRICE": 22036,
+        "WEB_CARDRUSH_JP": 23,
+        "WEB_HARERUYA_JP": 2198,
+        "CARDTRADER_JP_NM": 931,
+        "TCGCSV_JP_MARKET": 29,
+        "WEB_TORECACAMP_JP": 1888,
+        "CARDTRADER_MARKETPLACE": 2114,
+        "CARDTRADER_MP_INFERRED": 18,
+        "CARDTRADER_SP_INFERRED": 149,
+        "CARDTRADER_PLAYED_INFERRED": 10,
+        "CARDTRADER_EDITION_INFERRED": 80,
+        "CARDTRADER_EDITION_INFERRED_PCG": 9
+      },
+      "bulkPrints": 7116,
+      "bulkWithPrice": 1428,
+      "rarityUnknown": 8506,
+      "noExactVariant": 7766
+    },
+    "ko": {
+      "sets": 262,
+      "cards": 20011,
+      "prints": 20011,
+      "missing": 17340,
+      "sources": {
+        "NO_PRICE": 17340,
+        "WEB_LAKE_KO": 21,
+        "WEB_MANA_KO": 49,
+        "WEB_NERO_KO": 38,
+        "WEB_SHINY_KO": 8,
+        "WEB_UTURI_KO": 159,
+        "WEB_MEWTWO_KO": 28,
+        "WEB_LEVELUP_KO": 19,
+        "WEB_UNICORN_KO": 1,
+        "CARDTRADER_KO_NM": 2335,
+        "WEB_BLACKROSE_KO": 13
+      },
+      "bulkPrints": 122,
+      "bulkWithPrice": 0,
+      "rarityUnknown": 7555,
+      "noExactVariant": 7497
+    },
+    "zh-cn": {
+      "sets": 1,
+      "cards": 48,
+      "prints": 48,
+      "missing": 34,
+      "sources": {
+        "NO_PRICE": 34,
+        "CARDTRADER_MARKETPLACE": 14
+      },
+      "bulkPrints": 0,
+      "bulkWithPrice": 0,
+      "rarityUnknown": 0,
+      "noExactVariant": 0
+    },
+    "zh-tw": {
+      "sets": 136,
+      "cards": 14666,
+      "prints": 15653,
+      "missing": 14687,
+      "sources": {
+        "NO_PRICE": 14687,
+        "WEB_BEEHIVE_HK": 525,
+        "WEB_CARDLAND_HK": 45,
+        "WEB_PLAYERSCLUB_HK": 299,
+        "CARDTRADER_MARKETPLACE": 97
+      },
+      "bulkPrints": 2569,
+      "bulkWithPrice": 108,
+      "rarityUnknown": 11012,
+      "noExactVariant": 7229
+    }
+  },
+  "generatedAt": "2026-11-04T16:24:21.636452+00:00",
+  "totalPrints": 134291,
+  "missingPrints": 60402,
+  "totalBulkPrints": 47438
+}

@@ -39,6 +39,9 @@ type EbayRecentSale = {
 };
 
 type PricingQuote = {
+  market?: Market | null;
+  policyClass?: string | null;
+  policyStatus?: string | null;
   source?: string | null;
   eur?: number | null;
   sampleCount?: number | null;
@@ -201,6 +204,9 @@ export function CollectionItemEditor({
         }
 
         const quote: PricingQuote = {
+          market: data?.market === "TCG" || data?.market === "EBAY" ? data.market : null,
+          policyClass: typeof data?.policyClass === "string" ? data.policyClass : null,
+          policyStatus: typeof data?.policyStatus === "string" ? data.policyStatus : null,
           source:
             typeof data?.source === "string"
               ? data.source
@@ -310,13 +316,16 @@ export function CollectionItemEditor({
   // The collection overview is the source of truth for the value shown when
   // opening an unchanged item. A fresh quote is shown only for a changed
   // condition/market, preventing 0.02 € on the tile vs 0.06 € in the dialog.
+  const effectiveMarket = pricingQuote?.market ?? selectedMarket;
+  const redirectedBulkPrice = selectedMarket === "EBAY" &&
+    pricingQuote?.market === "TCG" && pricingQuote.policyClass === "BULK";
   const showingCollectionValue =
-    selectedMarket === market && condition === currentItem.condition;
+    !redirectedBulkPrice && selectedMarket === market && condition === currentItem.condition;
   const unitValue = showingCollectionValue && displayedUnitEur !== undefined
     ? displayedUnitEur
-    : selectedMarket === "EBAY"
+    : effectiveMarket === "EBAY"
       ? pricingQuote !== null && ebaySales.length > 0 ? liveUnitValue : null
-      : storedUnitValue ?? liveUnitValue;
+      : redirectedBulkPrice ? liveUnitValue : storedUnitValue ?? liveUnitValue;
 
   const positionValue =
     unitValue == null
@@ -515,7 +524,7 @@ export function CollectionItemEditor({
         <div className="editorValuePanel">
           <div>
             <span>
-              {selectedMarket === "EBAY"
+              {effectiveMarket === "EBAY"
                 ? "eBay-Median pro Karte"
                 : "TCG-Marktwert pro Karte"}
             </span>
@@ -536,7 +545,7 @@ export function CollectionItemEditor({
           </div>
         </div>
 
-        {selectedMarket === "TCG" && unitValue == null &&
+        {effectiveMarket === "TCG" && unitValue == null &&
           (pricingQuote?.referenceEur ?? item.referenceUnitEur ?? 0) > 0 && (
           <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:13}}>
             Richtwert: {formatEur(pricingQuote?.referenceEur ?? item.referenceUnitEur ?? null)}
@@ -545,6 +554,17 @@ export function CollectionItemEditor({
           </p>
         )}
 
+        {redirectedBulkPrice && (
+          <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:12}}>
+            Bulk-Karte: Für diese Variante wird der passende TCG-/Regionalmarktpreis genutzt.
+            eBay ist nur für besondere Karten die reguläre Preisquelle.
+          </p>
+        )}
+        {pricingQuote?.policyStatus && pricingQuote.policyStatus !== "PRICE_FOUND" && (
+          <p style={{margin:"7px 0 0",color:"var(--secondary)",fontSize:12}}>
+            Preisquelle noch nicht vollständig verifiziert: {pricingQuote.policyStatus}.
+          </p>
+        )}
         {pricingError && (
           <p
             style={{
@@ -556,7 +576,7 @@ export function CollectionItemEditor({
           </p>
         )}
 
-        {selectedMarket === "EBAY" &&
+        {effectiveMarket === "EBAY" &&
           pricingQuote &&
           ebaySales.length > 0 && (
             <>
@@ -715,7 +735,7 @@ export function CollectionItemEditor({
           </div>
         )}
 
-        {selectedMarket === "EBAY" && item.variantSpec?.id && (
+        {effectiveMarket === "EBAY" && item.variantSpec?.id && (
           <EbayPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
         )}
 

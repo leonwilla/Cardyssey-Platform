@@ -12,7 +12,39 @@ if source=='ebay':
     # queue focused; archived eBay sales are never deleted.
     extra+=" AND lower(trim(COALESCE(c.rarity,''))) NOT IN ('häufig','ungewöhnlich','common','uncommon')"
 filter_source="AND p.source='CARDYSSEY_EBAY'" if source=='ebay' else ''
-query=f"""SELECT COALESCE(json_agg(t),'[]') FROM (SELECT c.card_id as \"cardId\",c.set_id as \"setId\",c.local_id as \"number\",c.name,c.variants, p.base_eur as price, p.source,p.legacy_variant as "variant",p.variant_id as "variantId",p.updated_at as \"updatedAt\", p.resolution_status as status,COALESCE(p.failure_detail,rv.failure_reason) as failure,rv.search_query as \"searchQuery\",rv.search_status as \"searchStatus\",rv.search_steps as \"searchSteps\", rv.candidates as \"candidates\" {',p.sample_count as sales' if source=='ebay' else ''} FROM catalog_cards_mirror c LEFT JOIN LATERAL (SELECT * FROM {cache} p WHERE p.card_id=c.card_id AND p.language_code=c.language_code {filter_source} ORDER BY
+if source=='tcg':
+    # Global materialized source policy selects only a language- and print-
+    # specific candidate, never a loose card-level or other-language price.
+    query=f"""SELECT COALESCE(json_agg(t),'[]') FROM (
+      SELECT c.card_id AS "cardId",c.set_id AS "setId",c.local_id AS "number",
+        c.name,c.variants,p.selected_price_eur AS price,
+        p.selected_price_source AS source,p.variant_id AS "variantId",
+        COALESCE(v.value->>'legacyVariant','NORMAL') AS variant,
+        p.price_checked_at AS "updatedAt",p.price_status AS status,
+        CASE WHEN p.price_status='MISSING_LOCAL_PRICE' THEN 'Keine sprach- und variantenpassende Preisquelle gefunden'
+             WHEN p.price_status='RARITY_REVIEW' THEN 'Seltenheit nicht eindeutig; Quelle manuell überprüfen'
+             ELSE NULL END AS failure,
+        rv.search_query AS "searchQuery",rv.search_status AS "searchStatus",
+        rv.search_steps AS "searchSteps",rv.candidates AS candidates
+      FROM catalog_cards_mirror c
+      LEFT JOIN LATERAL (
+        SELECT * FROM global_price_source_policy p
+        WHERE p.card_id=c.card_id AND p.language_code=c.language_code
+        ORDER BY CASE WHEN EXISTS(
+             SELECT 1 FROM jsonb_array_elements(c.variants) v
+             WHERE v->>'id'=p.variant_id AND v->>'legacyVariant'='NORMAL') THEN 0 ELSE 1 END,
+             (p.selected_price_eur IS NULL),p.variant_id LIMIT 1
+      ) p ON TRUE
+      LEFT JOIN LATERAL (SELECT value FROM jsonb_array_elements(c.variants) value
+        WHERE value->>'id'=p.variant_id LIMIT 1) v ON TRUE
+      LEFT JOIN LATERAL (SELECT search_query,search_status,search_steps,candidates
+        FROM price_review_cases rv WHERE rv.card_id=c.card_id AND rv.language_code=c.language_code
+        ORDER BY rv.checked_at DESC LIMIT 1) rv ON TRUE
+      WHERE c.set_id={q(setid)} AND c.language_code={q(language)}
+      ORDER BY c.local_id,c.card_id
+    ) t;"""
+else:
+    query=f"""SELECT COALESCE(json_agg(t),'[]') FROM (SELECT c.card_id as \"cardId\",c.set_id as \"setId\",c.local_id as \"number\",c.name,c.variants, p.base_eur as price, p.source,p.legacy_variant as "variant",p.variant_id as "variantId",p.updated_at as \"updatedAt\", p.resolution_status as status,COALESCE(p.failure_detail,rv.failure_reason) as failure,rv.search_query as \"searchQuery\",rv.search_status as \"searchStatus\",rv.search_steps as \"searchSteps\", rv.candidates as \"candidates\" {',p.sample_count as sales' if source=='ebay' else ''} FROM catalog_cards_mirror c LEFT JOIN LATERAL (SELECT * FROM {cache} p WHERE p.card_id=c.card_id AND p.language_code=c.language_code {filter_source} ORDER BY
   (p.base_eur IS NOT NULL) DESC,
   CASE WHEN p.source LIKE 'CARDMARKET%' THEN 0 WHEN p.source LIKE 'POKEMONTCGIO_CARDMARKET%' THEN 1
        WHEN p.source IN ('TCGDEX_CATALOG','TCGDEX') THEN 2

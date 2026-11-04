@@ -17,6 +17,7 @@ fun Route.pricingRoutes(
     referenceCache: TcgPriceCacheRepository,
     dataSource: HikariDataSource
 ) {
+    val sourcePolicy = GlobalPriceSourceRepository(dataSource)
     authenticate("auth-jwt") {
         route("/api/v1/pricing") {
             get("/history/{id}") {
@@ -119,9 +120,9 @@ fun Route.pricingRoutes(
                         .queryParameters["market"]
                         ?.trim()
                         ?.uppercase()
-                        ?: "TCG"
+                        ?: "AUTO"
 
-                if (market != "TCG" && market != "EBAY") {
+                if (market !in setOf("AUTO", "TCG", "EBAY")) {
                     call.respond(
                         HttpStatusCode.BadRequest,
                         mapOf("error" to "invalid_market")
@@ -129,24 +130,60 @@ fun Route.pricingRoutes(
                     return@get
                 }
 
-                val quote =
-                    if (market == "EBAY") {
-                        ebayPricing.quote(
-                            cardId = cardId,
-                            language = language,
+                // The same print-specific policy governs Android, web and all
+                // other callers; never silently borrow a different language's
+                // market price. An explicit eBay request for bulk is routed to
+                // its appropriate local TCG/Cardmarket-family reference.
+                val details = catalog.details(cardId, language)
+                val selectedVariant = details?.variants?.let { variants ->
+                    if (requestedVariantId != null)
+                        variants.firstOrNull { it.id == requestedVariantId }
+                    else if (requestedLegacyVariant != null)
+                        variants.filter { it.legacyVariant == requestedLegacyVariant }.singleOrNull()
+                    else variants.singleOrNull()
+                }
+                val policy = if (details?.languageCode == language && selectedVariant != null &&
+                    language in GlobalPriceSourceRules.supportedLanguages)
+                    sourcePolicy.read(cardId, language, selectedVariant.id)
+                else null
+                val bulk = policy?.priceClass == "BULK" ||
+                    (policy == null && GlobalPriceSourceRules.priceClass(details?.rarity) == "BULK")
+                val useEbay = when {
+                    bulk -> false
+                    market == "EBAY" -> true
+                    market == "TCG" -> false
+                    policy?.preferredMarket != "EBAY" -> false
+                    selectedVariant == null -> false
+                    else -> sourcePolicy.hasVerifiedEbaySale(cardId, language, selectedVariant.id)
+                }
+                val quote = when {
+                    useEbay -> {
+                        val ebay = ebayPricing.quote(
+                            cardId = cardId, language = language,
                             variantId = requestedVariantId,
                             legacyVariant = requestedLegacyVariant,
                             condition = condition
                         )
-                    } else {
-                        pricing.quote(
-                            cardId = cardId,
-                            language = language,
-                            variantId = requestedVariantId,
-                            legacyVariant = requestedLegacyVariant,
-                            condition = condition
+                        if (market == "AUTO" && ebay?.eur == null) {
+                            if (policy != null && details != null && selectedVariant != null)
+                                sourcePolicy.tcgResponse(details,selectedVariant,condition,policy)
+                            else pricing.quote(cardId,language,requestedVariantId,requestedLegacyVariant,condition)
+                        } else ebay?.copy(
+                            policyClass = policy?.priceClass,
+                            policyStatus = policy?.status,
+                            policyProviderFamily = policy?.providerFamily,
+                            preferredMarket = policy?.preferredMarket
                         )
                     }
+                    policy != null && details != null && selectedVariant != null ->
+                        sourcePolicy.tcgResponse(details,selectedVariant,condition,policy)
+                    else -> pricing.quote(
+                        cardId = cardId, language = language,
+                        variantId = requestedVariantId,
+                        legacyVariant = requestedLegacyVariant,
+                        condition = condition
+                    )
+                }
 
                 if (quote == null) {
                     call.respond(
@@ -158,7 +195,7 @@ fun Route.pricingRoutes(
 
                 // Never replace an exact quote with a reference. An unavailable
                 // quote may carry a separately labeled card-level approximation.
-                val reference = if (market == "TCG" && quote.eur == null && requestedVariantId != null) {
+                val reference = if (quote.market == "TCG" && quote.eur == null && requestedVariantId != null) {
                     referenceCache.reference(cardId,language,requestedVariantId)
                 } else null
                 call.respond(if (reference != null) quote.copy(

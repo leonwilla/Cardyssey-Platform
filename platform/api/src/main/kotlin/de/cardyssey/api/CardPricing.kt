@@ -51,7 +51,11 @@ data class CardPriceQuoteResponse(
     // Informational only; not a substitute for a verified physical print quote.
     val referenceEur: Double? = null,
     val referenceNote: String? = null,
-    val referenceUpdatedAtMs: Long? = null
+    val referenceUpdatedAtMs: Long? = null,
+    val policyClass: String? = null,
+    val policyStatus: String? = null,
+    val policyProviderFamily: String? = null,
+    val preferredMarket: String? = null
 )
 
 enum class PricingCondition(

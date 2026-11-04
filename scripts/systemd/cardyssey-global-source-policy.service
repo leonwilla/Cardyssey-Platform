@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh six-language print-level Cardyssey price-source decisions (no external requests)
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tv/cardshop
+ExecStart=/usr/bin/python3 /home/tv/cardshop/scripts/sync_global_price_source_policy.py
+TimeoutStartSec=1200
+UMask=0027
