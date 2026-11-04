@@ -1,0 +1,3 @@
+import Link from "next/link";
+import "../business-shop/business-shop.css";
+export default function ShopLogoutPage(){return <main className="shopSignedOut"><div className="shopSignedOutCard"><img src="/cardyssey-emblem-gold.png" alt="Cardyssey" width="62" height="62"/><span>CARDYSSEY STORE</span><h1>Bis zum nächsten Fund!</h1><p>Du bist von deinem Cardyssey-Konto abgemeldet. Deine Wunschliste und Bestellungen sind weiterhin sicher in deinem Konto gespeichert.</p><a href="https://cardyssey.de/login">Mit Cardyssey erneut anmelden <span aria-hidden="true">↗</span></a></div><div className="shopSignedOutFooter">Cardyssey Store · Dein Sammeluniversum</div></main>}
