@@ -113,7 +113,7 @@ def audit_purchase_history(report,card,all_cards=None):
             candidates[r['item_id']]=r['title']
     # Do not spend extra browser requests on unrelated options; only report
     # entries explicitly recorded for the card being scanned.
-    audit={'checked':0,'confirmed':0,'cross_card_confirmed':0,'unpriced':0,'not_this_card':0,'unavailable':0,'sources':[]}
+    audit={'checked':0,'confirmed':0,'cross_card_confirmed':0,'unpriced':0,'unpriced_other_card':0,'not_this_card':0,'unavailable':0,'sources':[]}
     if not candidates:
         report['purchaseHistoryAudit']=audit
         return report
@@ -150,6 +150,9 @@ def audit_purchase_history(report,card,all_cards=None):
                     if target_sale:
                         cross_card.append({'cardId':target['card_id'],'sale':target_sale})
                         audit['cross_card_confirmed']+=1
+                    elif target_reason=='NO_PAID_PRICE':
+                        audit['unpriced_other_card']+=1
+                        source['reason']='OTHER_CARD_NO_PAID_PRICE'
             else:source['reason']=reason
         audit['sources'].append(source)
     report['purchaseHistoryAudit']=audit

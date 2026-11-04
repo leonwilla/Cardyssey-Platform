@@ -46,6 +46,19 @@ class PurchaseHistoryTests(unittest.TestCase):
   self.assertEqual(verified_transaction(ROW,'404434722071',CARD,'Karmesin & Purpur EN')[1],'LANGUAGE_UNCLEAR')
   self.assertEqual(verified_transaction(ROW,'404434722071',CARD,'Trank DE NM')[1],'SET_UNCLEAR')
   self.assertEqual(verified_transaction(ROW,'404434722071',CARD,PARENT+' Damaged')[1],'CONDITION_NOT_NM')
+ def test_unpriced_purchase_of_other_card_is_not_counted_as_tannza(self):
+  tannza={'card_id':'sv01-001','name':'Tannza','local_id':'001','denominator':198,'set_id':'sv01'}
+  waaty={'card_id':'sv01-067','name':'Waaty','local_id':'067','denominator':198,'set_id':'sv01'}
+  row={'variant':'Einzelkarte: 067/198 Waaty','displayedPrice':'Als Aktionsangebot verkauft',
+       'quantity':'1','purchasedAt':'11 Okt 2026, 23:39:41 MESZ'}
+  report={'rows':[{'item_id':'125866062535','title':'Pokemon Karmesin & Purpur DE Einzelkarten zur Auswahl'}]}
+  with patch('purchase_history.cached_or_fetch',return_value={'125866062535':{'status':'NO_VISIBLE_PRICE','transactions':[row]}}):
+   result=audit_purchase_history(report,tannza,[tannza,waaty])
+  audit=result['purchaseHistoryAudit']
+  self.assertEqual(audit['unpriced'],0)
+  self.assertEqual(audit['unpriced_other_card'],1)
+  self.assertEqual(audit['confirmed'],0)
+  self.assertEqual(result['purchaseHistoryCrossCardSales'],[])
  def test_purchase_from_tannza_search_is_attributed_to_trank(self):
   report={'rows':[{'item_id':'404434722071','title':PARENT,'price_eur':1.0}]}
   tannza={'card_id':'sv01-001','name':'Tannza','local_id':'001','denominator':198,'set_id':'sv01'}

@@ -86,7 +86,8 @@ for card_id,c in cards.items():
  reasons=[]
  if r.get('status') in ('FETCH_INCOMPLETE','STOPPED_SERVICE_ERRORS'):reasons.append('eBay-Abruf fehlgeschlagen')
  if r.get('status') in ('CATALOG_VARIANT_REVIEW','SET_NUMBER_REVIEW'):reasons.append('Druckvariante prüfen')
- if audit.get('unpriced',0)>0 or any(x.get('purchaseHistoryStatus')=='NO_VISIBLE_PRICE' for x in offers):reasons.append('Verkauft, bezahlter Preis unbekannt')
+ if audit.get('unpriced',0)>0:reasons.append('Diese Karte verkauft, aber bezahlter Preis unbekannt')
+ if audit.get('unpriced_other_card',0)>0 or any(x.get('purchaseHistoryStatus')=='NO_VISIBLE_PRICE' for x in offers):reasons.append('Auswahlangebot mit Transaktionen ohne sichtbaren Kaufpreis (ggf. andere Karte)')
  if offers and not price:reasons.append('Auswahlangebote ohne bestätigten Kartenpreis')
  if price and price[1]<3:reasons.append('Median mit weniger als 3 Verkäufen')
  if not price and not reasons:reasons.append('Noch kein verifizierter eBay-Verkauf')
