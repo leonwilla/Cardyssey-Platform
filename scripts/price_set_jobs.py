@@ -20,6 +20,10 @@ if action=='start':
    print(json.dumps({'error':'COLLECTOR_SOURCE_MISSING'}));sys.exit(0)
   if hashlib.sha256(source.read_bytes()).digest()!=hashlib.sha256(target.read_bytes()).digest():
    shutil.copy2(source,target)
+  parser_source=Path('/home/tv/cardshop/scripts/ebay-collector/ebay_sold.py')
+  parser_target=BASE/'ebay_sold.py'
+  if parser_source.is_file() and hashlib.sha256(parser_source.read_bytes()).digest()!=hashlib.sha256(parser_target.read_bytes()).digest():
+   shutil.copy2(parser_source,parser_target)
   # A crashed worker must not block every future set run forever.
   # Preserve all completed card results and mark stale work as interrupted.
   for progress in JOBS.glob('*/progress.json'):

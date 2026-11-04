@@ -24,6 +24,12 @@ for run in runs:
      reasons.update(filter(None,(row.get('exclusions') or '').split(';')))
    detail['collectorReasons']=dict(reasons)
    detail['pages']=report.get('pages',[])
+   # Candidate photos are evidence for human/image-assist review, not proof.
+   detail['imageCandidates']=[{'title':row.get('title','')[:160],
+       'imageUrl':row.get('image_url'), 'listingUrl':row.get('url'),
+       'exclusions':row.get('exclusions') or '', 'saleDate':row.get('sold_date')}
+       for row in report.get('rows',[]) if row.get('image_url')][:8]
+
   results[r['card_id']]=detail
 sql="SELECT card_id,round(base_eur::numeric,4),sample_count,updated_at FROM ebay_price_cache WHERE language_code='de' AND source='CARDYSSEY_EBAY' AND base_eur>0"
 out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',sql],timeout=12,text=True)
@@ -31,7 +37,7 @@ prices={a:(float(b),int(c),t) for line in out.splitlines() if (parts:=line.split
 items=[]
 for card_id,c in cards.items():
  r=results.get(card_id,{});price=prices.get(card_id)
- items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[])})
+ items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[]),'imageCandidates':r.get('imageCandidates',[])})
 catalog_sql="SELECT set_id,count(*) FROM catalog_cards_mirror WHERE language_code='de' AND set_id IN ('30th','30th-c','mep','sv01','sv02') GROUP BY set_id"
 catalog_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',catalog_sql],timeout=12,text=True)
 catalog_counts={setid:int(count) for line in catalog_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
