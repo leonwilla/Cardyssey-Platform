@@ -7,6 +7,7 @@ from import_preview import db,sql
 from ebay_sold import atomic_json
 from price_history import save_sales, stored_sales, choose_median
 from incremental_scan import scan_window,mark_success
+from offer_references import store_offer_candidates
 
 ROOT=Path(__file__).resolve().parent
 QUERY="""SELECT jsonb_agg(to_jsonb(c) ORDER BY priority,card_id) FROM (
@@ -264,7 +265,12 @@ def main():
         number=card['local_id'] if card['set_id']=='mep' else card['local_id']+'/'+str(30 if card['set_id']=='30th-c' else card.get('denominator',128))
         query=search_query(card)
         since, cursor_source, scan_at=scan_window(card['card_id'],query,args.out) if args.incremental else (None,'FULL_SCAN',None)
-        if scan_at and datetime.now(timezone.utc)-scan_at < timedelta(days=7):
+        try:
+            from price_history import db as _db,sql as _sql
+            review=_db('SELECT refresh_days FROM ebay_card_review WHERE card_id='+_sql(card['card_id'])+" AND language_code='de';")
+            refresh_days=int(review) if review else 7
+        except (OSError,ValueError,subprocess.CalledProcessError):refresh_days=7
+        if scan_at and datetime.now(timezone.utc)-scan_at < timedelta(days=refresh_days):
             # A successful manual/weekly lookup less than seven days ago
             # needs no redundant eBay requests, even if another card failed.
             outcome={'card_id':card['card_id'],'name':card['name'],
@@ -301,7 +307,12 @@ def main():
         if fetch=='OK':
             report=audit_listing_images(report,card)
             atomic_json(directory/'sales.json',report)
+        offer_candidates=0
+        if fetch=='OK':
+            try:offer_candidates=store_offer_candidates(report,card)
+            except (OSError,ValueError,subprocess.CalledProcessError):pass
         outcome=import_result(report,card,directory)|{'fetch_status':fetch,
+            'offer_candidates':offer_candidates,
             'image_audit':report.get('imageAudit',{}),
             'scan_mode':'INCREMENTAL' if since else 'FULL',
             'since_date':since,'cursor_source':cursor_source}

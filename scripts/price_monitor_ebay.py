@@ -34,13 +34,28 @@ for run in runs:
        for row in report.get('rows',[]) if row.get('image_url')][:8]
 
   results[r['card_id']]=detail
-sql="SELECT card_id,round(base_eur::numeric,4),sample_count,updated_at FROM ebay_price_cache WHERE language_code='de' AND source='CARDYSSEY_EBAY' AND base_eur>0"
+sql="SELECT card_id,round((base_eur*0.92)::numeric,4),sample_count,updated_at FROM ebay_price_cache WHERE language_code='de' AND source='CARDYSSEY_EBAY' AND base_eur>0"
 out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',sql],timeout=12,text=True)
 prices={a:(float(b),int(c),t) for line in out.splitlines() if (parts:=line.split('|')) and len(parts)==4 for a,b,c,t in [parts]}
+reviews={}
+references={}
+try:
+ review_sql="SELECT card_id,review_status,refresh_days,show_offer_references,note,updated_at FROM ebay_card_review WHERE language_code='de'"
+ review_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',review_sql],timeout=12,text=True)
+ for line in review_out.splitlines():
+  parts=line.split('|',5)
+  if len(parts)==6:reviews[parts[0]]=dict(status=parts[1],refreshDays=int(parts[2]),showOfferReferences=parts[3]=='t',note=parts[4],updatedAt=parts[5])
+ ref_sql="SELECT card_id,COALESCE(jsonb_agg(jsonb_build_object('title',title,'url',listing_url,'price',displayed_price_eur,'seenAt',last_seen_at) ORDER BY last_seen_at DESC),'[]') FROM (SELECT card_id,title,listing_url,displayed_price_eur,last_seen_at, row_number() OVER (PARTITION BY card_id ORDER BY last_seen_at DESC) rank FROM ebay_offer_reference WHERE language_code='de' AND sale_for_card_confirmed=false) t WHERE rank<=6 GROUP BY card_id"
+ ref_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',ref_sql],timeout=12,text=True)
+ for line in ref_out.splitlines():
+  if '|' in line:
+   card_id,data=line.split('|',1)
+   references[card_id]=json.loads(data)
+except (subprocess.CalledProcessError,subprocess.TimeoutExpired,ValueError):pass
 items=[]
 for card_id,c in cards.items():
  r=results.get(card_id,{});price=prices.get(card_id)
- items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[]),'imageCandidates':r.get('imageCandidates',[])})
+ items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[]),'imageCandidates':r.get('imageCandidates',[]),'review':reviews.get(card_id,{'status':'AUTO','refreshDays':7,'showOfferReferences':True,'note':''}),'offerReferences':references.get(card_id,[])})
 catalog_sql="SELECT set_id,count(*) FROM catalog_cards_mirror WHERE language_code='de' AND set_id IN ('30th','30th-c','mep','sv01','sv02') GROUP BY set_id"
 catalog_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',catalog_sql],timeout=12,text=True)
 catalog_counts={setid:int(count) for line in catalog_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}

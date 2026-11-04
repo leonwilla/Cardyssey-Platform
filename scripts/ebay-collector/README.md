@@ -48,3 +48,21 @@ A full manual run is still possible from the admin price monitor. Check
 `systemctl --user list-timers` and `journalctl --user -u
 cardyssey-ebay-weekly.service` for schedule status; existing historical
 sale rows are never deleted by an incremental refresh.
+
+## Admin price-review queue (enabled, without auto-hiding)
+
+`ebay_card_review` records a manual state (`AUTO`, `NO_VERIFIED_SALE`,
+`OFFER_REVIEW`), a refresh interval of 7/14/30 days, and an optional note.
+The admin view offers these controls through the authenticated
+`/api/admin/price-review` route. This classification does not touch sale
+history or prices and currently does **not** hide priced cards.
+
+Multi-selection eBay listings are stored separately in `ebay_offer_reference`
+with `MULTI_SELECT_UNVERIFIED_CARD`. Their displayed prices and listing-wide
+sale counters are **never** treated as sold prices of a specific physical
+print. The backfill importer reads archived search reports once and the
+collector records new candidates as it runs. Selection listings cannot
+influence eBay medians until individual sale-and-print evidence exists.
+
+The monitor presents actual Near Mint eBay median prices with the API's
+0.92 factor applied rather than mistakenly displaying the Mint base value.

@@ -10,9 +10,9 @@ extra=" AND c.local_id BETWEEN '094' AND '101'" if source=='ebay' and setid=='me
 filter_source="AND p.source='CARDYSSEY_EBAY'" if source=='ebay' else ''
 query=f"""SELECT COALESCE(json_agg(t),'[]') FROM (SELECT c.card_id as \"cardId\",c.set_id as \"setId\",c.local_id as \"number\",c.name,c.variants, p.base_eur as price, p.source,p.updated_at as \"updatedAt\", p.resolution_status as status,COALESCE(p.failure_detail,rv.failure_reason) as failure,rv.search_query as \"searchQuery\",rv.search_status as \"searchStatus\",rv.search_steps as \"searchSteps\", rv.candidates as \"candidates\" {',p.sample_count as sales' if source=='ebay' else ''} FROM catalog_cards_mirror c LEFT JOIN LATERAL (SELECT * FROM {cache} p WHERE p.card_id=c.card_id AND p.language_code=c.language_code {filter_source} ORDER BY (p.base_eur IS NOT NULL) DESC,p.updated_at DESC LIMIT 1) p ON TRUE LEFT JOIN LATERAL (SELECT search_query,search_status,search_steps,candidates,failure_reason FROM price_review_cases rv WHERE rv.card_id=c.card_id AND rv.language_code=c.language_code ORDER BY rv.checked_at DESC LIMIT 1) rv ON TRUE WHERE c.set_id={q(setid)} AND c.language_code={q(language)} {extra} ORDER BY c.local_id,c.card_id) t;""" if source=='tcg' else f"""SELECT COALESCE(json_agg(t),'[]') FROM (
  SELECT c.card_id as "cardId",c.set_id as "setId",c.local_id as "number",c.name,c.variants,
- COALESCE(e.base_eur,tc.base_eur) AS price,
+ COALESCE(e.base_eur * 0.92,tc.base_eur) AS price,
  CASE WHEN e.base_eur IS NOT NULL THEN 'CARDYSSEY_EBAY' ELSE tc.source END AS source,
- COALESCE(e.updated_at,tc.updated_at) AS "updatedAt",e.base_eur AS "ebayPrice",
+ COALESCE(e.updated_at,tc.updated_at) AS "updatedAt",e.base_eur * 0.92 AS "ebayPrice",
  tc.base_eur AS "fallbackPrice",tc.source AS "fallbackSource",
  tc.variant_id AS "fallbackVariantId",tc.legacy_variant AS "fallbackVariant",e.sample_count AS sales
  FROM catalog_cards_mirror c
