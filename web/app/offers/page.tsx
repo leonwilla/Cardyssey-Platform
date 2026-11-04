@@ -74,7 +74,7 @@ function statusLabel(
   }
 }
 
-export default function OffersPage() {
+export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
   const router =
     useRouter();
 
@@ -232,11 +232,7 @@ export default function OffersPage() {
       ? incoming
       : outgoing;
 
-  return (
-    <AppShell
-      active="/offers"
-      user={user}
-    >
+  const content=(<>
       <div className="pageIntro">
         <div>
           <span className="eyebrowText">
@@ -514,6 +510,6 @@ export default function OffersPage() {
           )}
         </div>
       )}
-    </AppShell>
-  );
+    </>);
+  return embedded?content:<AppShell active="/offers" user={user}>{content}</AppShell>;
 }

@@ -13,6 +13,7 @@ import {
 import {
   AppShell,
 } from "@/components/AppShell";
+import OffersPage from "@/app/offers/page";
 
 import type {
   User,
@@ -65,6 +66,8 @@ export default function MarketplacePage() {
 
   const [listings, setListings] =
     useState<Listing[]>([]);
+
+  const [marketTab,setMarketTab]=useState<"browse"|"offers">("offers");
 
   const [query, setQuery] =
     useState("");
@@ -141,6 +144,11 @@ export default function MarketplacePage() {
       active="/marketplace"
       user={user}
     >
+      <div className="marketplaceSections" role="tablist" aria-label="Marktplatz-Bereiche">
+        <button role="tab" aria-selected={marketTab==="offers"} className={marketTab==="offers"?"active":""} onClick={()=>setMarketTab("offers")}>Meine Angebote</button>
+        <button role="tab" aria-selected={marketTab==="browse"} className={marketTab==="browse"?"active":""} onClick={()=>setMarketTab("browse")}>Karten entdecken</button>
+      </div>
+      {marketTab==="offers"?<OffersPage embedded />:<>
       <div className="pageHeader marketplaceHeader">
         <div>
           <span className="eyebrowText">
@@ -283,6 +291,7 @@ export default function MarketplacePage() {
           )}
         </div>
       )}
+      </>}
     </AppShell>
   );
 }

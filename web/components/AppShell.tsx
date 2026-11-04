@@ -310,14 +310,6 @@ export function AppShell({
               <Link href={href} className={active===href||(href==="/marketplace"&&(active==="/offers"||active==="/shop"))||(href==="/account"&&active==="/friends")?"navItem active":"navItem"}>
                 <span className="navIcon"><NavGlyph name={icon}/></span><span>{label}</span>
               </Link>
-              {href==="/marketplace"&&<details className="sideNavSubmenu" open={active==="/offers"||active==="/shop"||undefined}>
-                <summary>Marktplatz verwalten <span aria-hidden="true">⌄</span></summary>
-                <Link href="/offers" className={active==="/offers"?"navItem active":"navItem"}>Meine Angebote</Link>
-              </details>}
-              {href==="/account"&&<details className="sideNavSubmenu" open={active==="/friends"||undefined}>
-                <summary>Account verwalten <span aria-hidden="true">⌄</span></summary>
-                <Link href="/friends" className={active==="/friends"?"navItem active":"navItem"}>Freunde</Link>
-              </details>}
             </div>
           ))}
 

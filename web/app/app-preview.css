@@ -1,7 +1,7 @@
 /* Opt-in bridge between the homepage redesign and live app functionality. */
 body.cardysseyAppPreview {
   --navy: #f5efe5; --navy-card: #fffaf3; --navy-raised: #efe5d6; --vault: #eee4d5;
-  --cyan: #e6512d; --gold: #e6512d; --blue: #b9d5e7; --violet: #9678a5;
+  --cyan: var(--light-accent); --gold: var(--light-accent); --blue: var(--light-accent); --violet: var(--light-accent);
   --text: #1e2c26; --secondary: #5f6c65; --muted: #6d7770; --border: #e0d3c2;
   background: #f5efe5; color: #1e2c26;
 }
@@ -11,11 +11,11 @@ body.cardysseyAppPreview .authPage {background:#f5efe5;}
 body.cardysseyAppPreview .authCard {background:#fffaf3; border-color:#e0d3c2; box-shadow:0 24px 60px rgba(35,44,37,.10);}
 body.cardysseyAppPreview .authGlow {display:none;}
 body.cardysseyAppPreview .authForm input, body.cardysseyAppPreview .authTabs, body.cardysseyAppPreview .collectionSortControl input, body.cardysseyAppPreview .collectionSortControl select {background:#fffaf3; color:#1e2c26; border-color:#d9cbb9;}
-body.cardysseyAppPreview .primaryButton, body.cardysseyAppPreview .authSubmit {background:#e6512d; color:white; box-shadow:none;}
+body.cardysseyAppPreview .primaryButton, body.cardysseyAppPreview .authSubmit {background:var(--light-accent); color:white; box-shadow:none;}
 body.cardysseyAppPreview .ghostButton, body.cardysseyAppPreview .iconButton, body.cardysseyAppPreview .filter {background:#fffaf3; color:#1e2c26; border-color:#d9cbb9;}
 body.cardysseyAppPreview .statCard, body.cardysseyAppPreview .cardTile, body.cardysseyAppPreview .setTile {background:#fffaf3; color:#1e2c26; border-color:#e0d3c2; box-shadow:none;}
 body.cardysseyAppPreview .pageIntro h1 {color:#1e2c26;}
-body.cardysseyAppPreview .eyebrowText {color:#e6512d;}
+body.cardysseyAppPreview .eyebrowText {color:var(--light-accent);}
 /* Experimental palette: override legacy hardcoded dark surfaces, not just tokens. */
 body.cardysseyAppPreview .setCatalogControls, body.cardysseyAppPreview .setCatalogTile,body.cardysseyAppPreview .setCatalogSummary>div,
 body.cardysseyAppPreview .setCatalogIntro,body.cardysseyAppPreview .shopHero,body.cardysseyAppPreview .accountCard,
@@ -36,9 +36,9 @@ body.cardysseyAppPreview .accountCard h2,body.cardysseyAppPreview .statCard stro
 body.cardysseyAppPreview .setCatalogTile span,body.cardysseyAppPreview .setCatalogTile p,
 body.cardysseyAppPreview .setCatalogStats span,body.cardysseyAppPreview .setCatalogSummary span,
 body.cardysseyAppPreview .scannerFrame p {color:#5f6c65;}
-body.cardysseyAppPreview .scanCorners {border-top-color:#e6512d;border-bottom-color:#e6512d;}
+body.cardysseyAppPreview .scanCorners {border-top-color:var(--light-accent);border-bottom-color:var(--light-accent);}
 body.cardysseyAppPreview .progress,body.cardysseyAppPreview .setProgressTrack {background:#e5dbcc;}
-body.cardysseyAppPreview .progress span,body.cardysseyAppPreview .setProgressBar {background:linear-gradient(90deg,#e6512d,#eda16e);}
+body.cardysseyAppPreview .progress span,body.cardysseyAppPreview .setProgressBar {background:linear-gradient(90deg,var(--light-accent),color-mix(in srgb,var(--light-accent) 55%,white));}
 body.cardysseyAppPreview .authCard,body.cardysseyAppPreview .authCard h1,body.cardysseyAppPreview .authCard label {color:#1e2c26;}
 body.cardysseyAppPreview .bottomNav {background:#fffaf3;color:#1e2c26;}
 
@@ -69,7 +69,7 @@ body.cardysseyAppPreview .bottomItem.active,
 body.cardysseyAppPreview .filter.active {
   background: #fbe4d7;
   border-color: #ebaf96;
-  color: #aa3b1f;
+  color: var(--light-accent);
 }
 body.cardysseyAppPreview .navIcon,
 body.cardysseyAppPreview .sidebarFoot,
@@ -86,7 +86,7 @@ body.cardysseyAppPreview .authTabs button {
 body.cardysseyAppPreview .segmented button.selected,
 body.cardysseyAppPreview .authTabs button.active {
   background: #fbe4d7;
-  color: #a63c21;
+  color: var(--light-accent);
 }
 body.cardysseyAppPreview .heroStat,
 body.cardysseyAppPreview .shopHero {
@@ -96,7 +96,7 @@ body.cardysseyAppPreview .shopHero {
 body.cardysseyAppPreview .heroStat strong,
 body.cardysseyAppPreview .price,
 body.cardysseyAppPreview .cardEditHint {
-  color: #b64224;
+  color: var(--light-accent);
 }
 body.cardysseyAppPreview .chip {
   background: #f1e7dc;
@@ -139,11 +139,11 @@ body.cardysseyAppPreview .authError {
 body.cardysseyAppPreview .interactiveCard:hover,
 body.cardysseyAppPreview .ghostButton:hover,
 body.cardysseyAppPreview .filter:hover {
-  border-color: #e6512d;
+  border-color: var(--light-accent);
   box-shadow: 0 8px 25px rgba(82, 65, 45, .09);
 }
 body.cardysseyAppPreview :is(button, a, input, select, textarea):focus-visible {
-  outline: 3px solid #e6512d;
+  outline: 3px solid var(--light-accent);
   outline-offset: 3px;
 }
 @media (max-width: 760px) {
@@ -158,3 +158,13 @@ body.cardysseyAppPreview :is(button, a, input, select, textarea):focus-visible {
     transition: none;
   }
 }
+
+/* Palette-specific light accents; same components and layout as dark. */
+:root[data-theme="OBSIDIAN_GOLD"] body.cardysseyAppPreview{--light-accent:#95651b;--light-tint:#fbf0db}
+:root[data-theme="MIDNIGHT_CYAN"] body.cardysseyAppPreview{--light-accent:#176d9e;--light-tint:#e4f2fb}
+:root[data-theme="ROYAL_VIOLET"] body.cardysseyAppPreview{--light-accent:#7851b2;--light-tint:#f1eaff}
+:root[data-theme="EMERALD_MINT"] body.cardysseyAppPreview{--light-accent:#14785c;--light-tint:#e3f7ee}
+body.cardysseyAppPreview .navItem.active,body.cardysseyAppPreview .bottomItem.active,body.cardysseyAppPreview .filter.active,body.cardysseyAppPreview .segmented button.selected,body.cardysseyAppPreview .authTabs button.active{color:var(--light-accent);background:var(--light-tint);border-color:color-mix(in srgb,var(--light-accent) 35%,transparent)}
+body.cardysseyAppPreview .heroStat strong,body.cardysseyAppPreview .price,body.cardysseyAppPreview .cardEditHint{color:var(--light-accent)}
+body.cardysseyAppPreview .primaryButton,body.cardysseyAppPreview .authSubmit{background:var(--light-accent);color:white}
+body.cardysseyAppPreview .sidebar .navIcon{background:var(--light-tint)}

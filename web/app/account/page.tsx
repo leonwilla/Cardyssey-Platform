@@ -21,6 +21,8 @@ import {
   ShowcaseSettingsPanel,
 } from "@/components/ShowcaseSettingsPanel";
 
+import FriendsPanel from "@/components/FriendsPanel";
+
 import {
   AppearanceSettingsPanel,
 } from "@/components/AppearanceSettingsPanel";
@@ -65,6 +67,7 @@ export default function AccountPage() {
   const [accountTab, setAccountTab] =
     useState<
       "profile" |
+      "friends" |
       "showcase" |
       "privacy" |
       "appearance" |
@@ -78,6 +81,8 @@ export default function AccountPage() {
     useState<AndroidReleaseInfo | null>(
       null
     );
+
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get("tab")==="friends")setAccountTab("friends")},[]);
 
   useEffect(() => {
     fetch(
@@ -497,7 +502,7 @@ export default function AccountPage() {
               Profil
             </button>
 
-            <button type="button" onClick={()=>router.push("/friends")}>Freunde</button>
+            <button type="button" className={accountTab==="friends"?"active":""} onClick={()=>setAccountTab("friends")}>Freunde</button>
 
             <button
               type="button"
@@ -686,6 +691,7 @@ export default function AccountPage() {
             </div>
           </section>
           )}
+          {accountTab === "friends" && <div className="accountTabPanel"><FriendsPanel embedded /></div>}
           {accountTab === "showcase" && (
             <div className="accountTabPanel">
               <ShowcaseSettingsPanel />
