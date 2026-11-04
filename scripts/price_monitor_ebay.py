@@ -3,7 +3,8 @@
 import json,sys,subprocess
 from pathlib import Path
 root=Path('/home/tv/cardyssey-ebay-collector')
-runs=sorted((p for p in root.glob('anniversary-*') if (p/'progress.json').is_file()),key=lambda p:p.stat().st_mtime)
+runs=sorted((p for p in [*root.glob('anniversary-*'),*root.glob('admin-set-runs/*')]
+             if (p/'progress.json').is_file()),key=lambda p:p.stat().st_mtime)
 cards={}; results={}
 for run in runs:
  manifest=run/'manifest.json'
