@@ -71,6 +71,13 @@ def contradictory_print_or_multi_card(title,card):
     if card['set_id']=='mep' and any(int(n)!=int(card['local_id']) for n in promos):return True
     return False
 
+def explicit_print_variant(title):
+    """Only explicit print words qualify; generic Holo is not a Normal print."""
+    reverse=bool(re.search(r'\breverse(?:[ -]?holo)?\b',title,re.I))
+    normal=bool(re.search(r'\b(?:normal(?:druck)?|non[- ]?holo|nicht[- ]?holo)\b',title,re.I))
+    if reverse and normal:return None
+    return 'REVERSE' if reverse else 'NORMAL' if normal else None
+
 def select_rows(report,card):
     rejected=collections.Counter();found={}
     for r in report.get('rows',[]):
@@ -78,7 +85,10 @@ def select_rows(report,card):
         if not r.get('eligible') or r.get('language')!='de':reason='COLLECTOR_REJECTED'
         elif not exact_number(title,card):reason='CARD_NUMBER_OR_SET_UNCLEAR'
         elif not all(re.search(r'(?<!\w)'+re.escape(t)+r'(?!\w)',title,re.I) for t in card['name'].split()):reason='NAME_MISMATCH'
-        elif contradictory_print_or_multi_card(title,card) or re.search(r'jumbo|oversiz|sealed|versiegelt|reverse|non.?holo|nicht.?holo|\b(?:bundle|lot|konvolut|mehrere karten|[2-9]x)\b|\s\+\s',title,re.I):reason='OTHER_PRINT_OR_SEALED'
+        elif (contradictory_print_or_multi_card(title,card)
+              or re.search(r'jumbo|oversiz|sealed|versiegelt|\b(?:bundle|lot|konvolut|mehrere karten|[2-9]x)\b|\s\+\s',title,re.I)
+              or (card['set_id'] not in ('sv01','sv02') and re.search(r'reverse|non.?holo|nicht.?holo',title,re.I))):
+            reason='OTHER_PRINT_OR_SEALED'
         elif r.get('condition')!='nm':reason='CONDITION_NOT_NM'
         elif not r.get('sold_date') or not 0 <= (date.today()-date.fromisoformat(r['sold_date'])).days<=30:reason='SALE_DATE_INVALID'
         elif not 0<float(r.get('price_eur') or 0)<100000:reason='PRICE_INVALID'
@@ -96,9 +106,22 @@ def import_result(report,card,directory):
     if not report.get('pages') or report['pages'][-1]['status']!='OK':
         return outcome|{'status':'FETCH_INCOMPLETE'}
     if len(rows)<1:return outcome|{'status':'NO_MATCHING_SALES_30D'}
-    if len(variants)!=1 or variants[0]['id']=='generated' or variants[0]['type'].lower()!='holo':
+    if len(variants)==1 and variants[0]['id']!='generated' and variants[0]['type'].lower()=='holo':
+        chosen_variant=variants[0]
+    elif card['set_id'] in ('sv01','sv02') and len(variants)>1:
+        # Never attribute an unmarked sale to Normal or Reverse. If the title
+        # explicitly names ONE print, use only those sales for that print.
+        hinted={explicit_print_variant(r['title']) for r in rows if explicit_print_variant(r['title'])}
+        if len(hinted)!=1:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
+        hint=next(iter(hinted))
+        matches=[v for v in variants if v.get('legacyVariant')==hint and v.get('id')!='generated']
+        if len(matches)!=1:return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
+        chosen_variant=matches[0]
+        rows=[r for r in rows if explicit_print_variant(r['title'])==hint]
+    else:
         return outcome|{'status':'CATALOG_VARIANT_REVIEW'}
-    variant=variants[0]['id'];card_id=card['card_id']
+    outcome['variant_matched_sales']=len(rows)
+    variant=chosen_variant['id'];card_id=card['card_id']
     current=json.loads(db('SELECT variants FROM catalog_cards_mirror WHERE language_code=\'de\' AND card_id='+sql(card_id)+';'))
     if current!=variants:return outcome|{'status':'CATALOG_CHANGED'}
     prices=[r['price_eur'] for r in rows];median=statistics.median(prices)

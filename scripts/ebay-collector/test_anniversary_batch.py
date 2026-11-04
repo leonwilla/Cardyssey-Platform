@@ -1,8 +1,10 @@
 import unittest
+import tempfile
+import json
 from unittest.mock import patch
 from datetime import date
 from pathlib import Path
-from anniversary_batch import exact_number,select_rows,import_result,search_query
+from anniversary_batch import exact_number,select_rows,import_result,search_query,explicit_print_variant
 
 class AnniversaryTests(unittest.TestCase):
     def card(self,set_id='30th'):
@@ -40,6 +42,37 @@ class AnniversaryTests(unittest.TestCase):
         report=dict(rows=[self.row(str(i)) for i in range(40)])
         rows,_=select_rows(report,self.card())
         self.assertEqual(len(rows),40)
+
+    def test_explicit_variant_never_assumes_unmarked_normal(self):
+        self.assertEqual(explicit_print_variant('Raichu Reverse Holo Deutsch NM'),'REVERSE')
+        self.assertEqual(explicit_print_variant('Raichu Non-Holo Deutsch NM'),'NORMAL')
+        self.assertIsNone(explicit_print_variant('Raichu Holo Deutsch NM'))
+        self.assertIsNone(explicit_print_variant('Raichu Reverse Non-Holo NM'))
+
+    def test_modern_reverse_print_imports_only_explicit_sales(self):
+        card=dict(card_id='sv02-064',name='Raichu',local_id='064',set_id='sv02',
+                  denominator=193,set_name='Entwicklungen in Paldea',
+                  variants=[dict(id='normal-id',type='Normal',legacyVariant='NORMAL'),
+                            dict(id='reverse-id',type='Reverse',legacyVariant='REVERSE')])
+        explicit=self.row('reverse',url='test',title='Raichu 064/193 Entwicklungen in Paldea Reverse Holo Deutsch NM')
+        unmarked=self.row('unmarked',url='test',title='Raichu 064/193 Entwicklungen in Paldea Deutsch NM')
+        report=dict(pages=[dict(status='OK')],rows=[explicit,unmarked])
+        def fake_db(query):
+            if query.startswith('SELECT variants'):return json.dumps(card['variants'])
+            if query.startswith('SELECT COALESCE'):return '[]'
+            return ''
+        with tempfile.TemporaryDirectory() as temp,patch('anniversary_batch.db',side_effect=fake_db) as db:
+            outcome=import_result(report,card,Path(temp))
+            self.assertEqual(outcome['status'],'IMPORTED')
+            self.assertEqual(outcome['variant_id'],'reverse-id')
+            self.assertEqual(outcome['sample_count'],1)
+            inserts=[c.args[0] for c in db.call_args_list if c.args[0].startswith('BEGIN; INSERT')]
+            self.assertEqual(len(inserts),1)
+            self.assertIn("'reverse-id'",inserts[0])
+        with patch('anniversary_batch.db') as db:
+            outcome=import_result(dict(pages=[dict(status='OK')],rows=[unmarked]),card,Path('/unused'))
+            self.assertEqual(outcome['status'],'CATALOG_VARIANT_REVIEW')
+            db.assert_not_called()
 
     def test_no_matching_sales_is_not_mislabeled_as_variant_error(self):
         with patch('anniversary_batch.db') as db:
