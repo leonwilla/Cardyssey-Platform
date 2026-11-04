@@ -21,10 +21,15 @@ export async function POST(
     );
 
   let body: string;
+  let shopReturnTo = "";
 
   if (formMode) {
     const form =
       await request.formData();
+    try {
+      const requested=new URL(String(form.get("returnTo")||""));
+      if(requested.protocol==="https:" && requested.hostname==="shop.cardyssey.de" && !requested.port && !requested.username && !requested.password) shopReturnTo=requested.toString();
+    }catch{}
 
     body = JSON.stringify({
       email:
@@ -74,7 +79,7 @@ export async function POST(
             status: 303,
             headers: {
               Location:
-                `/login?error=${error}`,
+                `/login?error=${error}${shopReturnTo?"&returnTo="+encodeURIComponent(shopReturnTo):""}`,
             },
           }
         );
@@ -97,7 +102,7 @@ export async function POST(
         {
           status: 303,
           headers: {
-            Location: "/collection",
+            Location: shopReturnTo||"/collection",
           },
         }
       );
@@ -119,7 +124,7 @@ export async function POST(
           status: 303,
           headers: {
             Location:
-              "/login?error=server_unavailable",
+              `/login?error=server_unavailable${shopReturnTo?"&returnTo="+encodeURIComponent(shopReturnTo):""}`,
           },
         }
       );

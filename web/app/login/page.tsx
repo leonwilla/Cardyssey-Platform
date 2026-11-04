@@ -10,6 +10,7 @@ import {
 } from "@/components/BrandMark";
 
 export default function LoginPage() {
+  const [shopReturnTo,setShopReturnTo]=useState("");
   const [error, setError] =
     useState<string | null>(null);
 
@@ -19,6 +20,8 @@ export default function LoginPage() {
         window.location.search
       ).get("error");
 
+    const next = new URLSearchParams(window.location.search).get("returnTo");
+    if (next) {try {const url=new URL(next);if(url.protocol==="https:"&&url.hostname==="shop.cardyssey.de"&&!url.port)setShopReturnTo(url.toString())}catch{}}
     setError(
       code && code !== "access_restricted"
         ? code === "invalid_credentials"
@@ -71,6 +74,7 @@ export default function LoginPage() {
           method="post"
           action="/api/auth/login"
         >
+          {shopReturnTo && <input type="hidden" name="returnTo" value={shopReturnTo}/>}
           <label>
             E-Mail
             <input
