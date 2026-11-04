@@ -1,6 +1,7 @@
 "use client";
 
 import { SharedChatCard } from "@/components/SharedChatCard";
+import {setChronology} from "@/lib/set-chronology";
 
 import {
   FormEvent,
@@ -1376,7 +1377,7 @@ export default function ChatPage() {
               </button>
             </div>
 
-            <div className="chatShareFilters"><label>Set<select value={shareSet} onChange={e=>setShareSet(e.target.value)}><option value="">Alle Sets</option>{Array.from(new Set(shareCards.map(c=>c.setName||c.setId||"Unbekanntes Set"))).sort((a,b)=>a.localeCompare(b,"de")).map(name=><option key={name} value={name}>{name}</option>)}</select></label><label>Karte suchen<input value={shareQuery} onChange={e=>setShareQuery(e.target.value)} placeholder="Name, Nummer oder Variante …" /></label></div>
+            <div className="chatShareFilters"><label>Set<select value={shareSet} onChange={e=>setShareSet(e.target.value)}><option value="">Alle Sets</option>{Array.from(new Set(shareCards.map(c=>c.setName||c.setId||"Unbekanntes Set"))).sort((a,b)=>{const idA=shareCards.find(c=>(c.setName||c.setId||"Unbekanntes Set")===a)?.setId||"";const idB=shareCards.find(c=>(c.setName||c.setId||"Unbekanntes Set")===b)?.setId||"";return setChronology(idB)-setChronology(idA)||a.localeCompare(b,"de")}).map(name=><option key={name} value={name}>{name}</option>)}</select></label><label>Karte suchen<input value={shareQuery} onChange={e=>setShareQuery(e.target.value)} placeholder="Name, Nummer oder Variante …" /></label></div>
             {shareLoading ? (
               <div className="muted">
                 Sammlung wird geladen …
