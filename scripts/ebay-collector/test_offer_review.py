@@ -13,6 +13,13 @@ class OfferReviewTests(unittest.TestCase):
    self.assertEqual(store_offer_candidates(report,{'card_id':'sv01-001'}),1)
    self.assertIn('ebay_offer_reference',db.call_args.args[0])
    self.assertNotIn('ebay_sold_history',db.call_args.args[0])
+ def test_generic_selection_titles_are_recognized(self):
+  from offer_references import MULTI
+  examples=('Pokemon Karten Karmesin und Purpur Set Einzelkarten Deutsch',
+    'Pokemon Karmesin und Purpur SVI Near Mint Reverse + Holo DE Einzelkarten Sleeved',
+    'Pokemon Karmesin und Purpur SVI DE Near Mint Einzelkarten zum aussuchen Sleeved')
+  for title in examples:self.assertIsNotNone(MULTI.search(title))
+  self.assertIsNone(MULTI.search('Tannza 001/198 Karmesin und Purpur Pokemon Karte Deutsch'))
  def test_review_validation_and_persistence(self):
   with patch('price_review_admin.db',side_effect=['1','']) as db:
    actual=change('sv01-001','NO_VERIFIED_SALE',14,True,'No confirmed sale')

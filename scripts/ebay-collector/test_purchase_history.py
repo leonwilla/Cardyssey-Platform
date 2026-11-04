@@ -31,6 +31,11 @@ class PurchaseHistoryTests(unittest.TestCase):
   self.assertNotIn('username',sale)
   self.assertNotIn('102',sale['item_id'])
   self.assertEqual(sale['quantity'],1)
+ def test_mixed_reverse_holo_listing_needs_selected_print(self):
+  title='Pokemon Karmesin und Purpur SVI Near Mint Reverse + Holo DE Einzelkarten Sleeved'
+  self.assertEqual(verified_transaction(ROW,'404434722071',CARD,title)[1],'VARIANT_UNCLEAR_MIXED_LISTING')
+  row=ROW|{'variant':'Artikel: 188/198 Trank Reverse Holo'}
+  self.assertEqual(verified_transaction(row,'404434722071',CARD,title)[1],'CONFIRMED')
  def test_set_specific_guards_reject_other_expansion(self):
   card=CARD|{'set_id':'sv01'}
   self.assertEqual(verified_transaction(ROW,'404434722071',card,'Entwicklungen in Paldea DE Reverse Holo')[1],'SET_UNCLEAR')

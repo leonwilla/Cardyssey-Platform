@@ -2,7 +2,7 @@
 import json,re
 from price_history import db,sql
 
-MULTI=re.compile(r'\b(?:auswahl|choose|select\s+your|pick\s+your|einzelkarten\s+zum\s+auswählen)\b',re.I)
+MULTI=re.compile(r'\b(?:auswahl|aussuchen|auswählen|choose|select\s+your|pick\s+your|einzelkarten|karten\s+zum\s+auswählen)\b',re.I)
 
 
 def store_offer_candidates(report,card):

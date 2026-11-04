@@ -61,7 +61,7 @@ def exact_number(title,card):
 
 def contradictory_print_or_multi_card(title,card):
     # Do not confuse one card with collection sets, lots or multiple numbered prints.
-    if re.search(r'\b(?:komplettset|komplett[ -]?set|complete[ -]?set|full[ -]?set|master[ -]?set|30\s+karten|mehrere\s+karten|konvolut|sammlung|kartenpaket|lot|bundle|auswahl|choose|select\s+your|pick\s+your)\b',title,re.I):
+    if re.search(r'\b(?:komplettset|komplett[ -]?set|complete[ -]?set|full[ -]?set|master[ -]?set|30\s+karten|mehrere\s+karten|konvolut|sammlung|kartenpaket|lot|bundle|auswahl|aussuchen|auswählen|einzelkarten|choose|select\s+your|pick\s+your)\b',title,re.I):
         return True
     denominator=int(card.get('denominator',128))
     numbers=re.findall(r'(?<![\w/])(\d{1,3})\s*/\s*0*'+str(denominator)+r'(?!\w)',title)

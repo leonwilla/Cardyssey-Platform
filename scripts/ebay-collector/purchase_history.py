@@ -52,7 +52,9 @@ def verified_transaction(row,item_id,card,parent_title):
     explicit_reverse=re.search(r'\breverse\b',variant,re.I)
     explicit_normal=re.search(r'\b(?:non[- ]?holo|nicht[- ]?holo|normal)\b',variant,re.I)
     if explicit_reverse and explicit_normal:return None,'VARIANT_CONFLICT'
-    if explicit_normal and re.search(r'\breverse\b',parent_title,re.I):return None,'VARIANT_CONFLICT'
+    if explicit_normal and re.search(r'\breverse\b',parent_title,re.I) and not re.search(r'\breverse\s*(?:\+|/|und|&|oder)\s*holo\b',parent_title,re.I):return None,'VARIANT_CONFLICT'
+    if not explicit_reverse and not explicit_normal and re.search(r'\breverse\s*(?:\+|/|und|&|oder)\s*holo\b',parent_title,re.I):
+        return None,'VARIANT_UNCLEAR_MIXED_LISTING'
     # If no variant-specific wording, listing-wide reverse/non-holo is reliable only
     # when the listing itself offers that one print type for all choices.
     print_hint='REVERSE' if explicit_reverse or (not explicit_normal and re.search(r'\breverse\b',parent_title,re.I)) else 'NORMAL'
@@ -80,7 +82,7 @@ def persist_check(obj):
     db('INSERT INTO ebay_purchase_history_check(ebay_item_id,status,transactions,reason) VALUES ('+sql(item)+','+sql(status)+','+sql(raw)+"::jsonb,'') ON CONFLICT(ebay_item_id) DO UPDATE SET status=EXCLUDED.status,transactions=EXCLUDED.transactions,reason=EXCLUDED.reason,checked_at=now();")
     return {'status':status,'transactions':rows}
 
-def cached_or_fetch(item_ids,max_new=2):
+def cached_or_fetch(item_ids,max_new=4):
     """Batch shared eBay-item checks; recent checks are never repeated per card."""
     data={};missing=[]
     for item in list(dict.fromkeys(item_ids))[:8]:
@@ -117,7 +119,7 @@ def audit_purchase_history(report,card,all_cards=None):
     if not candidates:
         report['purchaseHistoryAudit']=audit
         return report
-    fetched=cached_or_fetch(list(candidates)[:6])
+    fetched=cached_or_fetch(list(candidates)[:8])
     cross_card=[]
     by_number={}
     for candidate in all_cards or []:
