@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 
-import { previewThemeKey } from "./PreviewThemeSync";
+import {applyBrightness,cachedBrightness,type BrightnessMode} from "./PreviewThemeSync";
 
 import {
   appearanceThemes,
@@ -21,7 +21,7 @@ export function AppearanceSettingsPanel() {
       "OBSIDIAN_GOLD"
     );
 
-  const [experimental, setExperimental] = useState(false);
+  const [brightness,setBrightness]=useState<BrightnessMode>("dark");
 
   const [saving, setSaving] =
     useState(false);
@@ -30,7 +30,7 @@ export function AppearanceSettingsPanel() {
     useState<string | null>(null);
 
   useEffect(() => {
-    setExperimental(window.localStorage.getItem(previewThemeKey) === "1");
+    setBrightness(cachedBrightness());
     setSelected(
       cachedAppearanceTheme()
     );
@@ -117,10 +117,17 @@ export function AppearanceSettingsPanel() {
       <h2>Dein Cardyssey-Design</h2>
 
       <p className="muted">
-        Die Auswahl wird in deinem Konto
-        gespeichert und automatisch in
-        Web und Android übernommen.
+        Die Farbvariante wird mit deinem Cardyssey-Konto synchronisiert.
+        Die Helligkeit kannst du aktuell für diesen Browser wählen.
       </p>
+
+      <div className="brightnessChooser" aria-label="Helligkeit auswählen">
+        <div><strong>Helligkeit</strong><small>Wähle Hell oder Dunkel – deine Farbvariante bleibt erhalten.</small></div>
+        <div className="brightnessChoices" role="group" aria-label="Helligkeit">
+          <button type="button" aria-pressed={brightness==="light"} onClick={()=>{setBrightness("light");applyBrightness("light")}}>☀ Hell</button>
+          <button type="button" aria-pressed={brightness==="dark"} onClick={()=>{setBrightness("dark");applyBrightness("dark")}}>☾ Dunkel</button>
+        </div>
+      </div>
 
       <div className="themeChoiceGrid">
         {appearanceThemes.map(
@@ -164,22 +171,6 @@ export function AppearanceSettingsPanel() {
             </button>
           )
         )}
-      </div>
-
-      <div className="statusPanel" style={{marginTop:20,display:"grid",gap:12}}>
-        <strong>Neues helles Redesign (experimentell)</strong>
-        <p>Nur in diesem Browser testen. Dein gespeichertes dunkles Cardyssey-Design und die Android-App bleiben unverändert.</p>
-        <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
-          <input type="checkbox" checked={experimental} onChange={event => {
-            const next = event.target.checked;
-            setExperimental(next);
-            if (next) window.localStorage.setItem(previewThemeKey, "1");
-            else window.localStorage.removeItem(previewThemeKey);
-            window.dispatchEvent(new Event("cardyssey-redesign-change"));
-          }} />
-          Helles Testdesign in der Webapp verwenden
-        </label>
-        <small>Du kannst jederzeit wieder ausschalten. Diese Einstellung wird nicht mit Android synchronisiert.</small>
       </div>
 
       {message && (

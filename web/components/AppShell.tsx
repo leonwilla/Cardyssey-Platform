@@ -29,10 +29,7 @@ const nav: readonly [
   ["/collection", "Sammlung", "collection"],
   ["/scan", "Scannen", "scan"],
   ["/sets", "Sets", "sets"],
-  ["/shop", "Nutzer-Shop", "shop"],
   ["/marketplace", "Marktplatz", "marketplace"],
-  ["/offers", "Angebote", "offers"],
-  ["/friends", "Community", "friends"],
   ["/chat", "Nachrichten", "friends"],
   ["/account", "Account", "account"],
 ];
@@ -45,8 +42,7 @@ const mobileNav: readonly [
   ["/collection", "Sammlung", "collection"],
   ["/scan", "Scannen", "scan"],
   ["/sets", "Sets", "sets"],
-  ["/shop", "Shop", "shop"],
-  ["/friends", "Community", "friends"],
+  ["/marketplace", "Markt", "marketplace"],
   ["/account", "Account", "account"],
 ];
 
@@ -309,25 +305,21 @@ export function AppShell({
         </Link>
 
         <nav className="sideNav">
-          {nav.map(
-            ([href, label, icon]) => (
-              <Link
-                key={href}
-                href={href}
-                className={
-                  active === href
-                    ? "navItem active"
-                    : "navItem"
-                }
-              >
-                <span className="navIcon">
-                  <NavGlyph name={icon} />
-                </span>
-
-                <span>{label}</span>
+          {nav.map(([href,label,icon])=>(
+            <div key={href} className="sideNavEntry">
+              <Link href={href} className={active===href||(href==="/marketplace"&&(active==="/offers"||active==="/shop"))||(href==="/account"&&active==="/friends")?"navItem active":"navItem"}>
+                <span className="navIcon"><NavGlyph name={icon}/></span><span>{label}</span>
               </Link>
-            )
-          )}
+              {href==="/marketplace"&&<details className="sideNavSubmenu" open={active==="/offers"||active==="/shop"||undefined}>
+                <summary>Marktplatz verwalten <span aria-hidden="true">⌄</span></summary>
+                <Link href="/offers" className={active==="/offers"?"navItem active":"navItem"}>Meine Angebote</Link>
+              </details>}
+              {href==="/account"&&<details className="sideNavSubmenu" open={active==="/friends"||undefined}>
+                <summary>Account verwalten <span aria-hidden="true">⌄</span></summary>
+                <Link href="/friends" className={active==="/friends"?"navItem active":"navItem"}>Freunde</Link>
+              </details>}
+            </div>
+          ))}
 
           {canAdmin && (
             <div className="adminNavGroup">

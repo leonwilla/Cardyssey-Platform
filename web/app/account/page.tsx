@@ -497,6 +497,8 @@ export default function AccountPage() {
               Profil
             </button>
 
+            <button type="button" onClick={()=>router.push("/friends")}>Freunde</button>
+
             <button
               type="button"
               className={
