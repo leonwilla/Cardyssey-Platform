@@ -1,10 +1,7 @@
-import {authenticatedBackendFetch} from "@/lib/server/cardyssey-api";
 import {shopSql} from "@/lib/server/native-shop-db";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function GET(request:Request){
- const session=await authenticatedBackendFetch("/api/v1/me");
- if(!session.ok)return Response.json({error:"login_required"},{status:401});
  try{
   const url=new URL(request.url);
   const language=url.searchParams.get("language")||"de";
