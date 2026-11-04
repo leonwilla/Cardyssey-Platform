@@ -39,6 +39,15 @@ for run in runs:
 sql="SELECT card_id,round((base_eur*0.92)::numeric,4),sample_count,updated_at FROM ebay_price_cache WHERE language_code='de' AND source='CARDYSSEY_EBAY' AND base_eur>0"
 out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',sql],timeout=12,text=True)
 prices={a:(float(b),int(c),t) for line in out.splitlines() if (parts:=line.split('|')) and len(parts)==4 for a,b,c,t in [parts]}
+history_stats={}
+try:
+ history_sql="SELECT card_id,count(*),count(*) FILTER (WHERE evidence_type='EBAY_PURCHASE_HISTORY'),max(sold_on) FROM ebay_sold_history WHERE language_code='de' GROUP BY card_id"
+ history_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',history_sql],timeout=12,text=True)
+ for line in history_out.splitlines():
+  parts=line.split('|',3)
+  if len(parts)==4:
+   history_stats[parts[0]]=dict(totalHistoricalSales=int(parts[1]),purchaseHistorySales=int(parts[2]),latestRecordedSale=parts[3])
+except (subprocess.CalledProcessError,subprocess.TimeoutExpired,ValueError):pass
 reviews={}
 references={}
 try:
@@ -89,7 +98,7 @@ for card_id,c in cards.items():
    snoozed=datetime.now(timezone.utc)-updated<timedelta(days=review.get('refreshDays',7))
   except (ValueError,TypeError):pass
  requires_review=bool(reasons) and not snoozed
- items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[]),'imageCandidates':r.get('imageCandidates',[]),'purchaseHistoryAudit':r.get('purchaseHistoryAudit',{}),'review':review,'offerReferences':offers,'reviewRequired':requires_review,'reviewReasons':reasons,'snoozed':snoozed})
+ items.append({'cardId':card_id,'setId':c['set_id'],'name':c['name'],'number':c['local_id'],'price':price[0] if price else None,'sales':price[1] if price else None,'updatedAt':price[2] if price else None,'status':'PRICE_FOUND' if price else r.get('status','NOT_CHECKED'),'failure':None if price else r.get('status','Noch nicht geprüft'),'searchQuery':r.get('query'),'parsed':r.get('parsed',0),'matched':r.get('nm_candidates',0),'rejections':r.get('rejections',{}),'collectorReasons':r.get('collectorReasons',{}),'run':r.get('run'),'pages':r.get('pages',[]),'imageCandidates':r.get('imageCandidates',[]),'purchaseHistoryAudit':r.get('purchaseHistoryAudit',{}),'historyStats':history_stats.get(card_id,{'totalHistoricalSales':0,'purchaseHistorySales':0,'latestRecordedSale':None}),'review':review,'offerReferences':offers,'reviewRequired':requires_review,'reviewReasons':reasons,'snoozed':snoozed})
 catalog_sql="SELECT set_id,count(*) FROM catalog_cards_mirror WHERE language_code='de' AND set_id IN ('30th','30th-c','mep','sv01','sv02') GROUP BY set_id"
 catalog_out=subprocess.check_output(['docker','exec','cardyssey-db','psql','-U','cardyssey','-d','cardyssey','-At','-F','|','-c',catalog_sql],timeout=12,text=True)
 catalog_counts={setid:int(count) for line in catalog_out.splitlines() if '|' in line for setid,count in [line.split('|',1)]}
