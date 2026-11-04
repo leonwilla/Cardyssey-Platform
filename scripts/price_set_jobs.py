@@ -4,6 +4,8 @@ import sys,json,subprocess,os,time,fcntl,shutil,hashlib
 from pathlib import Path
 BASE=Path('/home/tv/cardyssey-ebay-collector');JOBS=BASE/'admin-set-runs';JOBS.mkdir(exist_ok=True)
 action=sys.argv[1];setid=sys.argv[2]
+incremental='--incremental' in sys.argv[3:]
+if any(arg!='--incremental' for arg in sys.argv[3:]):sys.exit('UNKNOWN_OPTION')
 if setid not in {'30th','30th-c','mep','sv01','sv02'}:sys.exit('UNSUPPORTED_EBAY_SET')
 job=JOBS/setid
 if action=='start':
@@ -24,6 +26,10 @@ if action=='start':
   parser_target=BASE/'ebay_sold.py'
   if parser_source.is_file() and hashlib.sha256(parser_source.read_bytes()).digest()!=hashlib.sha256(parser_target.read_bytes()).digest():
    shutil.copy2(parser_source,parser_target)
+  cursor_source=Path('/home/tv/cardshop/scripts/ebay-collector/incremental_scan.py')
+  cursor_target=BASE/'incremental_scan.py'
+  if cursor_source.is_file() and (not cursor_target.exists() or hashlib.sha256(cursor_source.read_bytes()).digest()!=hashlib.sha256(cursor_target.read_bytes()).digest()):
+   shutil.copy2(cursor_source,cursor_target)
   history_source=Path('/home/tv/cardshop/scripts/ebay-collector/price_history.py')
   history_target=BASE/'price_history.py'
   if history_source.is_file() and (not history_target.exists() or hashlib.sha256(history_source.read_bytes()).digest()!=hashlib.sha256(history_target.read_bytes()).digest()):
@@ -67,8 +73,8 @@ if action=='start':
    (job/'manifest.json').write_text(json.dumps(selected,ensure_ascii=False))
    (job/'progress.json').write_text(json.dumps({'status':'QUEUED','total':len(selected),'results':[],'started_at':time.time(),'run_start_done':0}))
   log=(job/'runner.log').open('a')
-  subprocess.Popen(['python3','-u','anniversary_batch.py','--out',str(job)],cwd=str(BASE),stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,start_new_session=True)
-  print(json.dumps({'started':True,'total':len(selected)}))
+  subprocess.Popen(['python3','-u','anniversary_batch.py','--out',str(job)]+(['--incremental'] if incremental else []),cwd=str(BASE),stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,start_new_session=True)
+  print(json.dumps({'started':True,'total':len(selected),'incremental':incremental}))
 elif action=='status':
  p=job/'progress.json';d=json.loads(p.read_text()) if p.exists() else {'status':'NOT_STARTED','results':[]}
  results=d.get('results',[]);total=d.get('total',len(results))

@@ -341,6 +341,7 @@ def main():
     ap.add_argument('--condition',choices=['mint','nm','ex','lp','gd','vg','mp','hp','played','damaged'])
     ap.add_argument('--card-number')
     ap.add_argument('--max-age-days',type=int,default=30)
+    ap.add_argument('--sold-since',help='ISO sale date lower bound for incremental sold-search pages')
     ap.add_argument('--pages',type=int,default=3)
     ap.add_argument('--delay',type=float,default=8)
     ap.add_argument('--min-sales',type=int,default=1)
@@ -356,6 +357,11 @@ def main():
     ap.add_argument('--resume',action='store_true')
     a=ap.parse_args()
     if not 1<=a.pages<=100 or not 3<=a.delay<=300 or a.min_sales<1 or a.max_age_days<1: ap.error('pages 1..100, delay 3..300, min-sales >=1, max-age-days >=1')
+    if a.sold_since:
+        try:
+            since=date.fromisoformat(a.sold_since)
+            if since>date.today():ap.error('--sold-since cannot be in the future')
+        except ValueError:ap.error('--sold-since requires YYYY-MM-DD')
     if a.login and (a.webdriver or a.html): ap.error('--login is for a local Playwright profile only')
     if a.card_number:
         a.card_number=classify(a.card_number)['card_number']
@@ -368,7 +374,7 @@ def main():
     lock=lock_path.open('a')
     try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError: print('Another collector is active',file=sys.stderr); return 2
-    config={k:getattr(a,k) for k in ['query','require','exclude','language','edition','variant','condition','card_number','max_age_days','min_sales']}
+    config={k:getattr(a,k) for k in ['query','require','exclude','language','edition','variant','condition','card_number','max_age_days','min_sales','sold_since']}
     signature=hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()
     checkpoint=a.out/'checkpoint.json'
     rows,states,next_page=[],[],1
@@ -377,14 +383,25 @@ def main():
         if old['signature']!=signature: ap.error('Checkpoint filters differ; use a different output directory')
         rows,states,next_page=old['rows'],old['pages'],old['next_page']
     seen={r['item_id'] for r in rows}
+    incremental_boundary=False
     def consume(html,url,status,num):
+        nonlocal incremental_boundary
         nonlocal next_page
         state=page_state(html,url,status)
         found=parse(html,a.require,a.exclude) if state=='OK' else []
         if state=='OK' and not found: state='EMPTY_OR_LAYOUT_CHANGED'
         apply_policy(found,a)
+        if a.sold_since and state=='OK':
+            cutoff=date.fromisoformat(a.sold_since)
+            dated=[date.fromisoformat(r['sold_date']) for r in found if r.get('sold_date')]
+            # Only trust a sorted, dated page. An out-of-order or partially
+            # undated result page cannot prove the end of the new-sale window.
+            ordered=bool(dated) and len(dated)==len(found) and all(
+                dated[i]>=dated[i+1] for i in range(len(dated)-1))
+            incremental_boundary=incremental_boundary or (ordered and dated[-1]<cutoff)
+            found=[r for r in found if r.get('sold_date') and date.fromisoformat(r['sold_date'])>=cutoff]
         new=[r for r in found if r['item_id'] not in seen]
-        if state=='OK' and not new: state='REPEATED_PAGE'
+        if state=='OK' and not new and not (a.sold_since and incremental_boundary): state='REPEATED_PAGE'
         if state=='OK':
             rows.extend(new); seen.update(r['item_id'] for r in new); next_page=num+1
         states.append({'page':num,'status':state,'parsed_count':len(found),'new_count':len(new)})
@@ -396,23 +413,29 @@ def main():
             for num,path in enumerate(a.html,1):
                 if num<next_page: continue
                 if consume(path.read_text(encoding='utf-8'),'',200,num)!='OK': break
+                if a.sold_since and incremental_boundary:break
         else:
             with browser(a) as b:
                 if a.login: return 0
                 for num in range(next_page,a.pages+1):
-                    url='https://www.ebay.de/sch/i.html?'+urlencode(dict(_nkw=a.query,LH_Sold=1,LH_Complete=1,**({'_pgn':num} if num>1 else {})))
+                    url='https://www.ebay.de/sch/i.html?'+urlencode(dict(_nkw=a.query,LH_Sold=1,LH_Complete=1,**({'_sop':13} if a.sold_since else {}),**({'_pgn':num} if num>1 else {})))
                     html,final_url,status=b.load(url)
                     if page_state(html,final_url,status)=='SERVICE_ERROR':
                         time.sleep(max(a.delay,15))
                         html,final_url,status=b.load(url)
                     if consume(html,final_url,status,num)!='OK': break
-                    if num<a.pages: time.sleep(a.delay)
+                    if a.sold_since and incremental_boundary:break
+            if num<a.pages: time.sleep(a.delay)
     except ProfileMismatch: states.append({'status':'WRONG_BROWSER_PROFILE'})
     except KeyboardInterrupt: states.append({'status':'INTERRUPTED'})
     except Exception as exc:
         # Never log exception strings: browser libraries may include sensitive URLs.
         states.append({'status':'ERROR','error_type':type(exc).__name__})
-    complete=bool(states) and states[-1]['status']=='OK'
+    complete=bool(states) and states[-1]['status']=='OK' and (
+        not a.sold_since or incremental_boundary)
+    if a.sold_since and states and states[-1]['status']=='OK' and not incremental_boundary:
+        states.append({'status':'INCREMENTAL_BOUNDARY_NOT_REACHED',
+                       'reason':'Page limit reached without safely finding older sold dates'})
     apply_policy(rows,a)
     result=summary(rows,a.min_sales)
     result['collection_incomplete']=not complete
@@ -427,7 +450,7 @@ def main():
         if row['eligible']:
             key='|'.join(row[k] for k in ['language','card_number','edition','variant','condition'])
             groups.setdefault(key,[]).append(row)
-    report=dict(schema_version=2,config=config,collected_at=datetime.now(timezone.utc).isoformat(),pages=states,summary=result,
+    report=dict(schema_version=2,config=config,collected_at=datetime.now(timezone.utc).isoformat(),incremental_boundary_reached=incremental_boundary,pages=states,summary=result,
                 groups={k:summary(v,a.min_sales) | {'estimated_market_value_eur':None,'status':'GROUP_SAMPLE_ONLY'} for k,v in groups.items()},rows=rows)
     atomic_json(a.out/'sales.json',report)
     atomic_json(checkpoint,dict(signature=signature,rows=rows,pages=states,next_page=next_page))

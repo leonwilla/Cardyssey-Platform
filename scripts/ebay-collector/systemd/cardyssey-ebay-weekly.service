@@ -1,0 +1,10 @@
+[Unit]
+Description=Serial Cardyssey eBay incremental sold-sale refresh (5 DE sets, each 7 days)
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tv/cardshop
+ExecStart=/usr/bin/python3 /home/tv/cardshop/scripts/ebay-collector/weekly_scan.py
+TimeoutStartSec=180
+UMask=0077

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Resumable, serial DE 30th anniversary collection and conservative cache import."""
 import argparse,collections,fcntl,json,os,re,statistics,subprocess,time
-from datetime import date,datetime,timezone
+from datetime import date,datetime,timezone,timedelta
 from pathlib import Path
 from import_preview import db,sql
 from ebay_sold import atomic_json
 from price_history import save_sales, stored_sales, choose_median
+from incremental_scan import scan_window,mark_success
 
 ROOT=Path(__file__).resolve().parent
 QUERY="""SELECT jsonb_agg(to_jsonb(c) ORDER BY priority,card_id) FROM (
@@ -221,7 +222,7 @@ def recent_verified_report(directory, query, max_hours=24):
     try:
         report=json.loads(path.read_text())
         config=report.get('config',{})
-        if config.get('query')!=query or config.get('language')!='de':return None
+        if config.get('query')!=query or config.get('language')!='de' or config.get('sold_since'):return None
         if not report.get('pages') or report['pages'][-1].get('status')!='OK':return None
         collected=datetime.fromisoformat(report['collected_at'].replace('Z','+00:00'))
         if not 0 <= (datetime.now(timezone.utc)-collected).total_seconds() <= max_hours*3600:return None
@@ -235,7 +236,7 @@ def recent_verified_report(directory, query, max_hours=24):
     except (ValueError,TypeError,KeyError,OSError):return None
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--out',type=Path,default=ROOT/'anniversary-20261021');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--out',type=Path,default=ROOT/'anniversary-20261021');ap.add_argument('--incremental',action='store_true');args=ap.parse_args()
     os.umask(0o077);args.out.mkdir(parents=True,exist_ok=True)
     lock=(ROOT/'.anniversary.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     manifest=args.out/'manifest.json'
@@ -261,11 +262,27 @@ def main():
             continue
         number=card['local_id'] if card['set_id']=='mep' else card['local_id']+'/'+str(30 if card['set_id']=='30th-c' else card.get('denominator',128))
         query=search_query(card)
-        cmd=['bash',str(ROOT/'run-tiny.sh'),'--query',query,'--language','de','--pages','1','--max-age-days','36500','--min-sales','1']
+        since, cursor_source, scan_at=scan_window(card['card_id'],query,args.out) if args.incremental else (None,'FULL_SCAN',None)
+        if scan_at and datetime.now(timezone.utc)-scan_at < timedelta(days=7):
+            # A successful manual/weekly lookup less than seven days ago
+            # needs no redundant eBay requests, even if another card failed.
+            outcome={'card_id':card['card_id'],'name':card['name'],
+                     'set_id':card['set_id'],'status':'SKIPPED_RECENT',
+                     'fetch_status':'SKIPPED','scan_mode':'INCREMENTAL',
+                     'since_date':since,'cursor_source':cursor_source}
+            state['results'].append(outcome)
+            state.update(status='RUNNING',finished=len(state['results']),checked_at=datetime.now(timezone.utc).isoformat())
+            state['counts']=dict(collections.Counter(r['status'] for r in state['results']))
+            atomic_json(statefile,state)
+            print(json.dumps(outcome,ensure_ascii=False),flush=True)
+            continue
+        cmd=['bash',str(ROOT/'run-tiny.sh'),'--query',query,'--language','de',
+             '--pages',str(5 if since else 1),'--max-age-days','36500','--min-sales','1']
+        if since:cmd.extend(['--sold-since',since])
         # Broad discovery must not pre-reject alternate spacing, language or promo identifiers.
         # select_rows enforces language, name, print ID and condition before import.
         env=dict(os.environ,EBAY_OUTPUT_DIR=str(directory),EBAY_LOCK_WAIT='180')
-        report=recent_verified_report(directory,query)
+        report=None if since else recent_verified_report(directory,query)
         fetch='OK' if report is not None else 'RUNNER_ERROR'
         if report is None:
             report={}
@@ -284,7 +301,19 @@ def main():
             report=audit_listing_images(report,card)
             atomic_json(directory/'sales.json',report)
         outcome=import_result(report,card,directory)|{'fetch_status':fetch,
-            'image_audit':report.get('imageAudit',{})}
+            'image_audit':report.get('imageAudit',{}),
+            'scan_mode':'INCREMENTAL' if since else 'FULL',
+            'since_date':since,'cursor_source':cursor_source}
+        # Cursor advances ONLY when every necessary sold page was checked.
+        # Incomplete/captcha/unknown layouts must be retried next time.
+        if fetch=='OK' and (not since or report.get('incremental_boundary_reached') is True):
+            try:
+                timestamp=datetime.fromisoformat(report['collected_at'].replace('Z','+00:00'))
+                mark_success(card['card_id'],query,timestamp)
+                outcome['scan_checkpoint_updated']=True
+            except (OSError,ValueError,KeyError,subprocess.CalledProcessError) as error:
+                outcome['scan_checkpoint_updated']=False
+                outcome['scan_checkpoint_error']=type(error).__name__
         state['results'].append(outcome);state.update(status='RUNNING',finished=len(state['results']),checked_at=datetime.now(timezone.utc).isoformat())
         state['counts']=dict(collections.Counter(r['status'] for r in state['results']))
         atomic_json(statefile,state)

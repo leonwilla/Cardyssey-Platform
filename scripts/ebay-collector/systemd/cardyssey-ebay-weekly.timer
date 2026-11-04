@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for due Cardyssey eBay weekly incremental scan
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=15min
+Unit=cardyssey-ebay-weekly.service
+
+[Install]
+WantedBy=timers.target
