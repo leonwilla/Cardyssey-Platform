@@ -6,7 +6,7 @@ export async function POST(request:Request){
  if(!await priceMonitorAllowed())return Response.json({error:'forbidden'},{status:403});
  const data=await request.json().catch(()=>null);
  if(!data||typeof data.cardId!=='string'||!/^[a-zA-Z0-9_-]{2,90}$/.test(data.cardId)||
-    !['AUTO','NO_VERIFIED_SALE','OFFER_REVIEW'].includes(data.status)||
+    !['AUTO','NO_VERIFIED_SALE','OFFER_REVIEW','VERIFIED'].includes(data.status)||
     ![7,14,30].includes(data.refreshDays)||typeof data.showOfferReferences!=='boolean'||
     typeof data.note!=='string'||data.note.length>500)
    return Response.json({error:'invalid_review'},{status:400});

@@ -46,7 +46,10 @@ def evidence(card_id):
           'url':row.get('url'),'imageUrl':row.get('image_url'),
           'kind':kind,'collectorExclusions':row.get('exclusions') or '',
           'imageVerified':row.get('image_identity_verified') is True})
+    # Unambiguously unrelated cards are useful for collector diagnostics only,
+    # not for the human review queue. Keep the count, exclude the rows.
     counts={k:sum(row['kind']==k for row in results) for k in KINDS}
+    relevant=[row for row in results if row['kind']!='OTHER_CARD']
     sql="""SELECT COALESCE(jsonb_agg(jsonb_build_object(
        'itemId',r.ebay_item_id,'title',r.title,'url',r.listing_url,
        'displayedPrice',r.displayed_price_eur,'purchaseStatus',p.status,
@@ -56,11 +59,28 @@ def evidence(card_id):
        ON p.ebay_item_id=r.ebay_item_id
        WHERE r.language_code='de' AND r.card_id='"""+card_id+"';"
     output=subprocess.run(['docker','exec','cardyssey-db','psql','-X','-U','cardyssey','-d','cardyssey','-At','-c',sql],capture_output=True,text=True,timeout=15,check=True)
+    offers=json.loads(output.stdout.strip() or '[]')
+    # Purchase-history tables often refer to entirely different cards. Those
+    # rows are useful to the price collector, but not this card's admin queue.
+    number=int(card['local_id']) if str(card.get('local_id','')).isdigit() else None
+    denominator=int(card.get('denominator',128))
+    for offer in offers:
+        rows=offer.get('transactions') or []
+        relevant_purchases=[]
+        for transaction in rows:
+            selection=transaction.get('variant','')
+            exact=re.search(r'(?<![\w/])0*(\d{1,3})\s*/\s*0*(\d{2,3})(?!\w)',selection)
+            if exact and number is not None and int(exact[1])==number and int(exact[2])==denominator and all(
+                re.search(r'(?<!\w)'+re.escape(token)+r'(?!\w)',selection,re.I)
+                for token in card['name'].split()):
+                relevant_purchases.append(transaction)
+        offer['transactions']=relevant_purchases
+        offer['otherCardPurchasesHidden']=len(rows)-len(relevant_purchases)
     return {'cardId':card_id,'run':file.parents[1].name,
         'query':report.get('config',{}).get('query'),
-        'totalSearchResults':len(results),'counts':counts,'results':results,
-        'offers':json.loads(output.stdout.strip() or '[]'),
-        'purchaseAudit':report.get('purchaseHistoryAudit',{})}
+        'totalSearchResults':len(results),'irrelevantCount':counts['OTHER_CARD'],
+        'reviewableCount':len(relevant),'counts':counts,'results':relevant,
+        'offers':offers,'purchaseAudit':report.get('purchaseHistoryAudit',{})}
 
 if __name__=='__main__':
     try:print(json.dumps(evidence(sys.argv[1]),ensure_ascii=False))

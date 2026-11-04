@@ -92,7 +92,7 @@ for card_id,c in cards.items():
  if price and price[1]<3:reasons.append('Median mit weniger als 3 Verkäufen')
  if not price and not reasons:reasons.append('Noch kein verifizierter eBay-Verkauf')
  snoozed=False
- if review.get('status')=='NO_VERIFIED_SALE' and review.get('updatedAt'):
+ if review.get('status') in ('NO_VERIFIED_SALE','VERIFIED') and review.get('updatedAt'):
   try:
    updated=datetime.fromisoformat(review['updatedAt'].replace(' ','T'))
    if updated.tzinfo is None:updated=updated.replace(tzinfo=timezone.utc)

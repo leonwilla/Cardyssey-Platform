@@ -5,12 +5,14 @@ The invoking authenticated Next.js API enforces admin permissions.
 import json,sys,re
 from price_history import db,sql
 
-STATUSES={'AUTO','NO_VERIFIED_SALE','OFFER_REVIEW'}
+STATUSES={'AUTO','NO_VERIFIED_SALE','OFFER_REVIEW','VERIFIED'}
 DAYS={7,14,30}
 
 def change(card,status,days,show,note):
     if not re.fullmatch(r'[a-zA-Z0-9_-]{2,90}',card):raise ValueError('invalid_card')
     if status not in STATUSES or days not in DAYS or not isinstance(show,bool):raise ValueError('invalid_review')
+    # Admin-facing final states always have fixed, reliable refresh cadences.
+    days=30 if status=='NO_VERIFIED_SALE' else 7 if status=='VERIFIED' else days
     if not isinstance(note,str) or len(note)>500:raise ValueError('invalid_note')
     if db('SELECT count(*) FROM catalog_cards_mirror WHERE card_id='+sql(card)+" AND language_code='de';")=='0':raise ValueError('unknown_card')
     db('''INSERT INTO ebay_card_review(card_id,language_code,review_status,refresh_days,show_offer_references,note)

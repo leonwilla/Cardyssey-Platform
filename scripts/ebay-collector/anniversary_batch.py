@@ -268,8 +268,14 @@ def main():
         since, cursor_source, scan_at=scan_window(card['card_id'],query,args.out) if args.incremental else (None,'FULL_SCAN',None)
         try:
             from price_history import db as _db,sql as _sql
-            review=_db('SELECT refresh_days FROM ebay_card_review WHERE card_id='+_sql(card['card_id'])+" AND language_code='de';")
-            refresh_days=int(review) if review else 7
+            review=_db('SELECT refresh_days,review_status,updated_at FROM ebay_card_review WHERE card_id='+_sql(card['card_id'])+" AND language_code='de';")
+            review_parts=review.split('|') if review else []
+            refresh_days=int(review_parts[0]) if review_parts else 7
+            if review_parts and review_parts[1] in ('VERIFIED','NO_VERIFIED_SALE'):
+                decided_at=datetime.fromisoformat(review_parts[2].replace(' ','T'))
+                if decided_at.tzinfo is None:decided_at=decided_at.replace(tzinfo=timezone.utc)
+                # A human decision is the earliest point from which to wait.
+                scan_at=max([x for x in (scan_at,decided_at) if x],default=decided_at)
         except (OSError,ValueError,subprocess.CalledProcessError):refresh_days=7
         if scan_at and datetime.now(timezone.utc)-scan_at < timedelta(days=refresh_days):
             # A successful manual/weekly lookup less than seven days ago
