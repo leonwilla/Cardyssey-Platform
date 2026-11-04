@@ -90,8 +90,16 @@ def choose_median(sales, today=None, desired_samples=3):
                 recent_sales=sorted(matches,key=lambda s:str(s['sold_on']),reverse=True)[:10])
 
 
+_schema_ready = False
+
+
 def ensure_history_table():
-    db(DDL)
+    global _schema_ready
+    # The migration is persistent: avoid repeated CREATE/ALTER locks and a
+    # separate Docker/psql invocation for every card and variant.
+    if not _schema_ready:
+        db(DDL)
+        _schema_ready = True
 
 
 def save_sales(card_id, variant_id, rows, *, language='de'):
