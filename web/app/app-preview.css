@@ -294,3 +294,67 @@ body.cardysseyAppPreview :is(input,select,textarea)::placeholder {color:#748079!
   body.cardysseyAppPreview .bottomNav {background:var(--light-card);border-color:var(--light-outline)}
   body.cardysseyAppPreview .accountTabs {background:var(--light-subtle)}
 }
+
+/* Collection: airy editorial layout instead of a large edge-to-edge white panel. */
+body.cardysseyAppPreview .collectionSection {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 20px clamp(12px, 2.2vw, 34px) 44px;
+  margin-top: 38px;
+  border-radius: 0;
+}
+body.cardysseyAppPreview .collectionSection .sectionTitle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 23px;
+  margin-bottom: 22px;
+}
+body.cardysseyAppPreview .collectionSection .sectionTitle h2 {
+  font-size: clamp(25px, 2.6vw, 33px);
+  line-height: 1.12;
+  margin-top: 8px;
+}
+body.cardysseyAppPreview .collectionToolbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  justify-content: stretch;
+  gap: 14px 16px;
+}
+body.cardysseyAppPreview .collectionToolbar .collectionSearchControl { grid-column: span 2; }
+body.cardysseyAppPreview .collectionToolbar .collectionSortControl { min-width: 0; }
+body.cardysseyAppPreview .collectionToolbar .collectionSortControl select,
+body.cardysseyAppPreview .collectionToolbar .collectionSortControl input {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+  border-radius: 13px;
+}
+body.cardysseyAppPreview .collectionToolbar .syncBadge {
+  grid-column: 1 / -1;
+  justify-self: end;
+  color: #397d67;
+  font-size: 12px;
+}
+body.cardysseyAppPreview .collectionViewBar { margin: 6px 0 22px; }
+body.cardysseyAppPreview .collectionSetGrid { gap: 18px; }
+body.cardysseyAppPreview .collectionSetCard {
+  min-height: 157px;
+  padding: 23px 24px;
+  border-radius: 19px;
+  box-shadow: 0 6px 20px rgba(44, 41, 32, .035);
+}
+@media (max-width: 1160px) {
+  body.cardysseyAppPreview .collectionToolbar { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (max-width: 760px) {
+  body.cardysseyAppPreview .collectionSection { padding: 14px 4px 30px; margin-top: 24px; }
+  body.cardysseyAppPreview .collectionSection .sectionTitle { gap: 18px; }
+  body.cardysseyAppPreview .collectionToolbar { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  body.cardysseyAppPreview .collectionToolbar .collectionSearchControl { grid-column: 1 / -1; }
+  body.cardysseyAppPreview .collectionToolbar .syncBadge { justify-self: start; }
+  body.cardysseyAppPreview .collectionSetCard { padding: 19px; }
+}

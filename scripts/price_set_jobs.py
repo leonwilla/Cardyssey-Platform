@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Allowlisted eBay set-run launcher/status. Never interpolates a shell command."""
-import sys,json,subprocess,os,time,fcntl
+import sys,json,subprocess,os,time,fcntl,shutil,hashlib
 from pathlib import Path
 BASE=Path('/home/tv/cardyssey-ebay-collector');JOBS=BASE/'admin-set-runs';JOBS.mkdir(exist_ok=True)
 action=sys.argv[1];setid=sys.argv[2]
@@ -10,9 +10,25 @@ if action=='start':
  lock=JOBS/'launch.lock'
  with lock.open('w') as f:
   fcntl.flock(f,fcntl.LOCK_EX)
-  existing=[p for p in JOBS.glob('*/progress.json') if json.loads(p.read_text()).get('status')=='RUNNING']
   active=subprocess.run(['pgrep','-f','^python3 -u anniversary_batch.py'],capture_output=True,text=True).returncode==0
-  if active or existing:print(json.dumps({'error':'EBAY_BROWSER_BUSY','active':True}));sys.exit(0)
+  if active:
+   print(json.dumps({'error':'EBAY_BROWSER_BUSY','active':True}));sys.exit(0)
+  # Keep the persistent Tiny collector in sync with the tested, git-tracked source.
+  source=Path('/home/tv/cardshop/scripts/ebay-collector/anniversary_batch.py')
+  target=BASE/'anniversary_batch.py'
+  if not source.is_file():
+   print(json.dumps({'error':'COLLECTOR_SOURCE_MISSING'}));sys.exit(0)
+  if hashlib.sha256(source.read_bytes()).digest()!=hashlib.sha256(target.read_bytes()).digest():
+   shutil.copy2(source,target)
+  # A crashed worker must not block every future set run forever.
+  # Preserve all completed card results and mark stale work as interrupted.
+  for progress in JOBS.glob('*/progress.json'):
+   previous=json.loads(progress.read_text())
+   if previous.get('status')=='RUNNING':
+    previous['status']='INTERRUPTED'
+    temp=progress.with_suffix('.json.tmp')
+    temp.write_text(json.dumps(previous,ensure_ascii=False))
+    temp.replace(progress)
   if setid in ('sv01','sv02'):
    from subprocess import check_output
    denom=198 if setid=='sv01' else 193
@@ -24,11 +40,22 @@ if action=='start':
    allcards=json.loads((BASE/'anniversary-20261021'/'manifest.json').read_text());selected=[c for c in allcards if c['set_id']==setid]
   if not selected:print(json.dumps({'error':'NO_CARDS'}));sys.exit(0)
   job.mkdir(exist_ok=True)
-  # New run, preserve previous batch audit.
-  if (job/'progress.json').exists():
+  # Resume an interrupted run without losing already-checked cards.
+  # Completed runs begin fresh, with the previous audit archived.
+  previous_file=job/'progress.json'
+  previous=json.loads(previous_file.read_text()) if previous_file.exists() else {}
+  saved_manifest=json.loads((job/'manifest.json').read_text()) if (job/'manifest.json').exists() else []
+  resume=(previous.get('status') in ('INTERRUPTED','RUNNING','QUEUED','STOPPED_SERVICE_ERRORS')
+          and {c['card_id'] for c in saved_manifest}=={c['card_id'] for c in selected}
+          and bool(saved_manifest))
+  if previous_file.exists() and not resume:
    archive=JOBS/(setid+'-history-'+str(int(time.time())));job.rename(archive);job.mkdir()
-  (job/'manifest.json').write_text(json.dumps(selected,ensure_ascii=False))
-  (job/'progress.json').write_text(json.dumps({'status':'QUEUED','total':len(selected),'results':[]}))
+  if resume:
+   previous['status']='QUEUED'
+   previous_file.write_text(json.dumps(previous,ensure_ascii=False))
+  else:
+   (job/'manifest.json').write_text(json.dumps(selected,ensure_ascii=False))
+   (job/'progress.json').write_text(json.dumps({'status':'QUEUED','total':len(selected),'results':[]}))
   log=(job/'runner.log').open('a')
   subprocess.Popen(['python3','-u','anniversary_batch.py','--out',str(job)],cwd=str(BASE),stdout=log,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,start_new_session=True)
   print(json.dumps({'started':True,'total':len(selected)}))
