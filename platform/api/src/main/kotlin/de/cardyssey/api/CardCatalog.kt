@@ -26,6 +26,10 @@ import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
+/** Digital Pokémon TCG Pocket cards have no physical Cardyssey catalog or market. */
+internal fun isDigitalPocketSetId(id: String): Boolean =
+    Regex("^(?:A[0-9]|B[0-9]|P-A)", RegexOption.IGNORE_CASE).containsMatchIn(id)
+
 @Serializable
 data class CatalogCardSearchResult(
     val id: String,
@@ -300,6 +304,7 @@ class CardCatalogService(
         }
 
     suspend fun details(cardId: String, language: String, forceRemote: Boolean = false): CatalogCardDetails? {
+        if (isDigitalPocketSetId(cardId.substringBeforeLast("-", ""))) return null
         val curated = anniversaryCards(language, localImages = !forceRemote).firstOrNull { it.id == cardId }
         val extra = if (forceRemote) null else supplemental?.cards(language)?.firstOrNull { it.id == cardId }
         if (cardId.startsWith("official_")) return extra
@@ -341,15 +346,16 @@ class CardCatalogService(
         val primary = listed + missingPromos
         val extra = supplemental?.cards(language).orEmpty().groupBy { it.setId }
         val byId = primary.associateBy { it.id.lowercase() }
-        return primary.map { set ->
+        return primary.filterNot { isDigitalPocketSetId(it.id) }.map { set ->
             val cards = extra.entries.firstOrNull { it.key.equals(set.id, true) }?.value.orEmpty()
             set.copy(totalCount = maxOf(set.totalCount, cards.size, if (set.id == "mep") indexedCards[set.id].orEmpty().size else 0))
-        } + extra.filterKeys { it.lowercase() !in byId }.map { (id, cards) ->
+        } + extra.filterKeys { it.lowercase() !in byId && !isDigitalPocketSetId(it) }.map { (id, cards) ->
             CatalogSetSummary(id, cards.first().setName, officialCount = cards.maxOf { it.officialCount }, totalCount = cards.size)
         }
     }
 
     suspend fun setDetails(setId: String, language: String): CatalogSetDetails? {
+        if (isDigitalPocketSetId(setId)) return null
         val curated = anniversaryCards(language)
         if (setId == AnniversaryPromos.SET_ID) {
             if (curated.isEmpty()) return null
@@ -851,17 +857,18 @@ class CardCatalogService(
                 }
             }
 
-        if (result.isNotEmpty()) {
+        val physicalResult = result.filterNot { isDigitalPocketSetId(it.id) }
+        if (physicalResult.isNotEmpty()) {
             setSummaryCache[
                 language
             ] =
                 CacheEntry(
-                    result,
+                    physicalResult,
                     now + CACHE_MS
                 )
         }
 
-        return result
+        return physicalResult
     }
 
 
@@ -1225,7 +1232,7 @@ class CardCatalogService(
                     if (language == "zh-cn") {
                         cards.filter { it.id.startsWith("CSMPiC-", ignoreCase = true) }
                     } else {
-                        cards
+                        cards.filterNot { isDigitalPocketSetId(it.id.substringBeforeLast("-", "")) }
                     }
                 }
 
@@ -1245,7 +1252,7 @@ class CardCatalogService(
             }
 
         val curated = AnniversaryPromos.cards(language).associateBy { it.id }
-        val completeResult = (result.map { card ->
+        val completeResult = (result.filterNot { isDigitalPocketSetId(it.id.substringBeforeLast("-", "")) }.map { card ->
             val promo = curated[card.id]
             if (promo?.imageBase != null) card.copy(imageBase = promo.imageBase) else card
         } + curated.values.map { BriefCard(it.id, it.localId, it.name, it.imageBase) }).distinctBy { it.id }
@@ -1314,7 +1321,7 @@ class CardCatalogService(
                     if (language == "zh-cn") {
                         sets.filterKeys { it.equals("CSMPiC", ignoreCase = true) }
                     } else {
-                        sets
+                        sets.filterKeys { !isDigitalPocketSetId(it) }
                     }
                 }
 

@@ -87,6 +87,7 @@ class PermanentCatalogRepository(
         set: CatalogSetSummary,
         rawPayload: String
     ) {
+        if (isDigitalPocketSetId(set.id)) return
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
@@ -141,6 +142,7 @@ class PermanentCatalogRepository(
         variantsJson: String = "[]",
         detailsComplete: Boolean = false
     ) {
+        if (isDigitalPocketSetId(card.setId)) return
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
@@ -250,6 +252,7 @@ class PermanentCatalogRepository(
                 SELECT language_code, card_id, set_id, local_id, name, image_source_url
                 FROM catalog_cards_mirror
                 WHERE language_code = ?
+                  AND set_id !~* '^(A[0-9]|B[0-9]|P-A)'
                   AND ($predicate)
                   AND (CAST(? AS TEXT) IS NULL OR card_id > ?)
                 ORDER BY card_id
@@ -324,6 +327,7 @@ class PermanentCatalogRepository(
                 LEFT JOIN catalog_sets_mirror s
                   ON s.language_code = c.language_code AND s.set_id = c.set_id
                 WHERE c.language_code = ? AND c.image_dhash IS NOT NULL
+                  AND c.set_id !~* '^(A[0-9]|B[0-9]|P-A)'
                   AND (
                     ? IS NULL OR
                     CASE

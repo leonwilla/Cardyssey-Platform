@@ -20,6 +20,7 @@ WITH catalog AS (
  FROM catalog_cards_mirror c
  LEFT JOIN LATERAL jsonb_array_elements(c.variants) v(value) ON TRUE
  WHERE c.language_code IN ('de','en','ja','ko','zh-cn','zh-tw')
+   AND c.set_id !~* '^(A[0-9]|B[0-9]|P-A)'
 ), classified AS (
  SELECT *, CASE
   WHEN rarity_key IN ('häufig','ungewöhnlich','common','uncommon','c','u','rare_c','rare_u','rare_c_c','rare_u_c','one diamond','two diamond','une diamant','deux diamant') THEN 'BULK'
