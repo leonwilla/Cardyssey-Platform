@@ -66,10 +66,22 @@ function Save-Progress([int]$done,[int]$total,[string]$status,[string]$card) {
 }
 $cases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
 $processed = [Collections.Generic.HashSet[string]]::new()
+$latest = @{}
 if (Test-Path $resultsPath) {
   Get-Content $resultsPath | ForEach-Object {
-    try { $prev=$_ | ConvertFrom-Json; if ($prev.status -ne 'ERROR') {[void]$processed.Add([string]$prev.key)} } catch {}
+    try {
+      $prev=$_ | ConvertFrom-Json
+      $key=[string]$prev.key
+      if ($key) { $latest[$key]=$prev }
+    } catch {}
   }
+}
+$refreshCutoff=[datetime]::UtcNow.AddDays(-7)
+foreach ($key in $latest.Keys) {
+  $prev=$latest[$key]
+  $isRecent=$false
+  try { $isRecent=([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $refreshCutoff) } catch {}
+  if ($prev.status -ne 'ERROR' -and $isRecent) { [void]$processed.Add($key) }
 }
 $completed=0
 $runTotal=[Math]::Min($cases.Count,$MaxCases)
@@ -80,20 +92,47 @@ try {
     if ($processed.Contains($key)) {continue}
     $out=[ordered]@{key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;set_id=$case.set_id;status="STARTED";query="";product_id="";url="";offers_seen=0;de_nm_offers=0;sample_median_eur=$null;price_basis="lowest_page_active_asking_sample_not_sold";seen_at=[DateTime]::UtcNow.ToString("o")}
     try {
-      $auth=Js 'document.body.innerText.includes("AUSLOGGEN")'
-      if ($auth -ne $true) { Save-Progress $processed.Count $runTotal "LOGIN_REQUIRED" $case.cardyssey_karte;break }
+      $auth=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
+      if (!$auth) {
+        Start-Sleep -Seconds 3
+        $auth=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
+      }
+      if (!$auth) { Save-Progress $processed.Count $runTotal "LOGIN_REQUIRED" $case.cardyssey_karte;break }
       $name=[string]$case.kartenname_suche
       $number=[string]$case.kartennummer
       $out.query="$name $number"
-      $url="https://www.cardmarket.com/de/Pokemon/Products/Search?searchString="+[uri]::EscapeDataString($out.query)
-      if (!(Move-To $url)) {throw "SEARCH_PAGE_TIMEOUT"}
-      $blocked = Js '/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+document.body?.innerText.slice(0,1600))'
-      if ($blocked) {Save-Progress $processed.Count $runTotal "BLOCKED" $case.cardyssey_karte;break}
-      $stillLogged=Js 'document.body.innerText.includes("AUSLOGGEN")'
-      if (!$stillLogged) {Save-Progress $processed.Count $runTotal "LOGIN_REQUIRED" $case.cardyssey_karte;break}
-      $links = Js 'JSON.stringify([...document.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.innerText.trim().slice(0,140),url:a.href})).filter(x=>x.text))' | ConvertFrom-Json
-      $out.search_hits=@($links).Count
-      $likely=@($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
+      $savedUrl=""
+      $allowedIds=@([string]$case.cardmarket_ids -split ",")
+      if ($latest.ContainsKey($key)) {
+        $prior=$latest[$key]
+        $sameProduct=([string]$prior.product_id -in $allowedIds)
+        if ($sameProduct -and $prior.status -in @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS')) {
+          try {
+            $candidate=[uri](([string]$prior.url).Split('?')[0])
+            if ($candidate.Scheme -eq 'https' -and $candidate.Host -eq 'www.cardmarket.com' -and $candidate.AbsolutePath.StartsWith('/de/Pokemon/Products/Singles/')) {
+              $savedUrl=$candidate.AbsoluteUri
+            }
+          } catch {}
+        }
+      }
+      if ($savedUrl) {
+        $out.search_hits=1
+        $likely=@([pscustomobject]@{url=$savedUrl;text="$name $number"})
+      } else {
+        $url="https://www.cardmarket.com/de/Pokemon/Products/Search?searchString="+[uri]::EscapeDataString($out.query)
+        if (!(Move-To $url)) {throw "SEARCH_PAGE_TIMEOUT"}
+        $blocked = Js '/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+document.body?.innerText.slice(0,1600))'
+        if ($blocked) {Save-Progress $processed.Count $runTotal "BLOCKED" $case.cardyssey_karte;break}
+        $stillLogged=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
+        if (!$stillLogged) {
+          Start-Sleep -Seconds 3
+          $stillLogged=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
+        }
+        if (!$stillLogged) {Save-Progress $processed.Count $runTotal "LOGIN_REQUIRED" $case.cardyssey_karte;break}
+        $links = Js 'JSON.stringify([...document.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.innerText.trim().slice(0,140),url:a.href})).filter(x=>x.text))' | ConvertFrom-Json
+        $out.search_hits=@($links).Count
+        $likely=@($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
+      }
       if ($likely.Count -eq 1) {
         $out.url=$likely[0].url
         if (!(Move-To $out.url)) {throw "PRODUCT_PAGE_TIMEOUT"}

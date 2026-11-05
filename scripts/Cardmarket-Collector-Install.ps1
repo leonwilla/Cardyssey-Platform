@@ -13,4 +13,9 @@ $shortcut.WorkingDirectory = $base
 $shortcut.Description = "Cardyssey: resume filtered Cardmarket review after login"
 $shortcut.WindowStyle = 7
 $shortcut.Save()
-Write-Output "installed=$shortcutPath"
+$action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcher`""
+$trigger = New-ScheduledTaskTrigger -Daily -At '04:35'
+$principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -StartWhenAvailable
+Register-ScheduledTask -TaskName 'Cardyssey Cardmarket Daily Refresh' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+Write-Output "startup_installed=$shortcutPath daily_refresh_installed=true"

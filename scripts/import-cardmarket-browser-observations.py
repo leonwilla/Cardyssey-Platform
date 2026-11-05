@@ -97,6 +97,45 @@ def main():
                    "-U","cardyssey","-d","cardyssey","-q"]
         subprocess.run(command, input=sql_for(ready[i:i+100]), check=True,
                        text=True, stdout=subprocess.DEVNULL)
+    # Retain the stable product ID and canonical URL for later revisit.
+    # SOURCE_ONLY never implies an authenticated, print-verified price.
+    for i in range(0,len(ready),100):
+        batch=ready[i:i+100]
+        payload=json.dumps(batch,ensure_ascii=False,separators=(",", ":")).replace("'", "''")
+        routing_sql="""
+WITH incoming AS (
+ SELECT jsonb_array_elements('""" + payload + """'::jsonb) AS data
+), fields AS (
+ SELECT data->>'language_code' AS language_code,
+        data->>'card_id' AS card_id, data->>'variant_id' AS variant_id,
+        data->'candidate'->>'product_id' AS product_id,
+        split_part(data->'candidate'->>'url','?',1) AS product_url
+ FROM incoming
+)
+INSERT INTO price_source_routing
+(language_code,card_id,variant_id,primary_provider,provider_product_id,
+ provider_product_url,source_evidence,verification_state,fallback_provider,
+ refresh_days,last_attempt_at,next_attempt_at)
+SELECT language_code,card_id,variant_id,'CARDMARKET',product_id,
+       product_url,'Authenticated browser; filtered asking sample only',
+       'SOURCE_ONLY','TCGCSV_TCGPLAYER',7,NOW(),NOW()+INTERVAL '7 days'
+FROM fields
+WHERE product_url LIKE 'https://www.cardmarket.com/de/Pokemon/Products/Singles/%'
+ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
+ provider_product_id=CASE
+   WHEN price_source_routing.verification_state='VERIFIED_PRODUCT_ID'
+   THEN price_source_routing.provider_product_id
+   ELSE EXCLUDED.provider_product_id END,
+ provider_product_url=CASE
+   WHEN price_source_routing.verification_state='VERIFIED_PRODUCT_ID'
+   THEN price_source_routing.provider_product_url
+   ELSE EXCLUDED.provider_product_url END,
+ updated_at=NOW()
+WHERE price_source_routing.verification_state<>'VERIFIED_PRODUCT_ID';
+"""
+        subprocess.run(["docker","exec","-i","cardyssey-db","psql", "-v","ON_ERROR_STOP=1",
+                        "-U","cardyssey","-d","cardyssey","-q"],input=routing_sql,
+                       text=True,check=True,stdout=subprocess.DEVNULL)
     state_path.write_text(fingerprint + "\n", encoding="utf-8")
     print("review_cases_synced", len(ready))
 
