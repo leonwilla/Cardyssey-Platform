@@ -77,6 +77,21 @@ if (Test-Path $resultsPath) {
   }
 }
 $nowUtc=[datetime]::UtcNow
+# Reuse a previously observed canonical product page across physical variants
+# of the same card ONLY if its product ID is independently listed as a
+# candidate for the next variant. Variant pricing is never auto-approved.
+$knownProductPages=@{}
+foreach ($record in $latest.Values) {
+  if ($record.status -notin @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS')) {continue}
+  $id=[string]$record.product_id
+  if ($id -notmatch '^[0-9]+$') {continue}
+  try {
+    $candidate=[uri](([string]$record.url).Split('?')[0])
+    if ($candidate.Scheme -ne 'https' -or $candidate.Host -ne 'www.cardmarket.com' -or
+        !$candidate.AbsolutePath.StartsWith('/de/Pokemon/Products/Singles/')) {continue}
+    $knownProductPages["$($record.card_id)|$id"]=$candidate.AbsoluteUri
+  } catch {}
+}
 foreach ($case in $cases) {
   $key="{0}|{1}" -f $case.cardyssey_karte,$case.variante_id
   if (!$latest.ContainsKey($key)) { continue }
@@ -127,6 +142,13 @@ try {
           } catch {}
         }
       }
+      if (!$savedUrl) {
+        $reuse=@($allowedIds | Where-Object { $_ -and $knownProductPages.ContainsKey("$($case.cardyssey_karte)|$_") })
+        # A single candidate prevents silently choosing a different printing.
+        if ($reuse.Count -eq 1) {
+          $savedUrl=$knownProductPages["$($case.cardyssey_karte)|$($reuse[0])"]
+        }
+      }
       if ($savedUrl) {
         $out.search_hits=1
         $likely=@([pscustomobject]@{url=$savedUrl;text="$name $number"})
@@ -169,6 +191,9 @@ try {
               if ($nums.Count -gt 0) { $mid=[int][Math]::Floor($nums.Count/2);$out.sample_median_eur=if($nums.Count%2){$nums[$mid]}else{[math]::Round(($nums[$mid-1]+$nums[$mid])/2,2)} }
               $out.status="FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE"
             } else {$out.status="NO_CONFIRMED_FILTERED_OFFERS"}
+            if ($out.status -in @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS') -and $out.product_id -match '^[0-9]+$') {
+              $knownProductPages["$($case.cardyssey_karte)|$($out.product_id)"]=$out.url.Split('?')[0]
+            }
           } else {$out.status="FILTER_UNAVAILABLE"}
         }
       } else { $out.status=if($likely.Count -gt 1){"MULTIPLE_SEARCH_HITS"}else{"NO_EXACT_NUMBER_SEARCH_HIT"} }
