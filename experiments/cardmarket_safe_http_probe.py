@@ -12,6 +12,7 @@ import re
 import sys
 import time
 from datetime import datetime, timezone, timedelta
+from email.utils import parsedate_to_datetime
 from html import unescape
 from pathlib import Path
 from urllib.parse import urlparse
@@ -55,7 +56,7 @@ def run(cases, output, min_interval, cooldown_minutes):
         try:
             response,body=transport.navigate(client,session,url)
             status=response.status.as_int()
-            entry.update(http_status=status,classification=transport.classify(response,body),seconds=round(time.monotonic()-started,3),bytes=len(body))
+            entry.update(http_status=status,classification=transport.classify(response,body),seconds=round(time.monotonic()-started,3),bytes=len(body),cf_mitigated=transport._header(response,"cf-mitigated"),retry_after=transport._header(response,"retry-after"))
             if status==200 and entry["classification"]=="ok":
                 page=parse_product(body)
                 entry.update(page)
@@ -67,9 +68,15 @@ def run(cases, output, min_interval, cooldown_minutes):
                 summary["stopped_reason"]="HTTP_"+str(status)+"_RATE_LIMIT_OR_CHALLENGE"
                 # Honor a requested cooldown; do not immediately retry, re-solve, rotate, or evade.
                 until=datetime.now(timezone.utc)+timedelta(minutes=cooldown_minutes)
-                retry=transport._header(response,"retry-after")
+                retry=entry["retry_after"]
                 if retry.isdecimal():
                     until=max(until,datetime.now(timezone.utc)+timedelta(seconds=int(retry)))
+                elif retry:
+                    try:
+                        requested=parsedate_to_datetime(retry)
+                        if requested.tzinfo is not None:
+                            until=max(until,requested.astimezone(timezone.utc))
+                    except (TypeError,ValueError,OverflowError):pass
                 entry["not_before_utc"]=until.isoformat()
                 (out.parent/"cardmarket_http_cooldown.json").write_text(json.dumps({"until":entry["not_before_utc"],"reason":summary["stopped_reason"]}))
             else:
