@@ -201,7 +201,12 @@ try {
     ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
     [void]$processed.Add($key)
     Save-Progress $processed.Count $runTotal "RUNNING" $case.cardyssey_karte
-    Start-Sleep -Seconds ([Math]::Max(3,$DelaySeconds))
+    # Failed discovery requests do not fetch/filter an entire offer page.
+    # Keep a conservative cooldown and reduce idle waiting only for these cases.
+    $pause=if($out.status -in @('MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_ID_NOT_IN_VERIFIED_SET')) {
+      [Math]::Max(6,[Math]::Min(8,$DelaySeconds))
+    } else { [Math]::Max(3,$DelaySeconds) }
+    Start-Sleep -Seconds $pause
   }
   if ((Get-Content $progressPath -Raw | ConvertFrom-Json).status -notin @("LOGIN_REQUIRED","BLOCKED")) {Save-Progress $processed.Count $runTotal "COMPLETED_OR_LIMIT_REACHED" ""}
 } finally { $ws.Dispose() }
