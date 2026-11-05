@@ -203,7 +203,20 @@ try {
           } else {$out.status="FILTER_UNAVAILABLE"}
         }
       } else { $out.status=if($likely.Count -gt 1){"MULTIPLE_SEARCH_HITS"}else{"NO_EXACT_NUMBER_SEARCH_HIT"} }
-    } catch { $out.status="ERROR"; $out.error=$_.Exception.Message.Substring(0,[Math]::Min(180,$_.Exception.Message.Length)) }
+    } catch {
+      $message=$_.Exception.Message
+      # A timed-out CDP receive aborts the WebSocket permanently. Stop this
+      # run immediately; the launcher will reconnect with a new CDP socket.
+      # Do not mark the current card as completed and do not loop over the
+      # remainder of the queue with a dead socket.
+      if ($ws.State -ne [Net.WebSockets.WebSocketState]::Open -or
+          $message -match 'WebSocket|websocket|abgebrochen|cancelled|canceled|CDP.*timed out') {
+        Save-Progress $processed.Count $runTotal "CONNECTION_LOST" $case.cardyssey_karte
+        break
+      }
+      $out.status="ERROR"
+      $out.error=$message.Substring(0,[Math]::Min(180,$message.Length))
+    }
     ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
     [void]$processed.Add($key)
     Save-Progress $processed.Count $runTotal "RUNNING" $case.cardyssey_karte
@@ -214,5 +227,5 @@ try {
     } else { [Math]::Max(3,$DelaySeconds) }
     Start-Sleep -Seconds $pause
   }
-  if ((Get-Content $progressPath -Raw | ConvertFrom-Json).status -notin @("LOGIN_REQUIRED","BLOCKED")) {Save-Progress $processed.Count $runTotal "COMPLETED_OR_LIMIT_REACHED" ""}
+  if ((Get-Content $progressPath -Raw | ConvertFrom-Json).status -notin @("LOGIN_REQUIRED","BLOCKED","CONNECTION_LOST")) {Save-Progress $processed.Count $runTotal "COMPLETED_OR_LIMIT_REACHED" ""}
 } finally { $ws.Dispose() }
