@@ -26,11 +26,12 @@ def preflight():
         return result
     try:
         resp=requests.post('https://api.capsolver.com/getBalance',json={'clientKey':key},timeout=15)
-        resp.raise_for_status()
         data=resp.json()
-        result.update(status='API_ACCEPTED' if data.get('errorId')==0 else 'API_REJECTED',
-                      errorCode=data.get('errorCode') if data.get('errorId') else None,
-                      balanceUsd=data.get('balance') if data.get('errorId')==0 else None,
+        accepted=getattr(resp,'status_code',200) < 400 and data.get('errorId') == 0
+        result.update(status='API_ACCEPTED' if accepted else 'API_REJECTED',
+                      httpStatus=getattr(resp,'status_code',200),
+                      errorCode=data.get('errorCode') if not accepted else None,
+                      balanceUsd=data.get('balance') if accepted else None,
                       packagesCount=len(data.get('packages') or []))
     except (requests.RequestException, ValueError) as exc:
         result.update(status='API_CONNECTION_ERROR',errorType=type(exc).__name__)
