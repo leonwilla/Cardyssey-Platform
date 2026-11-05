@@ -12,6 +12,7 @@ Only plain NORMAL/HOLO/REVERSE variants are eligible. Stamped, subtype and
 special-foil variants are deliberately skipped unless they receive a dedicated
 verified mapping elsewhere.
 """
+import argparse
 import concurrent.futures
 import json
 import math
@@ -22,6 +23,12 @@ import subprocess
 import time
 import urllib.parse
 import urllib.request
+from market_condition_policy import classify_condition
+
+parser=argparse.ArgumentParser()
+parser.add_argument('--language',choices=('de','en','ja','ko','zh-cn','zh-tw'),default=None,
+                    help='Process only one language; use de for this conservative rollout')
+args=parser.parse_args()
 
 BASE = "https://api.cardtrader.com/api/v2"
 TCGDEX = "https://api.tcgdex.net/v2"
@@ -128,6 +135,8 @@ ORDER BY p.language_code,p.card_id,p.variant_id
             card_id, language, variant_id, legacy,
             local_id, name, variants_json, source, failure,
         ) = parts
+        if args.language and language != args.language:
+            continue
         variants = json.loads(variants_json or "[]")
         variant = next(
             (v for v in variants if str(v.get("id") or "") == variant_id),
@@ -279,7 +288,9 @@ def listing_matches(row, product):
 
     properties = product.get("properties_hash") or {}
     condition = str(properties.get("condition") or "").strip().lower()
-    if condition not in ("near mint", "mint", "nm"):
+    # Only DE: absent condition defaults to an *assumed* NM quote.
+    # Explicit poorer grades and unfamiliar condition labels never qualify.
+    if classify_condition(condition,language=row["language"]) not in ("explicit_nm", "assumed_nm"):
         return False
 
     expected_language = cardtrader_language(row["language"])
@@ -319,6 +330,7 @@ def foil_filter(row):
 
 def price_from_products(row, products):
     values = []
+    condition_assumptions = 0
     for product in products:
         if not listing_matches(row, product):
             continue
@@ -336,13 +348,15 @@ def price_from_products(row, products):
             continue
         if positive(unit):
             values.append(unit)
+            if classify_condition((product.get("properties_hash") or {}).get("condition"),language=row["language"]) == "assumed_nm":
+                condition_assumptions += 1
 
     if not values:
         return None
 
     values.sort()
     sample = values[: min(7, len(values))]
-    return round(statistics.median(sample), 4), len(values)
+    return round(statistics.median(sample), 4), len(values), condition_assumptions
 
 
 # One marketplace call can return all blueprints of an expansion. Grouping here
@@ -385,9 +399,9 @@ for index, (key, rows) in enumerate(sorted(market_groups.items()), 1):
             result = price_from_products(row, products)
             if result is None:
                 continue
-            listing_eur, sample_count = result
+            listing_eur, sample_count, assumed_count = result
             base_eur = round(listing_eur / NM_FACTOR, 4)
-            updates.append((row, base_eur, listing_eur, sample_count))
+            updates.append((row, base_eur, listing_eur, sample_count, assumed_count))
 
     if index % 25 == 0:
         print(
@@ -410,12 +424,12 @@ if not updates:
     raise SystemExit(0)
 
 sql = ["BEGIN;"]
-for row, base_eur, listing_eur, sample_count in updates:
+for row, base_eur, listing_eur, sample_count, assumed_count in updates:
     detail = (
         f"CardTrader blueprint {row['blueprint_id']}; "
         f"Cardmarket product {row['cardmarket_id']}; "
         f"median cheapest NM EUR {listing_eur:.4f}; "
-        f"listings {sample_count}"
+        f"listings {sample_count}; condition assumed NM for {assumed_count} listings"
     )
     sql.append(
         f"""
@@ -454,7 +468,7 @@ subprocess.run(
     check=True,
 )
 
-for row, base_eur, listing_eur, sample_count in updates:
+for row, base_eur, listing_eur, sample_count, assumed_count in updates:
     print(
         f"{row['language']} {row['card_id']} {row['variant_id']} "
         f"base={base_eur:.4f} EUR listing={listing_eur:.4f} "

@@ -111,6 +111,7 @@ def explicit_special_product(name, variant):
 
 parser=argparse.ArgumentParser()
 parser.add_argument("--dry-run",action="store_true")
+parser.add_argument("--language",choices=("de","en"),default=None)
 parser.add_argument("--fallback-report",type=Path,help="JSON audit of unresolved identity candidates, no guessed prices")
 args=parser.parse_args()
 
@@ -182,14 +183,16 @@ JOIN catalog_cards_mirror c
 LEFT JOIN catalog_cards_mirror e
   ON e.language_code='en' AND e.set_id=c.set_id AND e.local_id=c.local_id
 WHERE p.language_code IN ('de','en')
-  AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE') OR p.source='CARDMARKET_OFFICIAL')
-  AND NOT EXISTS (
+  AND (p.resolution_status IN ('NO_PRICE','NO_PUBLIC_PRICE')
+       OR p.source='CARDMARKET_OFFICIAL'
+       OR (p.language_code='de' AND p.source IN ('TCGCSV_TCGPLAYER','TCGDEX_TCGPLAYER')))
+  AND (p.language_code='de' OR NOT EXISTS (
     SELECT 1 FROM price_source_routing routing
     WHERE routing.language_code=p.language_code AND routing.card_id=p.card_id
       AND routing.variant_id=p.variant_id
       AND routing.verification_state='VERIFIED_PRODUCT_ID'
       AND routing.primary_provider<>'CARDMARKET'
-  )
+  ))
 ORDER BY p.language_code,p.card_id,p.variant_id
 """
 for line in db(query).splitlines():
@@ -197,6 +200,8 @@ for line in db(query).splitlines():
     if len(parts)!=10:
         continue
     cid,lang,sid,local_id,en_name,vid,legacy,variants_json,source,failure=parts
+    if args.language and lang != args.language:
+        continue
     variants=json.loads(variants_json or "[]")
     selected=next((v for v in variants if str(v.get("id") or "")==vid),None)
     if selected is None:
@@ -208,6 +213,8 @@ for line in db(query).splitlines():
     })
 
 # Refresh already verified Cardmarket rows from stored product id without re-resolving identity.
+# German TCGplayer-derived cache rows are *search targets*, never a German price
+# until an independently matched Cardmarket guide/product identity is found.
 updates=[]
 pending=[]
 pattern=re.compile(r"Cardmarket product (\d+); key ([A-Za-z0-9_-]+)")
@@ -413,7 +420,8 @@ for row,product_id,value,price_key,method in updates:
 if not args.dry_run and updates:
     sql=["BEGIN;"]
     for row,product_id,value,price_key,method in updates:
-        detail=f"Cardmarket product {product_id}; key {price_key}; via {method}"
+        detail=(f"Cardmarket product {product_id}; key {price_key}; via {method}; "
+                "public price-guide aggregate; not a language-filtered NM offer")
         sql.append(f"""
 UPDATE tcg_price_cache
 SET source='CARDMARKET_OFFICIAL',
