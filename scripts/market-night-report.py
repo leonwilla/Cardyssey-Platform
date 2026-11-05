@@ -22,6 +22,22 @@ try:
     prices=proc.stdout.strip() if proc.returncode==0 else "DB_ERROR"
 except Exception:prices="DB_UNAVAILABLE"
 report={"at":datetime.now(timezone.utc).isoformat(),"cardmarket":{k:cm.get(k) for k in ("status","done","total","last_card","updated_at")},"ebay_health":health,"ebay_set_runs":sets,"price_cache_de_en":prices,"note":"Candidate IDs are not necessarily verified language/condition/print prices."}
+# Distinguish raw sold-date markers from verified, card-matched prices.
+from collections import Counter
+pages=Counter(); dated_rows=0; sale_files=0
+for sale_file in (ebay/"anniversary-20261021").glob("*/sales.json"):
+    d=read(sale_file)
+    if not d:continue
+    sale_files+=1
+    pages.update(str(x.get("status")) for x in d.get("pages",[]))
+    dated_rows+=sum(bool(x.get("sold_date")) for x in d.get("rows",[]))
+report["ebay_raw_evidence"]={"files":sale_files,"page_statuses":dict(pages),"dated_rows_not_all_validated":dated_rows}
+report["language_coverage"]={"ebay_set_jobs":"DE only; dedicated EN eBay collector not yet implemented","cardmarket_edge":"DE offer filter; no EN offer scan","cardmarket_price_guide":"DE and EN scheduled independently"}
+report["cardmarket_cdp_last_error"]=None
+try:
+    err=(cardmarket/"connection-errors.jsonl").read_text(encoding="utf-8-sig").splitlines()[-1]
+    report["cardmarket_cdp_last_error"]=json.loads(err)
+except (OSError,ValueError,IndexError):pass
 state.mkdir(parents=True,exist_ok=True)
 outfile=state/"market-night-20261106-report.json"
 outfile.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
