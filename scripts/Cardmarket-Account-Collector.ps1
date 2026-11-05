@@ -23,11 +23,17 @@ function Send-Cdp([string]$method, [hashtable]$parameters) {
   $currentId = $script:id
   $packet = @{id=$currentId;method=$method;params=$parameters} | ConvertTo-Json -Depth 15 -Compress
   $bytes = [text.encoding]::UTF8.GetBytes($packet)
-  $ws.SendAsync([ArraySegment[byte]]::new($bytes),[Net.WebSockets.WebSocketMessageType]::Text,$true,[threading.cancellationtoken]::None).GetAwaiter().GetResult() | Out-Null
+  $sendCts=[threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(20))
+  try {
+    $ws.SendAsync([ArraySegment[byte]]::new($bytes),[Net.WebSockets.WebSocketMessageType]::Text,$true,$sendCts.Token).GetAwaiter().GetResult() | Out-Null
+  } finally { $sendCts.Dispose() }
   $buffer = [byte[]]::new(262144)
   $all = New-Object System.IO.MemoryStream
   for ($i=0; $i -lt 200; $i++) {
-    $response = $ws.ReceiveAsync([ArraySegment[byte]]::new($buffer),[threading.cancellationtoken]::None).GetAwaiter().GetResult()
+    $cts=[threading.CancellationTokenSource]::new([TimeSpan]::FromSeconds(20))
+    try {
+      $response = $ws.ReceiveAsync([ArraySegment[byte]]::new($buffer),$cts.Token).GetAwaiter().GetResult()
+    } finally { $cts.Dispose() }
     $all.Write($buffer,0,$response.Count)
     if (!$response.EndOfMessage) {continue}
     $raw = [text.encoding]::UTF8.GetString($all.ToArray())
