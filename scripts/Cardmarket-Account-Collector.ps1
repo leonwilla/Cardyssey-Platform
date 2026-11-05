@@ -76,12 +76,17 @@ if (Test-Path $resultsPath) {
     } catch {}
   }
 }
-$refreshCutoff=[datetime]::UtcNow.AddDays(-7)
-foreach ($key in $latest.Keys) {
+$nowUtc=[datetime]::UtcNow
+foreach ($case in $cases) {
+  $key="{0}|{1}" -f $case.cardyssey_karte,$case.variante_id
+  if (!$latest.ContainsKey($key)) { continue }
   $prev=$latest[$key]
+  $tier=[string]$case.scan_tier
+  $refreshDays=if($tier -in @('0','1')){7}elseif($tier -eq '2'){14}else{30}
   $isRecent=$false
-  try { $isRecent=([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $refreshCutoff) } catch {}
-  if ($prev.status -ne 'ERROR' -and $isRecent) { [void]$processed.Add($key) }
+  try { $isRecent=([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $nowUtc.AddDays(-$refreshDays)) } catch {}
+  if (($tier -eq '4' -and $prev.status -eq 'SKIPPED_BULK_PRICE_FEED') -or
+      ($prev.status -ne 'ERROR' -and $isRecent)) { [void]$processed.Add($key) }
 }
 $completed=0
 $runTotal=[Math]::Min($cases.Count,$MaxCases)
@@ -90,6 +95,13 @@ try {
   foreach ($case in ($cases | Select-Object -First $MaxCases)) {
     $key="{0}|{1}" -f $case.cardyssey_karte,$case.variante_id
     if ($processed.Contains($key)) {continue}
+    if ([string]$case.scan_tier -eq '4' -and [string]$case.needs_price -eq 'NO') {
+      $skip=[ordered]@{key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;status='SKIPPED_BULK_PRICE_FEED';seen_at=[datetime]::UtcNow.ToString('o')}
+      ($skip | ConvertTo-Json -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+      [void]$processed.Add($key)
+      Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+      continue
+    }
     $out=[ordered]@{key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;set_id=$case.set_id;status="STARTED";query="";product_id="";url="";offers_seen=0;de_nm_offers=0;sample_median_eur=$null;price_basis="lowest_page_active_asking_sample_not_sold";seen_at=[DateTime]::UtcNow.ToString("o")}
     try {
       $auth=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'

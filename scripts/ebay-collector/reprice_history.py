@@ -8,9 +8,39 @@ from price_history import choose_median, ensure_history_table, stored_sales
 from price_history import db, sql
 
 
+def due_variants():
+    """Only revisit changed sale histories or a crossed rolling-window boundary.
+
+    A sale leaves a 30-day window on day 31, 90-day window on day 91,
+    etc. The next wider window is recalculated only when needed.
+    """
+    return db('''
+SELECT DISTINCT h.card_id,h.language_code,h.variant_id
+FROM ebay_sold_history h
+LEFT JOIN ebay_price_cache p ON p.card_id=h.card_id
+ AND p.language_code=h.language_code AND p.variant_id=h.variant_id
+WHERE h.condition_label='NEAR_MINT'
+AND (p.source IS NULL OR p.source='CARDYSSEY_EBAY')
+AND (
+ p.updated_at IS NULL OR h.first_collected_at > p.updated_at
+ OR EXISTS (
+   SELECT 1 FROM unnest(ARRAY[31,91,184,366]) AS b(days)
+   WHERE h.sold_on+b.days > p.updated_at::date
+     AND h.sold_on+b.days <= CURRENT_DATE
+ )
+ OR EXISTS (
+   SELECT 1 FROM generate_series(2,
+      GREATEST(2,(CURRENT_DATE-h.sold_on)/365+1)) AS yrs(years)
+   WHERE h.sold_on+(365*yrs.years+1) > p.updated_at::date
+     AND h.sold_on+(365*yrs.years+1) <= CURRENT_DATE
+ )
+)
+ORDER BY 1,2,3''')
+
+
 def refresh_all():
     ensure_history_table()
-    listing=db("SELECT card_id,language_code,variant_id FROM ebay_sold_history WHERE condition_label='NEAR_MINT' GROUP BY card_id,language_code,variant_id ORDER BY card_id,variant_id")
+    listing=due_variants()
     updated=0
     for line in listing.splitlines():
         parts=line.split('|')

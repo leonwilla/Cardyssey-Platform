@@ -27,12 +27,16 @@ Recent complete eBay search reports are reused for up to 24 hours, preserving le
 
 ## Automatic incremental refresh (5 monitored German sets)
 
-`cardyssey-ebay-weekly.timer` checks hourly whether one of `30th`, `30th-c`,
-`mep`, `sv02`, `sv01` is due, with a **seven-day** interval. The scheduler
-launches **one** `price_set_jobs.py start SET --incremental` at a time,
-never competing with a manual or active scraper. The current full set run
-is not interrupted. A short-term retry on upstream errors does not refresh
-cards already successfully checked within the past seven days.
+**Manual-only since 2026-11-05:** `cardyssey-ebay-weekly.timer` has been
+**disabled** (`systemctl --user disable --now cardyssey-ebay-weekly.timer`).
+The system no longer starts eBay set scraping on an hourly or weekly timer.
+Set scans run only when explicitly launched from the admin interface or via
+`python3 scripts/price_set_jobs.py start SET --incremental` after collector
+changes or a requested price refresh. The previous seven-day per-card
+checkpoint logic and history are retained for efficient manual rescans.
+The `weekly_scan.py` scheduler remains in the repository but is not scheduled.
+The separate daily `cardyssey-ebay-reprice.timer` performs no browser
+requests and only recalculates cards with new sales or crossed median windows.
 
 Each card uses `ebay_scan_checkpoint` (or an earlier **fully successful**
 sold-page report with a full-history age policy) as the latest completed

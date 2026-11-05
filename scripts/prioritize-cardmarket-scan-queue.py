@@ -34,9 +34,12 @@ def prioritize(rows, cache):
             "selten","rare","ultra rare","secret rare","illustration rare",
             "special illustration rare","hyper rare","promo"}
         expensive_row = value >= 20
+        bulk = str(state.get("rarity") or "").casefold() in {
+            "häufig","ungewöhnlich","common","uncommon"}
         if missing: tier=0
         elif expensive_row: tier=1
         elif special or rare: tier=2
+        elif bulk: tier=4  # price feeds, not browser
         else: tier=3
         row["scan_tier"] = tier
         row["existing_price_eur"] = f"{value:.4f}" if not missing else ""

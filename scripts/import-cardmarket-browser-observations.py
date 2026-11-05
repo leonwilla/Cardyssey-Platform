@@ -14,6 +14,10 @@ def select_observations(records, worklist):
     allowed = {(r["cardyssey_karte"], r["variante_id"]):
                set(filter(None, (r.get("cardmarket_ids") or "").split(",")))
                for r in worklist}
+    refresh_days = {(r["cardyssey_karte"],r["variante_id"]):
+                    (7 if str(r.get("scan_tier")) in ("0","1") else
+                     14 if str(r.get("scan_tier")) == "2" else 30)
+                    for r in worklist}
     prepared = {}
     for r in records:
         key = (str(r.get("card_id") or ""), str(r.get("variant_id") or ""))
@@ -28,6 +32,7 @@ def select_observations(records, worklist):
             continue
         prepared[key] = {
             "language_code": "de", "card_id": key[0], "variant_id": key[1],
+            "refresh_days":refresh_days[key],
             "query": str(r.get("query") or "")[:255],
             "candidate": {"provider": "CARDMARKET", "product_id": pid,
                           "match_type": "CARDMARKET_FILTERED_ASKING_SAMPLE",
@@ -109,6 +114,7 @@ WITH incoming AS (
  SELECT data->>'language_code' AS language_code,
         data->>'card_id' AS card_id, data->>'variant_id' AS variant_id,
         data->'candidate'->>'product_id' AS product_id,
+        (data->>'refresh_days')::integer AS refresh_days,
         split_part(data->'candidate'->>'url','?',1) AS product_url
  FROM incoming
 )
@@ -118,7 +124,8 @@ INSERT INTO price_source_routing
  refresh_days,last_attempt_at,next_attempt_at)
 SELECT language_code,card_id,variant_id,'CARDMARKET',product_id,
        product_url,'Authenticated browser; filtered asking sample only',
-       'SOURCE_ONLY','TCGCSV_TCGPLAYER',7,NOW(),NOW()+INTERVAL '7 days'
+       'SOURCE_ONLY','TCGCSV_TCGPLAYER',refresh_days,NOW(),
+       NOW()+make_interval(days=>refresh_days)
 FROM fields
 WHERE product_url LIKE 'https://www.cardmarket.com/de/Pokemon/Products/Singles/%'
 ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
@@ -130,6 +137,8 @@ ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
    WHEN price_source_routing.verification_state='VERIFIED_PRODUCT_ID'
    THEN price_source_routing.provider_product_url
    ELSE EXCLUDED.provider_product_url END,
+ refresh_days=EXCLUDED.refresh_days,
+ next_attempt_at=EXCLUDED.next_attempt_at,
  updated_at=NOW()
 WHERE price_source_routing.verification_state<>'VERIFIED_PRODUCT_ID';
 """

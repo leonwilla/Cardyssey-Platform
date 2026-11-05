@@ -18,7 +18,7 @@ Sorting preserves all 1,460 unique (card ID, physical variant ID) records, and p
 
 ## Stable identifiers and current fallback
 
-The browser stores `product_id`, product link and a filtered German near-mint **asking-price sample** for candidate matches. `import-cardmarket-browser-observations.py` imports verified **catalogue product ID alignment** into `price_review_cases`, and stores the canonical Cardmarket URL + numeric product ID in `price_source_routing` with verification state `SOURCE_ONLY`, `refresh_days=7`, and `fallback_provider=TCGCSV_TCGPLAYER`. This does **not** certify a special stamp, edition or finish.
+The browser stores `product_id`, product link and a filtered German near-mint **asking-price sample** for candidate matches. `import-cardmarket-browser-observations.py` imports verified **catalogue product ID alignment** into `price_review_cases`, and stores the canonical Cardmarket URL + numeric product ID in `price_source_routing` with verification state `SOURCE_ONLY`, the tier-based `refresh_days` (7/14/30), and `fallback_provider=TCGCSV_TCGPLAYER`. This does **not** certify a special stamp, edition or finish.
 
 The collector checks for a previously confirmed candidate URL and ID on a repeat scan and reuses that canonical product page instead of performing a name search. Product URLs are restricted to official HTTPS Cardmarket Pokémon single-product pages; identity is rechecked from the page. Filter parameters, credentials and cookies are not persisted in the product URL.
 
@@ -27,7 +27,7 @@ Existing prices from TCGplayer/TCGCSV and TCGdex remain untouched if Cardmarket 
 ## Scheduling
 
 - Windows Startup shortcut resumes the authenticated browser collector.
-- Windows scheduled task `Cardyssey Cardmarket Daily Refresh` launches the collector at 04:35 if there is no active collector, using interactive current-user credentials. The collector only revisits records whose last successful check is older than 7 days; errors may retry earlier.
+- Windows scheduled task `Cardyssey Cardmarket Daily Refresh` launches the collector at 04:35 if there is no active collector, using interactive current-user credentials. Per-variant intervals are: missing-price and EUR 20+ variants every 7 days; rare/special variants every 14 days; ordinary priced variants every 30 days. Bulk (common/uncommon with an existing price) is excluded from browser checks and handled by price feeds. Errors may retry earlier. The source routing refresh_days value mirrors the queue tier.
 - Tiny cron every 15 minutes imports incremental browser evidence without modifying production prices.
 - Tiny cron Sunday 04:10 performs a fresh **official Cardmarket price guide** refresh and refreshes existing verified Cardmarket price rows. The guide is **not** German NM offer-specific.
 - Source candidate links stored under `price_source_routing` allow later per-print checks without repeated product discovery.
