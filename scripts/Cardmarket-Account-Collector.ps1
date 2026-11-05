@@ -1,4 +1,4 @@
-# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
+﻿# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
 # Chrome profile via localhost CDP. Does not export credentials or cookies.
 param(
   [string]$InputCsv = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector\queue.csv",
@@ -162,8 +162,9 @@ try {
         # Fetch the search document inside the *existing* authenticated Chrome
         # origin; no extra page navigation, cookie export, or TLS impersonation.
         $encoded=[uri]::EscapeDataString($out.query)
-        $searchExpr='(async()=>{const r=await fetch("/de/Pokemon/Products/Search?searchString='+$encoded+'",{credentials:"include"});const t=await r.text();const d=new DOMParser().parseFromString(t,"text/html");const links=[...d.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text);return JSON.stringify({status:r.status,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(d.title+" "+(d.body?.innerText||"").slice(0,1600)),links:links})})()'
+        $searchExpr='(async()=>{const c=new AbortController();const tm=setTimeout(()=>c.abort(),12000);try{const r=await fetch("/de/Pokemon/Products/Search?searchString='+$encoded+'",{credentials:"include",signal:c.signal});const t=await r.text();const d=new DOMParser().parseFromString(t,"text/html");const links=[...d.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text);return JSON.stringify({status:r.status,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(d.title+" "+(d.body?.innerText||"").slice(0,1600)),links:links})}catch(e){return JSON.stringify({status:0,blocked:false,error:e.name==="AbortError"?"FETCH_TIMEOUT":"FETCH_FAILED",links:[]})}finally{clearTimeout(tm)}})()'
         $searchResult=(Js $searchExpr) | ConvertFrom-Json
+        if ($searchResult.error -in @("FETCH_TIMEOUT","FETCH_FAILED")) { Save-Progress $processed.Count $runTotal "PROVIDER_TIMEOUT" $case.cardyssey_karte; break }
         if ($searchResult.blocked -or $searchResult.status -in @(403,429,503)) {
           Save-Progress $processed.Count $runTotal "BLOCKED" $case.cardyssey_karte
           break
