@@ -33,6 +33,9 @@ def due_set(now,schedule,jobs):
                 row.get('status') in ('FETCH_INCOMPLETE','CATALOG_CHANGED') or
                 row.get('scan_checkpoint_updated') is False
                 for row in job.get('results',[])))
+        # A queued launch with no active worker can be stranded after a restart.
+        # The run() worker gate prevents concurrent collectors; retry only after a cooldown.
+        if job.get("status")=="QUEUED" and last and (now-last)>=timedelta(minutes=30):return set_id
         if incomplete and last and (now-last)>=timedelta(days=1):return set_id
         if anchor is None or (now-anchor)>=timedelta(days=7):return set_id
     return None
