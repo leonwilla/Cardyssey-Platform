@@ -22,7 +22,7 @@
 - FlareSolverr (https://github.com/FlareSolverr/FlareSolverr): free/open source but explicitly warns that its CAPTCHA solvers do not currently work; additional installation would likely duplicate browser costs.
 - PokéWallet API (https://pokewallet.io/api-docs): published Free tier offers 100 calls/hour, 1,000/day, a new **API key**, and TCGplayer/Cardmarket pricing. Its per-set prices/history are Pro features. We did not register an account, invent credentials, or ingest prices. Data overlaps existing Cardmarket/TCGplayer sources; validate commercial use rights and precise variant identities before treating it as incremental coverage.
 - TCGdex and TCGCSV already present in Cardyssey's existing ingestion. Keep existing sources and improve exact variant mapping/source freshness before adding another overlapping provider.
-- PriceCharting official API requires paid access and verified product mapping; separate commercial use permission may be needed for Cardyssey's shop/app. Previous subdomain/cookie test and Capsolver evaluation are recorded in `docs/PRICECHARTING_CONNECTOR_STATUS.md` and `docs/CAPSOLVER_FREE_TRIAL.md`.
+- PriceCharting official API requires paid access and verified product mapping; separate commercial use permission may be needed for Cardyssey's shop/app. Previous subdomain/cookie test and Capsolver evaluation are recorded in the archived Git history (commits `8e6ecfc`, `15eaa17`), and the current `docs/PRICE_SOURCE_COVERAGE_AND_CLEANUP_2026-11-05.md`.
 
 ## Cleanup registry
 
@@ -40,3 +40,7 @@
 ## Follow-up gate
 
 Only add a new free API after demonstrating: (1) permitted use, (2) exact card+language+physical variant identity, (3) genuinely new coverage against existing price rows, (4) no overwrites of better verified prices, (5) explicit and tested cleanup procedure, and (6) rate-limit and cost controls. Start with a dry run on a tiny sample of unresolved DE/EN and Asian entries, never a blind mass import.
+
+## Final rollback (2026-11-05)
+
+PriceCharting/CapSolver exploratory tools, their test helpers, empty mapping CSV and optional weekly workflow tasks have been removed. The locally stored CapSolver key was deleted. Existing regional TCG, Cardmarket, CardTrader and eBay collectors remain active. See `docs/PRICE_SOURCE_COVERAGE_AND_CLEANUP_2026-11-05.md`.

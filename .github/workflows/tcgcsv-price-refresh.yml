@@ -76,10 +76,6 @@ jobs:
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/backfill-tcgcsv-special-variants.py
 
-      - name: Refresh exact PriceCharting Ungraded quotes (optional licensed access)
-        if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
-        run: python3 scripts/refresh-pricecharting-exact.py --apply --report /tmp/cardyssey-pricecharting-weekly.json
-
       - name: Assign exact DE/EN preferred sources
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: python3 scripts/assign-de-en-price-sources.py --apply --report /tmp/cardyssey-de-en-source-routing.json
@@ -93,7 +89,6 @@ jobs:
         run: |
           python3 scripts/refresh-cardmarket-price-cache.py --fallback-report /tmp/cardyssey-weekly-price-review.json
           python3 scripts/store-price-review-cases.py --report /tmp/cardyssey-weekly-price-review.json --apply
-          python3 scripts/prepare-pricecharting-review.py --apply --report /tmp/cardyssey-weekly-pricecharting-review.json
           # Product-page scraping is an optional diagnostic, not the scheduled
           # pricing path. TCGCSV/Cardmarket feeds are processed by their existing
           # exact-variant importers; do not repeatedly probe challenged pages.

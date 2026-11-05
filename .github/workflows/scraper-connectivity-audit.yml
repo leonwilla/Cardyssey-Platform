@@ -25,8 +25,6 @@ jobs:
           from pathlib import Path
           sources = {
               "ebay_de_sold_search": "https://www.ebay.de/sch/i.html?_nkw=charizard+4%2F102&LH_Sold=1&LH_Complete=1",
-              "pricecharting_product": "https://www.pricecharting.com/game/pokemon-base-set/charizard-4",
-              "pricecharting_search": "https://www.pricecharting.com/search-products?q=charizard+base+set&type=prices",
               "cardmarket_public_price_guide": "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json",
           }
           report = {"checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "checks": []}
@@ -42,8 +40,6 @@ jobs:
                       body = chunk.decode("utf-8", "replace").lower()
                       result["challenge_suspected"] = any(s in body for s in ("cf-chl-", "just a moment...", "captcha challenge", "enable javascript and cookies"))
                       result["bytes_sampled"] = len(chunk)
-                      if name == "pricecharting_product":
-                          result["sales_structure_hint"] = "sale date" in body or "sales" in body
               except urllib.error.HTTPError as exc:
                   result["http_status"] = exc.code
                   result["error"] = "HTTP status " + str(exc.code)
