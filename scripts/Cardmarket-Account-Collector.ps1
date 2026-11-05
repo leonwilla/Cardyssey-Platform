@@ -227,5 +227,18 @@ try {
     } else { [Math]::Max(3,$DelaySeconds) }
     Start-Sleep -Seconds $pause
   }
-  if ((Get-Content $progressPath -Raw | ConvertFrom-Json).status -notin @("LOGIN_REQUIRED","BLOCKED","CONNECTION_LOST")) {Save-Progress $processed.Count $runTotal "COMPLETED_OR_LIMIT_REACHED" ""}
+  if ((Get-Content $progressPath -Raw | ConvertFrom-Json).status -notin @("LOGIN_REQUIRED","BLOCKED","CONNECTION_LOST")) {
+    $lastStatuses=@{}
+    if (Test-Path $resultsPath) {
+      Get-Content $resultsPath | ForEach-Object {
+        try {
+          $entry=$_ | ConvertFrom-Json
+          if ($entry.key) { $lastStatuses[[string]$entry.key]=[string]$entry.status }
+        } catch {}
+      }
+    }
+    $errorCount=@($lastStatuses.Values | Where-Object { $_ -eq "ERROR" }).Count
+    $endStatus=if($errorCount -gt 0){"COMPLETED_WITH_ERRORS"}else{"COMPLETED_OR_LIMIT_REACHED"}
+    Save-Progress $processed.Count $runTotal $endStatus ""
+  }
 } finally { $ws.Dispose() }
