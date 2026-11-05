@@ -153,18 +153,18 @@ try {
         $out.search_hits=1
         $likely=@([pscustomobject]@{url=$savedUrl;text="$name $number"})
       } else {
-        $url="https://www.cardmarket.com/de/Pokemon/Products/Search?searchString="+[uri]::EscapeDataString($out.query)
-        if (!(Move-To $url)) {throw "SEARCH_PAGE_TIMEOUT"}
-        $blocked = Js '/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+document.body?.innerText.slice(0,1600))'
-        if ($blocked) {Save-Progress $processed.Count $runTotal "BLOCKED" $case.cardyssey_karte;break}
-        $stillLogged=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
-        if (!$stillLogged) {
-          Start-Sleep -Seconds 3
-          $stillLogged=Js 'document.body?.innerText.includes("AUSLOGGEN")===true'
+        # Fetch the search document inside the *existing* authenticated Chrome
+        # origin; no extra page navigation, cookie export, or TLS impersonation.
+        $encoded=[uri]::EscapeDataString($out.query)
+        $searchExpr='(async()=>{const r=await fetch("/de/Pokemon/Products/Search?searchString='+$encoded+'",{credentials:"include"});const t=await r.text();const d=new DOMParser().parseFromString(t,"text/html");const links=[...d.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text);return JSON.stringify({status:r.status,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(d.title+" "+(d.body?.innerText||"").slice(0,1600)),links:links})})()'
+        $searchResult=(Js $searchExpr) | ConvertFrom-Json
+        if ($searchResult.blocked -or $searchResult.status -in @(403,429,503)) {
+          Save-Progress $processed.Count $runTotal "BLOCKED" $case.cardyssey_karte
+          break
         }
-        if (!$stillLogged) {Save-Progress $processed.Count $runTotal "LOGIN_REQUIRED" $case.cardyssey_karte;break}
-        $links = Js 'JSON.stringify([...document.querySelectorAll("a[href*=\u0027/Products/Singles/\u0027]")].map(a=>({text:a.innerText.trim().slice(0,140),url:a.href})).filter(x=>x.text))' | ConvertFrom-Json
-        $out.search_hits=@($links).Count
+        if ($searchResult.status -ne 200) {throw "SEARCH_HTTP_STATUS_$($searchResult.status)"}
+        $links=@($searchResult.links)
+        $out.search_hits=$links.Count
         $likely=@($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
       }
       if ($likely.Count -eq 1) {
