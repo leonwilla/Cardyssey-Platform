@@ -211,6 +211,7 @@ try {
       # remainder of the queue with a dead socket.
       if ($ws.State -ne [Net.WebSockets.WebSocketState]::Open -or
           $message -match 'WebSocket|websocket|abgebrochen|cancelled|canceled|CDP.*timed out') {
+        [pscustomobject]@{at=[DateTime]::UtcNow.ToString("o");card=$case.cardyssey_karte;message=$message;socket=[string]$ws.State} | ConvertTo-Json -Compress | Add-Content -Encoding UTF8 -Path (Join-Path $OutputDir "connection-errors.jsonl")
         Save-Progress $processed.Count $runTotal "CONNECTION_LOST" $case.cardyssey_karte
         break
       }
