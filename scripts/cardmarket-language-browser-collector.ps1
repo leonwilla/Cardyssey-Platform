@@ -1,0 +1,483 @@
+﻿# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
+# Chrome profile via localhost CDP. Does not export credentials or cookies.
+param(
+  [ValidateSet('de','en')]
+  [string]$Language = 'de',
+  [string]$InputCsv = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector\queue-$Language.csv",
+  [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
+  [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
+  [int]$DelaySeconds = 8,
+  [ValidateRange(1,65535)][int]$CdpPort = 9223,
+  [switch]$AllowAnonymousTest
+)
+$ErrorActionPreference = "Stop"
+New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+
+# --- Sprach-Parameterisierung -------------------------------------------------
+$LangCfg = if ($Language -eq 'de') {
+  [pscustomobject]@{
+    UrlSegment     = 'de'
+    PathPrefix     = '/de/Pokemon'
+    LanguageId     = 3                      # language[3] = Deutsch
+    LanguageNames  = @('Deutsch')
+    ConditionNames = @('Near Mint','Mint')
+  }
+} else {
+  [pscustomobject]@{
+    UrlSegment     = 'en'
+    PathPrefix     = '/en/Pokemon'
+    LanguageId     = 1                      # language[1] = Englisch
+    LanguageNames  = @('English','Englisch')
+    ConditionNames = @('Near Mint','Mint')
+  }
+}
+
+$resultsPath  = Join-Path $OutputDir "browser-observations-$Language.jsonl"
+$unverifyPath = Join-Path $OutputDir "unverified-candidates-$Language.jsonl"
+$progressPath = Join-Path $OutputDir "progress-$Language.json"
+$errorPath    = Join-Path $OutputDir "connection-errors-$Language.jsonl"
+
+# --- CDP-Empfang: nativer Pump-Thread (kein PowerShell-Runspace noetig) --------
+# Der ReceiveAsync wird NIE abgebrochen (keine Timeout-Cancellation), damit der
+# WebSocket nie in "Aborted" faellt. Gesamtfristen regelt Send-Cdp ueber die Queue.
+if (-not ('CdpPump' -as [type])) {
+  Add-Type -TypeDefinition @"
+using System;
+using System.Net.WebSockets;
+using System.Text;
+using System.Collections.Concurrent;
+using System.Threading;
+public static class CdpPump {
+  public static void Start(ClientWebSocket ws, ConcurrentQueue<string> queue,
+                            SemaphoreSlim avail, CancellationToken token) {
+    var t = new Thread(() => {
+      var buf = new byte[1048576];
+      var ms  = new System.IO.MemoryStream();
+      try {
+        while (!token.IsCancellationRequested) {
+          var res = ws.ReceiveAsync(new ArraySegment<byte>(buf), token).GetAwaiter().GetResult();
+          ms.Write(buf, 0, res.Count);
+          if (!res.EndOfMessage) continue;
+          queue.Enqueue(Encoding.UTF8.GetString(ms.ToArray()));
+          ms.SetLength(0);
+          avail.Release();
+        }
+      } catch (Exception e) {
+        queue.Enqueue("STREAM_DEAD|" + e.Message);
+        try { avail.Release(); } catch {}
+      }
+    });
+    t.IsBackground = true;
+    t.Start();
+  }
+}
+"@
+}
+
+$script:ws      = $null
+$script:rxQueue = $null
+$script:rxAvail = $null
+$script:rxCts   = $null
+
+function Connect-Cdp {
+  # Alte Verbindung ordentlich beenden, falls vorhanden.
+  if ($script:ws) {
+    try { $script:rxCts.Cancel() } catch {}
+    try { $script:ws.Dispose() } catch {}
+  }
+  $targets = (Invoke-RestMethod "http://127.0.0.1:$CdpPort/json/list")
+  $t = $targets | Where-Object { $_.type -eq "page" -and $_.url -match "cardmarket.com" } | Select-Object -First 1
+  if (!$t) { throw "NO_CDM_TARGET: signierte Cardmarket-Seite im isolierten Chrome-Profil oeffnen." }
+  $script:ws = [Net.WebSockets.ClientWebSocket]::new()
+  $script:ws.Options.SetRequestHeader("Origin", "http://localhost")
+  $script:ws.ConnectAsync([uri]$t.webSocketDebuggerUrl, [threading.cancellationtoken]::None).GetAwaiter().GetResult() | Out-Null
+  # Frische Queue + Pump fuer DIESE Socket-Instanz.
+  $script:rxQueue = [System.Collections.Concurrent.ConcurrentQueue[string]]::new()
+  $script:rxAvail = [System.Threading.SemaphoreSlim]::new(0, [int]::MaxValue)
+  $script:rxCts   = [System.Threading.CancellationTokenSource]::new()
+  [CdpPump]::Start($script:ws, $script:rxQueue, $script:rxAvail, $script:rxCts.Token)
+  $script:cdpRequestId = 0
+}
+Connect-Cdp
+
+function Send-Cdp([string]$method, [hashtable]$parameters, [int]$TimeoutSec = 20) {
+  $script:cdpRequestId += 1
+  $currentId = [int]$script:cdpRequestId
+  Write-Host ('CDP_SEND '+$method+' id='+$currentId)
+  $packet = @{id=$currentId;method=$method;params=$parameters} | ConvertTo-Json -Depth 15 -Compress
+  $bytes = [text.encoding]::UTF8.GetBytes($packet)
+  $ws.SendAsync([ArraySegment[byte]]::new($bytes), [Net.WebSockets.WebSocketMessageType]::Text, $true,
+                [threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
+  while ([DateTime]::UtcNow -lt $deadline) {
+    if (-not $script:rxAvail.Wait($deadline - [DateTime]::UtcNow)) { break }
+    $frame = $null
+    if (-not $script:rxQueue.TryDequeue([ref]$frame)) { continue }
+    if ($frame -like 'STREAM_DEAD|*') { throw ('CDP_STREAM_DEAD: ' + $frame.Substring(12)) }
+    $parsed = $frame | ConvertFrom-Json
+    if ($parsed.id -ne $currentId) { continue }
+    if ($parsed.error) { throw "Browser protocol error: $($parsed.error.message)" }
+    Write-Host ('CDP_OK '+$method+' id='+$currentId)
+    return $parsed
+  }
+  Write-Host ('CDP_NO_RESPONSE '+$method+' id='+$currentId+' ws='+$script:ws.State)
+  throw 'CDP_TIMEOUT'   # Nur die Frist laeuft ab; der Socket bleibt unangetastet.
+}
+
+function Parse-Cardmarket-Euro([string]$text) {
+  if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+  $m=[regex]::Match($text,'(?<!\d)(?:\d{1,3}(?:[., ]\d{3})+|\d+)(?:[.,]\d{1,2})?(?!\d)')
+  if (!$m.Success) {return $null}
+  $amount=$m.Value.Trim().Replace(' ','')
+  $comma=$amount.LastIndexOf(',')
+  $dot=$amount.LastIndexOf('.')
+  if($comma -ge 0 -and $dot -ge 0) {
+    if($comma -gt $dot){$amount=$amount.Replace('.','').Replace(',','.')}
+    else {$amount=$amount.Replace(',','')}
+  } elseif($comma -ge 0) {
+    if($amount -match ',\d{1,2}$'){$amount=$amount.Replace(',','.')}
+    else {$amount=$amount.Replace(',','')}
+  } elseif($dot -ge 0 -and $amount -match '^\d{1,3}(?:\.\d{3})+$') {
+    $amount=$amount.Replace('.','')
+  }
+  $number=0.0
+  if([double]::TryParse($amount,[Globalization.NumberStyles]::AllowDecimalPoint,[Globalization.CultureInfo]::InvariantCulture,[ref]$number) -and $number -gt 0){return $number}
+  return $null
+}
+
+function Js([string]$expression, [int]$TimeoutSec = 20) {
+  $reply = Send-Cdp 'Runtime.evaluate' @{expression=$expression;returnByValue=$true;awaitPromise=$true} $TimeoutSec
+  if ($reply.result.exceptionDetails) { throw 'Browser script exception' }
+  return $reply.result.result.value
+}
+
+function Move-To([string]$url) {
+  Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
+  $desired = [uri]$url
+  for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Milliseconds 400
+    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0})' 10
+    if (!$state) { continue }
+    $s = $state | ConvertFrom-Json
+    $actual = [uri]$s.href
+    $expectedQuery = [uri]::UnescapeDataString($desired.Query.TrimStart('?').Replace('+',' '))
+    $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
+    $sameQuery = ($expectedQuery -eq $actualQuery) -or ($desired.AbsolutePath -ne ($LangCfg.PathPrefix + '/Products/Search'))
+    if ($s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) { return $true }
+  }
+  return $false
+}
+
+function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) {
+  $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath}
+  $s | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+}
+
+# --- Warteschlange + bisheriger Stand ------------------------------------------
+$cases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
+$runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
+
+$processed = [Collections.Generic.HashSet[string]]::new()
+$latest = @{}
+if (Test-Path $resultsPath) {
+  Get-Content $resultsPath | ForEach-Object {
+    try {
+      $prev = $_ | ConvertFrom-Json
+      $key = [string]$prev.key
+      if ($key) { $latest[$key] = $prev }
+    } catch {}
+  }
+}
+$nowUtc = [datetime]::UtcNow
+
+# Identitaets-Mapping: ID + URL dauerhaft, unabhaengig vom Preis.
+$knownProductPages = @{}
+foreach ($record in $latest.Values) {
+  if ($record.status -notin @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS',
+                              'FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED')) { continue }
+  $id = [string]$record.product_id
+  if ($id -notmatch '^[0-9]+$') { continue }
+  try {
+    $candidate = [uri](([string]$record.url).Split('?')[0])
+    if ($candidate.Scheme -ne 'https' -or $candidate.Host -ne 'www.cardmarket.com' -or
+        !$candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) { continue }
+    $knownProductPages["$($record.card_id)|$id"] = $candidate.AbsoluteUri
+  } catch {}
+}
+
+foreach ($case in $cases) {
+  $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
+  if (!$latest.ContainsKey($key)) { continue }
+  $prev = $latest[$key]
+  $tier = [string]$case.scan_tier
+  $refreshDays = if ($tier -in @('0','1')) { 7 } elseif ($tier -eq '2') { 14 } else { 30 }
+  $isRecent = $false
+  try { $isRecent = ([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $nowUtc.AddDays(-$refreshDays)) } catch {}
+  if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and $isRecent)) {
+    [void]$processed.Add($key)
+  }
+}
+
+$deferredCount = 0
+Save-Progress $processed.Count $runTotal 'RUNNING' ''
+
+try {
+  $selected = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
+  foreach ($case in $selected) {
+    $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
+    if ($processed.Contains($key)) { continue }
+
+    # Bulk-Karten: Preisstufe ueberspringen, ID-/URL-Mapping NICHT (Punkt 3).
+    $priceNeeded = -not ([string]$case.scan_tier -eq '4' -and [string]$case.needs_price -eq 'NO')
+
+    $out = [ordered]@{
+      key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;
+      set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
+      offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
+      price_basis='lowest_page_active_asking_sample_not_sold';identity_confirmed=$false;
+      seen_at=[DateTime]::UtcNow.ToString('o')
+    }
+
+    try {
+      $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true }
+      if (!$auth) { Start-Sleep -Seconds 3; $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true } }
+      if (!$auth) { Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte; break }
+
+      $name = [string]$case.kartenname_suche
+      $number = [string]$case.kartennummer
+      $out.query = "$name $number"
+      $savedUrl = ''
+      $allowedIds = @([string]$case.cardmarket_ids -split ',')
+
+      if ($latest.ContainsKey($key)) {
+        $prior = $latest[$key]
+        if (([string]$prior.product_id -in $allowedIds) -and $prior.identity_confirmed -eq $true) {
+          try {
+            $candidate = [uri](([string]$prior.url).Split('?')[0])
+            if ($candidate.Scheme -eq 'https' -and $candidate.Host -eq 'www.cardmarket.com' -and
+                $candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) { $savedUrl = $candidate.AbsoluteUri }
+          } catch {}
+        }
+      }
+      if (!$savedUrl) {
+        $reuse = @($allowedIds | Where-Object { $_ -and $knownProductPages.ContainsKey("$($case.cardyssey_karte)|$_") })
+        if ($reuse.Count -eq 1) { $savedUrl = $knownProductPages["$($case.cardyssey_karte)|$($reuse[0])"] }
+      }
+
+      if ($savedUrl) {
+        $out.search_hits = 1
+        $likely = @([pscustomobject]@{url=$savedUrl;text="$name $number"})
+      } else {
+        $searchPath = $LangCfg.PathPrefix + '/Products/Search'
+        $encoded = [uri]::EscapeDataString($out.query)
+        $searchUrl = 'https://www.cardmarket.com' + $searchPath + '?searchString=' + $encoded
+        if (!(Move-To $searchUrl)) {
+          Save-Progress $processed.Count $runTotal 'PROVIDER_TIMEOUT' $case.cardyssey_karte
+          break
+        }
+        $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
+        $searchResult = (Js $searchExpr 12) | ConvertFrom-Json
+        if ($searchResult.blocked) {
+          Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
+          break
+        }
+        $links = @($searchResult.links)
+        $out.search_hits = $links.Count
+        $likely = @($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
+        # Multiple identical card-number hits: check the REAL idProduct, not search rank.
+        # Limit page visits to avoid excessive requests; unresolved stays for review.
+        if ($likely.Count -gt 1 -and $allowedIds.Count -gt 0) {
+          $uniqueLinks = @($likely | Group-Object { ([string]$_.url).Split('?')[0] } |
+            ForEach-Object { $_.Group[0] })
+          $matchesById = @()
+          foreach ($link in @($uniqueLinks | Select-Object -First 6)) {
+            if ([string]$link.url -notmatch '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/') { continue }
+            if (!(Move-To ([string]$link.url))) { continue }
+            $pageProductId = ''
+            for ($ii = 0; $ii -lt 12; $ii++) {
+              $pageProductId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""' 10)
+              if ($pageProductId -match '^[0-9]+$') { break }
+              Start-Sleep -Milliseconds 400
+            }
+            if ($pageProductId -in $allowedIds) {
+              $matchesById += $link
+            }
+            if ($matchesById.Count -gt 0) { break }
+            Start-Sleep -Seconds ([Math]::Max(3,$DelaySeconds))
+          }
+          if ($matchesById.Count -eq 1) {
+            $likely = @($matchesById[0])
+          } else {
+            $likely = @($uniqueLinks)
+          }
+        }
+      }
+
+      if ($likely.Count -eq 1) {
+        $out.url = $likely[0].url
+        if (!(Move-To $out.url)) { throw 'PRODUCT_PAGE_TIMEOUT' }
+        $candidateId = ''
+        for ($pi = 0; $pi -lt 20; $pi++) {
+          $candidateId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""')
+          if ($candidateId -match '^[0-9]+$') { break }
+          Start-Sleep -Milliseconds 500
+        }
+        $out.product_id = $candidateId
+        $allowed = [string]$case.cardmarket_ids -split ','
+        if (!$candidateId) {
+          $out.status = 'NO_PRODUCT_ID'
+          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+        } elseif ($allowed.Count -gt 0 -and $allowed[0] -and $candidateId -notin $allowed) {
+          $out.status = 'PRODUCT_ID_NOT_IN_VERIFIED_SET'
+          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+        } else {
+          # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.
+          $out.identity_confirmed = $true
+          if (-not $priceNeeded) {
+            $out.status = 'MAPPED_NO_PRICE_REQUIRED'
+          } else {
+            $out.status = 'PRODUCT_PAGE_MATCH_REVIEW'
+            $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
+            $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
+            $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
+            if ($filterOk) {
+              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2",rows:[...document.querySelectorAll(".article-row")].slice(0,100).map(r=>({condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim()}))})'
+              $data = $null
+              for ($fi = 0; $fi -lt 12; $fi++) {
+                Start-Sleep -Milliseconds 500
+                $data = Js $rowsExpr | ConvertFrom-Json
+                if ($data -and $data.filtered) { break }
+              }
+              if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
+              # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
+              # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
+              $out.offers_seen = @($data.rows).Count
+              $accepted = @($data.rows | Where-Object {
+                $_.language -in $LangCfg.LanguageNames -and
+                $_.condition -in $LangCfg.ConditionNames -and
+                ($_.condition -notmatch 'Played|Poor|Damaged') -and
+                $_.price -match '[0-9]'
+              })
+              $out.verified_lang_nm_offers = $accepted.Count
+              if ($data.filtered -and $accepted.Count -ge 1) {
+                $nums = @($accepted | ForEach-Object {
+                  Parse-Cardmarket-Euro ([string]$_.price)
+                } | Where-Object { $_ -ne $null } | Sort-Object)
+                if ($nums.Count -gt 0) {
+                  $out.lowest_ask_eur=$nums[0]
+                  $cheapest=@($nums | Select-Object -First 5)
+                  $out.entry_five_median_eur=if($cheapest.Count%2) {$cheapest[[int][Math]::Floor($cheapest.Count/2)]}else{[Math]::Round(($cheapest[$cheapest.Count/2-1]+$cheapest[$cheapest.Count/2])/2,2)}
+                  $mid = [int][Math]::Floor($nums.Count/2)
+                  $out.sample_median_eur = if ($nums.Count % 2) { $nums[$mid] } else { [math]::Round(($nums[$mid-1]+$nums[$mid])/2, 2) }
+                }
+                $out.status = 'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'
+              } elseif ($data.filtered) {
+                $out.status = 'FILTER_UNVERIFIED_EMPTY'
+              } else {
+                $out.status = 'FILTER_NOT_APPLIED'
+              }
+            } else {
+              $out.status = 'FILTER_UNAVAILABLE'
+            }
+          }
+          if ($out.identity_confirmed -and $out.product_id -match '^[0-9]+$') {
+            $knownProductPages["$($case.cardyssey_karte)|$($out.product_id)"] = $out.url.Split('?')[0]
+          }
+        }
+      } else {
+        $out.status = if ($likely.Count -gt 1) { 'MULTIPLE_SEARCH_HITS' } else { 'NO_EXACT_NUMBER_SEARCH_HIT' }
+        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+      }
+    } catch {
+      $message = $_.Exception.Message
+      $socketDead = ($ws.State -ne [Net.WebSockets.WebSocketState]::Open) -or
+                    ($message -match 'CDP_STREAM_DEAD|CDP_TIMEOUT|WebSocket|websocket|abgebrochen|cancelled|canceled')
+      if ($socketDead) {
+        $out.status = 'DEFERRED_SOCKET'
+        $out.error = $message.Substring(0, [Math]::Min(180, $message.Length))
+        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        [pscustomobject]@{at=[DateTime]::UtcNow.ToString('o');card=$case.cardyssey_karte;message=$message;socket=[string]$ws.State} |
+          ConvertTo-Json -Compress | Add-Content -Encoding UTF8 -Path $errorPath
+        [void]$processed.Add($key)
+        $deferredCount++
+        Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+        if ($deferredCount -gt 25) {
+          Save-Progress $processed.Count $runTotal 'CONNECTION_LOST' $case.cardyssey_karte
+          break
+        }
+        Start-Sleep -Seconds 5
+        try {
+          Connect-Cdp
+          $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true }
+          if (!$auth) { Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte; break }
+        } catch {
+          Save-Progress $processed.Count $runTotal 'CONNECTION_LOST' $case.cardyssey_karte
+          break
+        }
+        continue
+      }
+      $out.status = 'ERROR'
+      $out.error = $message.Substring(0, [Math]::Min(180, $message.Length))
+    }
+
+    ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+    [void]$processed.Add($key)
+    Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+
+    if ($out.status -in @('MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_ID_NOT_IN_VERIFIED_SET')) {
+      Start-Sleep -Seconds ([Math]::Max(4, [Math]::Min(6, $DelaySeconds)))
+    } else {
+      Start-Sleep -Seconds ([Math]::Max(3, $DelaySeconds))
+    }
+  }
+
+  # --- Qualitaetskontroll-Bericht (Punkt 7) --------------------------------
+  $currentStatus=(Get-Content $progressPath -Raw | ConvertFrom-Json).status
+  if ($currentStatus -notin @('LOGIN_REQUIRED','BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST')) {
+    if ($deferredCount -gt 0) { Save-Progress $processed.Count $runTotal 'COMPLETED_WITH_DEFERRED' '' }
+    elseif ($processed.Count -ge $runTotal) { Save-Progress $processed.Count $runTotal 'COMPLETED' '' }
+    else { Save-Progress $processed.Count $runTotal 'INCOMPLETE' '' }
+  }
+  $statuses = @{}
+  if (Test-Path $resultsPath) {
+    Get-Content $resultsPath | ForEach-Object {
+      try { $e = $_ | ConvertFrom-Json; if ($e.key) { $statuses[[string]$e.key] = $e } } catch {}
+    }
+  }
+  $validIdentityStatuses = @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED','FILTER_NOT_APPLIED')
+  $confirmed = @($statuses.Values | Where-Object { $_.identity_confirmed -eq $true -and $_.status -in $validIdentityStatuses })
+  $withUrl   = @($confirmed | Where-Object { $_.url })
+  # Nur bestaetigte Angebots-Mediane zaehlen als verifizierte Preise.
+  # Angebotsmedian != offizieller Cardmarket-Trendpreis (daher die Kennzeichnung).
+  $withPrice = @($statuses.Values | Where-Object { $_.sample_median_eur -ne $null -and
+                 $_.status -eq 'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE' })
+  $missing = @($selected | Where-Object {
+      $k = '{0}|{1}' -f $_.cardyssey_karte,$_.variante_id
+      (-not $statuses.ContainsKey($k)) -or ($statuses[$k].identity_confirmed -ne $true) -or ($statuses[$k].status -notin $validIdentityStatuses)
+  })
+  $reasons = @($missing | ForEach-Object {
+      $k = '{0}|{1}' -f $_.cardyssey_karte,$_.variante_id
+      if (!$statuses.ContainsKey($k)) { 'NOT_ATTEMPTED' } else { [string]$statuses[$k].status }
+  } | Group-Object | ForEach-Object { '{0}: {1}' -f $_.Name,$_.Count })
+  $report = [ordered]@{
+    language               = $Language
+    expected_variants      = $runTotal
+    progress_status        = (Get-Content $progressPath -Raw | ConvertFrom-Json).status
+    reviewed_variants      = $statuses.Count
+    assigned_product_ids   = $confirmed.Count
+    stored_urls            = $withUrl.Count
+    filtered_offer_sample_quotes = $withPrice.Count
+    verified_language_variant_prices = 0
+    price_basis            = 'active_asking_sample_median_NOT_official_trend'
+    missing_assignments    = $missing.Count
+    missing_by_reason      = $reasons
+    unreviewed_variants    = [Math]::Max(0,$runTotal-$statuses.Count)
+    deferred_socket_errors = $deferredCount
+    generated_at           = [DateTime]::UtcNow.ToString('o')
+  }
+  ($report | ConvertTo-Json -Depth 4) | Set-Content -Encoding UTF8 -Path (Join-Path $OutputDir "qc-report-$Language.json")
+  Write-Host ($report | ConvertTo-Json -Depth 4)
+} finally {
+  try { $script:rxCts.Cancel() } catch {}
+  try { $ws.Dispose() } catch {}
+}
