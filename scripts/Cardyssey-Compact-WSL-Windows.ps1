@@ -1,7 +1,7 @@
 # Run ONCE from an elevated Windows PowerShell window after work is saved.
 # Compact Ubuntu's offline WSL VHDX; never delete or rewrite database files.
 $ErrorActionPreference='Stop'
-$windowsUser=[Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+$windowsUser=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if(!$windowsUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
  throw 'Administrative PowerShell required. No changes made.'
 }
