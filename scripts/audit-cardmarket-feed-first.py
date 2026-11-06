@@ -19,7 +19,7 @@ def classify(row, guide):
     ids=sorted({x.strip() for x in str(row.get('cardmarket_ids') or '').split(',') if x.strip().isdigit()})
     special=bool(str(row.get('sonderdruck') or '').strip() or str(row.get('foil') or '').strip() or str(row.get('stempel') or '').strip() not in ('','[]','null'))
     finish=str(row.get('drucktyp') or '').strip().casefold()
-    bucket='avg30-holo' if finish in ('holo','reverse') else 'avg30' if finish=='normal' else None
+    bucket='avg30-holo' if finish=='reverse' else 'avg30' if finish in ('normal','holo') else None
     if not ids:return 'NO_PRODUCT_ID',None
     if len(ids)>1:return 'MULTIPLE_PRODUCT_IDS',None
     pid=ids[0]

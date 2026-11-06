@@ -16,6 +16,10 @@ class FeedFirstTests(unittest.TestCase):
     def test_holo_bucket(self):
         status,result=classify({**self.row,'drucktyp':'Reverse'},self.guide)
         self.assertEqual(result['guide_bucket'],'avg30-holo')
+    def test_holo_is_not_automatically_reverse_holo(self):
+        status,result=classify({**self.row,'drucktyp':'Holo'},self.guide)
+        self.assertEqual(status,'VERIFIED_PRODUCT_GUIDE_PREVIEW')
+        self.assertEqual(result['guide_bucket'],'avg30')
     def test_candidate_not_verified(self):
         self.assertEqual(classify({**self.row,'routing_state':'SOURCE_ONLY'},self.guide)[0],'SINGLE_ID_NEEDS_IDENTITY_VERIFICATION')
     def test_special_never_auto(self):

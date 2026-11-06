@@ -8,10 +8,10 @@
     "MULTIPLE_PRODUCT_IDS": 11780,
     "NO_PRODUCT_ID": 2146,
     "SPECIAL_PRINT_NEEDS_REVIEW": 662,
-    "VERIFIED_PRODUCT_GUIDE_PREVIEW": 163,
-    "NO_GUIDE_PRICE": 9
+    "VERIFIED_PRODUCT_GUIDE_PREVIEW": 171,
+    "NO_GUIDE_PRICE": 1
   },
-  "preview_count": 163,
+  "preview_count": 171,
   "language_specific": false,
   "condition_specific": false,
   "edition_specific": false,
@@ -65,8 +65,8 @@
       "card_id": "ex13-102",
       "variant_id": "jr7oetx1mqug9",
       "product_id": "277072",
-      "guide_bucket": "avg30-holo",
-      "aggregate_eur": 178.26
+      "guide_bucket": "avg30",
+      "aggregate_eur": 1765.35
     },
     {
       "card_id": "ex13-111",
@@ -79,8 +79,8 @@
       "card_id": "ex15-100",
       "variant_id": "jr7oetx1mqug9",
       "product_id": "277305",
-      "guide_bucket": "avg30-holo",
-      "aggregate_eur": 362.36
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3771.71
     },
     {
       "card_id": "ex9-1",
@@ -349,6 +349,41 @@
       "aggregate_eur": 15.75
     },
     {
+      "card_id": "mep-094",
+      "variant_id": "legacy:holo",
+      "product_id": "895609",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.4
+    },
+    {
+      "card_id": "mep-095",
+      "variant_id": "legacy:holo",
+      "product_id": "895610",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.54
+    },
+    {
+      "card_id": "mep-096",
+      "variant_id": "legacy:holo",
+      "product_id": "895606",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.32
+    },
+    {
+      "card_id": "mep-097",
+      "variant_id": "legacy:holo",
+      "product_id": "895607",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.34
+    },
+    {
+      "card_id": "mep-098",
+      "variant_id": "legacy:holo",
+      "product_id": "895608",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.35
+    },
+    {
       "card_id": "sm115-51",
       "variant_id": "generated",
       "product_id": "394807",
@@ -403,6 +438,20 @@
       "product_id": "363532",
       "guide_bucket": "avg30",
       "aggregate_eur": 2.44
+    },
+    {
+      "card_id": "svp-106",
+      "variant_id": "jr7oetx1mqug9",
+      "product_id": "769402",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.72
+    },
+    {
+      "card_id": "svp-110",
+      "variant_id": "jr7oetx1mqug9",
+      "product_id": "769406",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.8
     },
     {
       "card_id": "ex4-3",
@@ -921,6 +970,13 @@
       "product_id": "397077",
       "guide_bucket": "avg30",
       "aggregate_eur": 7.89
+    },
+    {
+      "card_id": "sv09-024",
+      "variant_id": "slwlv6rn87",
+      "product_id": "817176",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 1.59
     },
     {
       "card_id": "xy12-27",
