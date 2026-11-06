@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Admin-only interface for Cardmarket print review; no price publication."""
 import argparse
+import csv
+import fcntl
+import os
 import json
 import hashlib
 from pathlib import Path
@@ -16,6 +19,42 @@ def pg(sql):
     if proc.returncode:raise RuntimeError(proc.stderr[-500:])
     return proc.stdout.strip()
 def quote(t):return "'"+str(t).replace("'","''")+"'"
+
+def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')):
+    """Make confirmed DB identity visible to next CSV-based browser run.
+
+    Atomic replacement keeps ongoing scans reading their original complete CSV.
+    Unverified price data is never changed.
+    """
+    if language not in ALLOWED_LANG:return False
+    path=base/f'queue-{language}.csv'
+    if not path.is_file():return False
+    lock=base/f'queue-{language}.review.lock'
+    with lock.open('a') as lk:
+        fcntl.flock(lk,fcntl.LOCK_EX)
+        with path.open(encoding='utf-8-sig',newline='') as f:
+            reader=csv.DictReader(f)
+            fields=reader.fieldnames
+            rows=list(reader)
+        if not fields or 'routing_state' not in fields:return False
+        updated=0
+        for row in rows:
+            if row.get('cardyssey_karte')!=card_id or row.get('variante_id')!=variant_id:continue
+            if row.get('cardmarket_ids')!=product_id:
+                row['known_url']=''  # Never retain a URL for a different printing.
+            row['cardmarket_ids']=product_id
+            row['routing_state']='VERIFIED_PRODUCT_ID'
+            updated+=1
+        if updated!=1:return False
+        tmp=path.with_suffix(path.suffix+'.review.tmp')
+        try:
+            with tmp.open('w',encoding='utf-8-sig',newline='') as f:
+                writer=csv.DictWriter(f,fieldnames=fields)
+                writer.writeheader()
+                writer.writerows(rows)
+            os.replace(tmp,path)
+        finally:tmp.unlink(missing_ok=True)
+        return True
 def emit(obj):print(json.dumps(obj,ensure_ascii=False))
 def list_cases(data):
     lang=data.get("language","de")
@@ -73,17 +112,57 @@ def update_case(data):
         raise ValueError("confirm exact print and select matching product")
     if status!="CONFIRMED_PRINT":pid=""
     # DB WHERE only allows candidate IDs belonging to checked set; no guide price writes.
-    sql=f"""UPDATE cardmarket_print_identity_review SET
-       status={quote(status)}, selected_product_id={quote(pid) if pid else 'NULL'},
-       reviewer_note={quote(note)},reviewed_at=NOW()
-     WHERE language_code={quote(lang)} AND card_id={quote(card)}
-       AND variant_id={quote(variant)} AND status IN ('PENDING_REVIEW','DEFERRED')
-       AND ({quote(status)}<>'CONFIRMED_PRINT' OR
-         (matched_set_ids ? {quote(pid)} AND candidate_ids ? {quote(pid)}))
-     RETURNING card_id;"""
+    # Single SQL statement: the human-confirmed card/print identity is kept
+    # in the review table AND assigned to source routing for future scans.
+    # Never write a price here. Preserve a different already-verified provider.
+    sql=f"""WITH reviewed AS (
+      UPDATE cardmarket_print_identity_review SET
+        status={quote(status)}, selected_product_id={quote(pid) if pid else 'NULL'},
+        reviewer_note={quote(note)},reviewed_at=NOW()
+      WHERE language_code={quote(lang)} AND card_id={quote(card)}
+        AND variant_id={quote(variant)} AND status IN ('PENDING_REVIEW','DEFERRED')
+        AND ({quote(status)}<>'CONFIRMED_PRINT' OR
+          (matched_set_ids ? {quote(pid)} AND candidate_ids ? {quote(pid)}))
+      RETURNING language_code,card_id,variant_id,selected_product_id
+    ), mapped AS (
+      INSERT INTO price_source_routing
+        (language_code,card_id,variant_id,primary_provider,provider_product_id,
+         source_evidence,verification_state,fallback_provider,refresh_days,next_attempt_at)
+      SELECT language_code,card_id,variant_id,'CARDMARKET',selected_product_id,
+        'Human confirmed exact set, number, language, edition, foil and stamp',
+        'VERIFIED_PRODUCT_ID','TCGDEX',7,NOW()
+      FROM reviewed WHERE selected_product_id IS NOT NULL
+      ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
+        primary_provider='CARDMARKET',
+        provider_product_id=EXCLUDED.provider_product_id,
+        provider_product_url=CASE
+          WHEN price_source_routing.provider_product_id=EXCLUDED.provider_product_id
+           AND price_source_routing.primary_provider='CARDMARKET'
+          THEN price_source_routing.provider_product_url ELSE NULL END,
+        source_evidence=EXCLUDED.source_evidence,
+        verification_state='VERIFIED_PRODUCT_ID',
+        next_attempt_at=NOW(),updated_at=NOW()
+      WHERE price_source_routing.verification_state<>'VERIFIED_PRODUCT_ID'
+        OR (price_source_routing.primary_provider='CARDMARKET'
+            AND price_source_routing.provider_product_id=EXCLUDED.provider_product_id)
+      RETURNING card_id
+    )
+    SELECT (SELECT COUNT(*) FROM reviewed)::int || ':' ||
+           (SELECT COUNT(*) FROM mapped)::int;"""
     result=pg(sql)
-    if result!=card:raise ValueError("case not found, already reviewed, or product not matched to set")
-    emit({"ok":True,"cardId":card,"status":status})
+    if not result.startswith('1:'):raise ValueError("case not found, already reviewed, or product not matched to set")
+    routed=result.endswith(':1') if status=='CONFIRMED_PRINT' else False
+    if status=='CONFIRMED_PRINT' and not routed:
+        # A different verified primary price source is deliberately preserved.
+        emit({"ok":True,"cardId":card,"status":status,
+              "sourceRoutingUpdated":False,"routingNote":"Existing verified provider preserved"})
+        return
+    queue_updated=False
+    if routed:
+        try:queue_updated=sync_queue_identity(lang,card,variant,pid)
+        except (OSError,ValueError):pass  # DB confirmation remains durable; next queue export repairs CSV.
+    emit({"ok":True,"cardId":card,"status":status,
+          "sourceRoutingUpdated":routed,"scanQueueUpdated":queue_updated})
 def main():
     a=argparse.ArgumentParser()
     a.add_argument("--action",choices=["list","review"],required=True)

@@ -35,8 +35,11 @@ def main():
         assert valid.returncode==0,valid.stdout
         state=sql(f"SELECT status||':'||selected_product_id FROM cardmarket_print_identity_review WHERE card_id='{CARD_ID}'")
         assert state=="CONFIRMED_PRINT:1234",state
-        print("PASS: wrong ID rejected; correct ID confirmed and stored; no price write.")
+        route=sql(f"SELECT verification_state||':'||provider_product_id FROM price_source_routing WHERE card_id='{CARD_ID}'")
+        assert route=="VERIFIED_PRODUCT_ID:1234",route
+        print("PASS: wrong ID rejected; correct ID confirmed in review + verified routing; no price write.")
     finally:
+        sql(f"DELETE FROM price_source_routing WHERE card_id='{CARD_ID}'")
         sql(f"DELETE FROM cardmarket_print_identity_review WHERE card_id='{CARD_ID}'")
 if __name__=="__main__":
     main()
