@@ -61,3 +61,14 @@ Die neue Browser-Lösung kann solche Angebotspreise getrennt erfassen,
 aber ein zuverlässiger flächendeckender Wochenbetrieb und die Prüfung
 von Edition, Reverse, Holo, Stempeln sowie unvollständigen Seiten
 sind **noch nicht** als beendet oder vollautomatisch freigeschaltet.
+
+## Update: 2026-11-06 – Vollständiger Angebotsmedian und Nachladeprüfung
+
+- Im Browser vorhandener Button `#loadMoreButton` sendet ein Formular mit `Product_LoadMoreArticles`, `page`, `filterSettings` und Produkt-ID. Keine öffentliche, unbegrenzte Offer-API festgestellt.
+- Cardmarket weist auf der Produktseite darauf hin, dass nur die ersten **300 Artikel** gezeigt werden; 300 Zeilen sind daher **kein** Nachweis für Vollständigkeit.
+- Der neue DE-/EN-Prüfcollector klickt den vorhandenen Button, wartet auf mehr Angebotszeilen und prüft die Filter nach jedem Nachladen.
+- Jede berücksichtigte Zeile benötigt eindeutige `articleRow...`-ID, korrektes Sprachlabel, NM/MT, geforderte Reverse-/Edition-Kennzeichnung und einen lesbaren Preis.
+- Bei Blockierung, fehlendem Zuwachs, 300er-Grenze oder anderen Ausnahmen: `all_pages_complete=false`, `median_all_offers_eur=null`, nur Stichprobe zur Prüfung.
+- Der zuvor implementierte offline Medianrechner `scripts/cardmarket-median-all-offers.py` verwendet jedes Angebot exakt einmal, nicht die angebotene Stückzahl.
+- **Live-Limit:** Aktuelle Browser-Sitzung wurde als nicht angemeldet erkannt; ein Klick auf „Zeige mehr Angebote“ führte dort zu keinem Zeilenzuwachs. Nach erfolgreichem Cardmarket-Login ist eine erneute echte Nachladeprobe erforderlich.
+- Diese Änderung schreibt weiterhin **keine** nicht abgesicherten Variantenwerte in den öffentlichen Preis-Cache.

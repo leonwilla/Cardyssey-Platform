@@ -45,6 +45,15 @@ class CheckVariants(unittest.TestCase):
         rows=[r for r in self.rows if r["cardyssey_karte"]=="mep-095"]
         self.assertEqual(len(rows),1)
         self.assertEqual(filters(rows[0]),("0","0"))
+    def test_pagination_requires_full_and_unique_offer_ids(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        for marker in (
+            "loadMoreButton", "LOAD_MORE_NO_NEW_OFFERS",
+            "CARDMARKET_300_CAP", "DUPLICATE_OR_MISSING_OFFER_ID",
+            "MISMATCHED_OFFER_FILTER_FLAGS", "all_pages_complete",
+            "median_all_offers_eur", "totalRows",
+        ):
+            self.assertIn(marker,s)
     def test_live_script_independent_filters_and_query_verification(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         for token in ("expected_reverse_holo","expected_first_edition","extra[isReverseHolo]","extra[isFirstEd]","searchParams.get(k)","all_pages_complete=$false"):

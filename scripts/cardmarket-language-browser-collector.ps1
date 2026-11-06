@@ -345,7 +345,7 @@ try {
             $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
             $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
             if ($filterOk) {
-              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,100).map(r=>({condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim()}))})'
+              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,300).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
               $data = $null
               for ($fi = 0; $fi -lt 12; $fi++) {
                 Start-Sleep -Milliseconds 500
@@ -353,6 +353,38 @@ try {
                 if ($data -and $data.filtered) { break }
               }
               if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
+              $out.offer_pages_attempted=0
+              $out.pagination_failure=''
+              # The site progressively appends 50-row batches; it explicitly caps at 300.
+              # Never claim a full-market median if the load-more action stalls or cap is reached.
+              if ($data.filtered) {
+                for ($pageAttempt=0; $pageAttempt -lt 6 -and $data.hasMore; $pageAttempt++) {
+                  $beforeRows=[int]$data.totalRows
+                  if ($beforeRows -ge 300) { $out.pagination_failure='CARDMARKET_300_CAP';break }
+                  $out.offer_pages_attempted++
+                  $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return false;b.click();return true})()'
+                  if (!$clicked) { $out.pagination_failure='LOAD_MORE_BUTTON_LOST';break }
+                  $progressed=$false
+                  for ($wait=0; $wait -lt 18; $wait++) {
+                    Start-Sleep -Milliseconds 500
+                    $next=Js $rowsExpr | ConvertFrom-Json
+                    if (!$next.filtered) { $out.pagination_failure='FILTER_CHANGED_DURING_PAGINATION';break }
+                    if ([int]$next.totalRows -gt $beforeRows) {
+                      $progressed=$true
+                      $data=$next
+                      break
+                    }
+                  }
+                  if (!$progressed) {
+                    if (!$out.pagination_failure) { $out.pagination_failure='LOAD_MORE_NO_NEW_OFFERS' }
+                    break
+                  }
+                  Start-Sleep -Milliseconds 800
+                }
+              }
+              $out.all_pages_complete=($data.filtered -and
+                -not $data.hasMore -and [int]$data.totalRows -lt 300 -and
+                -not $out.pagination_failure)
               # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
               # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
               $out.offers_seen = @($data.rows).Count
@@ -360,9 +392,24 @@ try {
                 $_.language -in $LangCfg.LanguageNames -and
                 $_.condition -in $LangCfg.ConditionNames -and
                 ($_.condition -notmatch 'Played|Poor|Damaged') -and
-                $_.price -match '[0-9]'
+                $_.price -match '[0-9]' -and
+                ($reverseCode -eq '0' -or
+                  (($reverseCode -eq 'Y') -eq ('Reverse Holo' -in @($_.flags)))) -and
+                ($firstCode -eq '0' -or
+                  (($firstCode -eq 'Y') -eq ('First Edition' -in @($_.flags))))
               })
               $out.verified_lang_nm_offers = $accepted.Count
+              $seenOfferIds=@($data.rows | ForEach-Object { [string]$_.id })
+              $uniqueOfferIds=@($seenOfferIds | Sort-Object -Unique)
+              if ($uniqueOfferIds.Count -ne [int]$data.totalRows -or $seenOfferIds -contains '') {
+                $out.all_pages_complete=$false
+                $out.pagination_failure='DUPLICATE_OR_MISSING_OFFER_ID'
+              }
+              if ($accepted.Count -ne [int]$data.totalRows) {
+                $out.all_pages_complete=$false
+                if (!$out.pagination_failure) { $out.pagination_failure='MISMATCHED_OFFER_FILTER_FLAGS' }
+              }
+
               if ($data.filtered -and $accepted.Count -ge 1) {
                 $nums = @($accepted | ForEach-Object {
                   Parse-Cardmarket-Euro ([string]$_.price)
@@ -374,7 +421,8 @@ try {
                   $mid = [int][Math]::Floor($nums.Count/2)
                   $out.sample_median_eur = if ($nums.Count % 2) { $nums[$mid] } else { [math]::Round(($nums[$mid-1]+$nums[$mid])/2, 2) }
                 }
-                $out.status = 'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'
+                $out.median_all_offers_eur=if($out.all_pages_complete) {$out.sample_median_eur} else {$null}
+                $out.status=if($out.all_pages_complete) {'COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED'} else {'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
               } elseif ($data.filtered) {
                 $out.status = 'FILTER_UNVERIFIED_EMPTY'
               } else {
