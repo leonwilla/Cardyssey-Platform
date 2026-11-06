@@ -375,8 +375,12 @@ try {
                   $beforeRows=[int]$data.totalRows
                   if ($beforeRows -ge 300) { $out.pagination_failure='CARDMARKET_300_CAP';break }
                   $out.offer_pages_attempted++
-                  $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return false;b.click();return true})()'
-                  if (!$clicked) { $out.pagination_failure='LOAD_MORE_BUTTON_LOST';break }
+                  # Do not mistake a hidden/disabled load-more button for a successful click.
+                  $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
+                  if ($clicked -ne 'CLICKED') {
+                    $out.pagination_failure=if($clicked -eq 'DISABLED') {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_BUTTON_LOST'}
+                    break
+                  }
                   $progressed=$false
                   for ($wait=0; $wait -lt 18; $wait++) {
                     Start-Sleep -Milliseconds 500
@@ -389,7 +393,10 @@ try {
                     }
                   }
                   if (!$progressed) {
-                    if (!$out.pagination_failure) { $out.pagination_failure='LOAD_MORE_NO_NEW_OFFERS' }
+                    if (!$out.pagination_failure) {
+                      $disabled=Js '(()=>{const b=document.querySelector("#loadMoreButton");return !!b&&(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")})()'
+                      $out.pagination_failure=if ($disabled) {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_NO_NEW_OFFERS'}
+                    }
                     break
                   }
                   Start-Sleep -Milliseconds 800

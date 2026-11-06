@@ -48,7 +48,7 @@ class CheckVariants(unittest.TestCase):
     def test_pagination_requires_full_and_unique_offer_ids(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         for marker in (
-            "loadMoreButton", "LOAD_MORE_NO_NEW_OFFERS",
+            "loadMoreButton", "LOAD_MORE_NO_NEW_OFFERS", "LOAD_MORE_DISABLED_OR_LIMIT_REACHED",
             "CARDMARKET_300_CAP", "DUPLICATE_OR_MISSING_OFFER_ID",
             "MISMATCHED_OFFER_FILTER_FLAGS", "all_pages_complete",
             "median_all_offers_eur", "totalRows",

@@ -82,3 +82,12 @@ sind **noch nicht** als beendet oder vollautomatisch freigeschaltet.
 - Direkte geprüfte Queue-URL kann jetzt die fehleranfällige Textsuche überspringen; die tatsächliche `idProduct` bleibt vor jeder Auswertung gegen die verifizierten IDs zu validieren.
 - Testbasis: 16 Tests der Variantenfilter und des vollständigen Medians bestanden; DE/EN-Medianberechnung nutzt jede eindeutige Angebots-ID einmal und veröffentlicht bei unvollständiger Pagination nichts.
 - Für echten Live-Nachladetest ist die Anmeldung im **separaten CardmarketEdgeProfile-Browserfenster** erforderlich. Kein automatische Wiederanmeldung und kein Challenge-Bypass vorgesehen.
+
+## Login erfolgreich – Nachladetest 2026-11-06, 13:47 MEZ
+
+- Im isolierten Edge-CDP-Browser ist jetzt die Anmeldung nachgewiesen (`AUSLOGGEN` sichtbar).
+- Lucario MEP 095, Deutsch, minCondition=2: Von 50 auf 251 DOM-Angebotszeilen nachgeladen, alle 251 Zeilen mit deutschem Sprachlabel und NM/MT verifiziert.
+- Stichprobenmedian dieser 251 Angebote: 0,49 EUR; niedrigstes Angebot 0,04 EUR; Median der fünf günstigsten: 0,05 EUR.
+- Nach sechs Seitenversuchen kam keine weitere Zeile hinzu. Der DOM-Check zeigte `#loadMoreButton` als `disabled`, `d-none`, `display:none` bei `articlePage=5` und einen Cardmarket-Hinweis, dass nur die ersten 300 Artikel angezeigt werden. Ohne Beweis für eine erschöpfte ungecappte Angebotsmenge bleibt `all_pages_complete=false`, `median_all_offers_eur=null`.
+- Collector erkennt nun deaktivierte/versteckte Nachladebuttons ausdrücklich als `LOAD_MORE_DISABLED_OR_LIMIT_REACHED`, statt erfolglose Klicks als erfolgreiche Seitenpagination zu interpretieren.
+- Sicherheitsstandard: keine Cloudflare-Umgehung, keine Cookie-Exporte, kein Import unvollständiger Printpreise in den produktiven Preis-Cache.
