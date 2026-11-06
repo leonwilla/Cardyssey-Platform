@@ -42,13 +42,12 @@ prune_old_releases() {
     [[ "$dir" == "$ROOT/releases"/web-* ]] || continue
     # Do not follow symbolic links or delete unrelated directories.
     [[ ! -L "$dir" ]] || continue
-    if [[ -f "$dir/.git" || -d "$dir/.git" ]]; then
-      # Git still tracks this release; use its worktree-aware removal.
+    if run_tv git -C "$ROOT" worktree list --porcelain | grep -Fxq "worktree $dir"; then
+      # A real Git worktree (which can be a rollback candidate).
       run_tv git -C "$ROOT" worktree remove --force "$dir" || {
         echo "Unable to remove tracked worktree $dir safely" >&2
       }
-    elif [[ "${dir##*/}" =~ ^web-[0-9]{8}-[0-9]{6}-[0-9a-f]{7,12}$ ]] &&
-         ! run_tv git -C "$ROOT" worktree list --porcelain | grep -Fxq "worktree $dir"; then
+    elif [[ "${dir##*/}" =~ ^web-[0-9]{8}-[0-9]{6}-[0-9a-f]{7,12}$ ]]; then
       # Historic failed deployments left normal directories after Git
       # detached their worktree metadata. They are safe to remove ONLY
       # when untracked, directly under releases and not the live release.
