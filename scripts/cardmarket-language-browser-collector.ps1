@@ -234,7 +234,7 @@ try {
       key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
-      price_basis='lowest_page_active_asking_sample_not_sold';identity_confirmed=$false;
+      price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
       seen_at=[DateTime]::UtcNow.ToString('o')
     }
 
@@ -468,7 +468,7 @@ try {
     stored_urls            = $withUrl.Count
     filtered_offer_sample_quotes = $withPrice.Count
     verified_language_variant_prices = 0
-    price_basis            = 'active_asking_sample_median_NOT_official_trend'
+    price_basis            = 'visible_page_only_not_all_offers_not_sold'
     missing_assignments    = $missing.Count
     missing_by_reason      = $reasons
     unreviewed_variants    = [Math]::Max(0,$runTotal-$statuses.Count)
