@@ -82,8 +82,15 @@ if [[ -d /mnt/c ]]; then
     printf '[Service]\nWorkingDirectory=%s/web\n' "$ROOT" > "$OVERRIDE"
     systemctl daemon-reload
     systemctl restart "$SERVICE"
-    if ! systemctl is-active --quiet "$SERVICE" ||
-       ! curl -fsS -m 6 http://127.0.0.1:3000/login >/dev/null 2>&1; then
+    verified=0
+    for retry in {1..15}; do
+      if systemctl is-active --quiet "$SERVICE" &&
+         curl -fsS -m 3 http://127.0.0.1:3000/login >/dev/null 2>&1; then
+        verified=1;break
+      fi
+      sleep 1
+    done
+    if [[ "$verified" != 1 ]]; then
       cp "$saved_override" "$OVERRIDE"
       systemctl daemon-reload
       systemctl restart "$SERVICE"
