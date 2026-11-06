@@ -237,6 +237,8 @@ try {
   foreach ($case in $selected) {
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
+    # Diagnostics only: measure actual elapsed work before tuning delays.
+    $caseTimer=[Diagnostics.Stopwatch]::StartNew()
 
     # Bulk-Karten: Preisstufe ueberspringen, ID-/URL-Mapping NICHT (Punkt 3).
     $priceNeeded = -not ([string]$case.scan_tier -eq '4' -and [string]$case.needs_price -eq 'NO')
@@ -514,6 +516,8 @@ try {
       $out.error = $message.Substring(0, [Math]::Min(180, $message.Length))
     }
 
+    $caseTimer.Stop()
+    $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
     ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
     [void]$processed.Add($key)
     Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte

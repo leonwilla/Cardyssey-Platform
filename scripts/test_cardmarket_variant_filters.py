@@ -54,6 +54,11 @@ class CheckVariants(unittest.TestCase):
             "median_all_offers_eur", "totalRows",
         ):
             self.assertIn(marker,s)
+    def test_elapsed_ms_collected_without_changing_filters(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn('$caseTimer=[Diagnostics.Stopwatch]::StartNew()',s)
+        self.assertIn('$out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds',s)
+        self.assertIn('extra[isReverseHolo]',s)
     def test_priced_bulk_is_routed_to_feed_not_browser(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         self.assertIn("$bulkFeedOnly = $allCases.Count - $cases.Count",s)
