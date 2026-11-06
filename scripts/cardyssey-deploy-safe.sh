@@ -64,7 +64,38 @@ prune_old_releases
 if [[ -d /mnt/c ]]; then
   host_free_kb="$(df -Pk /mnt/c | awk 'NR==2 {print $4}')"
   if [[ "$host_free_kb" =~ ^[0-9]+$ ]] && (( host_free_kb < 5242880 )); then
-    echo "Windows C: has less than 5 GiB free; skipping deployment safely." >&2
+    # Under critically low host disk space do NOT create another ~800 MB
+    # immutable release. An already-built working-tree web bundle can be
+    # deployed safely, with a rollback to the currently running release.
+    # This requires a source revision marker written after a successful build.
+    build_marker="$ROOT/web/.next/cardyssey-build-source-commit"
+    last_web_commit="$(run_tv git -C "$ROOT" log -1 --format=%H HEAD -- web)"
+    if [[ ! -s "$ROOT/web/.next/BUILD_ID" || ! -f "$build_marker" ||
+          "$(cat "$build_marker")" != "$last_web_commit" ||
+          -n "$(run_tv git -C "$ROOT" diff --name-only HEAD -- web)" ]]; then
+      echo "Windows C: below 5 GiB; no verified working-tree bundle; skipping deployment safely." >&2
+      exit 0
+    fi
+    echo "Windows C: below 5 GiB; deploying prebuilt, source-verified web tree without allocating another release."
+    saved_override="$(mktemp)"
+    cp "$OVERRIDE" "$saved_override"
+    printf '[Service]\nWorkingDirectory=%s/web\n' "$ROOT" > "$OVERRIDE"
+    systemctl daemon-reload
+    systemctl restart "$SERVICE"
+    if ! systemctl is-active --quiet "$SERVICE" ||
+       ! curl -fsS -m 6 http://127.0.0.1:3000/login >/dev/null 2>&1; then
+      cp "$saved_override" "$OVERRIDE"
+      systemctl daemon-reload
+      systemctl restart "$SERVICE"
+      rm -f "$saved_override"
+      echo "Prebuilt low-disk deployment failed; restored original service." >&2
+      exit 1
+    fi
+    rm -f "$saved_override"
+    install -d -m 755 /home/tv/.config/cardyssey
+    printf '%s\n' "$(run_tv git -C "$ROOT" rev-parse HEAD)" > /home/tv/.config/cardyssey/web-deployed-commit
+    chown tv:tv /home/tv/.config/cardyssey/web-deployed-commit
+    echo "Prebuilt low-disk web release active."
     exit 0
   fi
 fi
