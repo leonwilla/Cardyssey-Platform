@@ -224,6 +224,10 @@ foreach ($case in $cases) {
 }
 
 $deferredCount = 0
+$searchCache=@{}
+$searchCacheHits=0
+$searchCacheMisses=0
+$consecutiveProviderTimeouts=0
 Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
 try {
@@ -248,7 +252,7 @@ try {
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
       price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
-      access_mode='UNKNOWN';seen_at=[DateTime]::UtcNow.ToString('o')
+      access_mode='UNKNOWN';search_cache_hit=$false;seen_at=[DateTime]::UtcNow.ToString('o')
     }
 
     try {
@@ -298,17 +302,41 @@ try {
         $searchPath = $LangCfg.PathPrefix + '/Products/Search'
         $encoded = [uri]::EscapeDataString($out.query)
         $searchUrl = 'https://www.cardmarket.com' + $searchPath + '?searchString=' + $encoded
-        if (!(Move-To $searchUrl)) {
-          Save-Progress $processed.Count $runTotal 'PROVIDER_TIMEOUT' $case.cardyssey_karte
-          break
+        if ($searchCache.ContainsKey($searchUrl)) {
+          # Reuse only public search-result links for the exact SAME query;
+          # never reuse filtered offer rows, prices or variant conclusions.
+          $links=@($searchCache[$searchUrl])
+          $out.search_cache_hit=$true
+          $searchCacheHits++
+        } else {
+          $searchCacheMisses++
+          if (!(Move-To $searchUrl)) {
+            # A single slow search should not abort all remaining cards.
+            # Persist a deferral so that the next scheduled run can retry.
+            $out.status='DEFERRED_PROVIDER_TIMEOUT'
+            $out.error='SEARCH_PAGE_TIMEOUT'
+            ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+            $consecutiveProviderTimeouts++
+            Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+            if ($consecutiveProviderTimeouts -ge 3) {
+              Save-Progress $processed.Count $runTotal 'PROVIDER_TIMEOUT' $case.cardyssey_karte
+              break
+            }
+            Start-Sleep -Seconds ([Math]::Max(10,$DelaySeconds))
+            continue
+          }
+          $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
+          $searchResult = (Js $searchExpr 12) | ConvertFrom-Json
+          if ($searchResult.blocked) {
+            Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
+            break
+          }
+          $consecutiveProviderTimeouts=0
+          $links = @($searchResult.links)
+          # Bounded per-run cache. Reuse discovery, NEVER per-card price data.
+          if ($searchCache.Count -ge 250) { $searchCache.Clear() }
+          $searchCache[$searchUrl] = $links
         }
-        $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
-        $searchResult = (Js $searchExpr 12) | ConvertFrom-Json
-        if ($searchResult.blocked) {
-          Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
-          break
-        }
-        $links = @($searchResult.links)
         $out.search_hits = $links.Count
         $likely = @($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
         # Multiple identical card-number hits: check the REAL idProduct, not search rank.
@@ -561,6 +589,8 @@ try {
     language               = $Language
     expected_variants      = $runTotal
     bulk_feed_only_variants = $bulkFeedOnly
+    search_cache_hits = $searchCacheHits
+    search_cache_misses = $searchCacheMisses
     progress_status        = (Get-Content $progressPath -Raw | ConvertFrom-Json).status
     reviewed_variants      = $statuses.Count
     assigned_product_ids   = $confirmed.Count

@@ -54,6 +54,14 @@ class CheckVariants(unittest.TestCase):
             "median_all_offers_eur", "totalRows",
         ):
             self.assertIn(marker,s)
+    def test_search_cache_only_reuses_search_links_not_filtered_offers(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn('$searchCache.ContainsKey($searchUrl)',s)
+        self.assertIn('$searchCache[$searchUrl] = $links',s)
+        self.assertIn('$out.search_cache_hit=$true',s)
+        self.assertIn('search_cache_hits = $searchCacheHits',s)
+        self.assertIn('DEFERRED_PROVIDER_TIMEOUT',s)
+        self.assertNotIn('$searchCache[$key] = $accepted',s)
     def test_elapsed_ms_collected_without_changing_filters(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         self.assertIn('$caseTimer=[Diagnostics.Stopwatch]::StartNew()',s)
