@@ -6,6 +6,7 @@ import fcntl
 import os
 import json
 import hashlib
+from functools import lru_cache
 from pathlib import Path
 import re
 import subprocess
@@ -19,6 +20,57 @@ def pg(sql):
     if proc.returncode:raise RuntimeError(proc.stderr[-500:])
     return proc.stdout.strip()
 def quote(t):return "'"+str(t).replace("'","''")+"'"
+
+@lru_cache(maxsize=1)
+def official_product_details():
+    """Official catalog metadata only; none of these fields proves a print/foil."""
+    url='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+    cache=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')/(hashlib.sha256(url.encode()).hexdigest()+'.json')
+    try:
+        data=json.loads(cache.read_text(encoding='utf-8'))
+        return {str(x['idProduct']):x for x in data.get('products',[])}
+    except (OSError,ValueError,KeyError,TypeError):return {}
+
+def explain_identity(row,products):
+    """Only evidence-supported reasons, not guesses based on catalog ID or date."""
+    ids=[str(v) for v in (row.get('matched_set_ids') or [])]
+    candidates=[]
+    for pid in ids:
+        raw=products.get(pid,{})
+        candidates.append({'id':pid,'name':str(raw.get('name') or 'Name nicht verfügbar'),
+            'expansionId':str(raw.get('idExpansion') or ''),
+            'metacardId':str(raw.get('idMetacard') or ''),
+            'addedAt':str(raw.get('dateAdded') or '')})
+    classification=str(row.get('classification') or '')
+    special=any([str(row.get('foil') or '').strip(),str(row.get('subtype') or '').strip(),
+                str(row.get('stamps') or '').strip() not in ('','[]','null'),
+                'REVERSE' in str(row.get('print_type') or '').upper(),
+                'HOLO' in str(row.get('print_type') or '').upper()])
+    same_metacard=len(candidates)>1 and len({x['metacardId'] for x in candidates})==1 and bool(candidates[0]['metacardId'])
+    if len(ids)>1:
+        reason=f"{len(ids)} Cardmarket-Produkte gehören zum gleichen geprüften Set."
+        if same_metacard: reason+=' Sie teilen sogar dieselbe Metakarten-ID; der Produktfeed nennt keinen belastbaren Druck-Unterschied.'
+        else: reason+=' Der Produktfeed löst die Druckvariante nicht eindeutig auf.'
+        action='Nicht anhand der ID oder des Aufnahmedatums raten. Erst anhand eindeutiger Produktseiten, Bilder und Kartennummer prüfen; falls dort kein Unterschied erkennbar ist, offenlassen.'
+        kind='CATALOG_DUPLICATE'
+    elif len(ids)==1 and special:
+        reason='Ein Produkt ist dem Set zugeordnet, aber Holo, Reverse, Edition oder Sonderdruck wurde durch die Quelle nicht bestätigt.'
+        action='Prüfen, ob genau die angezeigte Druckvariante auf der Cardmarket-Produktseite belegbar ist. Sonst offenlassen.'
+        kind='PRINT_UNVERIFIED'
+    elif 'SET_NOT_VERIFIED' in classification or 'INFERRED_SET' in classification:
+        reason='Das Cardmarket-Set ist noch nicht unabhängig und eindeutig mit dem Cardyssey-Set abgeglichen.'
+        action='Setname und Set-Kartennummer abgleichen. Ohne bestätigtes Set keine Produkt-ID zuweisen.'
+        kind='SET_UNVERIFIED'
+    elif not ids:
+        reason='Es liegt kein bestätigter Produktkandidat im richtigen Cardmarket-Set vor.'
+        action='Hier gibt es derzeit keine sichere Auswahl; die automatische Suche muss zuerst neue Kandidaten liefern.'
+        kind='MISSING_MATCH'
+    else:
+        reason='Der genaue Kartendruck wurde noch nicht durch eine geeignete Quelle bestätigt.'
+        action='Produktseite mit Set, Nummer, Sprache und Druck abgleichen; nur dann bestätigen.'
+        kind='PRINT_UNVERIFIED'
+    return {'kind':kind,'reason':reason,'action':action,
+       'proofAvailable':False, 'sameMetacard':same_metacard,'candidates':candidates}
 
 def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')):
     """Make confirmed DB identity visible to next CSV-based browser run.
@@ -95,6 +147,9 @@ def list_cases(data):
               "trend":reference[pid].get("trend"),
               "trend_holo":reference[pid].get("trend-holo")
             } for pid in (row.get("matched_set_ids") or [])[:15] if pid in reference}
+    products=official_product_details()
+    for row in result.get('items') or []:
+        row['diagnosis']=explain_identity(row,products)
     emit(result)
 def update_case(data):
     lang=data.get("language")

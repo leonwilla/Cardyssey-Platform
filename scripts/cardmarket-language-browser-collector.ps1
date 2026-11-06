@@ -155,7 +155,9 @@ function Js([string]$expression, [int]$TimeoutSec = 20) {
 function Move-To([string]$url) {
   Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
   $desired = [uri]$url
-  for ($i = 0; $i -lt 30; $i++) {
+  # Cardmarket search results sometimes need 15-25s after navigation.
+  # Preserve provider challenges; do not bypass access or authentication.
+  for ($i = 0; $i -lt 75; $i++) {
     Start-Sleep -Milliseconds 400
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0})' 10
     if (!$state) { continue }
@@ -232,12 +234,26 @@ Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
 try {
   $candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
-  $selected = if ($BatchLimit -gt 0) {
-    @($candidateCases | Where-Object {
-      $k = '{0}|{1}' -f $_.cardyssey_karte, $_.variante_id
-      -not $processed.Contains($k)
-    } | Select-Object -First $BatchLimit)
-  } else { $candidateCases }
+  # Do not get stuck on the same provider-timeout rows at every launch.
+  # New, not-yet-attempted cases get priority; deferred cases retry after 2h.
+  # A retry is never counted as completed until actual evidence is received.
+  $due=@($candidateCases | Where-Object {
+    $k = '{0}|{1}' -f $_.cardyssey_karte, $_.variante_id
+    -not $processed.Contains($k)
+  })
+  $fresh = [Collections.Generic.List[object]]::new()
+  $retry = [Collections.Generic.List[object]]::new()
+  foreach($item in $due) {
+    $k = '{0}|{1}' -f $item.cardyssey_karte, $item.variante_id
+    $prior = if ($latest.ContainsKey($k)) { $latest[$k] } else { $null }
+    if ($prior -and [string]$prior.status -like 'DEFERRED*') {
+      $oldEnough=$false
+      try { $oldEnough=([datetime]::Parse([string]$prior.seen_at).ToUniversalTime() -lt $nowUtc.AddHours(-2)) } catch {}
+      if($oldEnough){ $retry.Add($item) }
+    } else { $fresh.Add($item) }
+  }
+  $ordered=@($fresh.ToArray()) + @($retry.ToArray())
+  $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
   foreach ($case in $selected) {
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
