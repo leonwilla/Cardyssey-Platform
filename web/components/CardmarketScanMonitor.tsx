@@ -9,10 +9,23 @@ const labels:Record<string,string>={PROVIDER_TIMEOUT:'Pausiert: Cardmarket antwo
 export function CardmarketScanMonitor(){
  const router=useRouter();const [snap,setSnap]=useState<Snapshot|null>(null);const [cases,setCases]=useState<Entry[]>([]);
  const [error,setError]=useState('');const [reviewError,setReviewError]=useState('');const [showProblems,setShowProblems]=useState(true);
+ const [selectedProblem,setSelectedProblem]=useState<string|null>(null);const [selectedReview,setSelectedReview]=useState<Entry|null>(null);const [selectedError,setSelectedError]=useState('');
  const refresh=useCallback(async()=>{
   try{const r=await fetch('/api/admin/cardmarket-scan?language=de',{cache:'no-store'});if(!r.ok)throw Error();setSnap(await r.json());setError('')}catch{setError('Scan-Status momentan nicht erreichbar')}
   try{const r=await fetch('/api/admin/cardmarket-print-review?language=de&status=PENDING_REVIEW&page=0',{cache:'no-store'});if(!r.ok)throw Error();const data=await r.json() as {items?:Entry[]};setCases(old=>{const next=(data.items||[]).slice(0,3);return old.length&&old.map(e=>e.card_id+'|'+e.variant_id).join(',')===next.map(e=>e.card_id+'|'+e.variant_id).join(',')?old:next});setReviewError('')}catch{setReviewError('Prüfliste momentan nicht erreichbar')}
  },[]);
+ async function editProblem(p:Problem){
+  const key=p.cardId+'|'+p.variantId;
+  if(selectedProblem===key){setSelectedProblem(null);setSelectedReview(null);return}
+  setSelectedProblem(key);setSelectedReview(null);setSelectedError('');
+  try{
+   const url='/api/admin/cardmarket-print-review?language=de&status=PENDING_REVIEW&page=0&search='+encodeURIComponent(p.cardId);
+   const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error();
+   const data=await r.json() as {items?:Entry[]};
+   const matched=data.items?.find(x=>x.card_id===p.cardId&&x.variant_id===p.variantId);
+   if(matched)setSelectedReview(matched);else setSelectedError('Für diese genaue Variante gibt es noch keinen freigabefähigen Produktkandidaten. Bitte die ausführliche Prüfliste öffnen.');
+  }catch{setSelectedError('Prüfdaten konnten nicht geladen werden.')}
+ }
  useEffect(()=>{void refresh();const t=setInterval(()=>void refresh(),15000);return()=>clearInterval(t)},[refresh]);
  return <section className="statusPanel" aria-label="Cardmarket Scanfortschritt und Kartenkorrekturen" style={{padding:18,marginBottom:20,display:'grid',gap:16}}>
   <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',alignItems:'center'}}><div><strong>Cardmarket · Deutschscan</strong><div style={{fontSize:12,opacity:.75}}>Automatische Aktualisierung alle 15 Sekunden</div></div><button type="button" className="ghostButton" onClick={()=>void refresh()}>Jetzt aktualisieren</button></div>
@@ -23,9 +36,9 @@ export function CardmarketScanMonitor(){
    </div>
    <div style={{display:'flex',gap:14,flexWrap:'wrap',fontSize:13}}><span><strong>{num(snap.totalVariants)}</strong> Varianten im DE-Katalog</span><span><strong>{num(snap.uniqueCards)}</strong> unterschiedliche Karten</span><span><strong>{num(snap.feedOnly)}</strong> über Preisfeeds (nicht browsergescannt)</span></div>
    <div style={{fontSize:13}}><strong>Status:</strong> {labels[snap.status]||snap.status}{snap.lastCard?' · Letzte Karte: '+snap.lastCard:''}{snap.updatedAt?' · Stand: '+new Date(snap.updatedAt).toLocaleString('de-DE'):''}</div>
-   <div><strong>Letzte Prüfschritte</strong><div style={{display:'grid',gap:5,marginTop:8}}>{snap.recentEvents.map((event,i)=><div key={event.cardId+i} style={{fontSize:12,display:'flex',gap:12,justifyContent:'space-between',borderBottom:'1px solid var(--border)',paddingBottom:5}}><span>{event.cardId}</span><span>{labels[event.status]||event.status.replaceAll('_',' ')}</span></div>)}</div></div>
+   <div><strong>Scan-Zeitstrahl</strong><div style={{display:'grid',gap:8,marginTop:8,borderLeft:'2px solid var(--border)',paddingLeft:12}}>{snap.recentEvents.map((event,i)=><div key={event.cardId+i} style={{fontSize:12,display:'flex',gap:12,justifyContent:'space-between',flexWrap:'wrap',paddingBottom:4}}><span><strong>{event.at?new Date(event.at).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'—'}</strong> · {event.cardId}</span><span>{labels[event.status]||event.status.replaceAll('_',' ')}</span></div>)}</div></div>
    <div style={{borderTop:'1px solid var(--border)',paddingTop:14}}><button className="ghostButton" style={{marginBottom:10}} onClick={()=>setShowProblems(v=>!v)}>{showProblems?'Fehlerliste ausblenden':'Fehlerliste anzeigen'} · {snap.problemCountInObserved} bisherige Scan-Hinweise</button>
-    {showProblems&&<div style={{display:'grid',gap:7}}>{snap.recentProblems.map((p,i)=><div key={p.cardId+p.variantId+i} style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'center',padding:8,border:'1px solid var(--border)',borderRadius:8}}><div style={{fontSize:13}}><strong>{p.cardId}</strong> · {p.setId}<div style={{fontSize:12,opacity:.75}}>{labels[p.status]||p.status.replaceAll('_',' ')} {p.detail}</div></div><button className="ghostButton" onClick={()=>router.push('/admin/cardmarket-review?search='+encodeURIComponent(p.cardId))}>In Prüfliste suchen</button></div>)}</div>}
+    {showProblems&&<div style={{display:'grid',gap:7}}>{snap.recentProblems.map((p,i)=><div key={p.cardId+p.variantId+i} style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'center',padding:8,border:'1px solid var(--border)',borderRadius:8}}><div style={{fontSize:13}}><strong>{p.cardId}</strong> · {p.setId}<div style={{fontSize:12,opacity:.75}}>{labels[p.status]||p.status.replaceAll('_',' ')} {p.detail}</div></div><button className="ghostButton" onClick={()=>void editProblem(p)}>{selectedProblem===p.cardId+'|'+p.variantId?'Schließen':'Hier bearbeiten'}</button>{selectedProblem===p.cardId+'|'+p.variantId&&<div style={{width:'100%'}}>{selectedReview?<CardReview entry={selectedReview} onSaved={()=>{setSelectedProblem(null);setSelectedReview(null);void refresh()}}/>:selectedError?<><p role="alert">{selectedError}</p><button className="ghostButton" onClick={()=>router.push('/admin/cardmarket-review?search='+encodeURIComponent(p.cardId))}>Ausführliche Prüfliste öffnen</button></>:<p>Prüffall wird geladen …</p>}</div>}</div>)}</div>}
    </div>
   </>}
   <div style={{borderTop:'1px solid var(--border)',paddingTop:14,display:'grid',gap:12}}><div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}><div><strong>Offene Kartenfragen direkt bearbeiten</strong><p style={{fontSize:12,marginTop:4}}>Produkt-ID und Druck bestätigen oder als Fehlzuordnung markieren. Bestätigungen werden dauerhaft gespeichert, aber nicht ungeprüft als deutscher NM-Preis veröffentlicht.</p></div><button className="ghostButton" onClick={()=>router.push('/admin/cardmarket-review')}>Alle Prüffälle öffnen</button></div>
