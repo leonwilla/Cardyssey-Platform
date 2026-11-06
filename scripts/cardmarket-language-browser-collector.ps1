@@ -6,9 +6,10 @@ param(
   [string]$InputCsv = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector\queue-$Language.csv",
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
+  [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
   [int]$DelaySeconds = 8,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
-  [switch]$AllowAnonymousTest
+  [switch]$ForcePublicMode  # diagnostic: use public behavior even if signed in
 )
 $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -222,7 +223,13 @@ $deferredCount = 0
 Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
 try {
-  $selected = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
+  $candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
+  $selected = if ($BatchLimit -gt 0) {
+    @($candidateCases | Where-Object {
+      $k = '{0}|{1}' -f $_.cardyssey_karte, $_.variante_id
+      -not $processed.Contains($k)
+    } | Select-Object -First $BatchLimit)
+  } else { $candidateCases }
   foreach ($case in $selected) {
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
@@ -235,13 +242,14 @@ try {
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
       price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
-      seen_at=[DateTime]::UtcNow.ToString('o')
+      access_mode='UNKNOWN';seen_at=[DateTime]::UtcNow.ToString('o')
     }
 
     try {
-      $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true }
-      if (!$auth) { Start-Sleep -Seconds 3; $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true } }
-      if (!$auth) { Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte; break }
+      # Public Cardmarket catalogue is usable without an account. Prefer the
+      # logged-in session when available, but never stop the queue for logout.
+      $auth = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
+      $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
 
       $name = [string]$case.kartenname_suche
       $number = [string]$case.kartennummer
@@ -368,9 +376,11 @@ try {
               if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
               $out.offer_pages_attempted=0
               $out.pagination_failure=''
-              # The site progressively appends 50-row batches; it explicitly caps at 300.
-              # Never claim a full-market median if the load-more action stalls or cap is reached.
-              if ($data.filtered) {
+              # Public mode collects visible rows, without assuming that a
+              # public session can paginate or that its sample is exhaustive.
+              if (-not $auth) { $out.pagination_failure='PUBLIC_SESSION_LIMITED_SAMPLE' }
+              # Logged-in mode progressively appends batches (site may cap at 300).
+              if ($data.filtered -and $auth) {
                 for ($pageAttempt=0; $pageAttempt -lt 6 -and $data.hasMore; $pageAttempt++) {
                   $beforeRows=[int]$data.totalRows
                   if ($beforeRows -ge 300) { $out.pagination_failure='CARDMARKET_300_CAP';break }
@@ -402,7 +412,15 @@ try {
                   Start-Sleep -Milliseconds 800
                 }
               }
-              $out.all_pages_complete=($data.filtered -and
+              # Login may expire while fetching pages; a public result is
+              # never promoted into a full-market price on that transition.
+              $stillSignedIn = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
+              if (-not $stillSignedIn) {
+                $auth=$false
+                $out.access_mode='PUBLIC_LIMITED'
+                if (-not $out.pagination_failure) { $out.pagination_failure='SESSION_EXPIRED_OR_PUBLIC' }
+              }
+              $out.all_pages_complete=($auth -and $data.filtered -and
                 -not $data.hasMore -and [int]$data.totalRows -lt 300 -and
                 -not $out.pagination_failure)
               # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
@@ -480,8 +498,8 @@ try {
         Start-Sleep -Seconds 5
         try {
           Connect-Cdp
-          $auth = Js 'document.body?.innerText.includes("AUSLOGGEN")===true'; if ($AllowAnonymousTest) { $auth=$true }
-          if (!$auth) { Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte; break }
+          # Re-evaluate access mode on the next card; lost login is not fatal.
+          $auth = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
         } catch {
           Save-Progress $processed.Count $runTotal 'CONNECTION_LOST' $case.cardyssey_karte
           break
@@ -508,7 +526,7 @@ try {
   if ($currentStatus -notin @('LOGIN_REQUIRED','BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST')) {
     if ($deferredCount -gt 0) { Save-Progress $processed.Count $runTotal 'COMPLETED_WITH_DEFERRED' '' }
     elseif ($processed.Count -ge $runTotal) { Save-Progress $processed.Count $runTotal 'COMPLETED' '' }
-    else { Save-Progress $processed.Count $runTotal 'INCOMPLETE' '' }
+    else { Save-Progress $processed.Count $runTotal 'BATCH_COMPLETE_MORE_PENDING' '' }
   }
   $statuses = @{}
   if (Test-Path $resultsPath) {
@@ -516,13 +534,13 @@ try {
       try { $e = $_ | ConvertFrom-Json; if ($e.key) { $statuses[[string]$e.key] = $e } } catch {}
     }
   }
-  $validIdentityStatuses = @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED','FILTER_NOT_APPLIED')
+  $validIdentityStatuses = @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED','FILTER_NOT_APPLIED','COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED')
   $confirmed = @($statuses.Values | Where-Object { $_.identity_confirmed -eq $true -and $_.status -in $validIdentityStatuses })
   $withUrl   = @($confirmed | Where-Object { $_.url })
   # Nur bestaetigte Angebots-Mediane zaehlen als verifizierte Preise.
   # Angebotsmedian != offizieller Cardmarket-Trendpreis (daher die Kennzeichnung).
   $withPrice = @($statuses.Values | Where-Object { $_.sample_median_eur -ne $null -and
-                 $_.status -eq 'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE' })
+                 $_.status -in @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED') })
   $missing = @($selected | Where-Object {
       $k = '{0}|{1}' -f $_.cardyssey_karte,$_.variante_id
       (-not $statuses.ContainsKey($k)) -or ($statuses[$k].identity_confirmed -ne $true) -or ($statuses[$k].status -notin $validIdentityStatuses)
@@ -539,8 +557,9 @@ try {
     assigned_product_ids   = $confirmed.Count
     stored_urls            = $withUrl.Count
     filtered_offer_sample_quotes = $withPrice.Count
+    complete_filtered_asking_medians_print_unverified = @($statuses.Values | Where-Object { $_.status -eq 'COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED' }).Count
     verified_language_variant_prices = 0
-    price_basis            = 'visible_page_only_not_all_offers_not_sold'
+    price_basis            = 'active_asking_offers_not_sold; full_only_if_completed'
     missing_assignments    = $missing.Count
     missing_by_reason      = $reasons
     unreviewed_variants    = [Math]::Max(0,$runTotal-$statuses.Count)

@@ -54,6 +54,23 @@ class CheckVariants(unittest.TestCase):
             "median_all_offers_eur", "totalRows",
         ):
             self.assertIn(marker,s)
+    def test_batch_has_pending_limit_and_resume(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        for token in ("[int]$BatchLimit = 0", "-not $processed.Contains($k)", "Select-Object -First $BatchLimit", "BATCH_COMPLETE_MORE_PENDING"):
+            self.assertIn(token,s)
+    def test_qc_reports_complete_prices_as_print_unverified(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn("complete_filtered_asking_medians_print_unverified",s)
+        self.assertIn("verified_language_variant_prices = 0",s)
+    def test_public_session_fails_closed_and_continues(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn("access_mode='UNKNOWN'",s)
+        self.assertIn("'PUBLIC_LIMITED'",s)
+        self.assertIn('a[href*=User_Logout]',s)
+        self.assertIn("PUBLIC_SESSION_LIMITED_SAMPLE",s)
+        self.assertIn("$auth -and $data.filtered",s)
+        self.assertNotIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",s)
+        self.assertIn("if ($data.filtered -and $auth)",s)
     def test_verified_queue_mapping_precedes_unreliable_text_search(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         self.assertIn("$case.known_url",s)

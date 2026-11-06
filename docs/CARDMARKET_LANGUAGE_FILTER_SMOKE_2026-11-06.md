@@ -91,3 +91,14 @@ sind **noch nicht** als beendet oder vollautomatisch freigeschaltet.
 - Nach sechs Seitenversuchen kam keine weitere Zeile hinzu. Der DOM-Check zeigte `#loadMoreButton` als `disabled`, `d-none`, `display:none` bei `articlePage=5` und einen Cardmarket-Hinweis, dass nur die ersten 300 Artikel angezeigt werden. Ohne Beweis für eine erschöpfte ungecappte Angebotsmenge bleibt `all_pages_complete=false`, `median_all_offers_eur=null`.
 - Collector erkennt nun deaktivierte/versteckte Nachladebuttons ausdrücklich als `LOAD_MORE_DISABLED_OR_LIMIT_REACHED`, statt erfolglose Klicks als erfolgreiche Seitenpagination zu interpretieren.
 - Sicherheitsstandard: keine Cloudflare-Umgehung, keine Cookie-Exporte, kein Import unvollständiger Printpreise in den produktiven Preis-Cache.
+
+## Automatischer öffentlicher Fallback und regulärer DE/EN-Runner (2026-11-06)
+
+- Browser-CDP erkennt Login sprachunabhängig am Link `User_Logout`, nicht am deutschen Text. Das funktioniert für die deutsche und englische Cardmarket-Oberfläche.
+- Ohne Login bleibt der Collector aktiv (`access_mode=PUBLIC_LIMITED`), wendet verfügbare öffentliche Sprach-/Zustandsfilter an, erfasst IDs und Preisstichproben und unterdrückt den vollen Median (`all_pages_complete=false`, `median_all_offers_eur=null`, `pagination_failure=PUBLIC_SESSION_LIMITED_SAMPLE`). Keine automatische Anmeldung und keine Cloudflare-Umgehung.
+- Echtes unangemeldetes Browserprofil auf Port 9222 getestet: Lucario MEP095 DE, 50 bestätigte Angebotszeilen, `PUBLIC_LIMITED`, kein veröffentlichter Gesamtmedian.
+- Angemeldeter Edge-Browser auf Port 9223 getestet: Lucario MEP095 EN, 26 Sprach-/Zustands-geprüfte Angebotszeilen, ein vollständiger *Angebots*median von 1,86 EUR, weiterhin `PRINT_UNVERIFIED`, nicht im produktiven Kartenpreis.
+- Tangela sm10-16 DE: Reverse mit 8 geprüften Angeboten (Median 0,32 EUR), Normal mit 44 geprüften Angeboten (Median 0,15 EUR). Keine Vermischung beider Varianten; bis zur Print-Freigabe keine Cache-Veröffentlichung.
+- Der bisherige Windows-Launcher wurde vor Austausch gesichert. Neuer Launcher startet `Cardmarket-Queue-Runner.ps1`, welcher die DE-/EN-Warteschlangen sequenziell in Chargen von 40 fälligen Varianten mit 8 Sekunden Grundabstand abarbeitet. `progress-de.json` und `progress-en.json` halten den unabhängigen Fortschritt. Bei Provider-Blockade/Verbindungsabbruch wird kein neuer Sprachlauf gestartet.
+- Nur geprüfte Seiten werden als komplett markiert; verlorene Sitzungen werden während des Durchlaufs erkannt und als öffentliche Stichprobe degradiert.
+- Die bestehenden 30.000+ Varianten werden so über mehrere Läufe gescannt; dieses Rolling-Verfahren ist **keine** Zusage, alle Varianten innerhalb von 7 Tagen zu aktualisieren. Der Preisguide bleibt die flächendeckende Basis.
