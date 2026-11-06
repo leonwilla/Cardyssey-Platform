@@ -83,9 +83,9 @@ def holo_variant_count(variants):
 
 def price_from_guide(guide, legacy, variant):
     if variant_is_holo(legacy,variant):
-        keys=("trend-holo","avg7-holo","avg30-holo","avg-holo","low-holo")
+        keys=("avg30-holo","trend-holo","avg7-holo","avg-holo","low-holo")
     else:
-        keys=("trend","avg7","avg30","avg","low")
+        keys=("avg30","trend","avg7","avg","low")
     for key in keys:
         value=guide.get(key)
         if positive(value):
