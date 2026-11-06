@@ -72,3 +72,13 @@ sind **noch nicht** als beendet oder vollautomatisch freigeschaltet.
 - Der zuvor implementierte offline Medianrechner `scripts/cardmarket-median-all-offers.py` verwendet jedes Angebot exakt einmal, nicht die angebotene Stückzahl.
 - **Live-Limit:** Aktuelle Browser-Sitzung wurde als nicht angemeldet erkannt; ein Klick auf „Zeige mehr Angebote“ führte dort zu keinem Zeilenzuwachs. Nach erfolgreichem Cardmarket-Login ist eine erneute echte Nachladeprobe erforderlich.
 - Diese Änderung schreibt weiterhin **keine** nicht abgesicherten Variantenwerte in den öffentlichen Preis-Cache.
+
+## Live-Nachprüfung 2026-11-06 13:43 MEZ
+
+- Remote Tiny online; `65575bc` als Ausgangsstand bestätigt.
+- Der isolierte Edge-CDP-Port 9223 hat eine Cardmarket-Lucario-Produktseite geöffnet.
+- Kein explizites Logout-/Account-Merkmal im DOM erkennbar; Collector meldet `LOGIN_REQUIRED`. Ein Login in einem anderen Browserfenster wird **nicht** in das isolierte Edge-Profil übertragen. Bestehendes Profil bleibt erhalten; keine Cookie-Extraktion oder Cloudflare-Umgehung.
+- Begrenzte anonyme Diagnose mit genau einem Lucario-Fall und vorab bestätigter Produkt-URL: 50 deutsche NM-Angebotszeilen akzeptiert, niedrigster Listenpreis 0,04 EUR, Stichprobenmedian 0,15 EUR. Ein Klick auf `#loadMoreButton` führte nicht zu zusätzlichen Zeilen: `LOAD_MORE_NO_NEW_OFFERS`, `all_pages_complete=false`, `median_all_offers_eur=null`. Diese Daten sind **keine vollständigen Variantenpreise** und werden nicht veröffentlicht.
+- Direkte geprüfte Queue-URL kann jetzt die fehleranfällige Textsuche überspringen; die tatsächliche `idProduct` bleibt vor jeder Auswertung gegen die verifizierten IDs zu validieren.
+- Testbasis: 16 Tests der Variantenfilter und des vollständigen Medians bestanden; DE/EN-Medianberechnung nutzt jede eindeutige Angebots-ID einmal und veröffentlicht bei unvollständiger Pagination nichts.
+- Für echten Live-Nachladetest ist die Anmeldung im **separaten CardmarketEdgeProfile-Browserfenster** erforderlich. Kein automatische Wiederanmeldung und kein Challenge-Bypass vorgesehen.

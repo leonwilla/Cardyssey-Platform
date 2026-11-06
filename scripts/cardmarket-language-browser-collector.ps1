@@ -248,8 +248,21 @@ try {
       $out.query = "$name $number"
       $savedUrl = ''
       $allowedIds = @([string]$case.cardmarket_ids -split ',')
+      # Trusted queue mapping: skip unreliable text search, but validate the
+      # actual idProduct on the destination page before accepting it.
+      if ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
+          @($allowedIds | Where-Object { $_ -match '^[0-9]+$' }).Count -eq 1 -and
+          -not [string]::IsNullOrWhiteSpace([string]$case.known_url)) {
+        try {
+          $candidate = [uri](([string]$case.known_url).Split('?')[0])
+          if ($candidate.Scheme -eq 'https' -and $candidate.Host -eq 'www.cardmarket.com' -and
+              $candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) {
+            $savedUrl = $candidate.AbsoluteUri
+          }
+        } catch {}
+      }
 
-      if ($latest.ContainsKey($key)) {
+      if (!$savedUrl -and $latest.ContainsKey($key)) {
         $prior = $latest[$key]
         if (([string]$prior.product_id -in $allowedIds) -and $prior.identity_confirmed -eq $true) {
           try {

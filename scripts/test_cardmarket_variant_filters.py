@@ -54,6 +54,12 @@ class CheckVariants(unittest.TestCase):
             "median_all_offers_eur", "totalRows",
         ):
             self.assertIn(marker,s)
+    def test_verified_queue_mapping_precedes_unreliable_text_search(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn("$case.known_url",s)
+        self.assertIn("$case.routing_state -eq 'VERIFIED_PRODUCT_ID'",s)
+        self.assertIn("$out.product_id = $candidateId",s)
+        self.assertIn("PRODUCT_ID_NOT_IN_VERIFIED_SET",s)
     def test_live_script_independent_filters_and_query_verification(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         for token in ("expected_reverse_holo","expected_first_edition","extra[isReverseHolo]","extra[isFirstEd]","searchParams.get(k)","all_pages_complete=$false"):
