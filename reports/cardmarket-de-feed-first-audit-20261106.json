@@ -1,0 +1,1164 @@
+{
+  "source": "CARDMARKET_OFFICIAL_PRICE_GUIDE",
+  "guide_date": "2026-11-06T02:42:47+0100",
+  "price_guide_products": 80602,
+  "variants": 31300,
+  "counts": {
+    "SINGLE_ID_NEEDS_IDENTITY_VERIFICATION": 16540,
+    "MULTIPLE_PRODUCT_IDS": 11780,
+    "NO_PRODUCT_ID": 2146,
+    "SPECIAL_PRINT_NEEDS_REVIEW": 662,
+    "VERIFIED_PRODUCT_GUIDE_PREVIEW": 163,
+    "NO_GUIDE_PRICE": 9
+  },
+  "preview_count": 163,
+  "language_specific": false,
+  "condition_specific": false,
+  "edition_specific": false,
+  "print_identity_certified": false,
+  "published": false,
+  "notes": "Guide-only reference candidates; no language-specific NM price and no overwrite of tcg_price_cache.",
+  "verified_id_previews": [
+    {
+      "card_id": "basep-25",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275444",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 35.41
+    },
+    {
+      "card_id": "basep-29",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275448",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 25.91
+    },
+    {
+      "card_id": "basep-35",
+      "variant_id": "cm4kqul3x1bwlz1f",
+      "product_id": "275454",
+      "guide_bucket": "avg30-holo",
+      "aggregate_eur": 20.74
+    },
+    {
+      "card_id": "bw8-95",
+      "variant_id": "generated",
+      "product_id": "280835",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 28.28
+    },
+    {
+      "card_id": "bw8-96",
+      "variant_id": "generated",
+      "product_id": "280836",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 21.56
+    },
+    {
+      "card_id": "ex10-4",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276650",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 21.38
+    },
+    {
+      "card_id": "ex13-102",
+      "variant_id": "jr7oetx1mqug9",
+      "product_id": "277072",
+      "guide_bucket": "avg30-holo",
+      "aggregate_eur": 178.26
+    },
+    {
+      "card_id": "ex13-111",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "277081",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 124.69
+    },
+    {
+      "card_id": "ex15-100",
+      "variant_id": "jr7oetx1mqug9",
+      "product_id": "277305",
+      "guide_bucket": "avg30-holo",
+      "aggregate_eur": 362.36
+    },
+    {
+      "card_id": "ex9-1",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276512",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 39.85
+    },
+    {
+      "card_id": "g1-12",
+      "variant_id": "generated",
+      "product_id": "288406",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 173.13
+    },
+    {
+      "card_id": "g1-18",
+      "variant_id": "generated",
+      "product_id": "288458",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 22.34
+    },
+    {
+      "card_id": "g1-RC31",
+      "variant_id": "generated",
+      "product_id": "288540",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 76.62
+    },
+    {
+      "card_id": "sma-SV46",
+      "variant_id": "generated",
+      "product_id": "396882",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 65.66
+    },
+    {
+      "card_id": "sma-SV50",
+      "variant_id": "generated",
+      "product_id": "396897",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 49.71
+    },
+    {
+      "card_id": "sma-SV51",
+      "variant_id": "generated",
+      "product_id": "396902",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 47.99
+    },
+    {
+      "card_id": "sma-SV53",
+      "variant_id": "generated",
+      "product_id": "396912",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 33.43
+    },
+    {
+      "card_id": "sma-SV54",
+      "variant_id": "generated",
+      "product_id": "396917",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 41.76
+    },
+    {
+      "card_id": "sma-SV55",
+      "variant_id": "generated",
+      "product_id": "396922",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 47.76
+    },
+    {
+      "card_id": "sma-SV56",
+      "variant_id": "generated",
+      "product_id": "396927",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 55.65
+    },
+    {
+      "card_id": "sma-SV57",
+      "variant_id": "generated",
+      "product_id": "394782",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 23.44
+    },
+    {
+      "card_id": "sma-SV60",
+      "variant_id": "generated",
+      "product_id": "396942",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 159.01
+    },
+    {
+      "card_id": "sma-SV62",
+      "variant_id": "generated",
+      "product_id": "396952",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 25.15
+    },
+    {
+      "card_id": "sma-SV64",
+      "variant_id": "generated",
+      "product_id": "381246",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 62.27
+    },
+    {
+      "card_id": "sma-SV65",
+      "variant_id": "generated",
+      "product_id": "396962",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 21.51
+    },
+    {
+      "card_id": "sma-SV69",
+      "variant_id": "generated",
+      "product_id": "396982",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 294.65
+    },
+    {
+      "card_id": "sma-SV70",
+      "variant_id": "generated",
+      "product_id": "396987",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 113.77
+    },
+    {
+      "card_id": "sma-SV72",
+      "variant_id": "generated",
+      "product_id": "396997",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 40.35
+    },
+    {
+      "card_id": "sma-SV75",
+      "variant_id": "generated",
+      "product_id": "397012",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 56.12
+    },
+    {
+      "card_id": "sma-SV76",
+      "variant_id": "generated",
+      "product_id": "397017",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 174.89
+    },
+    {
+      "card_id": "sma-SV82",
+      "variant_id": "generated",
+      "product_id": "381249",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 169.84
+    },
+    {
+      "card_id": "sma-SV91",
+      "variant_id": "generated",
+      "product_id": "397087",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 25.92
+    },
+    {
+      "card_id": "sma-SV92",
+      "variant_id": "generated",
+      "product_id": "397092",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 20.78
+    },
+    {
+      "card_id": "sma-SV93",
+      "variant_id": "generated",
+      "product_id": "397097",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 22.41
+    },
+    {
+      "card_id": "sma-SV94",
+      "variant_id": "generated",
+      "product_id": "397102",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 20.28
+    },
+    {
+      "card_id": "xy1-2",
+      "variant_id": "generated",
+      "product_id": "281339",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 21.51
+    },
+    {
+      "card_id": "xy1-30",
+      "variant_id": "generated",
+      "product_id": "281367",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 20.26
+    },
+    {
+      "card_id": "bw10-30",
+      "variant_id": "generated",
+      "product_id": "281051",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 10.95
+    },
+    {
+      "card_id": "bw8-14",
+      "variant_id": "generated",
+      "product_id": "280754",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 13.09
+    },
+    {
+      "card_id": "bw8-48",
+      "variant_id": "generated",
+      "product_id": "280788",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 15.98
+    },
+    {
+      "card_id": "ex10-13",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276659",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 6.56
+    },
+    {
+      "card_id": "ex10-17",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276663",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 18.95
+    },
+    {
+      "card_id": "ex14-5",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "277086",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.85
+    },
+    {
+      "card_id": "ex16-9",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "765709",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 90
+    },
+    {
+      "card_id": "ex8-4",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276407",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 6.4
+    },
+    {
+      "card_id": "ex9-10",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276521",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.34
+    },
+    {
+      "card_id": "ex9-11",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "276522",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 15.75
+    },
+    {
+      "card_id": "sm115-51",
+      "variant_id": "generated",
+      "product_id": "394807",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.17
+    },
+    {
+      "card_id": "sm115-52",
+      "variant_id": "generated",
+      "product_id": "396657",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.11
+    },
+    {
+      "card_id": "sm115-55",
+      "variant_id": "generated",
+      "product_id": "394742",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.34
+    },
+    {
+      "card_id": "sm115-56",
+      "variant_id": "generated",
+      "product_id": "394617",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.18
+    },
+    {
+      "card_id": "sm115-63",
+      "variant_id": "generated",
+      "product_id": "396662",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.42
+    },
+    {
+      "card_id": "sm5-62",
+      "variant_id": "generated",
+      "product_id": "315124",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.56
+    },
+    {
+      "card_id": "sm6-110",
+      "variant_id": "generated",
+      "product_id": "355623",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 1.85
+    },
+    {
+      "card_id": "sm7.5-61",
+      "variant_id": "generated",
+      "product_id": "363532",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.44
+    },
+    {
+      "card_id": "ex4-3",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275980",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 10.56
+    },
+    {
+      "card_id": "ex4-9",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275986",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.56
+    },
+    {
+      "card_id": "g1-2",
+      "variant_id": "generated",
+      "product_id": "288404",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 17.51
+    },
+    {
+      "card_id": "hgss1-1",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "278973",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.11
+    },
+    {
+      "card_id": "hgss1-8",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "278980",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.98
+    },
+    {
+      "card_id": "hgss2-5",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279161",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 1.99
+    },
+    {
+      "card_id": "hgss3-1",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279254",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.77
+    },
+    {
+      "card_id": "hgss3-9",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279262",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.71
+    },
+    {
+      "card_id": "hgss4-11",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279541",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.02
+    },
+    {
+      "card_id": "hgss4-5",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279535",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.29
+    },
+    {
+      "card_id": "hgss4-6",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "279536",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.37
+    },
+    {
+      "card_id": "sma-SV10",
+      "variant_id": "generated",
+      "product_id": "396737",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.84
+    },
+    {
+      "card_id": "sma-SV11",
+      "variant_id": "generated",
+      "product_id": "396742",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.87
+    },
+    {
+      "card_id": "sma-SV12",
+      "variant_id": "generated",
+      "product_id": "396747",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.43
+    },
+    {
+      "card_id": "sma-SV14",
+      "variant_id": "generated",
+      "product_id": "394817",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.59
+    },
+    {
+      "card_id": "sma-SV15",
+      "variant_id": "generated",
+      "product_id": "396752",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.37
+    },
+    {
+      "card_id": "sma-SV16",
+      "variant_id": "generated",
+      "product_id": "396757",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.09
+    },
+    {
+      "card_id": "sma-SV17",
+      "variant_id": "generated",
+      "product_id": "396762",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 1.72
+    },
+    {
+      "card_id": "sma-SV18",
+      "variant_id": "generated",
+      "product_id": "381240",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.44
+    },
+    {
+      "card_id": "sma-SV19",
+      "variant_id": "generated",
+      "product_id": "396767",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.44
+    },
+    {
+      "card_id": "sma-SV2",
+      "variant_id": "generated",
+      "product_id": "396697",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.95
+    },
+    {
+      "card_id": "sma-SV20",
+      "variant_id": "generated",
+      "product_id": "396772",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.19
+    },
+    {
+      "card_id": "sma-SV21",
+      "variant_id": "generated",
+      "product_id": "396777",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.31
+    },
+    {
+      "card_id": "sma-SV22",
+      "variant_id": "generated",
+      "product_id": "396782",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 19.33
+    },
+    {
+      "card_id": "sma-SV23",
+      "variant_id": "generated",
+      "product_id": "396787",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.65
+    },
+    {
+      "card_id": "sma-SV24",
+      "variant_id": "generated",
+      "product_id": "381237",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.14
+    },
+    {
+      "card_id": "sma-SV25",
+      "variant_id": "generated",
+      "product_id": "396792",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.1
+    },
+    {
+      "card_id": "sma-SV26",
+      "variant_id": "generated",
+      "product_id": "396797",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 4.53
+    },
+    {
+      "card_id": "sma-SV27",
+      "variant_id": "generated",
+      "product_id": "396802",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.17
+    },
+    {
+      "card_id": "sma-SV28",
+      "variant_id": "generated",
+      "product_id": "394827",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.12
+    },
+    {
+      "card_id": "sma-SV29",
+      "variant_id": "generated",
+      "product_id": "396807",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.52
+    },
+    {
+      "card_id": "sma-SV3",
+      "variant_id": "generated",
+      "product_id": "396702",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.16
+    },
+    {
+      "card_id": "sma-SV30",
+      "variant_id": "generated",
+      "product_id": "396812",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.38
+    },
+    {
+      "card_id": "sma-SV31",
+      "variant_id": "generated",
+      "product_id": "396817",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.02
+    },
+    {
+      "card_id": "sma-SV32",
+      "variant_id": "generated",
+      "product_id": "394792",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 4.88
+    },
+    {
+      "card_id": "sma-SV33",
+      "variant_id": "generated",
+      "product_id": "396822",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 3.16
+    },
+    {
+      "card_id": "sma-SV34",
+      "variant_id": "generated",
+      "product_id": "396827",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.24
+    },
+    {
+      "card_id": "sma-SV35",
+      "variant_id": "generated",
+      "product_id": "396832",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 6.99
+    },
+    {
+      "card_id": "sma-SV36",
+      "variant_id": "generated",
+      "product_id": "396837",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.92
+    },
+    {
+      "card_id": "sma-SV37",
+      "variant_id": "generated",
+      "product_id": "396842",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 6.59
+    },
+    {
+      "card_id": "sma-SV38",
+      "variant_id": "generated",
+      "product_id": "396847",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 4.34
+    },
+    {
+      "card_id": "sma-SV39",
+      "variant_id": "generated",
+      "product_id": "396852",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 4.08
+    },
+    {
+      "card_id": "sma-SV4",
+      "variant_id": "generated",
+      "product_id": "396707",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.3
+    },
+    {
+      "card_id": "sma-SV40",
+      "variant_id": "generated",
+      "product_id": "396857",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.84
+    },
+    {
+      "card_id": "sma-SV42",
+      "variant_id": "generated",
+      "product_id": "396867",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 4.34
+    },
+    {
+      "card_id": "sma-SV43",
+      "variant_id": "generated",
+      "product_id": "394727",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.49
+    },
+    {
+      "card_id": "sma-SV44",
+      "variant_id": "generated",
+      "product_id": "396872",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.07
+    },
+    {
+      "card_id": "sma-SV45",
+      "variant_id": "generated",
+      "product_id": "396877",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 2.88
+    },
+    {
+      "card_id": "sma-SV47",
+      "variant_id": "generated",
+      "product_id": "396887",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.87
+    },
+    {
+      "card_id": "sma-SV48",
+      "variant_id": "generated",
+      "product_id": "396892",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.12
+    },
+    {
+      "card_id": "sma-SV5",
+      "variant_id": "generated",
+      "product_id": "396712",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.85
+    },
+    {
+      "card_id": "sma-SV52",
+      "variant_id": "generated",
+      "product_id": "396907",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11.62
+    },
+    {
+      "card_id": "sma-SV58",
+      "variant_id": "generated",
+      "product_id": "396932",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11
+    },
+    {
+      "card_id": "sma-SV61",
+      "variant_id": "generated",
+      "product_id": "396947",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.94
+    },
+    {
+      "card_id": "sma-SV63",
+      "variant_id": "generated",
+      "product_id": "396957",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.77
+    },
+    {
+      "card_id": "sma-SV68",
+      "variant_id": "generated",
+      "product_id": "396977",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.3
+    },
+    {
+      "card_id": "sma-SV71",
+      "variant_id": "generated",
+      "product_id": "396992",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.6
+    },
+    {
+      "card_id": "sma-SV73",
+      "variant_id": "generated",
+      "product_id": "397002",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.3
+    },
+    {
+      "card_id": "sma-SV74",
+      "variant_id": "generated",
+      "product_id": "397007",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11.68
+    },
+    {
+      "card_id": "sma-SV77",
+      "variant_id": "generated",
+      "product_id": "397022",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 18.4
+    },
+    {
+      "card_id": "sma-SV78",
+      "variant_id": "generated",
+      "product_id": "397027",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 16.76
+    },
+    {
+      "card_id": "sma-SV79",
+      "variant_id": "generated",
+      "product_id": "397032",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11.68
+    },
+    {
+      "card_id": "sma-SV8",
+      "variant_id": "generated",
+      "product_id": "396727",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.97
+    },
+    {
+      "card_id": "sma-SV80",
+      "variant_id": "generated",
+      "product_id": "397037",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.39
+    },
+    {
+      "card_id": "sma-SV81",
+      "variant_id": "generated",
+      "product_id": "397042",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.16
+    },
+    {
+      "card_id": "sma-SV83",
+      "variant_id": "generated",
+      "product_id": "397047",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 8.19
+    },
+    {
+      "card_id": "sma-SV84",
+      "variant_id": "generated",
+      "product_id": "397052",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 18.36
+    },
+    {
+      "card_id": "sma-SV85",
+      "variant_id": "generated",
+      "product_id": "397057",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.14
+    },
+    {
+      "card_id": "sma-SV86",
+      "variant_id": "generated",
+      "product_id": "397062",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 17.38
+    },
+    {
+      "card_id": "sma-SV87",
+      "variant_id": "generated",
+      "product_id": "397082",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.49
+    },
+    {
+      "card_id": "sma-SV88",
+      "variant_id": "generated",
+      "product_id": "397067",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 15.25
+    },
+    {
+      "card_id": "sma-SV89",
+      "variant_id": "generated",
+      "product_id": "397072",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11.08
+    },
+    {
+      "card_id": "sma-SV9",
+      "variant_id": "generated",
+      "product_id": "396732",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.29
+    },
+    {
+      "card_id": "sma-SV90",
+      "variant_id": "generated",
+      "product_id": "397077",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.89
+    },
+    {
+      "card_id": "xy12-27",
+      "variant_id": "generated",
+      "product_id": "293384",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 11.18
+    },
+    {
+      "card_id": "base2-57",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "273854",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.45
+    },
+    {
+      "card_id": "basep-21",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275440",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 16.25
+    },
+    {
+      "card_id": "basep-23",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275442",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.81
+    },
+    {
+      "card_id": "basep-30",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275449",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 14.31
+    },
+    {
+      "card_id": "basep-31",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275450",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.72
+    },
+    {
+      "card_id": "basep-32",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275451",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 19.36
+    },
+    {
+      "card_id": "basep-33",
+      "variant_id": "cm4kqul3x1bwlz1f",
+      "product_id": "275452",
+      "guide_bucket": "avg30-holo",
+      "aggregate_eur": 15.78
+    },
+    {
+      "card_id": "basep-36",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275455",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 12.64
+    },
+    {
+      "card_id": "basep-37",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275456",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 7.59
+    },
+    {
+      "card_id": "basep-38",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275457",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 5.7
+    },
+    {
+      "card_id": "basep-39",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275458",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 9.91
+    },
+    {
+      "card_id": "basep-6",
+      "variant_id": "endfynwn4n10gzq",
+      "product_id": "275425",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 18.99
+    },
+    {
+      "card_id": "bw7-107",
+      "variant_id": "generated",
+      "product_id": "280694",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.5
+    },
+    {
+      "card_id": "sm10-174",
+      "variant_id": "generated",
+      "product_id": "372459",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.14
+    },
+    {
+      "card_id": "sm10-178",
+      "variant_id": "generated",
+      "product_id": "372463",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.15
+    },
+    {
+      "card_id": "sm115-45",
+      "variant_id": "generated",
+      "product_id": "394572",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "sm115-53",
+      "variant_id": "generated",
+      "product_id": "394632",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.06
+    },
+    {
+      "card_id": "sm115-54",
+      "variant_id": "generated",
+      "product_id": "394582",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "sm115-59",
+      "variant_id": "generated",
+      "product_id": "394627",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "sm115-60",
+      "variant_id": "generated",
+      "product_id": "394622",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "sm115-61",
+      "variant_id": "generated",
+      "product_id": "394577",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.08
+    },
+    {
+      "card_id": "sm115-62",
+      "variant_id": "generated",
+      "product_id": "394752",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.1
+    },
+    {
+      "card_id": "sm115-65",
+      "variant_id": "generated",
+      "product_id": "396667",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.06
+    },
+    {
+      "card_id": "sm9-127",
+      "variant_id": "generated",
+      "product_id": "369054",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.32
+    },
+    {
+      "card_id": "swsh1-173",
+      "variant_id": "generated",
+      "product_id": "436959",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "swsh1-174",
+      "variant_id": "generated",
+      "product_id": "436964",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.59
+    },
+    {
+      "card_id": "swsh1-175",
+      "variant_id": "generated",
+      "product_id": "436969",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "swsh1-176",
+      "variant_id": "generated",
+      "product_id": "436974",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.09
+    },
+    {
+      "card_id": "swsh3.5-59",
+      "variant_id": "generated",
+      "product_id": "500150",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.04
+    },
+    {
+      "card_id": "swsh3.5-60",
+      "variant_id": "generated",
+      "product_id": "500155",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.07
+    },
+    {
+      "card_id": "xy11-43",
+      "variant_id": "generated",
+      "product_id": "291536",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.12
+    },
+    {
+      "card_id": "xy12-43",
+      "variant_id": "generated",
+      "product_id": "293398",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.08
+    },
+    {
+      "card_id": "xy5-66",
+      "variant_id": "generated",
+      "product_id": "273597",
+      "guide_bucket": "avg30",
+      "aggregate_eur": 0.32
+    }
+  ]
+}

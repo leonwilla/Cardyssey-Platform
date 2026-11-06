@@ -27,6 +27,14 @@ class PriorityTests(unittest.TestCase):
         cache=[{"card_id":"bulk","variant_id":"v","status":"PRICE_FOUND",
                 "price":0.05,"source":"TCGDEX","rarity":"Häufig"}]
         self.assertEqual(module.prioritize([row],cache)[0]["scan_tier"],4)
+    def test_empty_json_stamps_do_not_make_bulk_special(self):
+        row={"cardyssey_karte":"bulk","variante_id":"v","set_id":"x",
+             "sonderdruck":"","foil":"","stempel":"[]"}
+        cache=[{"card_id":"bulk","variant_id":"v","status":"PRICE_FOUND",
+                "price":0.05,"source":"TCGDEX","rarity":"Ungewöhnlich"}]
+        out=module.prioritize([row],cache)[0]
+        self.assertEqual(out["scan_tier"],4)
+        self.assertEqual(out["needs_price"],"NO")
     def test_one_row_one_variant(self):
         rows=[{"cardyssey_karte":"a","variante_id":"1","set_id":"s","sonderdruck":"","foil":"","stempel":""},
               {"cardyssey_karte":"a","variante_id":"2","set_id":"s","sonderdruck":"","foil":"","stempel":""}]

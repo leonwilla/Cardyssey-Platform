@@ -175,7 +175,10 @@ function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) 
 }
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------
-$cases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
+$allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
+# Already priced bulk uses the existing price-guide/feed path, not browser.
+$cases = @($allCases | Where-Object { -not ([string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO') })
+$bulkFeedOnly = $allCases.Count - $cases.Count
 $runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
 
 $processed = [Collections.Generic.HashSet[string]]::new()
@@ -195,7 +198,8 @@ $nowUtc = [datetime]::UtcNow
 $knownProductPages = @{}
 foreach ($record in $latest.Values) {
   if ($record.status -notin @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS',
-                              'FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED')) { continue }
+                              'FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED',
+                              'COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED')) { continue }
   $id = [string]$record.product_id
   if ($id -notmatch '^[0-9]+$') { continue }
   try {
@@ -552,6 +556,7 @@ try {
   $report = [ordered]@{
     language               = $Language
     expected_variants      = $runTotal
+    bulk_feed_only_variants = $bulkFeedOnly
     progress_status        = (Get-Content $progressPath -Raw | ConvertFrom-Json).status
     reviewed_variants      = $statuses.Count
     assigned_product_ids   = $confirmed.Count

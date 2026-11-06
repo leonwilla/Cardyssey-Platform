@@ -8,7 +8,8 @@ import math
 import subprocess
 from pathlib import Path
 
-VALID = {"FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE", "NO_CONFIRMED_FILTERED_OFFERS"}
+VALID = {"FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE", "NO_CONFIRMED_FILTERED_OFFERS",
+         "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED"}
 
 def select_observations(records, worklist):
     allowed = {(r["cardyssey_karte"], r["variante_id"]):
@@ -27,18 +28,27 @@ def select_observations(records, worklist):
         sample = r.get("sample_median_eur")
         if sample is not None and (not isinstance(sample, (float,int)) or not math.isfinite(sample) or sample <= 0):
             continue
-        count = r.get("de_nm_offers")
-        if not isinstance(count, int) or count < 0 or count > 100:
+        count = r.get("verified_lang_nm_offers", r.get("de_nm_offers"))
+        lang = r.get("language", "de")
+        if lang not in ("de", "en") or type(count) is not int or count < 0 or count > 300:
             continue
+        complete = r.get("all_pages_complete") is True
+        if r.get("status") == "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED" and not complete:
+            continue
+        if r.get("status") != "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED":
+            complete = False
         prepared[key] = {
-            "language_code": "de", "card_id": key[0], "variant_id": key[1],
+            "language_code": lang, "card_id": key[0], "variant_id": key[1],
             "refresh_days":refresh_days[key],
             "query": str(r.get("query") or "")[:255],
             "candidate": {"provider": "CARDMARKET", "product_id": pid,
                           "match_type": "CARDMARKET_FILTERED_ASKING_SAMPLE",
-                          "language": "de", "min_condition": "NM",
+                          "language": lang, "min_condition": "NM",
                           "sample_count": count, "sample_median_eur": sample,
-                          "sample_not_market_wide": True,
+                          "all_pages_complete": complete,
+                          "sample_not_market_wide": not complete,
+                          "access_mode": str(r.get("access_mode") or "UNKNOWN"),
+                          "exact_print_verified": False,
                           "no_verified_print_identity": True,
                           "url": str(r.get("url") or "")[:500]}
         }
@@ -57,7 +67,7 @@ WITH incoming AS (
 )
 INSERT INTO price_review_cases(language_code,card_id,variant_id,search_status,search_query,search_steps,candidates,failure_reason,checked_at)
 SELECT language_code,card_id,variant_id,'CARDMARKET_BROWSER_REVIEW',search_query,
- '["CARDMARKET_BROWSER","DE_NM_FILTER"]'::jsonb,
+ '["CARDMARKET_BROWSER","LANGUAGE_NM_FILTER"]'::jsonb,
  jsonb_build_array(candidate),
  'Filtered active asking offers only; exact printing/edition/foil/stamp not independently confirmed',NOW()
 FROM prepared
@@ -123,11 +133,11 @@ INSERT INTO price_source_routing
  provider_product_url,source_evidence,verification_state,fallback_provider,
  refresh_days,last_attempt_at,next_attempt_at)
 SELECT language_code,card_id,variant_id,'CARDMARKET',product_id,
-       product_url,'Authenticated browser; filtered asking sample only',
+       product_url,'Browser filtered asking offers; exact print unverified',
        'SOURCE_ONLY','TCGCSV_TCGPLAYER',refresh_days,NOW(),
        NOW()+make_interval(days=>refresh_days)
 FROM fields
-WHERE product_url LIKE 'https://www.cardmarket.com/de/Pokemon/Products/Singles/%'
+WHERE product_url LIKE ('https://www.cardmarket.com/' || language_code || '/Pokemon/Products/Singles/%')
 ON CONFLICT(language_code,card_id,variant_id) DO UPDATE SET
  provider_product_id=CASE
    WHEN price_source_routing.verification_state='VERIFIED_PRODUCT_ID'

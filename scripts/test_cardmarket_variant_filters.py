@@ -54,6 +54,10 @@ class CheckVariants(unittest.TestCase):
             "median_all_offers_eur", "totalRows",
         ):
             self.assertIn(marker,s)
+    def test_priced_bulk_is_routed_to_feed_not_browser(self):
+        s=SCRIPT.read_text(encoding="utf-8-sig")
+        self.assertIn("$bulkFeedOnly = $allCases.Count - $cases.Count",s)
+        self.assertIn("bulk_feed_only_variants = $bulkFeedOnly",s)
     def test_batch_has_pending_limit_and_resume(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         for token in ("[int]$BatchLimit = 0", "-not $processed.Contains($k)", "Select-Object -First $BatchLimit", "BATCH_COMPLETE_MORE_PENDING"):

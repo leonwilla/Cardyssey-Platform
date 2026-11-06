@@ -29,7 +29,9 @@ def prioritize(rows, cache):
         state = lookup.get((row["cardyssey_karte"],row["variante_id"]),{})
         value = float(state.get("price") or 0)
         missing = state.get("status") != "PRICE_FOUND" or value <= 0
-        special = bool(row.get("sonderdruck") or row.get("foil") or row.get("stempel"))
+        stamp = str(row.get("stempel") or "").strip()
+        # JSON [] is an empty stamp list, not a special printing.
+        special = bool(row.get("sonderdruck") or row.get("foil") or (stamp not in ("", "[]", "null")))
         rare = str(state.get("rarity") or "").casefold() in {
             "selten","rare","ultra rare","secret rare","illustration rare",
             "special illustration rare","hyper rare","promo"}
