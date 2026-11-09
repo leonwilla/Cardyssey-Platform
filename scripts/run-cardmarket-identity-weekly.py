@@ -28,7 +28,8 @@ def main():
     prices=fetch_json(PRICE_URL,max_age=20*3600)
     if len(products.get("products") or [])<50000 or len(prices.get("priceGuides") or [])<50000:
         raise RuntimeError("Official feed incomplete; previous queues and reviews preserved")
-    report={"product_catalog_date":products.get("createdAt"),"guide_date":prices.get("createdAt"),
+    set_audit=json.loads(run(ROOT/'scripts/cardmarket-set-identity-audit.py'))
+    report={"set_audit":set_audit,"product_catalog_date":products.get("createdAt"),"guide_date":prices.get("createdAt"),
             "products":len(products["products"]),"guide_items":len(prices["priceGuides"])}
     for lang in ("de","en"):
         result=run(ROOT/"scripts/export-cardmarket-full-queue.py","--language",lang,"--output",BASE/f"queue-{lang}.csv")

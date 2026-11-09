@@ -59,7 +59,10 @@ def calculate_set_map(en_cards,products):
         if not scored:continue
         first=scored[0]
         second=scored[1] if len(scored)>1 else (0,0,None)
-        if first[1]>=0.90 and (first[0]-second[0]>=3 or first[1]>=0.98):
+        # A full name-list tie is NOT a verified expansion. This previously
+        # sent 2019 McDonalds to the French printing: both contain 12 names.
+        # Only an independently confirmed set override may resolve that tie.
+        if first[1]>=0.90 and first[0] > second[0] and (first[0]-second[0]>=3 or first[1]>=0.98):
             maps[sid]=first[2]
     return maps
 

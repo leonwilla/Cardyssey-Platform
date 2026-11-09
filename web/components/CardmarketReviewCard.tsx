@@ -20,6 +20,7 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
  const [manualUrl,setManualUrl]=useState('');
  const [preview,setPreview]=useState<LinkPreview|null>(null);
  const [linkBusy,setLinkBusy]=useState(false);
+ const [undoBusy,setUndoBusy]=useState(false);
  const [linkError,setLinkError]=useState('');
  const [linkConfirm,setLinkConfirm]=useState(false);
  const [mismatchConfirm,setMismatchConfirm]=useState(false);
@@ -67,6 +68,16 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
   }catch(e){setLinkError(e instanceof Error?e.message:'Bestätigung fehlgeschlagen')}
   finally{setLinkBusy(false)}
  }
+ async function undoDecision(){
+  if(!window.confirm('Diese Entscheidung für '+entry.card_name+' ('+entry.set_id+' / '+entry.print_type+') zurücknehmen? Die Karte wird wieder offen. Bereits gespeicherte unabhängige Preise bleiben bestehen.'))return;
+  setUndoBusy(true);setError('');
+  try{
+   const r=await fetch('/api/admin/cardmarket-print-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'undo',language:entry.language,cardId:entry.card_id,variantId:entry.variant_id})});
+   const data=await r.json();if(!r.ok)throw Error(data.error||'Rückgängig nicht möglich');
+   onSaved();
+  }catch(e){setError(e instanceof Error?e.message:'Rückgängig fehlgeschlagen')}
+  finally{setUndoBusy(false)}
+ }
  const hasMismatch=Boolean(preview?.warnings.some(w=>w.startsWith('SET_ID_CONFLICT')||w.startsWith('PRODUCT_NOT_IN_PREVIOUS_CANDIDATES')));
  return <article className="statusPanel" style={{padding:16,display:'grid',gap:10}}>
   <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
@@ -77,6 +88,15 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
     <div><small>{entry.set_id} · {entry.language.toUpperCase()} · {entry.card_id} · {entry.variant_id}</small></div>
    </div><span>{entry.classification.replaceAll('_',' ')}</span>
   </div>
+  {entry.status!=='PENDING_REVIEW'&&<section style={{border:'1px solid var(--border)',padding:12,borderRadius:10,display:'grid',gap:8}}>
+   <strong>Deine bisherige Entscheidung: {entry.status==='CONFIRMED_PRINT'?'Produkt bestätigt':entry.status==='NO_MATCH'?'Kein passendes Produkt':'Zurückgestellt'}</strong>
+   {entry.selected_product_id&&<div>Bestätigte Produkt-ID: <strong>{entry.selected_product_id}</strong></div>}
+   {entry.reviewer_note&&<div>Notiz: {entry.reviewer_note}</div>}
+   <button type="button" className="ghostButton" disabled={undoBusy} onClick={()=>void undoDecision()}>{undoBusy?'Wird zurückgenommen …':'↶ Zuordnung rückgängig machen'}</button>
+   {error&&<p role="alert">{error}</p>}
+   <small>Setzt nur diese Karte und Variante wieder auf „Offen“. Eine zugehörige manuelle Cardmarket-Zuordnung wird entfernt; Preise anderer Quellen bleiben erhalten.</small>
+  </section>}
+  {entry.status==='PENDING_REVIEW'&&<>
   <div style={{fontSize:13}}><strong>Dieses Formular gilt nur für:</strong> Set <strong>{entry.set_id}</strong>, Kartennummer <strong>#{entry.printed_number}</strong>, Druck <strong>{entry.print_type}</strong>. Ein anderes Set oder eine andere Druckvariante braucht ihren eigenen Kartenfall – dort können getrennte URLs hinterlegt werden.</div>
   {Boolean(entry.related_sets?.length)&&<div style={{border:'1px solid var(--border)',borderRadius:10,padding:10,display:'grid',gap:6}}><strong>Diese Karte gibt es auch in anderen Sets:</strong><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{entry.related_sets?.map(x=><button type="button" className="ghostButton" key={x.card_id} onClick={()=>onViewRelated?.(x.card_id)}>{x.set_name||x.set_id} · #{x.printed_number} – eigenen Prüffall öffnen</button>)}</div></div>}
   <div><strong>Druck:</strong> {entry.print_type||'unbekannt'} {entry.subtype&&' · '+entry.subtype} {entry.foil&&' · '+entry.foil} {entry.stamps&&entry.stamps!=='[]'&&' · '+entry.stamps}</div>
@@ -148,5 +168,6 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
     onClick={()=>void save('DEFERRED')}>Ohne Nachweis zurückstellen</button>
   </div>
   <small>Eine Bestätigung wird als Prüfnachweis gespeichert. Sie veröffentlicht keinen sprachspezifischen NM-Preis.</small>
+  </>}
  </article>;
 }

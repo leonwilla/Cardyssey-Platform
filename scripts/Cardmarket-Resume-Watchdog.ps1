@@ -7,6 +7,14 @@ function Note($value) {
   ('{0} {1}' -f [DateTime]::UtcNow.ToString('o'),$value) | Add-Content -Path $log -Encoding UTF8
 }
 try {
+  # Diagnose the persistent profile on every watchdog pass, even if a scan is
+  # running. Read-only: never access stored passwords or bypass the provider.
+  $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
+  if(Test-Path $checker){
+    $diag=& $checker | ConvertFrom-Json
+    if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
+    if($diag.login -eq 'LOGIN_REQUIRED'){Note 'CARDMARKET_LOGIN_REQUIRED';return}
+  }
   $busy=@(Get-CimInstance Win32_Process | Where-Object {
      $_.Name -eq 'powershell.exe' -and $_.CommandLine -match '-File.*Cardmarket-Queue-Runner[.]ps1'
   })

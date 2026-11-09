@@ -16,6 +16,12 @@ class FullCatalogMapTests(unittest.TestCase):
             {"set_id":"base1","english_name":"Pikachu"},names,{"base1":"1"})
         self.assertEqual((ids,status),(["123"],"SINGLE_SET_PRODUCT"))
 
+    def test_full_set_overlap_tie_does_not_choose_wrong_expansion(self):
+        en=[{'set_id':'2019sm','name':n} for n in ('Caterpie','Pikachu','Eevee')]
+        products=[{'idExpansion':2829,'name':n} for n in ('Caterpie','Pikachu','Eevee')]
+        products += [{'idExpansion':3354,'name':n} for n in ('Caterpie','Pikachu','Eevee')]
+        self.assertNotIn('2019sm',module.calculate_set_map(en,products))
+
     def test_multiple_distinct_products_not_assumed_unique(self):
         names={("1","pikachu"):[{"idProduct":123},{"idProduct":456}]}
         ids,status=module.candidates_for_card(

@@ -31,6 +31,13 @@ def snapshot(base:Path,language:str):
     if progress_path.exists():
         try:progress=json.loads(progress_path.read_text(encoding='utf-8-sig'))
         except ValueError:pass
+    session={}
+    session_path=base/'browser-session-status.json'
+    if session_path.exists():
+        try:
+            raw=json.loads(session_path.read_text(encoding='utf-8-sig'))
+            session={k:raw.get(k) for k in ('status','reason','login','checkedAt','profileExists')}
+        except (ValueError,OSError):pass
     total=len(expected);done=len(scanned)
     matched=sum(bool(r.get('identity_confirmed')) for r in completed.values())
     search_misses=sum(r.get('status')=='NO_EXACT_NUMBER_SEARCH_HIT' for r in completed.values())
@@ -46,6 +53,7 @@ def snapshot(base:Path,language:str):
        'progressPercent':round(done/len(browser)*100,2) if browser else 100,
        'totalReviewedPercent':round((total-len(browser)+done)/total*100,2) if total else 100,
        'status':str(progress.get('status') or 'NOT_STARTED'),
+       'browserSession':session,
        'lastCard':str(progress.get('last_card') or ''),'updatedAt':progress.get('updated_at'),
        'problemCountInObserved':len(pending),
        'recentProblems':[{'cardId':x.get('card_id'),'variantId':x.get('variant_id'),'status':x.get('status'),

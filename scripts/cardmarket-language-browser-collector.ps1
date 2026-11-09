@@ -1,4 +1,4 @@
-# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
+﻿# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
 # Chrome profile via localhost CDP. Does not export credentials or cookies.
 param(
   [ValidateSet('de','en')]
@@ -499,6 +499,11 @@ try {
         $versionMatch=[regex]::Match(([string]$out.url).Split('?')[0],'(?i)(?:^|[-/])V([1-9][0-9]?)(?=[-/]|$)')
         if($versionMatch.Success){$out.observed_url_version='V'+$versionMatch.Groups[1].Value}
         if (!(Move-To $out.url)) { throw 'PRODUCT_PAGE_TIMEOUT' }
+        # The last page may have been a Cloudflare interstitial or a login
+        # form. Re-check access on the ACTUAL product page, not the previous
+        # search page. Never treat an inaccessible account as authenticated.
+        $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
+        $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
         $candidateId = ''
         for ($pi = 0; $pi -lt 20; $pi++) {
           $candidateId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""')

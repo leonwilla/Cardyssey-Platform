@@ -63,6 +63,19 @@ def main():
     sets=set_mapping()
     inferred,flagged=infer_english_sets(products,sets)
     all_sets={**sets,**inferred}
+    # A strong duplicate expansion-name list is NOT independent set evidence.
+    # Do not promote catalog-only singleton IDs from those sets until their
+    # specific Cardmarket expansion is verified separately. Preserve human
+    # exact-print routes in the loop below.
+    audit_file=ROOT/'reports/cardmarket-set-mapping-risk-audit.json'
+    quarantined=set()
+    if audit_file.exists():
+        audit=json.loads(audit_file.read_text(encoding='utf-8'))
+        if audit.get('setsChecked',0)>=100:
+            quarantined={r['setId'] for r in audit['cases']
+                if r['status']=='AMBIGUOUS_OVERLAPPING_EXPANSIONS'
+                and not r.get('independentlyConfirmedOverride')}
+            for sid in quarantined:all_sets.pop(sid,None)
     review=[]
     counts={}
     for lang in ("de","en"):
@@ -119,6 +132,7 @@ def main():
             "inferred_unverified_en_set_mappings":len(inferred),"en_set_conflicts":len(flagged),
             "lang_counts":{k:dict(v) for k,v in counts.items()},
             "manual_review_rows":len(review),
+            "catalog_set_ambiguities_held":sorted(quarantined),
             "safety":"CANDIDATES ONLY. No prices or routing rows have been written."}
     (OUT/"cardmarket-identity-pipeline-status.json").write_text(json.dumps(status,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(status,ensure_ascii=False))

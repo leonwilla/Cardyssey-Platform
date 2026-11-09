@@ -111,6 +111,87 @@ def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/m
             os.replace(tmp,path)
         finally:tmp.unlink(missing_ok=True)
         return True
+def revert_queue_identity(language, card_id, variant_id, candidate_ids,
+                          base=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')):
+    """Remove only manually approved CSV routing, retain catalog suggestions."""
+    if language not in ALLOWED_LANG:return False
+    path=base/f'queue-{language}.csv'
+    if not path.is_file():return False
+    lock=base/f'queue-{language}.review.lock'
+    with lock.open('a') as lk:
+        fcntl.flock(lk,fcntl.LOCK_EX)
+        with path.open(encoding='utf-8-sig',newline='') as f:
+            rd=csv.DictReader(f);fields=list(rd.fieldnames or []);rows=list(rd)
+        n=0
+        for row in rows:
+            if row.get('cardyssey_karte')!=card_id or row.get('variante_id')!=variant_id:continue
+            row['routing_state']='UNVERIFIED'
+            row['cardmarket_ids']=','.join(x for x in candidate_ids if re.fullmatch(r'[0-9]{3,12}',str(x)))
+            row['known_url']=''
+            if 'manual_scan_requested_at' in fields:row['manual_scan_requested_at']=''
+            n+=1
+        if n!=1:return False
+        tmp=path.with_suffix('.csv.undo.tmp')
+        try:
+            with tmp.open('w',encoding='utf-8-sig',newline='') as f:
+                w=csv.DictWriter(f,fieldnames=fields);w.writeheader();w.writerows(rows)
+            os.replace(tmp,path)
+        finally:tmp.unlink(missing_ok=True)
+    return True
+
+def undo_case(data):
+    lang=data.get('language');card=data.get('cardId');variant=data.get('variantId')
+    if lang not in ALLOWED_LANG or not all(isinstance(x,str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}',x) for x in (card,variant)):
+        raise ValueError('invalid identity')
+    # Snapshot and revoke a human decision atomically. Never delete an
+    # unrelated provider or an independently verified price. The catalogue
+    # candidate remains available as an UNVERIFIED suggestion.
+    sql=f"""BEGIN;
+CREATE TABLE IF NOT EXISTS cardmarket_review_undo_log (
+ id BIGSERIAL PRIMARY KEY,undone_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ language_code TEXT NOT NULL,card_id TEXT NOT NULL,variant_id TEXT NOT NULL,
+ previous_status TEXT NOT NULL,previous_product_id TEXT,
+ previous_note TEXT,deleted_human_route JSONB);
+WITH prior AS (
+ SELECT language_code,card_id,variant_id,status,selected_product_id,reviewer_note
+ FROM cardmarket_print_identity_review WHERE language_code={quote(lang)}
+ AND card_id={quote(card)} AND variant_id={quote(variant)}
+ AND status IN ('CONFIRMED_PRINT','NO_MATCH','DEFERRED') FOR UPDATE
+), removed AS (
+ DELETE FROM price_source_routing r USING prior p
+ WHERE r.language_code=p.language_code AND r.card_id=p.card_id AND r.variant_id=p.variant_id
+ AND p.status='CONFIRMED_PRINT' AND r.primary_provider='CARDMARKET'
+ AND r.verification_state='VERIFIED_PRODUCT_ID'
+ AND r.source_evidence LIKE 'Human confirmed exact%'
+ AND r.provider_product_id=p.selected_product_id
+ RETURNING to_jsonb(r) AS previous_route
+), log AS (
+ INSERT INTO cardmarket_review_undo_log
+ (language_code,card_id,variant_id,previous_status,previous_product_id,previous_note,deleted_human_route)
+ SELECT p.language_code,p.card_id,p.variant_id,p.status,p.selected_product_id,p.reviewer_note,
+ (SELECT previous_route FROM removed LIMIT 1) FROM prior p RETURNING id
+), restored AS (
+ UPDATE cardmarket_print_identity_review r SET status='PENDING_REVIEW',
+ selected_product_id=NULL,reviewer_note=NULL,reviewed_at=NULL
+ FROM prior p WHERE r.language_code=p.language_code AND r.card_id=p.card_id
+ AND r.variant_id=p.variant_id AND EXISTS(SELECT 1 FROM log)
+ RETURNING r.matched_set_ids
+)
+SELECT json_build_object('undone',(SELECT COUNT(*) FROM restored),
+ 'routeRemoved',(SELECT COUNT(*) FROM removed),
+ 'candidateIds',(SELECT matched_set_ids FROM restored LIMIT 1))::text;
+COMMIT;"""
+    output=pg(sql)
+    records=[json.loads(line) for line in output.splitlines() if line.startswith('{')]
+    result=records[-1] if records else {}
+    if result.get('undone')!=1:raise ValueError('no_review_decision_to_undo')
+    queue=False
+    try:queue=revert_queue_identity(lang,card,variant,result.get('candidateIds') or [])
+    except (OSError,ValueError):pass # Next queue export uses DB as source.
+    emit({'ok':True,'status':'PENDING_REVIEW','cardId':card,'variantId':variant,
+          'humanRouteRemoved':result.get('routeRemoved')==1,'queueUpdated':queue,
+          'existingPricesUntouched':True})
+
 def emit(obj):print(json.dumps(obj,ensure_ascii=False))
 def load_recheck(lang):
     path=Path('/home/tv/cardshop/reports')/f'cardmarket-variant-recheck-{lang}.json'
@@ -265,12 +346,13 @@ def update_case(data):
           "sourceRoutingUpdated":routed,"scanQueueUpdated":queue_updated})
 def main():
     a=argparse.ArgumentParser()
-    a.add_argument("--action",choices=["list","review"],required=True)
+    a.add_argument("--action",choices=["list","review","undo"],required=True)
     opt=a.parse_args()
     try:
         data=json.load(sys.stdin)
         if not isinstance(data,dict):raise ValueError("payload")
         if opt.action=="list":list_cases(data)
+        elif opt.action=="undo":undo_case(data)
         else:update_case(data)
     except (ValueError,TypeError,json.JSONDecodeError) as e:
         emit({"error":str(e)[:250]});sys.exit(2)

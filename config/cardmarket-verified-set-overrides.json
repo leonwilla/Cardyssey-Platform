@@ -3,5 +3,10 @@
     "expansionId": "2829",
     "slug": "McDonalds-Collection-2019",
     "reason": "McDonalds Collection 2019 MCD19 1 is distinct from McDonalds Collection 2019 FR MCD19F 2; user supplied exact Cardmarket MCD191 URL 2026-11-09"
+  },
+  "base1": {
+    "expansionId": "1523",
+    "slug": "Base-Set",
+    "reason": "Cardmarket /Base-Set/Machamp-V1-BS8 belongs to Base Set; catalog name-only heuristic incorrectly chose Expansion Pack idExpansion 4169; official base1 printed collector number 8/102."
   }
 }
