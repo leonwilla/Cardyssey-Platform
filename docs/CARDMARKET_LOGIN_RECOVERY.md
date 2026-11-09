@@ -58,3 +58,30 @@ observations explicitly marked with unfilterable print attributes. Do not
 infer that all special-print cases need a human; first seek product-level
 version evidence. Basic fields present in the queues do not imply the provider
 supports a filter for every stored variant field.
+
+## 2026-11-09 special-print known pages (Wizards Pikachu, Fossil Aerodactyl)
+
+The owner supplied `Pikachu-WP4`, `Aerodactyl-V1-FO1` (normal) and
+`Aerodactyl-V3-FO1` (Prerelease). These are explicit **card-page hints**, not
+proof of each physical stamp or holo pattern. In particular the Wizards WP4
+product page may contain several movie-stamp treatments; a non-English card
+image is not a second English print. Fossil Aerodactyl prerelease Cosmos and
+Starlight foil variants share the V3 product page until listing evidence
+proves their exact physical foil. Do not assign one shared median to both.
+
+`config/cardmarket-known-print-page-hints.json` maps exact Cardyssey
+card/variant IDs to the owner's known product-page slug and the expected
+collector-code suffix. `scripts/cardmarket-apply-print-page-hints.py` embeds
+these into both queues **after every weekly rebuild**, setting
+`reference_print_verified=NO` and retaining any existing variant-specific
+product IDs/prices. The browser uses the trusted page hint before falling
+back to translated-name search, verifies its set/collector-number path, and
+records `PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED`, never publishing a
+version-specific median merely because the page was found. Exact foil/stamp
+and physical language remain separate checks. The two relevant URL guards
+are `base3=Fossil` and `basep=Wizards-Black-Star-Promos`.
+
+A new full DE/EN scan epoch was explicitly created after the corrected queue
+export. If the dedicated Edge profile remains on a Cloudflare challenge,
+production stays paused with the explicit `BLOCKED` status and must be
+released in that same profile before gated manual resume.

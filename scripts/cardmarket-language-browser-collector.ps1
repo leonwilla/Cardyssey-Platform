@@ -448,6 +448,22 @@ try {
         } catch {}
       }
 
+      # Human-supplied CARD-page hints only: navigate directly to the
+      # correct Cardmarket page, but NEVER interpret this as proof of a rare
+      # stamp/foil, nor as a verified edition-specific price.
+      if(!$savedUrl -and [string]$case.reference_print_verified -eq 'NO' -and
+         -not [string]::IsNullOrWhiteSpace([string]$case.reference_product_url)) {
+        try {
+          $referenceUri=[uri]([string]$case.reference_product_url)
+          $guard=[string]$setSlugGuards[[string]$case.set_id]
+          if($referenceUri.Scheme -eq 'https' -and $referenceUri.Host -eq 'www.cardmarket.com' -and
+             $guard -and $referenceUri.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/' + $guard + '/')) {
+            $savedUrl=$referenceUri.AbsoluteUri
+            $out.reference_page_used=$true
+            $out.reference_page_evidence=[string]$case.reference_evidence
+          }
+        } catch {}
+      }
       if (!$savedUrl -and $latest.ContainsKey($key)) {
         $prior = $latest[$key]
         if (([string]$prior.product_id -in $allowedIds) -and $prior.identity_confirmed -eq $true) {
@@ -613,6 +629,19 @@ try {
                   ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
           $out.status='PRODUCT_SET_SLUG_MISMATCH'
           $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif ($out.reference_page_used -eq $true -and [string]$case.reference_print_verified -eq 'NO') {
+          # Direct URL proves the page/print family, not the special edition.
+          # A single WP4 product is shared by different movie-stamp variants;
+          # Aerodactyl V3 includes more than one prerelease foil pattern.
+          # No exact-print median/route may be published from this status.
+          if($numberEvidence -and $setSlugGuards.ContainsKey([string]$case.set_id)){
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error='EXACT_PRINT_STAMP_OR_FOIL_NEEDS_INDEPENDENT_EVIDENCE'
+          }else{
+            $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+            $out.error='REFERENCE_URL_CARD_NUMBER_OR_SET_UNVERIFIED'
+          }
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($candidateId -ne [string]$case.catalog_singleton_id -and
                   -not ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and $candidateId -in $allowed)) {

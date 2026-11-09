@@ -58,6 +58,11 @@ def main():
     report['variant_candidate_reconciliation']=json.loads(run(
         ROOT/'scripts/reconcile-cardmarket-variant-identity-review.py',
         *(['--apply'] if a.apply else [])))
+    # Durable exact-card URL leads supplied by the collector owner. Import
+    # AFTER regenerating/merging queue columns; do not promote print prices.
+    for lang in ('de','en'):
+        report[lang]['known_page_hints']=json.loads(run(
+            ROOT/'scripts/cardmarket-apply-print-page-hints.py','--language',lang))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(
         json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
