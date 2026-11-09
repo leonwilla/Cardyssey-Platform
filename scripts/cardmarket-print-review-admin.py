@@ -125,6 +125,11 @@ def list_cases(data):
     except (ValueError,TypeError):raise ValueError("page")
     term=str(data.get("search") or "").strip()[:90]
     where=f"r.language_code={quote(lang)}"
+    if term.startswith('card:'):
+        card_id=term[5:].strip()
+        if not re.fullmatch(r'[a-zA-Z0-9_.-]{1,90}',card_id):raise ValueError('invalid_card_filter')
+        where+=f" AND r.card_id={quote(card_id)}"
+        term=''
     if term:
         t=quote("%"+term.replace("%","\\%").replace("_","\\_")+"%")
         where+=f" AND (r.card_name ILIKE {t} OR r.card_id ILIKE {t} OR r.set_id ILIKE {t} OR r.printed_number ILIKE {t})"
@@ -148,7 +153,14 @@ def list_cases(data):
  SELECT r.language_code AS language,r.card_id,r.variant_id,r.set_id,r.card_name,
  r.printed_number,r.print_type,r.foil,r.subtype,r.stamps,
  r.candidate_ids,r.matched_set_ids,r.product_names,r.provider_expansion_id,
- r.classification,r.status,r.selected_product_id,r.reviewer_note,c.image_source_url AS card_image_url
+ r.classification,r.status,r.selected_product_id,r.reviewer_note,c.image_source_url AS card_image_url,
+ (SELECT COALESCE(json_agg(other), '[]'::json) FROM (
+ SELECT DISTINCT ON (s.set_id) s.set_id,s.card_id,s.printed_number,
+ COALESCE((SELECT name FROM catalog_sets_mirror cs WHERE cs.set_id=s.set_id AND cs.language_code=s.language_code LIMIT 1),
+ (SELECT name FROM catalog_sets_mirror cs WHERE cs.set_id=s.set_id AND cs.language_code='en' LIMIT 1),s.set_id) AS set_name
+ FROM cardmarket_print_identity_review s
+ WHERE s.language_code=r.language_code AND s.card_name=r.card_name AND s.set_id<>r.set_id
+ ORDER BY s.set_id,s.card_id LIMIT 8) other) AS related_sets
  FROM cardmarket_print_identity_review r
  LEFT JOIN catalog_cards_mirror c ON c.language_code=r.language_code AND c.card_id=r.card_id
  WHERE {where}
@@ -170,7 +182,10 @@ def list_cases(data):
               "trend_holo":reference[pid].get("trend-holo")
             } for pid in (row.get("matched_set_ids") or [])[:15] if pid in reference}
     products=official_product_details()
+    user_links_path=Path('/home/tv/cardshop/config/cardmarket-user-reference-links.json')
+    user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
     for row in result.get('items') or []:
+        row['suggested_product_url']=user_links.get(row['card_id'])
         row['diagnosis']=explain_identity(row,products)
         evidence=(reaudit or {}).get('cases',{}).get(row['card_id']+'|'+row['variant_id'])
         if evidence:

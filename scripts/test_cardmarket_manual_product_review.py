@@ -13,6 +13,17 @@ class ManualProductReviewTests(unittest.TestCase):
      'https://www.cardmarket.com@evil.org/Pokemon/Products?idProduct=581845',
      'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=Raupy'):
    self.assertFalse(m.valid_link(u),u)
+ def test_other_set_url_rejected_before_browser(self):
+  case={'language_code':'de','card_id':'2019sm-1','variant_id':'a','set_id':'2019sm'}
+  with patch.object(m,'record',return_value=case),patch.object(m.subprocess,'run') as runner:
+   with self.assertRaisesRegex(ValueError,'wrong_set_url_expected_McDonalds-Collection-2019'):
+    m.preview({'language':'de','cardId':'2019sm-1','variantId':'a','url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/Burning-Shadows/Caterpie-BUS1'})
+   runner.assert_not_called()
+ def test_mcDonalds_and_burning_shadows_are_separate_set_guards(self):
+  import json
+  guard=json.loads((Path('/home/tv/cardshop')/'config/cardmarket-set-url-guards.json').read_text())
+  self.assertEqual(guard['2019sm'],'McDonalds-Collection-2019')
+  self.assertEqual(guard['sm3'],'Burning-Shadows')
  def test_blocked_browser_never_creates_preview(self):
   case={'language_code':'de','card_id':'2019sm-1','variant_id':'a','matched_set_ids':['479679'],'set_id':'2019sm'}
   with tempfile.TemporaryDirectory() as td,patch.object(m,'STORE',Path(td)),patch.object(m,'record',return_value=case),patch.object(m.subprocess,'run') as run:

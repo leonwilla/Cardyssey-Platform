@@ -89,6 +89,16 @@ def collect():
         WHERE d.language_code='de') x;""")
     de=json.loads(data)
     set_map=calculate_set_map(en,products)
+    # Exact, manually confirmed SET-level corrections override fuzzy name
+    # overlap. Never turn a set override into a verified foil/print mapping.
+    override_file=ROOT.parent/'config/cardmarket-verified-set-overrides.json'
+    if override_file.is_file():
+        overrides=json.loads(override_file.read_text(encoding='utf-8'))
+        known_expansions={str(p.get('idExpansion')) for p in products}
+        for set_id,evidence in overrides.items():
+            eid=str(evidence.get('expansionId') or '')
+            if eid not in known_expansions:raise RuntimeError('Missing verified Cardmarket expansion for '+set_id)
+            set_map[set_id]=eid
     names=collections.defaultdict(list)
     for p in products:
         key=sem_name(p.get("name"))

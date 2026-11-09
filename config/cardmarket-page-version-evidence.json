@@ -1,10 +1,1 @@
-{
-  "de|2019sm-1": {
-    "source": "User-supplied screenshots, 2026-11-09; visible normal versus holo-like card images",
-    "versionPages": [
-      {"version":"V1","url":"https://www.cardmarket.com/de/Pokemon/Products/Singles/McDonalds-Collection-2019-2/Caterpie-V1-MCD19F2","visualNote":"non-holographic-looking image"},
-      {"version":"V2","url":"https://www.cardmarket.com/de/Pokemon/Products/Singles/McDonalds-Collection-2019-2/Caterpie-V2","visualNote":"holographic-looking artwork"}
-    ],
-    "caution": "No confirmed mapping of numeric idProduct to V1/V2; French McDonald's card shown. German language availability is unverified."
-  }
-}
+{}

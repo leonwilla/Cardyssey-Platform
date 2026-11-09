@@ -61,6 +61,13 @@ def preview(data):
     item=record(lang,card,variant)
     url=str(data.get('url') or '').strip()
     if not valid_link(url):raise ValueError('invalid_cardmarket_url')
+    guards=json.loads((ROOT/'config/cardmarket-set-url-guards.json').read_text(encoding='utf-8'))
+    expected_slug=guards.get(item['set_id'])
+    current_path=urlsplit(url).path
+    if expected_slug and '/Products/Singles/' in current_path:
+        actual_slug=current_path.split('/')[5] if len(current_path.split('/'))>5 else ''
+        if actual_slug!=expected_slug:
+            raise ValueError('wrong_set_url_expected_'+expected_slug)
     cmd=[PS,'-NoProfile','-ExecutionPolicy','Bypass','-File',r'C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector\cardmarket-product-link-preview.ps1','-ProductUrl',url]
     try:proc=subprocess.run(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=44)
     except subprocess.TimeoutExpired:raise ValueError('cardmarket_browser_timeout')
@@ -74,6 +81,8 @@ def preview(data):
     resolved=str(page.get('url') or '')
     if not re.fullmatch(r'[0-9]{3,12}',pid) or not valid_link(resolved) or '/Singles/' not in resolved:
         raise ValueError('browser_result_unverified')
+    if expected_slug and urlsplit(resolved).path.split('/')[5]!=expected_slug:
+        raise ValueError('resolved_product_belongs_to_other_set')
     products=catalog(PRODUCT_URL)
     meta=products.get(pid)
     if meta is None:raise ValueError('product_id_missing_in_official_catalog')
