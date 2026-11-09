@@ -74,7 +74,7 @@ def main():
         if audit.get('setsChecked',0)>=100:
             quarantined={r['setId'] for r in audit['cases']
                 if r['status']=='AMBIGUOUS_OVERLAPPING_EXPANSIONS'
-                and not r.get('independentlyConfirmedOverride')}
+                and not (r.get('independentlyConfirmedOverride') or r.get('variantIdConsensusMatch'))}
             for sid in quarantined:all_sets.pop(sid,None)
     review=[]
     counts={}

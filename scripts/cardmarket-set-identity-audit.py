@@ -51,10 +51,11 @@ def run(root=ROOT,feeds=FEEDS):
     for p in products:
         name=sem_name(p['name'])
         if name:expansions[str(p['idExpansion'])][name]+=1
-    cards=pg("""SELECT COALESCE(jsonb_agg(jsonb_build_object('set',set_id,'name',name)), '[]'::jsonb)::text
+    cards=pg("""SELECT COALESCE(jsonb_agg(jsonb_build_object('set',set_id,'name',name,'set_id',set_id,'card_id',card_id,'variants',variants)), '[]'::jsonb)::text
       FROM catalog_cards_mirror WHERE language_code='en'""")
     chosen=pg("""SELECT COALESCE(jsonb_agg(jsonb_build_object('set',set_id,'exp',provider_expansion_id)), '[]'::jsonb)::text
       FROM cardmarket_catalog_link_candidates WHERE language_code='de' AND provider_expansion_id IS NOT NULL""")
+    consensus=mapper.calculate_variant_set_consensus(cards,products)
     names=collections.defaultdict(list)
     for c in cards:names[c['set']].append(c['name'])
     selected=collections.defaultdict(collections.Counter)
@@ -65,11 +66,12 @@ def run(root=ROOT,feeds=FEEDS):
         current=expvotes.most_common(1)[0][0]
         analysis=assess(names[sid],current,expansions)
         cases.append({'setId':sid,'currentExpansion':current,'cardCount':len(names[sid]),
-                      'independentlyConfirmedOverride':sid in overrides,**analysis})
+                      'independentlyConfirmedOverride':sid in overrides,
+                      'variantIdConsensusMatch':consensus.get(sid)==current,**analysis})
     cases.sort(key=lambda x:(x['status']!='NO_STRONG_CONFLICT_FOUND',x['cardCount']),reverse=True)
     counts=collections.Counter(x['status'] for x in cases)
     report={'checkedAt':datetime.now(timezone.utc).isoformat(),'feedDate':meta.get('createdAt'),
-            'setsChecked':len(cases),'statusCounts':dict(counts),'cases':cases,
+            'setsChecked':len(cases),'variantConsensusSets':len(consensus),'statusCounts':dict(counts),'cases':cases,
             'safety':'Diagnostic only: matching card names do not prove set, collector number, language or print. Confirmed set overrides are kept; no routes or prices modified.'}
     out=root/'reports/cardmarket-set-mapping-risk-audit.json'
     out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

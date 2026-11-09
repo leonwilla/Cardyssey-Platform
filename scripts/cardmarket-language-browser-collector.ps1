@@ -203,6 +203,25 @@ function Move-To([string]$url) {
   return $false
 }
 
+function Append-Observation([string]$path, [string]$line) {
+  # WSL admin monitor + other processes can momentarily hold Windows JSONL
+  # files without FileShare.Write. Never abort a 30k-case scan for one lock.
+  $text=$line + [Environment]::NewLine
+  $bytes=[Text.Encoding]::UTF8.GetBytes($text)
+  for($attempt=0;$attempt -lt 30;$attempt++) {
+    $stream=$null
+    try {
+      $stream=[IO.FileStream]::new($path,[IO.FileMode]::Append,[IO.FileAccess]::Write,[IO.FileShare]::ReadWrite)
+      $stream.Write($bytes,0,$bytes.Length)
+      $stream.Flush()
+      return
+    } catch [IO.IOException] {
+      if($attempt -eq 29){throw 'CARDMARKET_OBSERVATION_FILE_LOCK_TIMEOUT'}
+      Start-Sleep -Milliseconds (150+100*$attempt)
+    } finally {if($stream){$stream.Dispose()}}
+  }
+}
+
 function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) {
   $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath}
   $s | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
@@ -373,7 +392,7 @@ try {
         $out.status='SET_MAPPING_PENDING'
         $out.error='MULTIPLE_CARDMARKET_EXPANSIONS_MATCH_SAME_SET_CARD_NAMES'
         $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
-        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
         [void]$processed.Add($key)
         Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
         continue
@@ -443,7 +462,7 @@ try {
             if (!(Move-To $searchUrl)) {
               $out.status='DEFERRED_PROVIDER_TIMEOUT'
               $out.error='SEARCH_PAGE_TIMEOUT'
-              ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+              Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
               $consecutiveProviderTimeouts++
               Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
               if ($consecutiveProviderTimeouts -ge 3) {
@@ -550,12 +569,12 @@ try {
         $allowed = [string]$case.cardmarket_ids -split ','
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
-          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($setSlugGuards.ContainsKey([string]$case.set_id) -and
                   ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
           $out.status='PRODUCT_SET_SLUG_MISMATCH'
           $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
-          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($candidateId -ne [string]$case.catalog_singleton_id -and
                   -not ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and $candidateId -in $allowed)) {
           # A nonempty scraped ID is NOT proof of this exact card print. Only
@@ -563,7 +582,7 @@ try {
           # promote this product URL to a durable mapped identity.
           $out.status = 'PRODUCT_ID_NOT_IN_VERIFIED_SET'
           $out.error = 'UNVERIFIED_SET_OR_AMBIGUOUS_PRINT'
-          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } else {
           # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.
           $out.identity_confirmed = $true
@@ -692,7 +711,7 @@ try {
       } else {
         $out.status = if ($likely.Count -gt 1) { 'MULTIPLE_SEARCH_HITS' } elseif ($out.search_results_unverified_empty -eq $true) { 'DEFERRED_SEARCH_RESULTS_UNVERIFIED' } else { 'NO_EXACT_NUMBER_SEARCH_HIT' }
         if ($out.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT') { $out.error='NAME_NUMBER_TEXT_SEARCH_NOT_CONCLUSIVE' }
-        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+        Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
       }
     } catch {
       $message = $_.Exception.Message
@@ -700,7 +719,7 @@ try {
         $out.status='LOGIN_REQUIRED'
         $out.error='CARDMARKET_LOGIN_REQUIRED'
         $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
-        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
         Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte
         break
       }
@@ -708,7 +727,7 @@ try {
         $out.status = 'BLOCKED'
         $out.error = 'CARDMARKET_PROVIDER_CHALLENGE'
         $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
-        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
         Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
         break
       }
@@ -717,9 +736,9 @@ try {
       if ($socketDead) {
         $out.status = 'DEFERRED_SOCKET'
         $out.error = $message.Substring(0, [Math]::Min(180, $message.Length))
-        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
         [pscustomobject]@{at=[DateTime]::UtcNow.ToString('o');card=$case.cardyssey_karte;message=$message;socket=[string]$ws.State} |
-          ConvertTo-Json -Compress | Add-Content -Encoding UTF8 -Path $errorPath
+          ConvertTo-Json -Compress | ForEach-Object { Append-Observation $errorPath $_ }
         [void]$processed.Add($key)
         $deferredCount++
         Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
@@ -744,7 +763,7 @@ try {
 
     $caseTimer.Stop()
     $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
-    ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+    Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
     [void]$processed.Add($key)
     Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
 

@@ -22,6 +22,18 @@ class FullCatalogMapTests(unittest.TestCase):
         products += [{'idExpansion':3354,'name':n} for n in ('Caterpie','Pikachu','Eevee')]
         self.assertNotIn('2019sm',module.calculate_set_map(en,products))
 
+    def test_set_consensus_uses_distinct_variant_product_ids_not_names(self):
+        products=[{'idProduct':100+i,'idExpansion':42,'name':'Houndoom'} for i in range(10)]
+        products += [{'idProduct':200+i,'idExpansion':99,'name':'Houndoom'} for i in range(10)]
+        cards=[{'set_id':'hgss3','card_id':f'hgss3-{i}','name':'Houndoom',
+                'variants':[{'cardmarketProductId':100+i}]} for i in range(10)]
+        self.assertEqual(module.calculate_variant_set_consensus(cards,products),{'hgss3':'42'})
+    def test_split_name_same_set_has_no_automatic_print_identity(self):
+        cards=[{'set_id':'hgss3','card_id':'hgss3-5','local_id':'5','name':'Houndoom'},
+               {'set_id':'hgss3','card_id':'hgss3-82','local_id':'82','name':'Houndoom'}]
+        number_sets=__import__('collections').defaultdict(set)
+        for card in cards:number_sets[(card['set_id'],module.sem_name(card['name']))].add(card['local_id'])
+        self.assertEqual(len(number_sets[('hgss3','houndoom')]),2)
     def test_multiple_distinct_products_not_assumed_unique(self):
         names={("1","pikachu"):[{"idProduct":123},{"idProduct":456}]}
         ids,status=module.candidates_for_card(

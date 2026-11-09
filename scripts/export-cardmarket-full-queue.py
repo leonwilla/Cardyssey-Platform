@@ -34,19 +34,26 @@ SELECT
       AND r.verification_state='VERIFIED_PRODUCT_ID'
       AND COALESCE(r.provider_product_id,'') ~ '^[0-9]+$'
    THEN r.provider_product_id
+ -- Cardyssey stores the exact Cardmarket ID on EACH physical variant.
+ -- Never merge all products with the same card name: Undaunted Houndoom
+ -- UD5 and UD82 are different cards even though both are called Houndoom.
  ELSE COALESCE(
-   (SELECT string_agg(DISTINCT pid,',' ORDER BY pid) FROM (
-      SELECT jsonb_array_elements_text(
-         CASE WHEN jsonb_typeof(c.provider_product_ids)='array'
-              THEN c.provider_product_ids ELSE '[]'::jsonb END
-      ) pid
-      UNION
-      SELECT v.value->>'cardmarketProductId' pid
-      UNION
-      SELECT CASE WHEN r.primary_provider='CARDMARKET' THEN r.provider_product_id END pid
-   ) candidates WHERE pid ~ '^[0-9]+$'), ''
+   CASE WHEN v.value->>'cardmarketProductId' ~ '^[0-9]{{3,12}}$'
+        THEN v.value->>'cardmarketProductId' END,
+   CASE WHEN r.primary_provider='CARDMARKET'
+             AND r.provider_product_id ~ '^[0-9]{{3,12}}$'
+        THEN r.provider_product_id END,
+   CASE WHEN jsonb_typeof(c.provider_product_ids)='array'
+             AND jsonb_array_length(c.provider_product_ids)=1
+        THEN c.provider_product_ids->>0 END,
+   ''
  ) END AS cardmarket_ids,
- COALESCE(r.provider_product_url,'') AS known_url,
+ -- A previously observed URL belongs to one product ID; never pair it with
+ -- a different per-variant ID without a new visit to the product page.
+ CASE WHEN r.verification_state='VERIFIED_PRODUCT_ID'
+           OR NULLIF(v.value->>'cardmarketProductId','') IS NULL
+           OR r.provider_product_id=v.value->>'cardmarketProductId'
+      THEN COALESCE(r.provider_product_url,'') ELSE '' END AS known_url,
  CASE WHEN r.primary_provider='CARDMARKET' AND r.verification_state='VERIFIED_PRODUCT_ID'
   AND r.source_evidence LIKE 'Human confirmed exact%'
   THEN COALESCE(to_char(r.updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),'')

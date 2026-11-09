@@ -23,11 +23,20 @@ try {
   $progressPath=Join-Path $base 'progress-de.json'
   if(!(Test-Path $progressPath)){return}
   $state=Get-Content -Raw $progressPath | ConvertFrom-Json
-  if([string]$state.status -notin @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED')){return}
-  $pages=@(Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5 |
-      Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') })
-  if(!$pages.Count){Note 'NO_CARDMARKET_TAB';return}
-  $active=$pages[0]
+  $stalled=($state.status -eq 'RUNNING' -and
+    [DateTime]::Parse([string]$state.updated_at).ToUniversalTime() -lt [DateTime]::UtcNow.AddMinutes(-5))
+  if($stalled){
+    # The runner has vanished, but progress.json still claims RUNNING. Recover
+    # from the last durable observation rather than leave a phantom scan.
+    $state.status='INTERRUPTED'
+    $state.updated_at=[DateTime]::UtcNow.ToString('o')
+    $state | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+    Note 'STALE_RUNNING_SCAN_INTERRUPTED_AND_RESTART_REQUESTED'
+  }
+  if([string]$state.status -notin @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED','INTERRUPTED','QUEUED')){return}
+  $pages=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5
+  $active=$pages | Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') } | Select-Object -First 1
+  if(!$active){Note 'NO_CARDMARKET_TAB';return}
   if([string]$active.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser'){
     Note 'CHALLENGE_STILL_PRESENT';return
   }

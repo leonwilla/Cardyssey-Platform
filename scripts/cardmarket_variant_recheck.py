@@ -46,10 +46,10 @@ def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
     independent_versions={x.get('version') for x in version_pages if
         isinstance(x,dict) and str(x.get('url','')).startswith('https://www.cardmarket.com/')}
     user_version_compare=len(independent_versions)>1
-    if user_reference_url and ids:
-        category='MANUAL_COMPARISON_READY'
-        reason='Der Nutzer hat eine konkrete Produktseite für dieses Set geliefert. Kartenbild, Nummer, Druck und angebotene Sprache müssen vor der Bestätigung geprüft werden.'
-    elif not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
+    # A user-supplied URL is a useful lookup hint, not a reason to require
+    # manual set assignment. One catalog product in the independently
+    # verified set must first go through automatic print/language checking.
+    if not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
         category='AUTO_CATALOG_RECHECK'
         reason='Set oder Produktidentität zunächst durch Automatik klären'
     elif len(ids)>1:

@@ -28,8 +28,12 @@ def main():
     prices=fetch_json(PRICE_URL,max_age=20*3600)
     if len(products.get("products") or [])<50000 or len(prices.get("priceGuides") or [])<50000:
         raise RuntimeError("Official feed incomplete; previous queues and reviews preserved")
+    # Recompute the expansion crosswalk from multiple distinct physical
+    # card-product IDs BEFORE queue generation. Never trust name overlaps.
+    crosswalk=json.loads(run(ROOT/'scripts/map-all-de-cardmarket-catalog.py',
+        *(['--apply'] if a.apply else [])))
     set_audit=json.loads(run(ROOT/'scripts/cardmarket-set-identity-audit.py'))
-    report={"set_audit":set_audit,"product_catalog_date":products.get("createdAt"),"guide_date":prices.get("createdAt"),
+    report={"set_crosswalk":crosswalk,"set_audit":set_audit,"product_catalog_date":products.get("createdAt"),"guide_date":prices.get("createdAt"),
             "products":len(products["products"]),"guide_items":len(prices["priceGuides"])}
     for lang in ("de","en"):
         result=run(ROOT/"scripts/export-cardmarket-full-queue.py","--language",lang,"--output",BASE/f"queue-{lang}.csv")
@@ -48,6 +52,12 @@ def main():
         report[lang]['lookup_hints']=json.loads(run(
             ROOT/'scripts/cardmarket-enrich-queue-hints.py','--language',lang))
     report["review_stage"]=json.loads(run(ROOT/"scripts/sync-cardmarket-print-review.py",*(["--apply"] if a.apply else [])))
+    # Existing OPEN rows need the exact same per-variant corrections; the
+    # review importer only stages complex cases and otherwise leaves old
+    # multi-product candidates visible forever.
+    report['variant_candidate_reconciliation']=json.loads(run(
+        ROOT/'scripts/reconcile-cardmarket-variant-identity-review.py',
+        *(['--apply'] if a.apply else [])))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(
         json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

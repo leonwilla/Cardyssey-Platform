@@ -29,7 +29,7 @@ def enrich(language,base=BASE,root=ROOT,feeds=FEEDS):
         if col not in fields:fields.append(col)
     audit_path=root/'reports/cardmarket-set-mapping-risk-audit.json'
     audit=json.loads(audit_path.read_text(encoding='utf-8')) if audit_path.exists() else {}
-    quarantined={x['setId'] for x in audit.get('cases',[]) if x.get('status')=='AMBIGUOUS_OVERLAPPING_EXPANSIONS' and not x.get('independentlyConfirmedOverride')}
+    quarantined={x['setId'] for x in audit.get('cases',[]) if x.get('status')=='AMBIGUOUS_OVERLAPPING_EXPANSIONS' and not (x.get('independentlyConfirmedOverride') or x.get('variantIdConsensusMatch'))}
     count=0;held=0
     for r in rows:
         if r.get('set_id') in quarantined and r.get('routing_state')!='VERIFIED_PRODUCT_ID':

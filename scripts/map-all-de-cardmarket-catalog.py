@@ -66,6 +66,38 @@ def calculate_set_map(en_cards,products):
             maps[sid]=first[2]
     return maps
 
+def calculate_variant_set_consensus(en_cards, products):
+    """Find set expansions using *distinct card identities* carrying Cardmarket
+    product IDs, not the overlapping lists of names of reprints.
+
+    Different variants of a Cardyssey set may legitimately use other Cardmarket
+    expansions: majority votes identify the principal expansion only. Exact
+    variant IDs remain separate; do not promote secondary expansions blindly.
+    """
+    product_exp={str(p['idProduct']):str(p['idExpansion']) for p in products}
+    by_set=collections.defaultdict(dict)
+    for c in en_cards:
+        expansions=set()
+        variants=c.get('variants') or []
+        if isinstance(variants,str):
+            try:variants=json.loads(variants)
+            except ValueError:variants=[]
+        for variant in variants:
+            pid=str(variant.get('cardmarketProductId') or '') if isinstance(variant,dict) else ''
+            if pid in product_exp:expansions.add(product_exp[pid])
+        if expansions:by_set[c['set_id']][c['card_id']]=expansions
+    maps={}
+    for sid,cards in by_set.items():
+        count=len(cards)
+        if count<5:continue
+        votes=collections.Counter(exp for expansions in cards.values() for exp in expansions)
+        top=votes.most_common(2)
+        win_exp,win_count=top[0]
+        second=top[1][1] if len(top)>1 else 0
+        if (win_count>=8 and win_count/count>=.98 and win_count-second>=7) or (win_count>=5 and win_count==count and second==0):
+            maps[sid]=win_exp
+    return maps
+
 def candidates_for_card(card,by_exp_name,set_map):
     eid=set_map.get(card["set_id"])
     if eid is None:return [],"SET_NOT_VERIFIED"
@@ -79,7 +111,7 @@ def collect():
     price_rows=fetch_json(PRICE_URL).get("priceGuides") or []
     priced_ids={str(p.get("idProduct")) for p in price_rows}
     data=db("""SELECT COALESCE(jsonb_agg(to_jsonb(x)),'[]'::jsonb) FROM (
-        SELECT card_id,set_id,local_id,name
+        SELECT card_id,set_id,local_id,name,variants
         FROM catalog_cards_mirror WHERE language_code='en') x;""")
     en=json.loads(data)
     data=db("""SELECT COALESCE(jsonb_agg(to_jsonb(x)),'[]'::jsonb) FROM (
@@ -91,7 +123,10 @@ def collect():
           AND e.set_id=d.set_id AND e.local_id=d.local_id
         WHERE d.language_code='de') x;""")
     de=json.loads(data)
-    set_map=calculate_set_map(en,products)
+    # Name overlap is merely a suggestion, not a trusted set identity.
+    # 2019 McDonalds and Base Set were previously mapped to the wrong
+    # expansion by that heuristic. Require multiple exact per-card IDs.
+    set_map=calculate_variant_set_consensus(en,products)
     # Exact, manually confirmed SET-level corrections override fuzzy name
     # overlap. Never turn a set override into a verified foil/print mapping.
     override_file=ROOT.parent/'config/cardmarket-verified-set-overrides.json'
@@ -106,15 +141,24 @@ def collect():
     for p in products:
         key=sem_name(p.get("name"))
         if key:names[(str(p.get("idExpansion")),key)].append(p)
+    # A single card name can appear at several printed numbers in the SAME
+    # expansion. Catalog products do not carry a machine-readable card number.
+    # Never merge their IDs just because the names are identical.
+    number_sets=collections.defaultdict(set)
+    for card in en:
+        number_sets[(card['set_id'],sem_name(card['name']))].add(str(card['local_id']))
     rows=[]
     for card in de:
         ids,status=candidates_for_card(card,names,set_map)
+        if len(number_sets.get((card['set_id'],sem_name(card['english_name'])),set()))>1:
+            ids=[]
+            status='SAME_NAME_DIFFERENT_NUMBERS_REQUIRE_VARIANT_ID'
         rows.append({"card_id":card["card_id"],"set_id":card["set_id"],
                      "local_id":card["local_id"],"english_name":card["english_name"],
                      "variant_count":card["variant_count"],"set_expansion":set_map.get(card["set_id"]),
                      "product_ids":ids,"with_guide":sum(x in priced_ids for x in ids),
                      "status":status})
-    return rows,{"sets_matched":len(set_map),"feed_products":len(products),
+    return rows,{"sets_matched":len(set_map),"set_evidence":"MULTIPLE_DISTINCT_CARD_VARIANT_IDS_PLUS_EXPLICIT_OVERRIDES","feed_products":len(products),
                  "guide_products":len(priced_ids)}
 
 DDL="""
@@ -191,7 +235,12 @@ SELECT p.language_code,p.card_id,p.variant_id,'CARDMARKET',
 FROM cardmarket_catalog_link_candidates link
 JOIN tcg_price_cache p ON p.card_id=link.card_id AND p.language_code=link.language_code
 JOIN catalog_cards_mirror c ON c.card_id=p.card_id AND c.language_code=p.language_code
+JOIN LATERAL jsonb_array_elements(c.variants) v(value) ON v.value->>'id'=p.variant_id
 WHERE link.language_code='de' AND link.candidate_status='SINGLE_SET_PRODUCT'
+ -- A singleton name-bucket must never override a different Cardmarket ID
+ -- explicitly attached to the physical print/variant in Cardyssey.
+ AND (COALESCE(v.value->>'cardmarketProductId','') !~ '^[0-9]+$'
+      OR v.value->>'cardmarketProductId'=link.provider_product_ids->>0)
  AND jsonb_array_length(link.provider_product_ids)=1
 ON CONFLICT(language_code,card_id,variant_id) DO NOTHING;
 ''')
