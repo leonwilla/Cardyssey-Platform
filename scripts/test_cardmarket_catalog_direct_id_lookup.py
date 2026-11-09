@@ -22,10 +22,13 @@ class CatalogIdTests(unittest.TestCase):
   self.assertIn('$landing.GetLeftPart([UriPartial]::Path)',s)
   self.assertIn("$out.catalog_direct_id_verified=$true",s)
  def test_direct_id_never_auto_proves_physical_print_or_price(self):
-  branch=s.split("} elseif ($out.catalog_direct_id_verified -eq $true) {",1)[1].split('} elseif (',1)[0]
+  branch=s.split("} elseif ($out.catalog_direct_id_verified -eq $true -and",1)[1].split('} elseif (',1)[0]
   self.assertIn('PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED',branch)
   self.assertNotIn('identity_confirmed = $true',branch)
   self.assertNotIn('median_all_offers_eur',branch)
+  self.assertIn('exact_print_verified=$false',s)
+  self.assertIn('if (-not $priceNeeded)',s)
+  self.assertIn('expected_reverse_holo',s)
  def test_print_review_requires_both_catalog_and_live_evidence(self):
   row={'catalog_singleton_id':'275420','catalog_expansion_id':'1607'}
   observed={'product_id':'275420','catalog_direct_id_verified':True}

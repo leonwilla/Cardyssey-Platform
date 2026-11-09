@@ -61,8 +61,10 @@ Cardmarket API key and without asking the owner to assign cards by hand.
   agrees with the catalog ID, the destination is Cardmarket Singles, its final
   collector number agrees with Cardyssey, and an existing verified set-slug
   guard (where available) also agrees. This is **card/set evidence only**;
-  status stays `PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED`. There is no direct
-  price import or exact stamp/foil confirmation from this route.
+  special-print status stays `PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED`.
+  Standard normal/holo/reverse prints continue into the existing language/NM
+  offer-filter pipeline (never an automatic price import from an unfiltered
+  product page). A confirmed catalog card ID is not proof of hidden stamps.
 - If the provider does not support the redirect, the scanner disables this
   optimization for the **rest of that batch**, uses the existing text search
   and preserves progress. A Cloudflare challenge still causes an explicit

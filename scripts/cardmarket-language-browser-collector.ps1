@@ -688,10 +688,14 @@ try {
           $out.status='PRODUCT_SET_SLUG_MISMATCH'
           $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
-        } elseif ($out.catalog_direct_id_verified -eq $true) {
-          # A direct, live idProduct+card-number match proves the family.
-          # Official catalog's expansion was verified when queue was built;
-          # an ambiguous V1/V2, stamp, reverse or language remains unproven.
+        } elseif ($out.catalog_direct_id_verified -eq $true -and
+                  (([string]$case.foil) -or
+                   ([string]$case.stempel -notin @('','[]') -and
+                    [string]$case.stempel -notmatch '(?i)1[.] auflage|1st.edition|first.edition') -or
+                   ([string]$case.sonderdruck -notin @('','unbegrenzt','unlimited')))) {
+          # Exact special art / stamped / rare foil print cannot be proved
+          # solely by a page's canonical idProduct. Never reuse the ordinary
+          # offer filter price for a hidden physical variant.
           $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
           $out.error='CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
@@ -725,6 +729,7 @@ try {
         } else {
           # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.
           $out.identity_confirmed = $true
+          if($out.catalog_direct_id_verified -eq $true){$out.exact_print_verified=$false}
           if (-not $priceNeeded) {
             $out.status = 'MAPPED_NO_PRICE_REQUIRED'
           } else {
