@@ -232,6 +232,16 @@ if (Test-Path $resultsPath) {
   }
 }
 $nowUtc = [datetime]::UtcNow
+# A deliberate full rescan is incremental ACROSS launches. Old observations
+# remain available as evidence, but cannot satisfy the new scan epoch.
+$fullRecheckAfter=$null
+$epochFile=Join-Path $OutputDir 'full-rescan-epoch.json'
+if(Test-Path $epochFile){
+  try {
+    $epoch=(Get-Content -Raw -Encoding UTF8 $epochFile | ConvertFrom-Json)
+    $fullRecheckAfter=[datetime]::Parse([string]$epoch.requestedAt).ToUniversalTime()
+  }catch { throw 'INVALID_FULL_RESCAN_EPOCH' }
+}
 
 # Identitaets-Mapping: ID + URL dauerhaft, unabhaengig vom Preis.
 $knownProductPages = @{}
@@ -275,11 +285,22 @@ foreach ($case in $cases) {
       $manualRefreshDue=($requested -gt $lastObserved)
     } catch { $manualRefreshDue=$true }
   }
+  $setMappingFixed=([string]$prev.status -eq 'SET_MAPPING_PENDING' -and [string]$case.candidate_status -ne 'SET_EXPANSION_AMBIGUOUS')
   $routeChanged=([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
      [string]$case.known_url -and [string]$prev.url -and
      ([string]$prev.url).Split('?')[0] -ne ([string]$case.known_url).Split('?')[0])
-  if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
-       -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
+  $processedThisEpoch=$false
+  if($null -ne $fullRecheckAfter){
+    try {
+      $seen=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
+      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and
+        [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET') -and
+        -not ([string]$prev.status -like 'DEFERRED*'))
+    } catch {}
+  }
+  if (($null -ne $fullRecheckAfter -and $processedThisEpoch) -or
+      ($null -eq $fullRecheckAfter -and $prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
+       -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
@@ -348,6 +369,15 @@ try {
     }
 
     try {
+      if ([string]$case.candidate_status -eq 'SET_EXPANSION_AMBIGUOUS' -and [string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID') {
+        $out.status='SET_MAPPING_PENDING'
+        $out.error='MULTIPLE_CARDMARKET_EXPANSIONS_MATCH_SAME_SET_CARD_NAMES'
+        $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        [void]$processed.Add($key)
+        Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+        continue
+      }
       # Fail closed when full Cardmarket session is required. Guest pages
       # cannot reliably paginate, so they must not create misleading results.
       $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)

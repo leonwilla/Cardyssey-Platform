@@ -38,6 +38,19 @@ def snapshot(base:Path,language:str):
             raw=json.loads(session_path.read_text(encoding='utf-8-sig'))
             session={k:raw.get(k) for k in ('status','reason','login','checkedAt','profileExists')}
         except (ValueError,OSError):pass
+    rescan_epoch=None
+    rescan_done=None
+    epoch_file=base/'full-rescan-epoch.json'
+    if epoch_file.exists():
+        from datetime import datetime,timezone
+        try:
+            epoch=json.loads(epoch_file.read_text(encoding='utf-8-sig'))
+            rescan_epoch=datetime.fromisoformat(epoch['requestedAt'].replace('Z','+00:00'))
+            if rescan_epoch.tzinfo is None:rescan_epoch=rescan_epoch.replace(tzinfo=timezone.utc)
+            rescan_done=sum(bool(x.get('seen_at')) and datetime.fromisoformat(str(x['seen_at']).replace('Z','+00:00'))>=rescan_epoch
+                and str(x.get('status','')) not in ('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR')
+                and not str(x.get('status','')).startswith('DEFERRED') for x in completed.values())
+        except (OSError,ValueError,TypeError):rescan_epoch=None;rescan_done=None
     total=len(expected);done=len(scanned)
     matched=sum(bool(r.get('identity_confirmed')) for r in completed.values())
     search_misses=sum(r.get('status')=='NO_EXACT_NUMBER_SEARCH_HIT' for r in completed.values())
@@ -46,7 +59,7 @@ def snapshot(base:Path,language:str):
     eligible_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))!='4' for r in rows)
     bulk_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))=='4' for r in rows)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
-       'browserTotal':len(browser),'feedOnly':sum(str(r.get('scan_tier'))=='4' and r.get('needs_price')=='NO' for r in rows),'browserObserved':len(completed),
+       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':sum(str(r.get('scan_tier'))=='4' and r.get('needs_price')=='NO' for r in rows),'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
        'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
        'browserRemaining':max(0,len(browser)-done),
