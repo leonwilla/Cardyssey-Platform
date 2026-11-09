@@ -30,7 +30,11 @@ SELECT
  COALESCE(v.value->>'subtype','') AS sonderdruck,
  COALESCE(v.value->>'foil','') AS foil,
  COALESCE(v.value->>'stamps','[]') AS stempel,
- COALESCE(
+ CASE WHEN r.primary_provider='CARDMARKET'
+      AND r.verification_state='VERIFIED_PRODUCT_ID'
+      AND COALESCE(r.provider_product_id,'') ~ '^[0-9]+$'
+   THEN r.provider_product_id
+ ELSE COALESCE(
    (SELECT string_agg(DISTINCT pid,',' ORDER BY pid) FROM (
       SELECT jsonb_array_elements_text(
          CASE WHEN jsonb_typeof(c.provider_product_ids)='array'
@@ -41,8 +45,12 @@ SELECT
       UNION
       SELECT CASE WHEN r.primary_provider='CARDMARKET' THEN r.provider_product_id END pid
    ) candidates WHERE pid ~ '^[0-9]+$'), ''
- ) AS cardmarket_ids,
+ ) END AS cardmarket_ids,
  COALESCE(r.provider_product_url,'') AS known_url,
+ CASE WHEN r.primary_provider='CARDMARKET' AND r.verification_state='VERIFIED_PRODUCT_ID'
+  AND r.source_evidence LIKE 'Human confirmed exact%'
+  THEN COALESCE(to_char(r.updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"'),'')
+  ELSE '' END AS manual_scan_requested_at,
  COALESCE(r.verification_state,'UNVERIFIED') AS routing_state,
  COALESCE(c.candidate_status,'NO_CATALOG_CANDIDATE') AS candidate_status,
  CASE WHEN lower(coalesce(v.value->>'type','')) IN ('normal','nonholo','common') THEN '4' ELSE '2' END AS scan_tier,
