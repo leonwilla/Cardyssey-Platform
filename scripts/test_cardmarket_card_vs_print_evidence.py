@@ -8,7 +8,11 @@ class ProductCardVsPrintEvidence(unittest.TestCase):
   path=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector/queue-de.csv')
   with path.open(encoding='utf-8-sig') as f:
    row=next(r for r in csv.DictReader(f) if r['cardyssey_karte']=='base1-13' and r['variante_id'].startswith('zqq5g2u9'))
-  self.assertEqual(row['cardmarket_ids'],'')
+  # This DE special print was subsequently *human-confirmed* as 273708.
+  # Do not confuse this newer, explicit decision with catalog inference.
+  if row.get('routing_state')=='VERIFIED_PRODUCT_ID':
+   self.assertEqual(row['cardmarket_ids'],'273708')
+  else:self.assertEqual(row['cardmarket_ids'],'')
   self.assertEqual(set(row['set_card_candidate_ids'].split(',')),{'273708','660215'})
  def test_print_uncertainty_never_confirms_identity_or_price(self):
   assert "'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'" in SCANNER

@@ -69,7 +69,8 @@ class CheckVariants(unittest.TestCase):
         self.assertIn('extra[isReverseHolo]',s)
     def test_priced_bulk_is_routed_to_feed_not_browser(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
-        self.assertIn("$bulkFeedOnly = $allCases.Count - $cases.Count",s)
+        self.assertIn("$bulkFeedOnly = @($allCases | Where-Object {",s)
+        self.assertIn("$priceNeeded = [string]$case.scan_tier -ne '4'",s)
         self.assertIn("bulk_feed_only_variants = $bulkFeedOnly",s)
     def test_batch_has_pending_limit_and_resume(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
@@ -86,7 +87,8 @@ class CheckVariants(unittest.TestCase):
         self.assertIn('a[href*=User_Logout]',s)
         self.assertIn("PUBLIC_SESSION_LIMITED_SAMPLE",s)
         self.assertIn("$auth -and $data.filtered",s)
-        self.assertNotIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",s)
+        self.assertIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",s)
+        self.assertIn("if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }",s)
         self.assertIn("if ($data.filtered -and $auth)",s)
     def test_verified_queue_mapping_precedes_unreliable_text_search(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")

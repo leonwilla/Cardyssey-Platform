@@ -14,6 +14,17 @@ PRICE_LIMIT_STATUSES={'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FIL
 TECHNICAL={'BLOCKED','LOGIN_REQUIRED','ERROR','PROVIDER_ERROR','PROVIDER_TIMEOUT','CONNECTION_LOST','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','FILTER_NOT_APPLIED','NO_CONFIRMED_FILTERED_OFFERS','FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
 
 def classify(status,entry=None,queue=None):
+    if status=='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' and entry and queue:
+        if (entry.get('catalog_direct_id_verified') is True and
+            str(entry.get('product_id') or '')==str(queue.get('catalog_singleton_id') or '') and
+            str(queue.get('catalog_expansion_id') or '').isdigit()):
+            # Only unfilterable special prints need a human. A standard
+            # normal/holo/reverse can be handled by the existing filtered
+            # price pipeline; identity evidence by itself is never a price.
+            attrs=filter_readiness.analyze(queue)
+            if attrs['unsupported'] or attrs['missing'] or str(queue.get('sonderdruck') or '').strip():
+                return 'DRUCKPRUEFUNG'
+            return 'PREISPRUEFUNG'
     # A separately known and set-guarded card page makes same-name search
     # failures redundant: the only missing information is the physical stamp
     # or foil. Keep these in a DISTINCT print-review tab; do not falsely

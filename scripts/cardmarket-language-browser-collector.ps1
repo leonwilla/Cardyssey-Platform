@@ -329,6 +329,7 @@ $searchCache=@{}
 $searchCacheHits=0
 $searchCacheMisses=0
 $consecutiveProviderTimeouts=0
+$catalogIdLookupUnsupported=$false
 Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
 try {
@@ -479,6 +480,63 @@ try {
         if ($reuse.Count -eq 1) { $savedUrl = $knownProductPages["$($case.cardyssey_karte)|$($reuse[0])"] }
       }
 
+      # Catalog idProduct is a much stronger lookup key than translated
+      # search text. The official feed provides both the product ID and its
+      # expansion; we still require the live page to reveal the SAME ID and
+      # a matching printed collector number. Never infer the exact print.
+      # If Cardmarket no longer supports the direct-ID redirect, disable this
+      # optimization for the rest of the batch, and use old text search.
+      if(!$savedUrl -and !$catalogIdLookupUnsupported -and
+         [string]$case.catalog_singleton_id -match '^[0-9]{4,12}$' -and
+         [string]$case.catalog_expansion_id -match '^[0-9]+$' -and
+         [string]$case.candidate_status -ne 'SET_EXPANSION_AMBIGUOUS') {
+        $directId=[string]$case.catalog_singleton_id
+        $lookup='https://www.cardmarket.com/Pokemon/Products?idProduct='+$directId
+        $out.catalog_direct_id_attempted=$true
+        $resolved=''
+        $challenged=$false
+        try {
+          Send-Cdp 'Page.navigate' @{url=$lookup} 12 | Out-Null
+          for($attempt=0;$attempt -lt 18;$attempt++) {
+            Start-Sleep -Milliseconds 300
+            $state=Js 'JSON.stringify({url:location.href,title:document.title,id:document.querySelector("input[name=idProduct]")?.value||"",ready:document.readyState,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")})' 8 | ConvertFrom-Json
+            if(Is-CardmarketChallenge ([string]$state.title) ([bool]$state.challenge)) {
+              $challenged=$true
+              break
+            }
+            if($state.ready -ne 'complete' -or [string]$state.id -ne $directId){continue}
+            $landing=[uri]([string]$state.url)
+            if($landing.Host -ne 'www.cardmarket.com' -or
+               $landing.AbsolutePath -notmatch '^/(de|en)/Pokemon/Products/Singles/') {continue}
+            $lastNumber=[regex]::Match($landing.AbsolutePath,'(?i)-[A-Z]{1,8}([0-9]{1,4})$')
+            $sameNumber=$false
+            if($lastNumber.Success){
+              try{$sameNumber=([int]$lastNumber.Groups[1].Value -eq [int]([string]$case.kartennummer))}catch{}
+            }
+            # A verified set slug overrides product-name similarity.
+            $guard=[string]$setSlugGuards[[string]$case.set_id]
+            $sameSet=(!$guard -or $landing.AbsolutePath -match ('/Products/Singles/'+[regex]::Escape($guard)+'/'))
+            if($sameNumber -and $sameSet){
+              # Cardmarket may append the viewer account's filters. NEVER
+              # reuse language/condition/reverse flags from a redirect.
+              $resolved=$landing.GetLeftPart([UriPartial]::Path)
+              break
+            }
+          }
+          if($challenged){throw 'CARDMARKET_PROVIDER_CHALLENGE'}
+        } catch {
+          if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}
+          $out.catalog_direct_id_error='DIRECT_ID_LOOKUP_TIMEOUT_OR_UNAVAILABLE'
+        }
+        if($resolved){
+          $savedUrl=$resolved
+          $out.catalog_direct_id_verified=$true
+          $out.catalog_direct_id_product=$directId
+        } else {
+          $out.catalog_direct_id_error='NO_VERIFIED_REDIRECT_FALLBACK_TO_SEARCH'
+          $catalogIdLookupUnsupported=$true
+        }
+      }
       if ($savedUrl) {
         $out.search_hits = 1
         $likely = @([pscustomobject]@{url=$savedUrl;text="$name $number"})
@@ -629,6 +687,13 @@ try {
                   ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
           $out.status='PRODUCT_SET_SLUG_MISMATCH'
           $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif ($out.catalog_direct_id_verified -eq $true) {
+          # A direct, live idProduct+card-number match proves the family.
+          # Official catalog's expansion was verified when queue was built;
+          # an ambiguous V1/V2, stamp, reverse or language remains unproven.
+          $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+          $out.error='CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($out.reference_page_used -eq $true -and [string]$case.reference_print_verified -eq 'NO') {
           # Direct URL proves the page/print family, not the special edition.

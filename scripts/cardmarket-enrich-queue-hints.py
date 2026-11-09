@@ -20,12 +20,12 @@ def enrich(language,base=BASE,root=ROOT,feeds=FEEDS):
             pid=row['matched_set_ids'].strip()
             if not pid.isdigit() or ',' in pid:continue
             if pid not in product:continue
-            valid[(row['card_id'],row['variant_id'])]=(pid,product[pid]['name'])
+            valid[(row['card_id'],row['variant_id'])]=(pid,product[pid]['name'],str(product[pid]['idExpansion']))
     queue=base/f'queue-{language}.csv'
     with queue.open(newline='',encoding='utf-8-sig') as f:
         reader=csv.DictReader(f);fields=list(reader.fieldnames or []);rows=list(reader)
     if not rows:raise RuntimeError('empty queue')
-    for col in ('catalog_singleton_id','catalog_search_name'):
+    for col in ('catalog_singleton_id','catalog_search_name','catalog_expansion_id'):
         if col not in fields:fields.append(col)
     audit_path=root/'reports/cardmarket-set-mapping-risk-audit.json'
     audit=json.loads(audit_path.read_text(encoding='utf-8')) if audit_path.exists() else {}
@@ -35,11 +35,11 @@ def enrich(language,base=BASE,root=ROOT,feeds=FEEDS):
         if r.get('set_id') in quarantined and r.get('routing_state')!='VERIFIED_PRODUCT_ID':
             r['cardmarket_ids']=''
             r['candidate_status']='SET_EXPANSION_AMBIGUOUS'
-            r['catalog_singleton_id']='';r['catalog_search_name']=''
+            r['catalog_singleton_id']='';r['catalog_search_name']='';r['catalog_expansion_id']=''
             held+=1
             continue
         pair=valid.get((r['cardyssey_karte'],r['variante_id']))
-        r['catalog_singleton_id'],r['catalog_search_name']=pair if pair else ('','')
+        r['catalog_singleton_id'],r['catalog_search_name'],r['catalog_expansion_id']=pair if pair else ('','','')
         if pair:count+=1
     tmp=queue.with_suffix('.csv.enrich.tmp')
     with tmp.open('w',newline='',encoding='utf-8-sig') as f:
