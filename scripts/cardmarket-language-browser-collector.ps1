@@ -268,7 +268,7 @@ try {
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
       price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
-      access_mode='UNKNOWN';search_cache_hit=$false;seen_at=[DateTime]::UtcNow.ToString('o')
+      access_mode='UNKNOWN';search_cache_hit=$false;observed_url_version='';language_offers_observed=$false;seen_at=[DateTime]::UtcNow.ToString('o')
     }
 
     try {
@@ -386,6 +386,8 @@ try {
 
       if ($likely.Count -eq 1) {
         $out.url = $likely[0].url
+        $versionMatch=[regex]::Match(([string]$out.url).Split('?')[0],'(?i)(?:^|[-/])V([1-9][0-9]?)(?=[-/]|$)')
+        if($versionMatch.Success){$out.observed_url_version='V'+$versionMatch.Groups[1].Value}
         if (!(Move-To $out.url)) { throw 'PRODUCT_PAGE_TIMEOUT' }
         $candidateId = ''
         for ($pi = 0; $pi -lt 20; $pi++) {
@@ -487,6 +489,7 @@ try {
                   (($firstCode -eq 'Y') -eq ('First Edition' -in @($_.flags))))
               })
               $out.verified_lang_nm_offers = $accepted.Count
+              $out.language_offers_observed=($accepted.Count -gt 0)
               $seenOfferIds=@($data.rows | ForEach-Object { [string]$_.id })
               $uniqueOfferIds=@($seenOfferIds | Sort-Object -Unique)
               if ($uniqueOfferIds.Count -ne [int]$data.totalRows -or $seenOfferIds -contains '') {

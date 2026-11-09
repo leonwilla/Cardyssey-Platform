@@ -108,6 +108,12 @@ def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/m
         finally:tmp.unlink(missing_ok=True)
         return True
 def emit(obj):print(json.dumps(obj,ensure_ascii=False))
+def load_recheck(lang):
+    path=Path('/home/tv/cardshop/reports')/f'cardmarket-variant-recheck-{lang}.json'
+    if not path.is_file():return None
+    try:return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError,ValueError):return None
+
 def list_cases(data):
     lang=data.get("language","de")
     if lang not in ALLOWED_LANG:raise ValueError("language")
@@ -121,7 +127,19 @@ def list_cases(data):
     status=str(data.get("status") or "PENDING_REVIEW")
     if status not in ALLOWED_STATUS|{"PENDING_REVIEW","ALL"}:raise ValueError("status")
     if status!="ALL":where+=f" AND r.status={quote(status)}"
+    mode=str(data.get('mode') or 'all')
+    if mode not in {'all','manual'}:raise ValueError('mode')
+    reaudit=load_recheck(lang)
+    if mode=='manual' and reaudit:
+        # Show only concrete version-URL evidence requiring comparison.
+        # All other cases remain safely available under mode=all.
+        available=[key.split('|',1) for key,entry in reaudit['cases'].items()
+                   if entry.get('category')=='MANUAL_COMPARISON_READY']
+        where+=' AND ('+(' OR '.join(
+            f'(r.card_id={quote(card)} AND r.variant_id={quote(variant)})'
+            for card,variant in available) if available else 'FALSE')+')'
     sql=f"""SELECT json_build_object('total',(SELECT count(*) FROM cardmarket_print_identity_review r WHERE {where}),
+'allPending',(SELECT count(*) FROM cardmarket_print_identity_review r WHERE r.language_code={quote(lang)} AND r.status='PENDING_REVIEW'),
 'items',COALESCE((SELECT json_agg(x) FROM (
  SELECT r.language_code AS language,r.card_id,r.variant_id,r.set_id,r.card_name,
  r.printed_number,r.print_type,r.foil,r.subtype,r.stamps,
@@ -150,6 +168,14 @@ def list_cases(data):
     products=official_product_details()
     for row in result.get('items') or []:
         row['diagnosis']=explain_identity(row,products)
+        evidence=(reaudit or {}).get('cases',{}).get(row['card_id']+'|'+row['variant_id'])
+        if evidence:
+            row['recheckEvidence']={k:evidence.get(k) for k in
+                ('category','reason','versionObserved','versionProductId','languageAvailability','sameMetacard','lastScanStatus','versionPages')}
+    result['recheck']={'mode':mode,
+        'lastAuditedAt':reaudit.get('createdAt') if reaudit else None,
+        'manualCandidates':sum(1 for x in reaudit['cases'].values() if x.get('category')=='MANUAL_COMPARISON_READY') if reaudit else None,
+        'automaticallyQueued':int(result.get('allPending') or 0)-int(result.get('total') or 0) if mode=='manual' else None}
     emit(result)
 def update_case(data):
     lang=data.get("language")

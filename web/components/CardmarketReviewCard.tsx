@@ -7,6 +7,7 @@ export type Entry={language:string;card_id:string;variant_id:string;set_id:strin
  selected_product_id:string|null;reviewer_note:string|null;
  card_image_url?:string|null;
  diagnosis?:{kind:string;reason:string;action:string;proofAvailable:boolean;sameMetacard:boolean;candidates:{id:string;name:string;expansionId:string;metacardId:string;addedAt:string}[]};
+ recheckEvidence?:{category:string;reason:string;versionObserved:string|null;versionProductId:string|null;languageAvailability:string;sameMetacard:boolean;lastScanStatus:string;versionPages?:{version:string;url:string;visualNote:string}[]};
  reference_values?:Record<string,{avg30:number|null;avg30_holo:number|null;trend:number|null;trend_holo:number|null}>;};
 const buttonStyle={padding:'8px 12px'};
 export function CardReview({entry,onSaved}:{entry:Entry;onSaved:()=>void}){
@@ -51,6 +52,7 @@ export function CardReview({entry,onSaved}:{entry:Entry;onSaved:()=>void}){
   </div>
   <div><strong>Druck:</strong> {entry.print_type||'unbekannt'} {entry.subtype&&' · '+entry.subtype} {entry.foil&&' · '+entry.foil} {entry.stamps&&entry.stamps!=='[]'&&' · '+entry.stamps}</div>
   <div><small>Cardmarket-Set-ID: {entry.provider_expansion_id||'nicht zugeordnet'} · Kandidaten: {entry.candidate_ids.length} · im geprüften Set: {entry.matched_set_ids.length}</small></div>
+  {entry.recheckEvidence&&<div style={{border:'1px solid var(--border)',borderRadius:10,padding:12,display:'grid',gap:5,fontSize:13}}><strong>Ergebnis der erneuten automatischen Prüfung</strong><div>{entry.recheckEvidence.reason}</div>{entry.recheckEvidence.versionObserved&&<div>Nachgewiesene URL-Version: <strong>{entry.recheckEvidence.versionObserved}</strong> · Produkt {entry.recheckEvidence.versionProductId}. Das beweist noch nicht Normal/Holo.</div>}<div>Deutsche/englische Angebote: {entry.recheckEvidence.languageAvailability==='OFFERS_OBSERVED'?'In der ausgewählten Sprache bei früherem Scan beobachtet':'Noch nicht nachgewiesen – nicht automatisch ausgeschlossen'}</div>{entry.recheckEvidence.versionPages?.map(p=><div key={p.version}><a href={p.url} target="_blank" rel="noopener noreferrer">Cardmarket-Seite {p.version} ansehen</a> <small>({p.visualNote==='holographic-looking artwork'?'Bild wirkt holografisch':'Bild wirkt normal'})</small></div>)}<small>Scanstatus: {entry.recheckEvidence.lastScanStatus.replaceAll('_',' ')}</small></div>}
   <div style={{border:'1px solid var(--border)',borderRadius:10,padding:12,display:'grid',gap:7}}>
     <strong>Warum braucht dieser Fall eine Prüfung?</strong>
     <p style={{margin:0,fontSize:13}}>{detail?.reason||'Die Produkt- und Druckidentität konnte bislang nicht eindeutig bestätigt werden.'}</p>

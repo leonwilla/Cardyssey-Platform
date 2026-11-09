@@ -25,7 +25,7 @@ export async function GET(request:Request){
  if(!await priceMonitorAllowed())return Response.json({error:'forbidden'},{status:403});
  const p=new URL(request.url).searchParams;
  const result=await run('list',{language:p.get('language')||'de',status:p.get('status')||'PENDING_REVIEW',
-  page:p.get('page')||'0',search:p.get('search')||''});
+  page:p.get('page')||'0',search:p.get('search')||'',mode:p.get('mode')||'all'});
  return Response.json(result.data,{status:result.status,headers:{'Cache-Control':'no-store'}});
 }
 export async function POST(request:Request){
