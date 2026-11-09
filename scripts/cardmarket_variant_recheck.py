@@ -31,7 +31,7 @@ def read_latest(lang,base=BASE):
             except (ValueError,TypeError):pass
     return result
 
-def candidate_audit(row,products,obs,supplemental=None):
+def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
     ids=[v for v in row.get('matched_set_ids','').split(',') if v]
     product_records=[products.get(i) for i in ids]
     evidence=(obs or {}).get('url') or ''
@@ -46,7 +46,10 @@ def candidate_audit(row,products,obs,supplemental=None):
     independent_versions={x.get('version') for x in version_pages if
         isinstance(x,dict) and str(x.get('url','')).startswith('https://www.cardmarket.com/')}
     user_version_compare=len(independent_versions)>1
-    if not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
+    if user_reference_url and ids:
+        category='MANUAL_COMPARISON_READY'
+        reason='Der Nutzer hat eine konkrete Produktseite für dieses Set geliefert. Kartenbild, Nummer, Druck und angebotene Sprache müssen vor der Bestätigung geprüft werden.'
+    elif not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
         category='AUTO_CATALOG_RECHECK'
         reason='Set oder Produktidentität zunächst durch Automatik klären'
     elif len(ids)>1:
@@ -76,6 +79,8 @@ def run(lang,root=ROOT,base=BASE,feeds=FEEDS):
     latest=read_latest(lang,base)
     evidence_path=root/'config/cardmarket-page-version-evidence.json'
     supplied=json.loads(evidence_path.read_text(encoding='utf-8')) if evidence_path.exists() else {}
+    user_links_path=root/'config/cardmarket-user-reference-links.json'
+    user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
     src=root/f'reports/cardmarket-identity-worklist-{lang}.csv'
     out=root/f'reports/cardmarket-variant-recheck-{lang}.json'
     counts=Counter(); cases={}; seen=0
@@ -83,13 +88,13 @@ def run(lang,root=ROOT,base=BASE,feeds=FEEDS):
         for row in csv.DictReader(f):
             seen+=1
             key=(row['card_id'],row['variant_id'])
-            info=candidate_audit(row,products,latest.get(key),supplied.get(lang+'|'+row['card_id']))
+            info=candidate_audit(row,products,latest.get(key),supplied.get(lang+'|'+row['card_id']),user_links.get(row['card_id']))
             counts[info['category']]+=1
             if info['versionObserved']:counts['observed_version_url']+=1
             if info['languageOffersObserved']:counts['observed_language_offers']+=1
             # Restrict report to candidates requiring follow-up; metadata is
             # bounded per-card, never store account cookies or offer photos.
-            if row.get('classification')!='ONE_PRODUCT_IN_VERIFIED_SET':
+            if row.get('classification')!='ONE_PRODUCT_IN_VERIFIED_SET' or user_links.get(row['card_id']):
                 cases['|'.join(key)]=info
     result={'language':lang,'createdAt':datetime.now(timezone.utc).isoformat(),
             'sourceCatalogCreatedAt':meta.get('createdAt'),

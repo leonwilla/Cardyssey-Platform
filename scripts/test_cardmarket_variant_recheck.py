@@ -4,6 +4,12 @@ class VariantRecheckTests(unittest.TestCase):
  def setUp(self):
   self.products={'479679':{'idMetacard':226279},'581845':{'idMetacard':226279}}
   self.row={'matched_set_ids':'479679,581845','classification':'MULTIPLE_PRODUCTS_IN_VERIFIED_SET'}
+ def test_user_supplied_link_is_separate_manual_review_not_verified_price(self):
+  row={'matched_set_ids':'412849','classification':'ONE_PRODUCT_IN_VERIFIED_SET'}
+  x=candidate_audit(row,{'412849':{'idExpansion':2829}},None,user_reference_url='https://www.cardmarket.com/de/Pokemon/Products/Singles/McDonalds-Collection-2019/Caterpie-MCD191')
+  self.assertEqual(x['category'],'MANUAL_COMPARISON_READY')
+  self.assertFalse(x['printVerified'])
+  self.assertFalse(x['priceApproved'])
  def test_without_matching_version_proof_is_automatic(self):
   x=candidate_audit(self.row,self.products,None)
   self.assertEqual(x['category'],'AUTO_VERSION_DISCOVERY')
