@@ -85,3 +85,21 @@ A new full DE/EN scan epoch was explicitly created after the corrected queue
 export. If the dedicated Edge profile remains on a Cloudflare challenge,
 production stays paused with the explicit `BLOCKED` status and must be
 released in that same profile before gated manual resume.
+
+## 30th card match vs incomplete Cardmarket price pagination
+
+When the latest scan has `FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE` (or an
+analogous price-filter status), **and** the Cardyssey set starts with `30th`,
+the browser positively confirmed the product (`identity_confirmed=true`), the
+observed `idProduct` agrees with the exact queue candidate, and a previously
+known card URL / human-verified route exists, the scan failure belongs to
+`PREISPRUEFUNG`, not `ZUORDNUNG`. In particular Pikachu & Zekrom GX
+`30th-c-008` / `907963` was observed with 69 offers but load-more disabled;
+this does not require selecting or confirming the card again. These records
+are shown under **Technische Preisprüfungen**, separate from the default
+**Karten-Zuordnungen** and **Browser-/Anbieterfehler** views. A positive scan
+with a *different* product ID than the candidate is still a `ZUORDNUNG`
+problem and must never be hidden. A valid product ID is not sufficient proof
+of the exact 30th stamp's offer price; incomplete price medians are not
+published. The categorization runs over the newest scanned observations and
+updates on each UI refresh; the scan engine/price observations are unchanged.

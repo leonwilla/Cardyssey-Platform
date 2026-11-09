@@ -21,9 +21,32 @@ class Tests(unittest.TestCase):
    with (b/'browser-observations-de.jsonl').open('w') as f:
     for card,status,seen in [('2019sm-1','NO_EXACT_NUMBER_SEARCH_HIT',start-timedelta(days=2)),('hgss3-5','FILTER_UNAVAILABLE',start+timedelta(seconds=1))]:
      f.write(json.dumps({'card_id':card,'variant_id':'v1','status':status,'seen_at':seen.isoformat()})+'\n')
-   result=fail.list_failures(b,'de')
+   result=fail.list_failures(b,'de',kind='alle')
    self.assertEqual(result['total'],1);self.assertEqual(result['items'][0]['type'],'TECHNISCH')
-   self.assertEqual(fail.list_failures(b,'de',scope='all')['total'],2)
+   self.assertEqual(fail.list_failures(b,'de',scope='all',kind='alle')['total'],2)
+   self.assertEqual(fail.list_failures(b,'de')['total'],0)
+   self.assertEqual(fail.list_failures(b,'de',kind='technik')['total'],1)
+ def test_30th_verified_product_with_incomplete_offers_is_price_only(self):
+  with tempfile.TemporaryDirectory() as td:
+   b=self.setup(td);p=b/'queue-de.csv'
+   # A fixture with the real queue shape is preferable to guesswork about
+   # optional fields of the old synthetic queue.
+   with p.open('w',newline='') as f:
+    w=csv.DictWriter(f,fieldnames=['cardyssey_karte','variante_id','set_id','kartenname_suche','cardmarket_ids','routing_state','known_url']);w.writeheader()
+    w.writerow({'cardyssey_karte':'30th-c-008','variante_id':'v30','set_id':'30th-c','kartenname_suche':'Pikachu & Zekrom GX','cardmarket_ids':'907963','routing_state':'SOURCE_ONLY','known_url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/30th-Celebration/Pikachu-Zekrom-GX-30CTEU-33'})
+    w.writerow({'cardyssey_karte':'30th-c-009','variante_id':'v31','set_id':'30th-c','kartenname_suche':'Andere Karte','cardmarket_ids':'907964','routing_state':'SOURCE_ONLY','known_url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/30th-Celebration/Other'})
+   now=datetime.now(timezone.utc).isoformat()
+   with (b/'browser-observations-de.jsonl').open('w') as f:
+    for card,var,pid in [('30th-c-008','v30','907963'),('30th-c-009','v31','999999')]:
+     f.write(json.dumps({'card_id':card,'variant_id':var,'status':'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','product_id':pid,'identity_confirmed':True,'pagination_failure':'LOAD_MORE_DISABLED_OR_LIMIT_REACHED','seen_at':now})+'\n')
+   price=fail.list_failures(b,'de',kind='preise');manual=fail.list_failures(b,'de',kind='karten')
+   self.assertEqual([x['cardId'] for x in price['items']],['30th-c-008'])
+   self.assertEqual([x['cardId'] for x in manual['items']],['30th-c-009'])
+   self.assertEqual(price['priceChecks'],1)
+   self.assertEqual(manual['assignment'],1)
+   self.assertEqual(fail.list_failures(b,'de',kind='alle')['total'],2)
+ def test_other_sets_are_not_auto_exempt(self):
+  self.assertEqual(fail.classify('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE',{'product_id':'907963','identity_confirmed':True},{'set_id':'other','cardmarket_ids':'907963','known_url':'https://example.com'}),'TECHNISCH')
  def test_retry_only_requested_variant(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.setup(td);r=retry.retry('de','hgss3-5','v1',base=b)
