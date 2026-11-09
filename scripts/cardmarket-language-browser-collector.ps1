@@ -168,9 +168,14 @@ function Move-To([string]$url) {
   # Preserve provider challenges; do not bypass access or authentication.
   for ($i = 0; $i -lt 75; $i++) {
     Start-Sleep -Milliseconds 400
-    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0})' 10
+    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
+    # A Cloudflare interstitial must not be recorded as 'zero results'.
+    # Give the legitimate browser challenge a few seconds, then stop requests.
+    if (($s.title -match '(?i)nur einen moment|just a moment|attention required|security check' -or $s.challenge) -and $i -ge 12) {
+      throw 'CARDMARKET_PROVIDER_CHALLENGE'
+    }
     $actual = [uri]$s.href
     $expectedQuery = [uri]::UnescapeDataString($desired.Query.TrimStart('?').Replace('+',' '))
     $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
@@ -370,7 +375,7 @@ try {
               Start-Sleep -Seconds ([Math]::Max(10,$DelaySeconds))
               continue
             }
-            $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
+            $searchExpr = 'JSON.stringify({title:document.title,blocked:/(?:nur einen moment|just a moment|attention required|checking your browser|captcha|robot check|access denied|zugriff verweigert|too many requests)/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
             # Cardmarket's result list is injected AFTER document.readyState
             # becomes complete. Reading immediately caused thousands of false
             # NO_EXACT_NUMBER_SEARCH_HIT records with search_hits=0.
@@ -381,6 +386,8 @@ try {
               Start-Sleep -Milliseconds 400
             }
             if ($searchResult.blocked) {
+              $out.status='BLOCKED'
+              $out.error='CARDMARKET_PROVIDER_CHALLENGE'
               Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
               break
             }
@@ -595,6 +602,14 @@ try {
       }
     } catch {
       $message = $_.Exception.Message
+      if ($message -match 'CARDMARKET_PROVIDER_CHALLENGE') {
+        $out.status = 'BLOCKED'
+        $out.error = 'CARDMARKET_PROVIDER_CHALLENGE'
+        $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
+        break
+      }
       $socketDead = ($ws.State -ne [Net.WebSockets.WebSocketState]::Open) -or
                     ($message -match 'CDP_STREAM_DEAD|CDP_TIMEOUT|WebSocket|websocket|abgebrochen|cancelled|canceled')
       if ($socketDead) {
