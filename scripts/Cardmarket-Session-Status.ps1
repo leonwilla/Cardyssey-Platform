@@ -1,4 +1,4 @@
-# Read-only diagnosis of the SAME persistent Cardmarket Edge profile.
+﻿# Read-only diagnosis of the SAME persistent Cardmarket Edge profile.
 # Never accesses password manager contents, credentials, cookies or tokens.
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
@@ -6,10 +6,10 @@ $dest=Join-Path $base 'browser-session-status.json'
 $state=[ordered]@{checkedAt=[DateTime]::UtcNow.ToString('o');provider='CARDMARKET';status='UNKNOWN';reason='';login='UNKNOWN';profileExists=(Test-Path (Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketEdgeProfile'))}
 $ws=$null
 try {
-  $pages=@(Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 4 | Where-Object {$_.type -eq 'page' -and ([string]$_.url) -match '^https://www[.]cardmarket[.]com/'})
-  if(!$pages.Count){$state.status='NO_CARDMARKET_TAB';$state.reason='Browser tab unavailable'}
+  $targets=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 4
+  $page=$targets | Where-Object {$_.type -eq 'page' -and ([string]$_.url) -match '^https://www[.]cardmarket[.]com/'} | Select-Object -First 1
+  if(!$page){$state.status='NO_CARDMARKET_TAB';$state.reason='Browser tab unavailable'}
   else {
-    $page=$pages[0]
     if([string]$page.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser'){
       $state.status='BLOCKED';$state.reason='CLOUDFLARE_CHALLENGE'
     } elseif (!$page.webSocketDebuggerUrl){
