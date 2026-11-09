@@ -9,6 +9,7 @@ param(
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
   [int]$DelaySeconds = 8,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
+  [ValidateRange(5,180)][int]$ChallengeWaitSeconds = 90,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [switch]$ForcePublicMode  # diagnostic: use public behavior even if signed in
 )
@@ -161,26 +162,42 @@ function Js([string]$expression, [int]$TimeoutSec = 20) {
   return $reply.result.result.value
 }
 
+function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
+  return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser')
+}
+
 function Move-To([string]$url) {
   Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
   $desired = [uri]$url
-  # Cardmarket search results sometimes need 15-25s after navigation.
-  # Preserve provider challenges; do not bypass access or authentication.
-  for ($i = 0; $i -lt 75; $i++) {
+  $attemptStart=[DateTime]::UtcNow
+  $challengeStart=$null
+  # The same persistent browser profile retains lawful session data.
+  # Only WAIT for Cardmarket to finish its own challenge; do not click,
+  # forge clearance cookies, replay private tokens, or bypass a challenge.
+  for ($i = 0; $i -lt 380; $i++) {
     Start-Sleep -Milliseconds 400
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
-    # A Cloudflare interstitial must not be recorded as 'zero results'.
-    # Give the legitimate browser challenge a few seconds, then stop requests.
-    if (($s.title -match '(?i)nur einen moment|just a moment|attention required|security check' -or $s.challenge) -and $i -ge 12) {
-      throw 'CARDMARKET_PROVIDER_CHALLENGE'
+    if (Is-CardmarketChallenge ([string]$s.title) ([bool]$s.challenge)) {
+      if($null -eq $challengeStart){
+        $challengeStart=[DateTime]::UtcNow
+        Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
+      }
+      if (([DateTime]::UtcNow-$challengeStart).TotalSeconds -ge $ChallengeWaitSeconds) {
+        throw 'CARDMARKET_PROVIDER_CHALLENGE'
+      }
+      continue
     }
     $actual = [uri]$s.href
     $expectedQuery = [uri]::UnescapeDataString($desired.Query.TrimStart('?').Replace('+',' '))
     $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
     $sameQuery = ($expectedQuery -eq $actualQuery) -or ($desired.AbsolutePath -ne ($LangCfg.PathPrefix + '/Products/Search'))
-    if ($s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) { return $true }
+    if ($s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) {
+      if ($null -ne $challengeStart) { Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card' }
+      return $true
+    }
+    if (([DateTime]::UtcNow-$attemptStart).TotalSeconds -gt 45 -and $null -eq $challengeStart){return $false}
   }
   return $false
 }
@@ -244,8 +261,21 @@ foreach ($case in $cases) {
   $newSearchAvailable=([string]$case.catalog_singleton_id -match '^[0-9]+$')
   $searchNotYetUpgraded=([string]$prev.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and
       $newSearchAvailable -and [string]$prev.lookup_strategy -ne 'CATALOG_NAME_FIRST_V1')
+  # A human-corrected link must be rescanned even if the old translated-name
+  # lookup was recently marked as completed or failed.
+  $manualRefreshDue=$false
+  if ([string]$case.manual_scan_requested_at) {
+    try {
+      $requested=[datetime]::Parse([string]$case.manual_scan_requested_at).ToUniversalTime()
+      $lastObserved=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
+      $manualRefreshDue=($requested -gt $lastObserved)
+    } catch { $manualRefreshDue=$true }
+  }
+  $routeChanged=([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
+     [string]$case.known_url -and [string]$prev.url -and
+     ([string]$prev.url).Split('?')[0] -ne ([string]$case.known_url).Split('?')[0])
   if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
-       -not $searchNotYetUpgraded -and $isRecent)) {
+       -not $searchNotYetUpgraded -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
@@ -266,18 +296,27 @@ try {
     $k = '{0}|{1}' -f $_.cardyssey_karte, $_.variante_id
     -not $processed.Contains($k)
   })
+  $priority = [Collections.Generic.List[object]]::new()
   $fresh = [Collections.Generic.List[object]]::new()
   $retry = [Collections.Generic.List[object]]::new()
   foreach($item in $due) {
     $k = '{0}|{1}' -f $item.cardyssey_karte, $item.variante_id
     $prior = if ($latest.ContainsKey($k)) { $latest[$k] } else { $null }
-    if ($prior -and [string]$prior.status -like 'DEFERRED*') {
+    $manualRequested=$false
+    if([string]$item.manual_scan_requested_at){
+      try{
+        $requested=[datetime]::Parse([string]$item.manual_scan_requested_at).ToUniversalTime()
+        $manualRequested=(!$prior -or $requested -gt [datetime]::Parse([string]$prior.seen_at).ToUniversalTime())
+      }catch{$manualRequested=$true}
+    }
+    if($manualRequested){$priority.Add($item)}
+    elseif ($prior -and [string]$prior.status -like 'DEFERRED*') {
       $oldEnough=$false
       try { $oldEnough=([datetime]::Parse([string]$prior.seen_at).ToUniversalTime() -lt $nowUtc.AddHours(-2)) } catch {}
       if($oldEnough){ $retry.Add($item) }
     } else { $fresh.Add($item) }
   }
-  $ordered=@($fresh.ToArray()) + @($retry.ToArray())
+  $ordered=@($priority.ToArray()) + @($fresh.ToArray()) + @($retry.ToArray())
   $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
   foreach ($case in $selected) {
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
@@ -289,7 +328,7 @@ try {
     # Collect filtered offers on the SAME validated product page if this is
     # a valuable/special print or currently unpriced. Already priced bulk
     # still needs product identity, but not another costly offer scan.
-    $priceNeeded = [string]$case.scan_tier -ne '4' -or [string]$case.needs_price -eq 'YES' 
+    $priceNeeded = [string]$case.scan_tier -ne '4' -or [string]$case.needs_price -eq 'YES' -or !!([string]$case.manual_scan_requested_at)
 
     $out = [ordered]@{
       key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;

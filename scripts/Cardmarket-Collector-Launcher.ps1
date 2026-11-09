@@ -1,5 +1,6 @@
 ﻿# Resume Cardmarket account review on the dedicated local Chrome profile.
 # Authentication and login checks remain entirely in Chrome; no cookie export.
+param([switch]$ResumeAfterClearance)
 $ErrorActionPreference="Stop"
 $base=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketCollector"
 $profile=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketEdgeProfile"
@@ -14,7 +15,8 @@ if (Test-Path $progressFile) {
   try {
     $progress=Get-Content -Raw $progressFile | ConvertFrom-Json
     $last=[datetime]::Parse([string]$progress.updated_at).ToUniversalTime()
-    if ($progress.status -in @("CONNECTION_LOST","PROVIDER_TIMEOUT","BLOCKED","LOGIN_REQUIRED") -and
+    if (!$ResumeAfterClearance -and
+        $progress.status -in @("CONNECTION_LOST","PROVIDER_TIMEOUT","BLOCKED","LOGIN_REQUIRED") -and
         $last -gt [datetime]::UtcNow.AddHours(-2)) {return}
   } catch {}
 }

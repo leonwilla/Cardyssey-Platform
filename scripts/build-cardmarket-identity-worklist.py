@@ -76,6 +76,14 @@ def main():
                 ids=sorted({i for i in r["cardmarket_ids"].split(",") if i.isdigit()})
                 exp=all_sets.get(r["set_id"])
                 matched=[i for i in ids if i in products and exp is not None and str(products[i]["idExpansion"])==exp]
+                human_confirmed=(r.get('routing_state')=='VERIFIED_PRODUCT_ID' and
+                    bool(r.get('known_url')) and len(ids)==1 and ids[0] in products)
+                if human_confirmed:
+                    # One user-confirmed exact print is evidence for THIS print,
+                    # not for the whole expansion. Preserve it despite a faulty
+                    # old set crosswalk and do not repeatedly ask for the same ID.
+                    matched=[ids[0]]
+                    exp=str(products[ids[0]].get('idExpansion') or exp or '')
                 if exp is None:state="SET_NOT_VERIFIED"
                 elif not ids:state="NO_PRODUCT_ID"
                 elif not matched:state="NO_MATCH_IN_VERIFIED_SET"
@@ -88,7 +96,8 @@ def main():
                 # They are not equivalent to the independently mapped DE set crosswalk.
                 if lang=="en" and r["set_id"] in inferred:
                     state=state.replace("VERIFIED_SET","INFERRED_SET")
-                if special:state += "_SPECIAL_PRINT"
+                if human_confirmed:state='HUMAN_CONFIRMED_EXACT_PRINT'
+                elif special:state += "_SPECIAL_PRINT"
                 counts[lang][state]+=1
                 chosen=matched[0] if len(matched)==1 else ""
                 data=dict(language=lang,card_id=r["cardyssey_karte"],variant_id=r["variante_id"],
@@ -100,7 +109,7 @@ def main():
                           requires_confirmation="SET_NUMBER_LANGUAGE_PRINT_FOIL_STAMP",
                           guide_has_30day="",guide_product_id=chosen)
                 writer.writerow(data)
-                if state!="ONE_PRODUCT_IN_VERIFIED_SET":
+                if state not in ('ONE_PRODUCT_IN_VERIFIED_SET','HUMAN_CONFIRMED_EXACT_PRINT'):
                     review.append(data)
     # Prefer existing ownership and missing price when shown in admin; no automatic price publication.
     OUT.mkdir(parents=True,exist_ok=True)

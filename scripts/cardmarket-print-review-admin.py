@@ -72,7 +72,7 @@ def explain_identity(row,products):
     return {'kind':kind,'reason':reason,'action':action,
        'proofAvailable':False, 'sameMetacard':same_metacard,'candidates':candidates}
 
-def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')):
+def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector'), product_url=None):
     """Make confirmed DB identity visible to next CSV-based browser run.
 
     Atomic replacement keeps ongoing scans reading their original complete CSV.
@@ -89,6 +89,7 @@ def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/m
             fields=reader.fieldnames
             rows=list(reader)
         if not fields or 'routing_state' not in fields:return False
+        if product_url and 'manual_scan_requested_at' not in fields:fields.append('manual_scan_requested_at')
         updated=0
         for row in rows:
             if row.get('cardyssey_karte')!=card_id or row.get('variante_id')!=variant_id:continue
@@ -96,6 +97,9 @@ def sync_queue_identity(language, card_id, variant_id, product_id, base=Path('/m
                 row['known_url']=''  # Never retain a URL for a different printing.
             row['cardmarket_ids']=product_id
             row['routing_state']='VERIFIED_PRODUCT_ID'
+            if product_url and product_url.startswith('https://www.cardmarket.com/'):
+                row['known_url']=product_url
+                row['manual_scan_requested_at']=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
             updated+=1
         if updated!=1:return False
         tmp=path.with_suffix(path.suffix+'.review.tmp')
