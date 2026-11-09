@@ -10,10 +10,11 @@ export type Entry={language:string;card_id:string;variant_id:string;set_id:strin
  recheckEvidence?:{category:string;reason:string;versionObserved:string|null;versionProductId:string|null;languageAvailability:string;sameMetacard:boolean;lastScanStatus:string;versionPages?:{version:string;url:string;visualNote:string}[]};
  reference_values?:Record<string,{avg30:number|null;avg30_holo:number|null;trend:number|null;trend_holo:number|null}>;};
 type LinkPreview={token:string;productId:string;productUrl:string;productName:string;expansionId:string;pageHeading:string;pageBreadcrumbs:string[];cardName:string;cardNumber:string;cardSet:string;printType:string;warnings:string[];guide:{avg30:number|null;"avg30-holo":number|null;trend:number|null;"trend-holo":number|null};languageSpecificPrice:number|null;languageSpecificPriceStatus:string};
-const buttonStyle={padding:'8px 12px'};
-export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()=>void;onViewRelated?:(cardId:string)=>void}){
+export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;onSaved:()=>void;onViewRelated?:(cardId:string)=>void;scanIssue?:{status:string;detail:string}}){
  const [pid,setPid]=useState(entry.matched_set_ids.length===1?entry.matched_set_ids[0]:'');
  const [note,setNote]=useState('');
+ const [detailsOpen,setDetailsOpen]=useState(false);
+ const [otherActionsOpen,setOtherActionsOpen]=useState(false);
  const [confirmed,setConfirmed]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
@@ -29,9 +30,6 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
  const candidate=(id:string)=>detail?.candidates.find(c=>c.id===id);
  const multipleSimilar=detail?.kind==='CATALOG_DUPLICATE'&&detail.sameMetacard;
  const productLink=(id:string)=>'https://www.cardmarket.com/Pokemon/Products?idProduct='+encodeURIComponent(id);
- const searchLink=(id:string)=>'https://www.cardmarket.com/'+entry.language+'/Pokemon/Products/Search?searchString='+encodeURIComponent((candidate(id)?.name||entry.card_name||'')+' '+entry.printed_number);
- const reference=pid?entry.reference_values?.[pid]:undefined;
- const euro=(v:number|null|undefined)=>v==null?'–':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(v);
  async function save(status:'CONFIRMED_PRINT'|'NO_MATCH'|'DEFERRED'){
   setBusy(true);setError('');
   try{
@@ -79,96 +77,85 @@ export function CardReview({entry,onSaved,onViewRelated}:{entry:Entry;onSaved:()
   finally{setUndoBusy(false)}
  }
  const hasMismatch=Boolean(preview?.warnings.some(w=>w.startsWith('SET_ID_CONFLICT')||w.startsWith('PRODUCT_NOT_IN_PREVIOUS_CANDIDATES')));
- return <article className="statusPanel" style={{padding:16,display:'grid',gap:10}}>
-  <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
-   <div>{entry.card_image_url?.startsWith('https://')&&<img src={entry.card_image_url}
-    alt={'Pokémon-Karte '+(entry.card_name||entry.card_id)}
-    loading="lazy" style={{float:'left',width:65,height:91,objectFit:'contain',marginRight:12,borderRadius:6}}/>}
-    <strong>{entry.card_name||entry.card_id} · #{entry.printed_number||'?'}</strong>
-    <div><small>{entry.set_id} · {entry.language.toUpperCase()} · {entry.card_id} · {entry.variant_id}</small></div>
-   </div><span>{entry.classification.replaceAll('_',' ')}</span>
-  </div>
-  {entry.status!=='PENDING_REVIEW'&&<section style={{border:'1px solid var(--border)',padding:12,borderRadius:10,display:'grid',gap:8}}>
-   <strong>Deine bisherige Entscheidung: {entry.status==='CONFIRMED_PRINT'?'Produkt bestätigt':entry.status==='NO_MATCH'?'Kein passendes Produkt':'Zurückgestellt'}</strong>
-   {entry.selected_product_id&&<div>Bestätigte Produkt-ID: <strong>{entry.selected_product_id}</strong></div>}
-   {entry.reviewer_note&&<div>Notiz: {entry.reviewer_note}</div>}
-   <button type="button" className="ghostButton" disabled={undoBusy} onClick={()=>void undoDecision()}>{undoBusy?'Wird zurückgenommen …':'↶ Zuordnung rückgängig machen'}</button>
-   {error&&<p role="alert">{error}</p>}
-   <small>Setzt nur diese Karte und Variante wieder auf „Offen“. Eine zugehörige manuelle Cardmarket-Zuordnung wird entfernt; Preise anderer Quellen bleiben erhalten.</small>
-  </section>}
-  {entry.status==='PENDING_REVIEW'&&<>
-  {entry.recheckEvidence?.category!=='MANUAL_COMPARISON_READY'&&<p style={{margin:0,padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13}}><strong>Automatische Nachprüfung:</strong> Die Set-ID wird aus Cardyssey übernommen. Du musst diese Karte keinem Set zuweisen. Sie erscheint hier nur, weil du alle automatischen Fälle anzeigen lässt oder danach gesucht hast. Die Varianten- und Preisprüfung läuft getrennt.</p>}
-  <div style={{fontSize:13}}><strong>Dieses Formular gilt nur für:</strong> Set <strong>{entry.set_id}</strong>, Kartennummer <strong>#{entry.printed_number}</strong>, Druck <strong>{entry.print_type}</strong>. Andere gleichnamige Karten in fremden Sets werden für diese Zuordnung nicht berücksichtigt.</div>
-
-  <div><strong>Druck:</strong> {entry.print_type||'unbekannt'} {entry.subtype&&' · '+entry.subtype} {entry.foil&&' · '+entry.foil} {entry.stamps&&entry.stamps!=='[]'&&' · '+entry.stamps}</div>
-  <div><small>Cardmarket-Set-ID: {entry.provider_expansion_id||'nicht zugeordnet'} · Kandidaten: {entry.candidate_ids.length} · im geprüften Set: {entry.matched_set_ids.length}</small><div style={{fontSize:12,opacity:.8}}>Die Anzeige „{entry.language.toUpperCase()}“ ist die gesuchte Preissprache, kein Nachweis einer entsprechenden physischen Kartenausgabe. Bitte Kartennummer und tatsächliche Karte im verlinkten Produkt prüfen.</div></div>
-  {entry.recheckEvidence&&<div style={{border:'1px solid var(--border)',borderRadius:10,padding:12,display:'grid',gap:5,fontSize:13}}><strong>Ergebnis der erneuten automatischen Prüfung</strong><div>{entry.recheckEvidence.reason}</div>{entry.recheckEvidence.versionObserved&&<div>Nachgewiesene URL-Version: <strong>{entry.recheckEvidence.versionObserved}</strong> · Produkt {entry.recheckEvidence.versionProductId}. Das beweist noch nicht Normal/Holo.</div>}<div>Deutsche/englische Angebote: {entry.recheckEvidence.languageAvailability==='OFFERS_OBSERVED'?'In der ausgewählten Sprache bei früherem Scan beobachtet':'Noch nicht nachgewiesen – nicht automatisch ausgeschlossen'}</div>{entry.recheckEvidence.versionPages?.map(p=><div key={p.version}><a href={p.url} target="_blank" rel="noopener noreferrer">Cardmarket-Seite {p.version} ansehen</a> <small>({p.visualNote==='holographic-looking artwork'?'Bild wirkt holografisch':'Bild wirkt normal'})</small></div>)}<small>Scanstatus: {entry.recheckEvidence.lastScanStatus.replaceAll('_',' ')}</small></div>}
-  <div style={{border:'1px solid var(--border)',borderRadius:10,padding:12,display:'grid',gap:7}}>
-    <strong>Warum braucht dieser Fall eine Prüfung?</strong>
-    <p style={{margin:0,fontSize:13}}>{detail?.reason||'Die Produkt- und Druckidentität konnte bislang nicht eindeutig bestätigt werden.'}</p>
-    <p style={{margin:0,fontSize:13}}><strong>Was du prüfen müsstest:</strong> {detail?.action||'Set, Nummer, Sprache und Holo/Reverse mit der Produktseite vergleichen.'}</p>
-    {multipleSimilar&&<p style={{margin:0,fontSize:13}}><strong>Wichtig:</strong> Diese IDs lassen sich anhand der offiziellen Katalogdaten derzeit nicht unterscheiden. Öffne jede ID über den Direktlink und vergleiche die dort angezeigte Kartennummer sowie V1/V2. Ohne eindeutigen Nachweis bitte nicht bestätigen.</p>}
-  </div>
-  {detail&&detail.candidates.length>0&&<div style={{display:'grid',gap:8}}><strong>Was das Script gefunden hat</strong>{detail.candidates.map(c=><div key={c.id} style={{border:'1px solid var(--border)',borderRadius:8,padding:10,fontSize:13,display:'flex',gap:12,justifyContent:'space-between',flexWrap:'wrap'}}><div><strong>{c.name}</strong><div>Produkt-ID: {c.id} · Set-ID: {c.expansionId||'unbekannt'}</div><small>Metakarte: {c.metacardId||'unbekannt'} · Katalogeintrag: {c.addedAt||'unbekannt'}</small></div><div style={{display:'grid',gap:6,justifyItems:'end'}}><a href={productLink(c.id)} rel="noopener noreferrer" target="_blank" style={{fontWeight:700}}>Produkt {c.id} direkt öffnen</a><a href={searchLink(c.id)} rel="noopener noreferrer" target="_blank" style={{fontSize:12}}>Allgemeine Suche (kein ID-Nachweis)</a></div></div>)}<small>Die Direktlinks enthalten die exakte Produkt-ID als <code>idProduct=…</code>. Nach dem Öffnen kann Cardmarket auf eine lesbare URL ohne Zahl weiterleiten – der Direktlink bleibt trotzdem eindeutig. Die allgemeine Suche ist ausdrücklich kein ID-Nachweis. Vergleiche außerdem Set und Kartennummer: Gleichnamige Produkte können zu unterschiedlichen Sets gehören.</small></div>}
-  <section style={{border:'1px solid var(--border)',borderRadius:12,padding:14,display:'grid',gap:9}}>
-   <strong>Richtigen Cardmarket-Produktlink selbst eintragen</strong>
-   {entry.suggested_product_url&&<p style={{fontSize:13,margin:0}}>Bereits gemeldeter Produktlink für <strong>{entry.set_id} #{entry.printed_number}</strong>: <a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer">Produktseite ansehen</a> · <button type="button" className="ghostButton" onClick={()=>setManualUrl(entry.suggested_product_url||'')}>Diesen Link einsetzen</button> (noch nicht verifiziert)</p>}
-   <p style={{fontSize:13,margin:0}}>Wenn die vorgeschlagenen Produkte nicht passen: Öffne die richtige Karte auf Cardmarket, kopiere die vollständige Produkt-URL hier hinein und lasse die Seite prüfen. Die Prüfung ändert noch keinen Preis und keine Zuordnung.</p>
-   <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-    <input style={{flex:'1 1 320px',minWidth:0}} value={manualUrl} onChange={e=>setManualUrl(e.target.value)} placeholder="https://www.cardmarket.com/de/Pokemon/Products/Singles/…" aria-label="Korrekten Cardmarket-Produktlink eingeben" />
-    <button type="button" className="primaryButton" disabled={linkBusy||!manualUrl.trim()} onClick={()=>void checkLink()}>{linkBusy?'Prüft Produktseite …':'Produktlink prüfen und Vorschau öffnen'}</button>
+ const shortIssue=()=>{
+  const status=scanIssue?.status||entry.recheckEvidence?.lastScanStatus||'';
+  if(status==='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'||status==='PRODUCT_ID_NOT_IN_VERIFIED_SET')return 'Produkt-ID passt noch nicht sicher zu Set und Kartennummer.';
+  if(status==='NO_EXACT_NUMBER_SEARCH_HIT')return 'Keine eindeutige Karte zur Kartennummer gefunden.';
+  if(status==='SET_MAPPING_PENDING'||entry.classification.includes('SET_NOT_VERIFIED'))return 'Cardmarket-Set noch nicht sicher zugeordnet.';
+  if(status==='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'||entry.classification.includes('PRINT_NOT_IDENTIFIED'))return 'Karte gefunden – genaue Druckvariante noch offen.';
+  if(status==='MISSING_REQUIRED_SCAN_FIELDS')return 'Für die automatische Zuordnung fehlen Angaben.';
+  if(status==='FILTER_UNAVAILABLE'||status==='FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE')return 'Preisfilter nicht vollständig auslesbar – keine Kartenbestätigung erforderlich.';
+  if(entry.matched_set_ids.length>1)return 'Mehrere mögliche Produktversionen – richtige Variante auswählen.';
+  if(entry.matched_set_ids.length===1)return 'Kartenvariante noch nicht eindeutig bestätigt.';
+  return 'Cardmarket-Produkt oder Set noch nicht eindeutig gefunden.';
+ };
+ const searchUrl='https://www.cardmarket.com/'+entry.language+'/Pokemon/Products/Search?searchString='+encodeURIComponent((entry.card_name||'')+' '+(entry.printed_number||''));
+ return <article className="statusPanel" style={{padding:14,display:'grid',gap:12}}>
+  <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+   {entry.card_image_url?.startsWith('https://')&&<img src={entry.card_image_url} alt={'Pokémon-Karte '+entry.card_name} loading="lazy" style={{width:64,height:88,objectFit:'contain',borderRadius:7}}/>}
+   <div style={{flex:'1 1 210px',minWidth:0}}><strong>{entry.card_name||entry.card_id} · #{entry.printed_number||'?'}</strong>
+    <div style={{fontSize:12,opacity:.75}}>{entry.set_id} · {entry.language.toUpperCase()} · {entry.print_type}{entry.subtype?' · '+entry.subtype:''}{entry.foil?' · '+entry.foil:''}{entry.stamps&&entry.stamps!=='[]'?' · '+entry.stamps:''}</div>
+    <div style={{fontSize:13,marginTop:5}}><strong>Problem:</strong> {shortIssue()}</div>
    </div>
-   {linkError&&<p role="alert" style={{fontSize:13,color:'var(--danger,#a22)',margin:0}}>{linkError==='cardmarket_cloudflare_blocked_try_later'?'Cardmarket zeigt aktuell eine Cloudflare-Prüfung. Der Link wurde nicht zugeordnet. Bitte später erneut prüfen.':linkError.startsWith('wrong_set_url_expected_')||linkError==='resolved_product_belongs_to_other_set'?'Dieser Produktlink gehört zu einem anderen Cardmarket-Set. Öffne den separaten Kartenfall für das richtige Set, statt die URL hier zu hinterlegen.':linkError}</p>}
-  </section>
+   <button type="button" className="ghostButton" onClick={()=>setDetailsOpen(v=>!v)}>{detailsOpen?'Details schließen':'Details'}</button>
+  </div>
+  {entry.status!=='PENDING_REVIEW'?<div style={{display:'grid',gap:8}}>
+   <div><strong>{entry.status==='CONFIRMED_PRINT'?'Bestätigte Zuordnung':entry.status==='NO_MATCH'?'Kein Treffer':'Zurückgestellt'}</strong>{entry.selected_product_id?' · Produkt '+entry.selected_product_id:''}</div>
+   {entry.reviewer_note&&<small>{entry.reviewer_note}</small>}
+   <button type="button" className="ghostButton" disabled={undoBusy} onClick={()=>void undoDecision()}>{undoBusy?'Wird zurückgenommen …':'Zuordnung rückgängig machen'}</button>
+   {error&&<p role="alert">{error}</p>}
+  </div>:<>
+   <div style={{display:'grid',gap:7}}>
+    <strong style={{fontSize:13}}>Gefundene Cardmarket-Produktseiten</strong>
+    {entry.matched_set_ids.length>0?<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{entry.matched_set_ids.map(id=><a key={id} href={productLink(id)} target="_blank" rel="noopener noreferrer" style={{fontSize:13,padding:'8px 10px',border:'1px solid var(--border)',borderRadius:9,fontWeight:600}}>Produkt {id} ansehen</a>)}</div>:<span style={{fontSize:13,opacity:.75}}>Kein geprüfter Produktlink gefunden.</span>}
+    {entry.suggested_product_url&&<a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Bereits vorgeschlagene Produktseite ansehen</a>}
+    <a href={searchUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Auf Cardmarket suchen</a>
+   </div>
+   <section style={{display:'grid',gap:8}}>
+    <strong style={{fontSize:13}}>Richtigen Link eintragen</strong>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+     <input style={{flex:'1 1 280px',minWidth:0}} value={manualUrl} onChange={e=>setManualUrl(e.target.value)} placeholder="Cardmarket-Produktlink hier einfügen …" aria-label="Cardmarket-Produktlink" />
+     <button type="button" className="primaryButton" disabled={linkBusy||!manualUrl.trim()} onClick={()=>void checkLink()}>{linkBusy?'Prüft …':'Link prüfen'}</button>
+    </div>
+    {linkError&&<p role="alert" style={{fontSize:13,margin:0,color:'var(--danger,#a22)'}}>{linkError==='cardmarket_cloudflare_blocked_try_later'?'Cardmarket durch Cloudflare blockiert. Link nicht gespeichert.':linkError.startsWith('wrong_set_url_expected_')||linkError==='resolved_product_belongs_to_other_set'?'Link gehört zu einem anderen Set. Bitte richtigen Produktlink verwenden.':linkError}</p>}
+   </section>
+   {entry.matched_set_ids.length>0&&<label style={{display:'grid',gap:5,fontSize:13}}><strong>Richtiges Produkt wählen</strong>
+    <select aria-label="Cardmarket-Produkt wählen" value={pid} onChange={e=>{setPid(e.target.value);setConfirmed(false)}}>
+     <option value="">Produkt auswählen</option>
+     {entry.matched_set_ids.map((id,i)=><option value={id} key={id}>{candidate(id)?.name||names[i]||entry.card_name} · ID {id}</option>)}
+    </select>
+   </label>}
+   {entry.matched_set_ids.length>0&&<label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Ich habe Karte, Set, Nummer, Sprache und genaue Druckvariante verglichen.</span></label>}
+   {error&&<p role="alert">{error}</p>}
+   <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+    {entry.matched_set_ids.length>0&&<button type="button" className="primaryButton" disabled={busy||!pid||!confirmed} onClick={()=>void save('CONFIRMED_PRINT')}>{busy?'Speichert …':'Zuordnung bestätigen'}</button>}
+    <button type="button" className="ghostButton" onClick={()=>setOtherActionsOpen(v=>!v)}>{otherActionsOpen?'Weitere Aktionen schließen':'Weitere Aktionen'}</button>
+   </div>
+   {otherActionsOpen&&<div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button type="button" className="ghostButton" disabled={busy} onClick={()=>void save('NO_MATCH')}>Kein passendes Produkt</button><button type="button" className="ghostButton" disabled={busy} onClick={()=>void save('DEFERRED')}>Zurückstellen</button></div>}
+   {detailsOpen&&<section style={{padding:12,border:'1px solid var(--border)',borderRadius:10,display:'grid',gap:8,fontSize:12}}>
+    <strong>Technische Details</strong>
+    <div>Cardyssey-ID: {entry.card_id} · Variante: {entry.variant_id}</div>
+    <div>Cardmarket-Set-ID: {entry.provider_expansion_id||'nicht zugeordnet'} · Kandidaten: {entry.matched_set_ids.length}</div>
+    <div>{detail?.reason||entry.recheckEvidence?.reason||'Automatische Identitätsprüfung noch offen.'}</div>
+    {scanIssue?.detail&&<div>Scanner: {scanIssue.status} · {scanIssue.detail}</div>}
+    {entry.recheckEvidence?.versionObserved&&<div>URL-Version: {entry.recheckEvidence.versionObserved} · Produkt {entry.recheckEvidence.versionProductId}</div>}
+    {detail?.action&&<div>Prüfhinweis: {detail.action}</div>}
+    {multipleSimilar&&<div>Ähnlich benannte Produkte können verschiedene Ausgaben sein. Nur anhand eindeutiger Druckmerkmale bestätigen.</div>}
+    <label style={{display:'grid',gap:5}}>Prüfnotiz (optional)<input maxLength={500} value={note} onChange={e=>setNote(e.target.value)} placeholder="Dein Nachweis / deine Anmerkung"/></label>
+    <small>Keine Preise werden durch eine reine Produktzuordnung veröffentlicht.</small>
+   </section>}
+  </>}
   {preview&&<div role="presentation" style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(0,0,0,.65)',display:'grid',placeItems:'center',padding:16}}>
    <section role="dialog" aria-modal="true" aria-label="Cardmarket-Produktprüfung bestätigen" style={{maxWidth:650,width:'100%',maxHeight:'88vh',overflowY:'auto',background:'var(--surface,#fff)',color:'var(--text,#17231b)',borderRadius:14,padding:22,display:'grid',gap:12}}>
-    <h3 style={{margin:0}}>Cardmarket-Produktprüfung – Vorschau</h3>
-    <div><strong>Deine Karte:</strong> {preview.cardName} #{preview.cardNumber} · Set {preview.cardSet} · {entry.language.toUpperCase()} · {preview.printType}</div>
-    <div><strong>Auf Cardmarket gefunden:</strong> {preview.productName}<div>ID: <strong>{preview.productId}</strong> · Cardmarket-Set-ID: {preview.expansionId}</div><div>Seitenüberschrift: {preview.pageHeading||'Keine lesbare Überschrift'}</div><div>{preview.pageBreadcrumbs?.join(' / ')}</div><a href={preview.productUrl} target="_blank" rel="noopener noreferrer">Geprüfte Produktseite öffnen</a></div>
-    <div style={{fontSize:13}}><strong>Offizieller Preisguide (nur Referenz):</strong> 30 Tage normal {euro(preview.guide?.avg30)} · Holo {euro(preview.guide?.['avg30-holo'])}<div><strong>Preis für {entry.language.toUpperCase()} / NM / exakten Druck:</strong> Noch nicht verifiziert. Erst nach gefiltertem Scan verfügbar.</div></div>
-    <div style={{display:'grid',gap:5,fontSize:13}}><strong>Wichtige Prüfhinweise</strong>{preview.warnings.map((w,i)=><div key={i}>• {w.replace('SET_ID_CONFLICT: ','Set-Konflikt: ').replace('PRODUCT_NOT_IN_PREVIOUS_CANDIDATES: ','Neuer Produktkandidat: ').replace('PRINT_UNVERIFIED: ','Druckprüfung: ').replace('LANGUAGE_UNVERIFIED: ','Sprache: ')}</div>)}</div>
+    <h3 style={{margin:0}}>Produktlink bestätigen</h3>
+    <div style={{fontSize:13}}><strong>Deine Karte:</strong> {preview.cardName} · #{preview.cardNumber} · {preview.cardSet} · {preview.printType}</div>
+    <div style={{fontSize:13}}><strong>Gefunden:</strong> {preview.productName} · Produkt {preview.productId}<div><a href={preview.productUrl} target="_blank" rel="noopener noreferrer">Produktseite öffnen und vergleichen</a></div></div>
+    {preview.warnings.length>0&&<div style={{fontSize:12,display:'grid',gap:4}}>{preview.warnings.map((w,i)=><div key={i}>{w.replace('SET_ID_CONFLICT: ','Set-Konflikt: ').replace('PRODUCT_NOT_IN_PREVIOUS_CANDIDATES: ','Neuer Produktkandidat: ').replace('PRINT_UNVERIFIED: ','Druck noch nicht geprüft: ').replace('LANGUAGE_UNVERIFIED: ','Sprache noch nicht geprüft: ')}</div>)}</div>}
     <label style={{display:'flex',gap:8,fontSize:13}}><input type="checkbox" checked={linkConfirm} onChange={e=>setLinkConfirm(e.target.checked)}/>Ich habe das Kartenbild, Set, die gedruckte Nummer, Edition, Holo/Reverse und Sprache selbst verglichen. Dieser Link gehört genau zur angezeigten Kartenvariante.</label>
     {hasMismatch&&<label style={{display:'flex',gap:8,fontSize:13}}><input type="checkbox" checked={mismatchConfirm} onChange={e=>setMismatchConfirm(e.target.checked)}/>Der bisherige automatische Kandidat/Set-Abgleich ist falsch oder unvollständig. Ich bestätige die abweichende Zuordnung ausdrücklich.</label>}
-    <div style={{display:'flex',justifyContent:'flex-end',flexWrap:'wrap',gap:10}}><button type="button" className="ghostButton" disabled={linkBusy} onClick={()=>setPreview(null)}>Abbrechen</button><button type="button" className="primaryButton" disabled={linkBusy||!linkConfirm||(hasMismatch&&!mismatchConfirm)} onClick={()=>void confirmLink()}>{linkBusy?'Speichert …':'Zuordnung bestätigen und als Lernbeispiel speichern'}</button></div>
+    <div style={{display:'flex',justifyContent:'flex-end',flexWrap:'wrap',gap:10}}><button type="button" className="ghostButton" disabled={linkBusy} onClick={()=>setPreview(null)}>Abbrechen</button><button type="button" className="primaryButton" disabled={linkBusy||!linkConfirm||(hasMismatch&&!mismatchConfirm)} onClick={()=>void confirmLink()}>{linkBusy?'Speichert …':'Link bestätigen'}</button></div>
     {linkError&&<p role="alert" style={{fontSize:13}}>{linkError}</p>}
    </section>
   </div>}
-  {entry.matched_set_ids.length>0?<label style={{display:'grid',gap:6}}>
-   <strong>Produkt erst auswählen, wenn du einen eindeutigen Beleg hast</strong>
-   <select value={pid} onChange={e=>{setPid(e.target.value);setConfirmed(false)}}>
-    <option value="">Bitte auswählen</option>
-    {entry.matched_set_ids.map((id,i)=><option key={id} value={id}>{candidate(id)?.name||names[i]||'Produktkandidat'} · Produkt {id}{candidate(id)?.addedAt?' · Aufnahme '+candidate(id)?.addedAt.slice(0,10):''}</option>)}
-   </select>
-  </label>:<p>Keine verlässliche Produkt-ID im zugeordneten Set. Erst Set/Produkt identifizieren; hier keinen Preis übernehmen.</p>}
-  {reference&&<p style={{fontSize:13}}>
-   <strong>Offizieller Cardmarket-Guide:</strong> 30 Tage normal {euro(reference.avg30)}
-   {' · '}30 Tage Holo {euro(reference.avg30_holo)} · Trend normal {euro(reference.trend)}
-   <br/><small>Produktbezogene Referenz, kein sprach-/NM-gefilterter Marktpreis.</small>
-  </p>}
-  <div className="filterRow">
-   <a target="_blank" rel="noopener noreferrer"
-    href={'https://www.cardmarket.com/'+entry.language+'/Pokemon/Products/Search?searchString='+encodeURIComponent((entry.card_name||'')+' '+(entry.printed_number||''))}>
-    Cardmarket-Suche öffnen
-   </a>
-  </div>
-  <label style={{display:'flex',gap:8,alignItems:'flex-start'}}>
-   <input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>
-   <span>Ich habe Set, Kartennummer, Sprache, Edition, Holo/Reverse und Sonderdruck auf der Produktseite mit dieser Karte abgeglichen.</span>
-  </label>
-  <label style={{display:'grid',gap:6}}>Prüfnotiz (optional)
-   <input maxLength={500} value={note} onChange={e=>setNote(e.target.value)}
-    placeholder="Beleg oder Abweichung notieren"/>
-  </label>
-  {error&&<p role="alert">{error}</p>}
-  <div className="filterRow" style={{gap:10}}>
-   <button type="button" className="primaryButton" disabled={busy||!pid||!confirmed}
-    onClick={()=>void save('CONFIRMED_PRINT')}>Druckidentität bestätigen</button>
-   <button type="button" className="ghostButton" style={buttonStyle} disabled={busy}
-    onClick={()=>void save('NO_MATCH')}>Kein passendes Produkt</button>
-   <button type="button" className="ghostButton" style={buttonStyle} disabled={busy}
-    onClick={()=>void save('DEFERRED')}>Ohne Nachweis zurückstellen</button>
-  </div>
-  <small>Eine Bestätigung wird als Prüfnachweis gespeichert. Sie veröffentlicht keinen sprachspezifischen NM-Preis.</small>
-  </>}
  </article>;
 }
