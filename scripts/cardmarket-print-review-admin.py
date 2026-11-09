@@ -48,10 +48,10 @@ def explain_identity(row,products):
                 'HOLO' in str(row.get('print_type') or '').upper()])
     same_metacard=len(candidates)>1 and len({x['metacardId'] for x in candidates})==1 and bool(candidates[0]['metacardId'])
     if len(ids)>1:
-        reason=f"{len(ids)} Cardmarket-Produkte gehören zum gleichen geprüften Set."
+        reason=f"{len(ids)} Cardmarket-Produkte gehören laut Katalog zum gleichen zugeordneten Set, aber die gedruckte Kartennummer ({row.get('printed_number') or '?'}) ist für keine dieser Produkt-IDs durch den offiziellen Feed bestätigt."
         if same_metacard: reason+=' Sie teilen sogar dieselbe Metakarten-ID; der Produktfeed nennt keinen belastbaren Druck-Unterschied.'
         else: reason+=' Der Produktfeed löst die Druckvariante nicht eindeutig auf.'
-        action='Nicht anhand der ID oder des Aufnahmedatums raten. Erst anhand eindeutiger Produktseiten, Bilder und Kartennummer prüfen; falls dort kein Unterschied erkennbar ist, offenlassen.'
+        action='Jeden Kandidaten über seinen ID-Direktlink öffnen; Set-Kürzel, Kartennummer, V1/V2, Illustration und tatsächliche Angebotssprache vergleichen. Wenn die Produktseite keine Unterscheidung zulässt, offenlassen.'
         kind='CATALOG_DUPLICATE'
     elif len(ids)==1 and special:
         reason='Ein Produkt ist dem Set zugeordnet, aber Holo, Reverse, Edition oder Sonderdruck wurde durch die Quelle nicht bestätigt.'
