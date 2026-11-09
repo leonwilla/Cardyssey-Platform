@@ -1,4 +1,4 @@
-﻿# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
+# Cardyssey Cardmarket browser review. Uses the pre-authenticated, dedicated
 # Chrome profile via localhost CDP. Does not export credentials or cookies.
 param(
   [ValidateSet('de','en')]
@@ -260,7 +260,10 @@ foreach ($case in $cases) {
   # Retry those exactly once using official catalog English names.
   $newSearchAvailable=([string]$case.catalog_singleton_id -match '^[0-9]+$')
   $searchNotYetUpgraded=([string]$prev.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and
-      $newSearchAvailable -and [string]$prev.lookup_strategy -ne 'CATALOG_NAME_FIRST_V1')
+      $newSearchAvailable -and [string]$prev.lookup_strategy -notin @('CATALOG_NAME_FIRST_V1','LOADED_RESULTS_CHECK_V2'))
+  $legacyEmptyResult=([string]$prev.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and
+      [int]$prev.search_hits -eq 0 -and
+      [string]$prev.lookup_strategy -ne 'LOADED_RESULTS_CHECK_V2')
   # A human-corrected link must be rescanned even if the old translated-name
   # lookup was recently marked as completed or failed.
   $manualRefreshDue=$false
@@ -275,7 +278,7 @@ foreach ($case in $cases) {
      [string]$case.known_url -and [string]$prev.url -and
      ([string]$prev.url).Split('?')[0] -ne ([string]$case.known_url).Split('?')[0])
   if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
-       -not $searchNotYetUpgraded -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
+       -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
@@ -310,6 +313,10 @@ try {
       }catch{$manualRequested=$true}
     }
     if($manualRequested){$priority.Add($item)}
+    elseif ($prior -and [string]$prior.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and [int]$prior.search_hits -eq 0) {
+      # Never let the old 8,902 false zero-results starve new cards.
+      $retry.Add($item)
+    }
     elseif ($prior -and [string]$prior.status -like 'DEFERRED*') {
       $oldEnough=$false
       try { $oldEnough=([datetime]::Parse([string]$prior.seen_at).ToUniversalTime() -lt $nowUtc.AddHours(-2)) } catch {}
@@ -333,7 +340,7 @@ try {
     $out = [ordered]@{
       key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
-      lookup_strategy='CATALOG_NAME_FIRST_V1';
+      lookup_strategy='LOADED_RESULTS_CHECK_V2';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
       price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
       access_mode='UNKNOWN';search_cache_hit=$false;observed_url_version='';language_offers_observed=$false;seen_at=[DateTime]::UtcNow.ToString('o')
@@ -434,9 +441,14 @@ try {
             $links = @($searchResult.links)
             if($links.Count -eq 0){
               $out.search_results_unverified_empty=$true
+              # Keep an empty search result as unverified; retry later.
+              # Previously 8,902 cards were incorrectly recorded as missing.
+              $out.error='ASYNC_SEARCH_RESULT_EMPTY_OR_NOT_LOADED'
             }
-            if ($searchCache.Count -ge 250) { $searchCache.Clear() }
-            $searchCache[$searchUrl] = $links
+            if ($links.Count -gt 0) {
+              if ($searchCache.Count -ge 250) { $searchCache.Clear() }
+              $searchCache[$searchUrl] = $links
+            }
           }
           $out.search_hits = $links.Count
           $out.query=[string]$queryText
@@ -636,7 +648,8 @@ try {
           }
         }
       } else {
-        $out.status = if ($likely.Count -gt 1) { 'MULTIPLE_SEARCH_HITS' } else { 'NO_EXACT_NUMBER_SEARCH_HIT' }
+        $out.status = if ($likely.Count -gt 1) { 'MULTIPLE_SEARCH_HITS' } elseif ($out.search_results_unverified_empty -eq $true) { 'DEFERRED_SEARCH_RESULTS_UNVERIFIED' } else { 'NO_EXACT_NUMBER_SEARCH_HIT' }
+        if ($out.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT') { $out.error='NAME_NUMBER_TEXT_SEARCH_NOT_CONCLUSIVE' }
         ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
       }
     } catch {
