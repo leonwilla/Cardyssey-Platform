@@ -47,6 +47,29 @@ class Tests(unittest.TestCase):
    self.assertEqual(fail.list_failures(b,'de',kind='alle')['total'],2)
  def test_other_sets_are_not_auto_exempt(self):
   self.assertEqual(fail.classify('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE',{'product_id':'907963','identity_confirmed':True},{'set_id':'other','cardmarket_ids':'907963','known_url':'https://example.com'}),'TECHNISCH')
+ def test_confirmed_card_disappears_from_current_and_historical_review(self):
+  with tempfile.TemporaryDirectory() as td:
+   b=self.setup(td)
+   t=datetime(2026,11,9,19,30,tzinfo=timezone.utc)
+   with (b/'browser-observations-de.jsonl').open('w') as f:
+    f.write(json.dumps({'card_id':'hgss3-5','variant_id':'v1','status':'MULTIPLE_SEARCH_HITS','seen_at':t.isoformat()})+'\n')
+   decisions={('hgss3-5','v1'):{'status':'CONFIRMED_PRINT','reviewedAt':(t+timedelta(minutes=20)).isoformat()}}
+   self.assertEqual(fail.list_failures(b,'de',kind='karten',decisions=decisions)['total'],0)
+   self.assertEqual(fail.list_failures(b,'de',scope='all',kind='alle',decisions=decisions)['total'],0)
+   self.assertEqual(fail.list_failures(b,'de',kind='karten',decisions={})['total'],1)
+ def test_human_confirmation_outweighs_later_name_only_failure(self):
+  t=datetime(2026,11,9,19,30,tzinfo=timezone.utc)
+  decision={'status':'CONFIRMED_PRINT','reviewedAt':t.isoformat(),'selectedProductId':'273703'}
+  later=(t+timedelta(minutes=3)).isoformat()
+  self.assertTrue(fail.resolved_after_scan({'seen_at':later,'status':'MULTIPLE_SEARCH_HITS','product_id':''},decision))
+  self.assertTrue(fail.resolved_after_scan({'seen_at':later,'status':'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED','product_id':'273703'},decision))
+  self.assertFalse(fail.resolved_after_scan({'seen_at':later,'status':'PRODUCT_ID_NOT_VERIFIED_FOR_CARD','product_id':'999999'},decision))
+ def test_new_scan_after_confirmation_remains_visible(self):
+  t=datetime(2026,11,9,19,30,tzinfo=timezone.utc)
+  decision={'status':'CONFIRMED_PRINT','reviewedAt':t.isoformat()}
+  obs={'seen_at':(t+timedelta(minutes=5)).isoformat()}
+  self.assertFalse(fail.resolved_after_scan(obs,decision))
+  self.assertTrue(fail.resolved_after_scan({'seen_at':(t-timedelta(seconds=10)).isoformat()},decision))
  def test_retry_only_requested_variant(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.setup(td);r=retry.retry('de','hgss3-5','v1',base=b)

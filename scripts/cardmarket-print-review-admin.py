@@ -265,8 +265,14 @@ def list_cases(data):
     products=official_product_details()
     user_links_path=Path('/home/tv/cardshop/config/cardmarket-user-reference-links.json')
     user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
+    print_hints_path=Path('/home/tv/cardshop/config/cardmarket-known-print-page-hints.json')
+    print_hints=json.loads(print_hints_path.read_text(encoding='utf-8')) if print_hints_path.exists() else {}
     for row in result.get('items') or []:
-        row['suggested_product_url']=user_links.get(row['card_id'])
+        hint_set=print_hints.get(row['card_id']) or {}
+        hint=(hint_set.get('variants') or {}).get(row['variant_id'])
+        from_hint=('https://www.cardmarket.com/'+row['language']+'/Pokemon/Products/Singles/'+
+                   hint_set['setSlug']+'/'+hint['slug']) if hint else None
+        row['suggested_product_url']=user_links.get(row['card_id']) or from_hint
         row['diagnosis']=explain_identity(row,products)
         evidence=(reaudit or {}).get('cases',{}).get(row['card_id']+'|'+row['variant_id'])
         if evidence:

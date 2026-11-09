@@ -103,3 +103,29 @@ problem and must never be hidden. A valid product ID is not sufficient proof
 of the exact 30th stamp's offer price; incomplete price medians are not
 published. The categorization runs over the newest scanned observations and
 updates on each UI refresh; the scan engine/price observations are unchanged.
+
+## Basep set fix and closing completed scan reports (2026-11-09)
+
+The user reported a false `SET_NOT_VERIFIED` for the known Wizards Black Star
+Promos set `basep` and an unrelated Base Set Pikachu BS58 URL. The official
+Cardmarket singles catalog associates *Pikachu [Growl | Thundershock]* product
+`275420` with expansion `1607`; the matching Cardmarket product page is
+`/Wizards-Black-Star-Promos/Pikachu-WP1` (collector number WP1, not BS58).
+The explicit set override `basep => 1607` is persisted in
+`config/cardmarket-verified-set-overrides.json`, evaluated by the recurring
+catalog crosswalk so the set is no longer called "not verified" merely because
+there are same-name Pikachu products at multiple promo card numbers. Every
+variant of `basep-1` gets the human-known *card-page* URL as a search hint;
+this does **not** confirm its specific tail/grey star/1st-edition-error stamp
+or language and never approves a price. The link is surfaced in the compact
+review with an "Link übernehmen" control. A BS58 URL is rejected for WP1,
+with the expected set name shown instead of a generic error.
+
+The live-failure listing previously joined the latest scanner observation
+without checking later human review decisions. That displayed Machomei
+`base1-8` as open despite a confirmed exact print `273703`. The list now
+compares decisions from `cardmarket_print_identity_review` by exact language,
+card and physical variant; historical failures disappear after a human
+confirmation. A later scanner's unresolved name-only result does not undo a
+confirmed physical print, but a new observed *different* concrete product ID
+is still shown as a genuine conflict. All old observations and prices remain.

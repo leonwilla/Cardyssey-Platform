@@ -3,18 +3,68 @@
     "setSlug": "Wizards-Black-Star-Promos",
     "collectorSuffix": "WP4",
     "variants": {
-      "3a83wf50ts0izkobrpvrjbdwt": {"slug": "Pikachu-WP4", "evidence": "Shared Wizards WP4 page for the first-movie promo; film-stamp details must still be verified per physical listing", "printVerified": false},
-      "us0ioug2avlzsvzo3l1p89ztq94zgllrr": {"slug": "Pikachu-WP4", "evidence": "User identified WP4 as only card page; inverted First Movie stamp has no separate verified product page; never price as ordinary movie stamp", "printVerified": false}
+      "3a83wf50ts0izkobrpvrjbdwt": {
+        "slug": "Pikachu-WP4",
+        "evidence": "Shared Wizards WP4 page for the first-movie promo; film-stamp details must still be verified per physical listing",
+        "printVerified": false
+      },
+      "us0ioug2avlzsvzo3l1p89ztq94zgllrr": {
+        "slug": "Pikachu-WP4",
+        "evidence": "User identified WP4 as only card page; inverted First Movie stamp has no separate verified product page; never price as ordinary movie stamp",
+        "printVerified": false
+      }
     }
   },
   "base3-1": {
     "setSlug": "Fossil",
     "collectorSuffix": "FO1",
     "variants": {
-      "113thq6t8j5zpn9aq2h12bi21oykxyl2": {"slug": "Aerodactyl-V1-FO1", "evidence": "User supplied normal Fossil Aerodactyl version 1; first-edition filter required", "printVerified": false},
-      "677yasikk9iggi3g0o8t": {"slug": "Aerodactyl-V1-FO1", "evidence": "User supplied normal Fossil Aerodactyl version 1; unlimited edition", "printVerified": false},
-      "qi4hl156ztevhio39njr8t2eqgmqjdlals": {"slug": "Aerodactyl-V3-FO1", "evidence": "User supplied prerelease Aerodactyl version 3; starlight foil must be verified separately", "printVerified": false},
-      "zvav3mvrt9wtug63acxg33o45wg391y": {"slug": "Aerodactyl-V3-FO1", "evidence": "User supplied prerelease Aerodactyl version 3; cosmos foil must be verified separately", "printVerified": false}
+      "113thq6t8j5zpn9aq2h12bi21oykxyl2": {
+        "slug": "Aerodactyl-V1-FO1",
+        "evidence": "User supplied normal Fossil Aerodactyl version 1; first-edition filter required",
+        "printVerified": false
+      },
+      "677yasikk9iggi3g0o8t": {
+        "slug": "Aerodactyl-V1-FO1",
+        "evidence": "User supplied normal Fossil Aerodactyl version 1; unlimited edition",
+        "printVerified": false
+      },
+      "qi4hl156ztevhio39njr8t2eqgmqjdlals": {
+        "slug": "Aerodactyl-V3-FO1",
+        "evidence": "User supplied prerelease Aerodactyl version 3; starlight foil must be verified separately",
+        "printVerified": false
+      },
+      "zvav3mvrt9wtug63acxg33o45wg391y": {
+        "slug": "Aerodactyl-V3-FO1",
+        "evidence": "User supplied prerelease Aerodactyl version 3; cosmos foil must be verified separately",
+        "printVerified": false
+      }
+    }
+  },
+  "basep-1": {
+    "setSlug": "Wizards-Black-Star-Promos",
+    "collectorSuffix": "WP1",
+    "variants": {
+      "23hmnvtwdrr6jf51awzjk0vcmfgo": {
+        "slug": "Pikachu-WP1",
+        "evidence": "Wizards Black Star Promo #1 product page. Tail stamp print remains unverified.",
+        "printVerified": false
+      },
+      "3a83wf50txqozws4btmootyde": {
+        "slug": "Pikachu-WP1",
+        "evidence": "Wizards Black Star Promo #1 product page. Grey star print remains unverified.",
+        "printVerified": false
+      },
+      "endfynwn4n10gzq": {
+        "slug": "Pikachu-WP1",
+        "evidence": "Wizards Black Star Promo #1 product page. Print remains unverified.",
+        "printVerified": false
+      },
+      "zqq5g2u9n315kaa1q7ordzv42kgf7pxg": {
+        "slug": "Pikachu-WP1",
+        "evidence": "Wizards Black Star Promo #1 product page. First-edition-error print cannot be proven by general WP1 page.",
+        "printVerified": false
+      }
     }
   }
 }

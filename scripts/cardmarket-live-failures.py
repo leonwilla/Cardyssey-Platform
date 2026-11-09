@@ -2,7 +2,7 @@
 """Paginated admin-only scan failures, read directly from scanner JSONL logs.
 The worklist remains distinct from catalog print review. No guesses or writes.
 """
-import argparse,csv,json,importlib.util
+import argparse,csv,json,importlib.util,subprocess
 from datetime import datetime,timezone
 from pathlib import Path
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
@@ -31,7 +31,40 @@ def classify(status,entry=None,queue=None):
     if status.startswith('COMPLETE_') or status in ('STARTED','RUNNING'):return None
     return 'ZUORDNUNG'
 
-def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten'):
+def reviewed_decisions(language):
+    """Current decisions for exact (card, physical variant), DB read only."""
+    if language not in ('de','en'):raise ValueError('invalid_language')
+    sql=("SELECT card_id,variant_id,status,reviewed_at::text,COALESCE(selected_product_id,'') "
+         "FROM cardmarket_print_identity_review WHERE language_code='"+language+
+         "' AND status IN ('CONFIRMED_PRINT','NO_MATCH','DEFERRED') AND reviewed_at IS NOT NULL")
+    try:
+        p=subprocess.run(['docker','exec','cardyssey-db','psql','-X','-qAt','-v','ON_ERROR_STOP=1','-F','|','-U','cardyssey','-d','cardyssey','-c',sql],
+                         capture_output=True,text=True,check=True,timeout=12)
+    except (subprocess.SubprocessError,OSError):return {}
+    out={}
+    for line in p.stdout.splitlines():
+        fields=line.split('|')
+        if len(fields)==5:out[(fields[0],fields[1])]={'status':fields[2],'reviewedAt':fields[3],'selectedProductId':fields[4]}
+    return out
+
+def resolved_after_scan(observation,decision):
+    if not decision or decision.get('status') not in ('CONFIRMED_PRINT','NO_MATCH','DEFERRED'):return False
+    # Once the exact physical print has been human-confirmed, a subsequent
+    # name-only/no-result browser failure does not erase that confirmation.
+    # A NEW positive contradictory product ID is still surfaced for debugging.
+    if decision['status']=='CONFIRMED_PRINT':
+        product=str(observation.get('product_id') or '')
+        chosen=str(decision.get('selectedProductId') or '')
+        if chosen and (not product or product==chosen):return True
+    try:
+        reviewed=datetime.fromisoformat(str(decision['reviewedAt']).replace('Z','+00:00'))
+        seen=datetime.fromisoformat(str(observation.get('seen_at') or '').replace('Z','+00:00'))
+        if reviewed.tzinfo is None:reviewed=reviewed.replace(tzinfo=timezone.utc)
+        if seen.tzinfo is None:seen=seen.replace(tzinfo=timezone.utc)
+        return reviewed>=seen
+    except (TypeError,ValueError):return False
+
+def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten',decisions=None):
     if language not in ('de','en'):raise ValueError('invalid_language')
     if scope not in ('current','all'):raise ValueError('invalid_scope')
     if kind not in ('karten','preise','technik','alle'):raise ValueError('invalid_kind')
@@ -59,8 +92,10 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
     queue={}
     with (base/f'queue-{language}.csv').open(encoding='utf-8-sig',newline='') as f:
         for r in csv.DictReader(f):queue[(r.get('cardyssey_karte'),r.get('variante_id'))]=r
+    if decisions is None:decisions=reviewed_decisions(language) if base==BASE else {}
     output=[]
     for key,entry in rows.items():
+        if resolved_after_scan(entry,decisions.get(key)):continue
         status=str(entry.get('status') or '')
         q=queue.get(key,{})
         group=classify(status,entry,q)

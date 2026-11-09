@@ -5,10 +5,11 @@ sp=importlib.util.spec_from_file_location('print_hints',ROOT/'cardmarket-apply-p
 class Tests(unittest.TestCase):
  def test_known_urls_are_never_print_verified(self):
   data=json.loads((ROOT.parent/'config/cardmarket-known-print-page-hints.json').read_text())
-  self.assertEqual(set(data),{'basep-4','base3-1'})
+  self.assertEqual(set(data),{'basep-1','basep-4','base3-1'})
   for card,rule in data.items():
    for variant,x in rule['variants'].items():
     self.assertFalse(x['printVerified']);self.assertTrue(x['slug'].endswith(rule['collectorSuffix']))
+  self.assertEqual(data['basep-1']['variants']['zqq5g2u9n315kaa1q7ordzv42kgf7pxg']['slug'],'Pikachu-WP1')
   self.assertEqual(data['basep-4']['variants']['us0ioug2avlzsvzo3l1p89ztq94zgllrr']['slug'],'Pikachu-WP4')
   self.assertEqual(data['base3-1']['variants']['qi4hl156ztevhio39njr8t2eqgmqjdlals']['slug'],'Aerodactyl-V3-FO1')
   self.assertEqual(data['base3-1']['variants']['677yasikk9iggi3g0o8t']['slug'],'Aerodactyl-V1-FO1')

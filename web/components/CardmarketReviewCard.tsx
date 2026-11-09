@@ -108,7 +108,7 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
    <div style={{display:'grid',gap:7}}>
     <strong style={{fontSize:13}}>Gefundene Cardmarket-Produktseiten</strong>
     {entry.matched_set_ids.length>0?<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{entry.matched_set_ids.map(id=><a key={id} href={productLink(id)} target="_blank" rel="noopener noreferrer" style={{fontSize:13,padding:'8px 10px',border:'1px solid var(--border)',borderRadius:9,fontWeight:600}}>Produkt {id} ansehen</a>)}</div>:<span style={{fontSize:13,opacity:.75}}>Kein geprüfter Produktlink gefunden.</span>}
-    {entry.suggested_product_url&&<a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Bereits vorgeschlagene Produktseite ansehen</a>}
+    {entry.suggested_product_url&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>Gefundene Produktseite öffnen</a><button type="button" className="ghostButton" onClick={()=>setManualUrl(entry.suggested_product_url||'')}>Link übernehmen</button></div>}
     <a href={searchUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Auf Cardmarket suchen</a>
    </div>
    <section style={{display:'grid',gap:8}}>
@@ -117,7 +117,7 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
      <input style={{flex:'1 1 280px',minWidth:0}} value={manualUrl} onChange={e=>setManualUrl(e.target.value)} placeholder="Cardmarket-Produktlink hier einfügen …" aria-label="Cardmarket-Produktlink" />
      <button type="button" className="primaryButton" disabled={linkBusy||!manualUrl.trim()} onClick={()=>void checkLink()}>{linkBusy?'Prüft …':'Link prüfen'}</button>
     </div>
-    {linkError&&<p role="alert" style={{fontSize:13,margin:0,color:'var(--danger,#a22)'}}>{linkError==='cardmarket_cloudflare_blocked_try_later'?'Cardmarket durch Cloudflare blockiert. Link nicht gespeichert.':linkError.startsWith('wrong_set_url_expected_')||linkError==='resolved_product_belongs_to_other_set'?'Link gehört zu einem anderen Set. Bitte richtigen Produktlink verwenden.':linkError}</p>}
+    {linkError&&<p role="alert" style={{fontSize:13,margin:0,color:'var(--danger,#a22)'}}>{linkError==='cardmarket_cloudflare_blocked_try_later'?'Cardmarket durch Cloudflare blockiert. Link nicht gespeichert.':linkError.startsWith('wrong_set_url_expected_')?'Falsches Set: Der Link gehört nicht zu '+(linkError.replace('wrong_set_url_expected_','').replaceAll('-',' '))+'. Bitte die vorgeschlagene Produktseite für '+entry.set_id+' verwenden.':linkError==='resolved_product_belongs_to_other_set'?'Der Link führt zu einer Karte aus einem anderen Set. Bitte den passenden Set-Link verwenden.':linkError}</p>}
    </section>
    {entry.matched_set_ids.length>0&&<label style={{display:'grid',gap:5,fontSize:13}}><strong>Richtiges Produkt wählen</strong>
     <select aria-label="Cardmarket-Produkt wählen" value={pid} onChange={e=>{setPid(e.target.value);setConfirmed(false)}}>

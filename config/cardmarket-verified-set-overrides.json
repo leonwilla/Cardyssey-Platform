@@ -8,5 +8,10 @@
     "expansionId": "1523",
     "slug": "Base-Set",
     "reason": "Cardmarket /Base-Set/Machamp-V1-BS8 belongs to Base Set; catalog name-only heuristic incorrectly chose Expansion Pack idExpansion 4169; official base1 printed collector number 8/102."
+  },
+  "basep": {
+    "expansionId": "1607",
+    "slug": "Wizards-Black-Star-Promos",
+    "reason": "Official product catalog Pikachu WP1 idProduct 275420 belongs to expansion 1607; Cardmarket official set page lists Pikachu WP1. This proves set not specific 1st-edition-error print."
   }
 }
