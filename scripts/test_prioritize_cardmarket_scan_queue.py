@@ -35,6 +35,13 @@ class PriorityTests(unittest.TestCase):
         out=module.prioritize([row],cache)[0]
         self.assertEqual(out["scan_tier"],4)
         self.assertEqual(out["needs_price"],"NO")
+    def test_missing_bulk_stays_feed_only(self):
+        row={"cardyssey_karte":"bulk","variante_id":"v","set_id":"x", "sonderdruck":"","foil":"","stempel":"[]"}
+        cache=[{"card_id":"bulk","variant_id":"v","status":"NO_PRICE", "price":0, "rarity":"Häufig"}]
+        out=module.prioritize([row],cache)[0]
+        self.assertEqual(out['scan_tier'],4)
+        self.assertEqual(out['needs_price'],'YES')
+
     def test_one_row_one_variant(self):
         rows=[{"cardyssey_karte":"a","variante_id":"1","set_id":"s","sonderdruck":"","foil":"","stempel":""},
               {"cardyssey_karte":"a","variante_id":"2","set_id":"s","sonderdruck":"","foil":"","stempel":""}]

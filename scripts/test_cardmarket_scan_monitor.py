@@ -12,7 +12,7 @@ class ScanMonitorTests(unittest.TestCase):
    with (p/'browser-observations-de.jsonl').open('w') as f:
     for x in [{'card_id':'a','variant_id':'v1','status':'ERROR'},{'card_id':'a','variant_id':'v1','status':'NO_EXACT_NUMBER_SEARCH_HIT'}]:f.write(json.dumps(x)+'\n')
    result=snapshot(p,'de');self.assertEqual(result['totalVariants'],3);self.assertEqual(result['uniqueCards'],2)
-   self.assertEqual(result['browserTotal'],2);self.assertEqual(result['browserProcessed'],1)
+   self.assertEqual(result['browserTotal'],3);self.assertEqual(result['browserProcessed'],1)
    self.assertEqual(result['feedOnly'],1);self.assertEqual(result['problemCountInObserved'],1)
  def test_language_allowlist(self):
   with self.assertRaises(ValueError):snapshot(Path('.'),'other')

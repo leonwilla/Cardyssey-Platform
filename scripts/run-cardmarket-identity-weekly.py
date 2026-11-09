@@ -33,8 +33,19 @@ def main():
     for lang in ("de","en"):
         result=run(ROOT/"scripts/export-cardmarket-full-queue.py","--language",lang,"--output",BASE/f"queue-{lang}.csv")
         report[lang]=json.loads(result)
+        # Critical: exporter emits needs_price=YES as a placeholder. Never
+        # feed that unprioritized raw CSV to the browser scanner again.
+        report[lang]['prioritization']=json.loads(run(
+            ROOT/'scripts/prioritize-cardmarket-scan-queue.py',
+            '--language',lang,'--queue',BASE/f'queue-{lang}.csv',
+            '--output',BASE/f'queue-{lang}.csv'))
     result=run(ROOT/"scripts/build-cardmarket-identity-worklist.py")
     report["worklist"]=json.loads(result)
+    # Set-verified catalog singleton hints reduce costly translated-name
+    # searches. These are CANDIDATES only, never print-verified prices.
+    for lang in ('de','en'):
+        report[lang]['lookup_hints']=json.loads(run(
+            ROOT/'scripts/cardmarket-enrich-queue-hints.py','--language',lang))
     report["review_stage"]=json.loads(run(ROOT/"scripts/sync-cardmarket-print-review.py",*(["--apply"] if a.apply else [])))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(

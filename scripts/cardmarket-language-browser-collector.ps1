@@ -8,6 +8,7 @@ param(
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
   [int]$DelaySeconds = 8,
+  [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [switch]$ForcePublicMode  # diagnostic: use public behavior even if signed in
 )
@@ -37,6 +38,14 @@ $resultsPath  = Join-Path $OutputDir "browser-observations-$Language.jsonl"
 $unverifyPath = Join-Path $OutputDir "unverified-candidates-$Language.jsonl"
 $progressPath = Join-Path $OutputDir "progress-$Language.json"
 $errorPath    = Join-Path $OutputDir "connection-errors-$Language.jsonl"
+$setSlugGuards = @{}
+$setGuardFile=Join-Path $OutputDir 'verified-set-url-guards.json'
+if(Test-Path $setGuardFile){
+  try {
+    $guardJson=Get-Content -Raw -Encoding UTF8 $setGuardFile | ConvertFrom-Json
+    foreach($g in $guardJson.PSObject.Properties){$setSlugGuards[$g.Name]=[string]$g.Value}
+  }catch{throw 'Bad verified-set-url-guards.json'}
+}
 
 # --- CDP-Empfang: nativer Pump-Thread (kein PowerShell-Runspace noetig) --------
 # Der ReceiveAsync wird NIE abgebrochen (keine Timeout-Cancellation), damit der
@@ -178,9 +187,14 @@ function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) 
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------
 $allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
-# Already priced bulk uses the existing price-guide/feed path, not browser.
-$cases = @($allCases | Where-Object { -not ([string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO') })
-$bulkFeedOnly = $allCases.Count - $cases.Count
+# Identity is needed for ALL variants, even when they already have a price.
+# Priced bulk skips the costly offer pagination but still gets ID/URL mapping.
+$cases = if ($ScanMode -eq 'missing') {
+  @($allCases | Where-Object { [string]$_.needs_price -eq 'YES' })
+} else { $allCases }
+$bulkFeedOnly = @($allCases | Where-Object {
+  [string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO'
+}).Count
 $runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
 
 $processed = [Collections.Generic.HashSet[string]]::new()
@@ -220,7 +234,13 @@ foreach ($case in $cases) {
   $refreshDays = if ($tier -in @('0','1')) { 7 } elseif ($tier -eq '2') { 14 } else { 30 }
   $isRecent = $false
   try { $isRecent = ([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $nowUtc.AddDays(-$refreshDays)) } catch {}
-  if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and $isRecent)) {
+  # The previous translated-name search was frequently a false negative.
+  # Retry those exactly once using official catalog English names.
+  $newSearchAvailable=([string]$case.catalog_singleton_id -match '^[0-9]+$')
+  $searchNotYetUpgraded=([string]$prev.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and
+      $newSearchAvailable -and [string]$prev.lookup_strategy -ne 'CATALOG_NAME_FIRST_V1')
+  if (($prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
+       -not $searchNotYetUpgraded -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
@@ -261,11 +281,15 @@ try {
     $caseTimer=[Diagnostics.Stopwatch]::StartNew()
 
     # Bulk-Karten: Preisstufe ueberspringen, ID-/URL-Mapping NICHT (Punkt 3).
-    $priceNeeded = -not ([string]$case.scan_tier -eq '4' -and [string]$case.needs_price -eq 'NO')
+    # Collect filtered offers on the SAME validated product page if this is
+    # a valuable/special print or currently unpriced. Already priced bulk
+    # still needs product identity, but not another costly offer scan.
+    $priceNeeded = [string]$case.scan_tier -ne '4' -or [string]$case.needs_price -eq 'YES' 
 
     $out = [ordered]@{
       key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;
       set_id=$case.set_id;language=$Language;status='STARTED';query='';product_id='';url='';
+      lookup_strategy='CATALOG_NAME_FIRST_V1';
       offers_seen=0;verified_lang_nm_offers=0;sample_median_eur=$null;
       price_basis='VISIBLE_PAGE_ONLY_NOT_ALL_OFFERS_NOT_SOLD';all_pages_complete=$false;median_all_offers_eur=$null;identity_confirmed=$false;
       access_mode='UNKNOWN';search_cache_hit=$false;observed_url_version='';language_offers_observed=$false;seen_at=[DateTime]::UtcNow.ToString('o')
@@ -315,46 +339,73 @@ try {
         $out.search_hits = 1
         $likely = @([pscustomobject]@{url=$savedUrl;text="$name $number"})
       } else {
-        $searchPath = $LangCfg.PathPrefix + '/Products/Search'
-        $encoded = [uri]::EscapeDataString($out.query)
-        $searchUrl = 'https://www.cardmarket.com' + $searchPath + '?searchString=' + $encoded
-        if ($searchCache.ContainsKey($searchUrl)) {
-          # Reuse only public search-result links for the exact SAME query;
-          # never reuse filtered offer rows, prices or variant conclusions.
-          $links=@($searchCache[$searchUrl])
-          $out.search_cache_hit=$true
-          $searchCacheHits++
-        } else {
-          $searchCacheMisses++
-          if (!(Move-To $searchUrl)) {
-            # A single slow search should not abort all remaining cards.
-            # Persist a deferral so that the next scheduled run can retry.
-            $out.status='DEFERRED_PROVIDER_TIMEOUT'
-            $out.error='SEARCH_PAGE_TIMEOUT'
-            ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
-            $consecutiveProviderTimeouts++
-            Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
-            if ($consecutiveProviderTimeouts -ge 3) {
-              Save-Progress $processed.Count $runTotal 'PROVIDER_TIMEOUT' $case.cardyssey_karte
+        # Prefer the official catalog's product name, NOT the translated
+        # Cardyssey name. Cardmarket's search rarely indexes localized card
+        # names plus collector numbers in the same query.
+        $catalogName=[string]$case.catalog_search_name
+        $searchQueries = @($out.query)
+        if (![string]::IsNullOrWhiteSpace($catalogName) -and
+            [string]$case.catalog_singleton_id -match '^[0-9]+$') {
+          $searchQueries=@($catalogName,$out.query)
+        }
+        $likely=@()
+        foreach($queryText in $searchQueries){
+          $searchPath = $LangCfg.PathPrefix + '/Products/Search'
+          $encoded = [uri]::EscapeDataString([string]$queryText)
+          $searchUrl = 'https://www.cardmarket.com' + $searchPath + '?searchString=' + $encoded
+          if ($searchCache.ContainsKey($searchUrl)) {
+            $links=@($searchCache[$searchUrl]);$out.search_cache_hit=$true;$searchCacheHits++
+          } else {
+            $searchCacheMisses++
+            if (!(Move-To $searchUrl)) {
+              $out.status='DEFERRED_PROVIDER_TIMEOUT'
+              $out.error='SEARCH_PAGE_TIMEOUT'
+              ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+              $consecutiveProviderTimeouts++
+              Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+              if ($consecutiveProviderTimeouts -ge 3) {
+                Save-Progress $processed.Count $runTotal 'PROVIDER_TIMEOUT' $case.cardyssey_karte
+                break
+              }
+              Start-Sleep -Seconds ([Math]::Max(10,$DelaySeconds))
+              continue
+            }
+            $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
+            # Cardmarket's result list is injected AFTER document.readyState
+            # becomes complete. Reading immediately caused thousands of false
+            # NO_EXACT_NUMBER_SEARCH_HIT records with search_hits=0.
+            $searchResult=$null
+            for($loadTry=0;$loadTry -lt 18;$loadTry++) {
+              $searchResult = (Js $searchExpr 12) | ConvertFrom-Json
+              if($searchResult.blocked -or @($searchResult.links).Count -gt 0) { break }
+              Start-Sleep -Milliseconds 400
+            }
+            if ($searchResult.blocked) {
+              Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
               break
             }
-            Start-Sleep -Seconds ([Math]::Max(10,$DelaySeconds))
-            continue
+            $consecutiveProviderTimeouts=0
+            $links = @($searchResult.links)
+            if($links.Count -eq 0){
+              $out.search_results_unverified_empty=$true
+            }
+            if ($searchCache.Count -ge 250) { $searchCache.Clear() }
+            $searchCache[$searchUrl] = $links
           }
-          $searchExpr = 'JSON.stringify({title:document.title,blocked:/captcha|robot check|access denied|zugriff verweigert|too many requests/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
-          $searchResult = (Js $searchExpr 12) | ConvertFrom-Json
-          if ($searchResult.blocked) {
-            Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
-            break
+          $out.search_hits = $links.Count
+          $out.query=[string]$queryText
+          if ($queryText -eq $catalogName -and
+              [string]$case.catalog_singleton_id -match '^[0-9]+$') {
+            # Candidate ID must STILL be independently checked on the page.
+            # Do not infer print identity from a product title alone.
+            $likely=@($links | Select-Object -First 6)
+          } else {
+            $likely=@($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
           }
-          $consecutiveProviderTimeouts=0
-          $links = @($searchResult.links)
-          # Bounded per-run cache. Reuse discovery, NEVER per-card price data.
-          if ($searchCache.Count -ge 250) { $searchCache.Clear() }
-          $searchCache[$searchUrl] = $links
+          if ($likely.Count -gt 0) { break }
         }
-        $out.search_hits = $links.Count
-        $likely = @($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
+        if ($out.status -eq 'DEFERRED_PROVIDER_TIMEOUT') { continue }
+        if ($out.status -eq 'PROVIDER_TIMEOUT' -or $out.status -eq 'BLOCKED') { break }
         # Multiple identical card-number hits: check the REAL idProduct, not search rank.
         # Limit page visits to avoid excessive requests; unresolved stays for review.
         if ($likely.Count -gt 1 -and $allowedIds.Count -gt 0) {
@@ -370,7 +421,8 @@ try {
               if ($pageProductId -match '^[0-9]+$') { break }
               Start-Sleep -Milliseconds 400
             }
-            if ($pageProductId -in $allowedIds) {
+            if ($pageProductId -eq [string]$case.catalog_singleton_id -or
+                ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and $pageProductId -in $allowedIds)) {
               $matchesById += $link
             }
             if ($matchesById.Count -gt 0) { break }
@@ -400,8 +452,18 @@ try {
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
           ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
-        } elseif ($allowed.Count -gt 0 -and $allowed[0] -and $candidateId -notin $allowed) {
+        } elseif ($setSlugGuards.ContainsKey([string]$case.set_id) -and
+                  ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
+          $out.status='PRODUCT_SET_SLUG_MISMATCH'
+          $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
+          ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
+        } elseif ($candidateId -ne [string]$case.catalog_singleton_id -and
+                  -not ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and $candidateId -in $allowed)) {
+          # A nonempty scraped ID is NOT proof of this exact card print. Only
+          # a verified human route or a verified-set catalog singleton can
+          # promote this product URL to a durable mapped identity.
           $out.status = 'PRODUCT_ID_NOT_IN_VERIFIED_SET'
+          $out.error = 'UNVERIFIED_SET_OR_AMBIGUOUS_PRINT'
           ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $unverifyPath
         } else {
           # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.

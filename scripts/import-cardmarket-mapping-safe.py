@@ -26,9 +26,10 @@ def load_queue(path):
     with path.open(encoding="utf-8-sig",newline="") as f:
         return {(r["cardyssey_karte"],r["variante_id"]):r for r in csv.DictReader(f)}
 
-def collect(files, queue, language):
+def collect(files, queue, language, set_slugs=None):
     found={}
     reasons=Counter()
+    set_slugs=set_slugs or {}
     for path in files:
         with path.open(encoding="utf-8-sig") as f:
             for line in f:
@@ -46,6 +47,10 @@ def collect(files, queue, language):
                         continue
                     if not pid.isdigit() or not valid_url(url,language):
                         reasons["INVALID_ID_OR_URL"]+=1
+                        continue
+                    set_slug=set_slugs.get(q.get('set_id'))
+                    if set_slug and not urlsplit(url).path.split('/')[5].startswith(set_slug):
+                        reasons['WRONG_CARDMARKET_SET']+=1
                         continue
                     allowed={x.strip() for x in (q.get("cardmarket_ids") or "").split(",")}
                     if pid not in allowed:
@@ -101,6 +106,24 @@ def apply(rows):
         subprocess.run(["docker","exec","-i","cardyssey-db","psql","-X","-q",
                         "-v","ON_ERROR_STOP=1","-U","cardyssey","-d","cardyssey"],
                        input=sql,text=True,check=True,stdout=subprocess.DEVNULL)
+        # Human-confirmed print mappings may have an ID but no canonical URL.
+        # Fill that URL only when this same ID was verified on a browser page;
+        # never change a different ID or a conflicting existing URL.
+        url_sql="""WITH source AS (
+ SELECT data->>'language_code' lang,data->>'card_id' card,
+ data->>'variant_id' variant,data->>'product_id' pid,data->>'url' url
+ FROM jsonb_array_elements('""" + payload + """'::jsonb) data
+)
+UPDATE price_source_routing p SET provider_product_url=s.url,updated_at=NOW()
+FROM source s WHERE p.language_code=s.lang AND p.card_id=s.card
+ AND p.variant_id=s.variant AND p.primary_provider='CARDMARKET'
+ AND p.verification_state='VERIFIED_PRODUCT_ID'
+ AND p.source_evidence LIKE 'Human confirmed exact%'
+ AND p.provider_product_id=s.pid
+ AND (p.provider_product_url IS NULL OR p.provider_product_url='');"""
+        subprocess.run(['docker','exec','-i','cardyssey-db','psql','-X','-q','-v','ON_ERROR_STOP=1',
+                        '-U','cardyssey','-d','cardyssey'],input=url_sql,check=True,
+                       text=True,stdout=subprocess.DEVNULL)
 
 def main():
     a=argparse.ArgumentParser()
@@ -109,7 +132,9 @@ def main():
     a.add_argument("--language",choices=["de","en"],required=True)
     a.add_argument("--apply",action="store_true")
     args=a.parse_args()
-    rows,reasons=collect(args.results,load_queue(args.queue),args.language)
+    guards=Path('/home/tv/cardshop/config/cardmarket-set-url-guards.json')
+    slugs=json.loads(guards.read_text(encoding='utf-8')) if guards.exists() else {}
+    rows,reasons=collect(args.results,load_queue(args.queue),args.language,slugs)
     print(json.dumps({"language":args.language,"valid_observations":len(rows),
                       "rejected":dict(reasons),"applied":args.apply},ensure_ascii=False))
     if args.apply and rows:apply(rows)

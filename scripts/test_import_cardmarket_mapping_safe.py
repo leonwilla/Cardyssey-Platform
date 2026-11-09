@@ -39,6 +39,15 @@ class SafeMappingTests(unittest.TestCase):
         self.path.write_text(json.dumps(rec)+"\n")
         rows,_=module.collect([self.path],self.queue,"de")
         self.assertEqual(rows,[])
+    def test_wrong_verified_set_slug_rejected(self):
+        self.queue[('card-a','var-a')]['set_id']='base1'
+        rec={'card_id':'card-a','variant_id':'var-a','language':'de',
+             'identity_confirmed':True,'product_id':'1234',
+             'url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/Expansion-Pack/Machamp-EXP'}
+        self.path.write_text(json.dumps(rec)+'\n')
+        rows,reasons=module.collect([self.path],self.queue,'de',{'base1':'Base-Set'})
+        self.assertEqual(rows,[])
+        self.assertEqual(reasons['WRONG_CARDMARKET_SET'],1)
     def test_no_browser_confirmation_rejected(self):
         rec={"card_id":"card-a","variant_id":"var-a","language":"de",
              "identity_confirmed":False,"product_id":"1234",
@@ -46,6 +55,11 @@ class SafeMappingTests(unittest.TestCase):
         self.path.write_text(json.dumps(rec)+"\n")
         rows,_=module.collect([self.path],self.queue,"de")
         self.assertEqual(rows,[])
+    def test_human_confirmed_missing_url_filled_only_for_matching_id(self):
+        source=Path(__file__).with_name('import-cardmarket-mapping-safe.py').read_text()
+        self.assertIn("p.verification_state='VERIFIED_PRODUCT_ID'",source)
+        self.assertIn('p.provider_product_id=s.pid',source)
+        self.assertIn("p.source_evidence LIKE 'Human confirmed exact%'",source)
     def test_protects_existing_verified_data(self):
         self.assertIn("verification_state='SOURCE_ONLY'",module.SQL)
         self.assertIn("primary_provider='CARDMARKET'",module.SQL)

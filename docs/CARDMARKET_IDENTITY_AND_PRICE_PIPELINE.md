@@ -1,0 +1,11 @@
+# Cardmarket: durable identity first, filtered prices on the same verified page
+
+1. Weekly official product catalog plus price guide refresh. Rebuild DE/EN source queues and prioritize existing price availability. Feed is a fallback, **not** an identity proof.
+2. `cardmarket-enrich-queue-hints.py` adds candidate Cardmarket ID and official English name only when a single product is in an independently cross-checked provider set. The hint is never a print-verified ID.
+3. Default Windows scheduled collector mode `identity` processes **all variants**, including priced bulk, to associate IDs and canonical URLs. It attempts the official catalog name before localized-name/number search, waits for asynchronous Cardmarket search results, and validates actual `idProduct` on a product page. Known wrong set slugs are rejected. Unclear print/set IDs go to review; no forced choices.
+4. Once a product page is validated, the same visit may collect language + NM + explicit foil/edition offers. Priced bulk can skip costly offer pagination; missing or premium/special prints do not.
+5. Every 15–30 minutes, `import-cardmarket-mapping-safe.py` stages browser-verified ID/URL as `SOURCE_ONLY` or fills a URL for an existing human-confirmed exact print. No price is written by this importer. Human decisions remain protected.
+6. `import-cardmarket-filtered-prices.py` publishes the complete active asking-offer median only if `price_source_routing` has a matching **human-confirmed exact print**, same product ID and no conflicting URL, fully enumerated offers, German or English language filter, NM condition and explicit reverse/edition filters. Price source is **asking median, not sold median**. Incomplete samples are not published.
+7. Weekly refresh reuses saved IDs and URLs; unresolved cases receive categorized reasons. Do not promote `NO_EXACT_NUMBER_SEARCH_HIT` to a true negative if search results were still loading. Existing accepted prices stay present during mapping.
+
+Current known Cardmarket set mismatch: the provider candidate `557708` for `base1-8` resolves to `Expansion-Pack/Machamp-EXP`, **not** `Base-Set/Machamp-V1-BS8`. Guard this until the set crosswalk is corrected; do not import it as a match.

@@ -7,14 +7,14 @@ from collections import Counter
 from pathlib import Path
 
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
-PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
+PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
 
 def snapshot(base:Path,language:str):
     if language not in ('de','en'):raise ValueError('unsupported language')
     queue=base/f'queue-{language}.csv'
     with queue.open(encoding='utf-8-sig',newline='') as f:rows=list(csv.DictReader(f))
     expected={(r['cardyssey_karte'],r['variante_id']) for r in rows}
-    browser={(r['cardyssey_karte'],r['variante_id']) for r in rows if not(r.get('scan_tier')=='4' and r.get('needs_price')=='NO')}
+    browser={(r['cardyssey_karte'],r['variante_id']) for r in rows}
     completed={}
     events=base/f'browser-observations-{language}.jsonl'
     if events.exists():
@@ -32,9 +32,17 @@ def snapshot(base:Path,language:str):
         try:progress=json.loads(progress_path.read_text(encoding='utf-8-sig'))
         except ValueError:pass
     total=len(expected);done=len(scanned)
+    matched=sum(bool(r.get('identity_confirmed')) for r in completed.values())
+    search_misses=sum(r.get('status')=='NO_EXACT_NUMBER_SEARCH_HIT' for r in completed.values())
+    priced=sum(r.get('needs_price')=='NO' and r.get('existing_price_eur') not in ('',None) for r in rows)
+    missing=sum(r.get('needs_price')=='YES' for r in rows)
+    eligible_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))!='4' for r in rows)
+    bulk_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))=='4' for r in rows)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
-       'browserTotal':len(browser),'feedOnly':total-len(browser),'browserObserved':len(completed),
-       'browserProcessed':done,'browserRemaining':max(0,len(browser)-done),
+       'browserTotal':len(browser),'feedOnly':sum(str(r.get('scan_tier'))=='4' and r.get('needs_price')=='NO' for r in rows),'browserObserved':len(completed),
+       'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
+       'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
+       'browserRemaining':max(0,len(browser)-done),
        'progressPercent':round(done/len(browser)*100,2) if browser else 100,
        'totalReviewedPercent':round((total-len(browser)+done)/total*100,2) if total else 100,
        'status':str(progress.get('status') or 'NOT_STARTED'),
