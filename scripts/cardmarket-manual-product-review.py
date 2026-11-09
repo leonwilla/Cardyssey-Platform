@@ -61,10 +61,10 @@ def preview(data):
     item=record(lang,card,variant)
     url=str(data.get('url') or '').strip()
     if not valid_link(url):raise ValueError('invalid_cardmarket_url')
-    cmd=[PS,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(BASE/'cardmarket-product-link-preview.ps1'),'-ProductUrl',url]
+    cmd=[PS,'-NoProfile','-ExecutionPolicy','Bypass','-File',r'C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector\cardmarket-product-link-preview.ps1','-ProductUrl',url]
     try:proc=subprocess.run(cmd,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=44)
     except subprocess.TimeoutExpired:raise ValueError('cardmarket_browser_timeout')
-    if proc.returncode:
+    if proc.returncode or '-File-Parameter' in proc.stderr or 'f\u00fcr den -File-Parameter' in proc.stderr:
         if 'CARDMARKET_PROVIDER_CHALLENGE' in proc.stderr:raise ValueError('cardmarket_cloudflare_blocked_try_later')
         if 'PRODUCT_ID_NOT_VISIBLE_IN_BROWSER' in proc.stderr:raise ValueError('product_id_not_visible')
         raise ValueError('cardmarket_browser_unavailable')
