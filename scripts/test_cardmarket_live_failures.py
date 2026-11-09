@@ -31,6 +31,9 @@ class Tests(unittest.TestCase):
    with (b/'queue-de.csv').open() as f:rows=list(csv.DictReader(f))
    self.assertTrue(rows[0]['manual_scan_requested_at'])
    self.assertFalse(rows[1]['manual_scan_requested_at'])
+ def test_missing_required_fields_are_visible_instead_of_card_missing(self):
+  self.assertEqual(fail.classify('MISSING_REQUIRED_SCAN_FIELDS'),'DATEN_FEHLEN')
+  self.assertEqual(fail.classify('FILTER_UNAVAILABLE'),'TECHNISCH')
  def test_no_unknown_queue_row(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.setup(td)
