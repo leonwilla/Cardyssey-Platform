@@ -45,6 +45,17 @@ class Tests(unittest.TestCase):
    self.assertEqual(price['priceChecks'],1)
    self.assertEqual(manual['assignment'],1)
    self.assertEqual(fail.list_failures(b,'de',kind='alle')['total'],2)
+ def test_known_page_with_distinct_stamp_is_not_missing_card_identity(self):
+  from pathlib import Path
+  with tempfile.TemporaryDirectory() as td:
+   b=self.setup(td);p=b/'queue-de.csv'
+   with p.open('w',newline='') as f:
+    w=csv.DictWriter(f,fieldnames=['cardyssey_karte','variante_id','set_id','stempel','reference_product_url']);w.writeheader()
+    w.writerow({'cardyssey_karte':'basep-1','variante_id':'star','set_id':'basep','stempel':'["grauer stern"]','reference_product_url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/Wizards-Black-Star-Promos/Pikachu-WP1'})
+   with (b/'browser-observations-de.jsonl').open('w') as f:f.write(json.dumps({'card_id':'basep-1','variant_id':'star','status':'MULTIPLE_SEARCH_HITS','seen_at':datetime.now(timezone.utc).isoformat()})+'\n')
+   self.assertEqual(fail.list_failures(b,'de',kind='karten')['total'],0)
+   x=fail.list_failures(b,'de',kind='drucke');self.assertEqual(x['total'],1)
+   self.assertEqual(x['items'][0]['printStamp'],'["grauer stern"]')
  def test_other_sets_are_not_auto_exempt(self):
   self.assertEqual(fail.classify('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE',{'product_id':'907963','identity_confirmed':True},{'set_id':'other','cardmarket_ids':'907963','known_url':'https://example.com'}),'TECHNISCH')
  def test_confirmed_card_disappears_from_current_and_historical_review(self):

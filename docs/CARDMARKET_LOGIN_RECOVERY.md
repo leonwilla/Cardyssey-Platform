@@ -129,3 +129,37 @@ card and physical variant; historical failures disappear after a human
 confirmation. A later scanner's unresolved name-only result does not undo a
 confirmed physical print, but a new observed *different* concrete product ID
 is still shown as a genuine conflict. All old observations and prices remain.
+
+## 2026-11-09: accurate artwork, distinct Pikachu variants, Cardmarket versions
+
+The admin's TCGdex `image_source_url` is a *base URL*, e.g.
+`https://assets.tcgdex.net/en/base/basep/1`, and returns HTML, not image data.
+Only for assets.tcgdex.net, the review API appends `/high.webp`; client has a
+visible fallback if the image still cannot be loaded. The artwork is explicitly
+labelled **Grundkartenbild** because a shared base image does not prove the
+rare print stamp or special foil. A strong **Gesuchte Variante** label shows
+`Pikachu-Schwanz`, `grauer stern`, or `1. Auflage Fehler` distinctly, and
+`set_name` shows Wizards Black Star Promos instead of only `basep`.
+
+A known, verified-set card-page hint and a same-name search failure are no
+longer labelled missing set/card identity for a special print. The live
+monitor shows them under **Offene Sonderdrucke**; they remain unresolved
+print checks, never falsely auto-confirmed and never priced as an ordinary
+copy. For example `basep-1` has product page WP1 but grey-star and Pikachu-
+tail stamp variants need independent photo/stamp proof. This removes the
+repeated duplicate-looking Pikachu cases from **Karten-Zuordnungen**.
+
+For `sv01-013`, the user's Gem Pack Vol.1 Chinese-language Sprigatito `CBB1C
+01` URL was previously rejected with `invalid_card_identity`: Cardyssey's own
+curated variant IDs contain colons. The preview now permits colon IDs, and
+`sv01` is guarded as **Scarlet-Violet**, so the foreign Gem Pack set is
+correctly identified as an unrelated physical printing, not written as a DE
+Scarlet & Violet print. `cardmarket-version-page-seeds.json` registers the
+user's `Cards/Sprigatito-Scratch-Leafage/Versions` URL and its verified shared
+metacard ID. The admin automatically groups products in the official Cardmarket
+catalog by `idMetacard`; the Felori family has 21 feed products across several
+expansions. This is **reprint discovery only** (not 21 confirmed print matches).
+Known family product IDs cannot bypass the verified set, collector-number,
+language or stamp checks. A distinct, language/edition-filtered price is only
+possible after independent print evidence. No existing prices, confirmations,
+product routes, or running scanner states are mutated by this UI upgrade.

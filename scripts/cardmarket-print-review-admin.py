@@ -141,7 +141,7 @@ def revert_queue_identity(language, card_id, variant_id, candidate_ids,
 
 def undo_case(data):
     lang=data.get('language');card=data.get('cardId');variant=data.get('variantId')
-    if lang not in ALLOWED_LANG or not all(isinstance(x,str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}',x) for x in (card,variant)):
+    if lang not in ALLOWED_LANG or not all(isinstance(x,str) and re.fullmatch(r'[a-zA-Z0-9_.:-]{1,128}',x) for x in (card,variant)):
         raise ValueError('invalid identity')
     # Snapshot and revoke a human decision atomically. Never delete an
     # unrelated provider or an independently verified price. The catalogue
@@ -231,10 +231,19 @@ def list_cases(data):
     sql=f"""SELECT json_build_object('total',(SELECT count(*) FROM cardmarket_print_identity_review r WHERE {where}),
 'allPending',(SELECT count(*) FROM cardmarket_print_identity_review r WHERE r.language_code={quote(lang)} AND r.status='PENDING_REVIEW'),
 'items',COALESCE((SELECT json_agg(x) FROM (
- SELECT r.language_code AS language,r.card_id,r.variant_id,r.set_id,r.card_name,
+ SELECT r.language_code AS language,r.card_id,r.variant_id,r.set_id,
+ COALESCE((SELECT cs.name FROM catalog_sets_mirror cs WHERE cs.set_id=r.set_id
+       AND cs.language_code=r.language_code LIMIT 1),
+          (SELECT cs.name FROM catalog_sets_mirror cs WHERE cs.set_id=r.set_id
+       AND cs.language_code='en' LIMIT 1),r.set_id) AS set_name,
+ r.card_name,
  r.printed_number,r.print_type,r.foil,r.subtype,r.stamps,
  r.candidate_ids,r.matched_set_ids,r.product_names,r.provider_expansion_id,
- r.classification,r.status,r.selected_product_id,r.reviewer_note,c.image_source_url AS card_image_url,
+ r.classification,r.status,r.selected_product_id,r.reviewer_note,
+ CASE WHEN c.image_source_url ~ '^https://assets[.]tcgdex[.]net/'
+   AND c.image_source_url !~ '[.](webp|png|jpg|jpeg)([?].*)?$'
+   THEN rtrim(c.image_source_url,'/') || '/high.webp'
+   ELSE c.image_source_url END AS card_image_url,
  (SELECT COALESCE(json_agg(other), '[]'::json) FROM (
  SELECT DISTINCT ON (s.set_id) s.set_id,s.card_id,s.printed_number,
  COALESCE((SELECT name FROM catalog_sets_mirror cs WHERE cs.set_id=s.set_id AND cs.language_code=s.language_code LIMIT 1),
@@ -263,11 +272,31 @@ def list_cases(data):
               "trend_holo":reference[pid].get("trend-holo")
             } for pid in (row.get("matched_set_ids") or [])[:15] if pid in reference}
     products=official_product_details()
+    # Cardmarket's idMetacard groups reprint *families*. This permits
+    # automatic discovery without a browser search, but is NOT a mapping of
+    # card/set/number or special foil, and never writes a price/source route.
+    from collections import defaultdict
+    version_families=defaultdict(list)
+    for product_id,meta in products.items():
+        group=str(meta.get('idMetacard') or '')
+        if group and group!='0':version_families[group].append((product_id,str(meta.get('idExpansion') or '')))
+    seed_path=Path('/home/tv/cardshop/config/cardmarket-version-page-seeds.json')
+    version_seeds=json.loads(seed_path.read_text(encoding='utf-8')) if seed_path.is_file() else {}
     user_links_path=Path('/home/tv/cardshop/config/cardmarket-user-reference-links.json')
     user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
     print_hints_path=Path('/home/tv/cardshop/config/cardmarket-known-print-page-hints.json')
     print_hints=json.loads(print_hints_path.read_text(encoding='utf-8')) if print_hints_path.exists() else {}
     for row in result.get('items') or []:
+        seed=version_seeds.get(row['card_id']) or {}
+        metacards={str(products[x]['idMetacard']) for x in row.get('matched_set_ids') or []
+                   if x in products and products[x].get('idMetacard')}
+        if seed.get('metacardId'):metacards.add(str(seed['metacardId']))
+        same_set=str(row.get('provider_expansion_id') or '')
+        family={i for m in metacards for i,e in version_families.get(m,[])}
+        row['version_family_product_count']=len(family)
+        row['version_same_expansion_ids']=sorted(
+            {i for m in metacards for i,e in version_families.get(m,[]) if same_set and e==same_set})[:15]
+        row['version_page_url']=seed.get('pageUrl') or None
         hint_set=print_hints.get(row['card_id']) or {}
         hint=(hint_set.get('variants') or {}).get(row['variant_id'])
         from_hint=('https://www.cardmarket.com/'+row['language']+'/Pokemon/Products/Singles/'+

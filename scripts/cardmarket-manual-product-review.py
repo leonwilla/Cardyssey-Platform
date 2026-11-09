@@ -44,7 +44,7 @@ def db(sql):
 def quote(s):return "'"+str(s).replace("'","''")+"'"
 
 def record(lang,card,variant):
-    if lang not in ('de','en') or not re.fullmatch(r'[a-zA-Z0-9_-]{1,128}',card or '') or not re.fullmatch(r'[a-zA-Z0-9_-]{1,128}',variant or ''):
+    if lang not in ('de','en') or not re.fullmatch(r'[a-zA-Z0-9_-]{1,128}',card or '') or not re.fullmatch(r'[a-zA-Z0-9_.:-]{1,128}',variant or ''):
         raise ValueError('invalid_card_identity')
     sql=f"""SELECT row_to_json(r)::text FROM (
      SELECT language_code,card_id,variant_id,set_id,printed_number,card_name,print_type,

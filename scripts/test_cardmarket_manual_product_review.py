@@ -13,6 +13,15 @@ class ManualProductReviewTests(unittest.TestCase):
      'https://www.cardmarket.com@evil.org/Pokemon/Products?idProduct=581845',
      'https://www.cardmarket.com/de/Pokemon/Products/Search?searchString=Raupy'):
    self.assertFalse(m.valid_link(u),u)
+ def test_curated_variant_id_is_valid_and_wrong_foreign_set_is_rejected(self):
+  # Real Cardyssey IDs contain colons; rejecting them before the browser
+  # hid the actual issue: Gem Pack Chinese is not SV01 Scarlet-Violet.
+  case={'language_code':'de','card_id':'sv01-013','variant_id':'curated:de:sv01:013:grass-stamp','set_id':'sv01'}
+  with patch.object(m,'record',return_value=case),patch.object(m.subprocess,'run') as runner:
+   with self.assertRaisesRegex(ValueError,'wrong_set_url_expected_Scarlet-Violet'):
+    m.preview({'language':'de','cardId':'sv01-013','variantId':case['variant_id'],
+      'url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/Gem-Pack-Vol-1/Sprigatito-V1-CBB1C01?isReverseHolo=Y'})
+   runner.assert_not_called()
  def test_other_set_url_rejected_before_browser(self):
   case={'language_code':'de','card_id':'2019sm-1','variant_id':'a','set_id':'2019sm'}
   with patch.object(m,'record',return_value=case),patch.object(m.subprocess,'run') as runner:

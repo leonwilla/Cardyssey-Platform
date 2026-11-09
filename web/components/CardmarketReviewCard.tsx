@@ -1,11 +1,11 @@
 'use client';
 import {useState} from 'react';
-export type Entry={language:string;card_id:string;variant_id:string;set_id:string;card_name:string;
+export type Entry={language:string;card_id:string;variant_id:string;set_id:string;set_name?:string;card_name:string;
  printed_number:string;print_type:string;foil:string;subtype:string;stamps:string;
  candidate_ids:string[];matched_set_ids:string[];product_names:string;
  provider_expansion_id:string;classification:string;status:string;
  selected_product_id:string|null;reviewer_note:string|null;
- card_image_url?:string|null;related_sets?:{set_id:string;set_name:string;card_id:string;printed_number:string}[];suggested_product_url?:string|null;
+ card_image_url?:string|null;version_page_url?:string|null;version_family_product_count?:number;version_same_expansion_ids?:string[];related_sets?:{set_id:string;set_name:string;card_id:string;printed_number:string}[];suggested_product_url?:string|null;
  diagnosis?:{kind:string;reason:string;action:string;proofAvailable:boolean;sameMetacard:boolean;candidates:{id:string;name:string;expansionId:string;metacardId:string;addedAt:string}[]};
  recheckEvidence?:{category:string;reason:string;versionObserved:string|null;versionProductId:string|null;languageAvailability:string;sameMetacard:boolean;lastScanStatus:string;versionPages?:{version:string;url:string;visualNote:string}[]};
  reference_values?:Record<string,{avg30:number|null;avg30_holo:number|null;trend:number|null;trend_holo:number|null}>;};
@@ -14,6 +14,7 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
  const [pid,setPid]=useState(entry.matched_set_ids.length===1?entry.matched_set_ids[0]:'');
  const [note,setNote]=useState('');
  const [detailsOpen,setDetailsOpen]=useState(false);
+ const [imageFailed,setImageFailed]=useState(false);
  const [otherActionsOpen,setOtherActionsOpen]=useState(false);
  const [confirmed,setConfirmed]=useState(false);
  const [busy,setBusy]=useState(false);
@@ -89,12 +90,16 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
   if(entry.matched_set_ids.length===1)return 'Kartenvariante noch nicht eindeutig bestätigt.';
   return 'Cardmarket-Produkt oder Set noch nicht eindeutig gefunden.';
  };
+ const variantLabel=[entry.stamps&&entry.stamps!=='[]'?(()=>{try{const v=JSON.parse(entry.stamps);return Array.isArray(v)?v.join(', '):entry.stamps}catch{return entry.stamps}})():null,entry.foil||null,entry.subtype||null].filter(Boolean).join(' · ')||entry.print_type;
  const searchUrl='https://www.cardmarket.com/'+entry.language+'/Pokemon/Products/Search?searchString='+encodeURIComponent((entry.card_name||'')+' '+(entry.printed_number||''));
  return <article className="statusPanel" style={{padding:14,display:'grid',gap:12}}>
   <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-   {entry.card_image_url?.startsWith('https://')&&<img src={entry.card_image_url} alt={'Pokémon-Karte '+entry.card_name} loading="lazy" style={{width:64,height:88,objectFit:'contain',borderRadius:7}}/>}
+   <div style={{width:88,minWidth:88,display:'grid',gap:4,textAlign:'center'}}>
+    {entry.card_image_url?.startsWith('https://')&&!imageFailed?<img src={entry.card_image_url} onError={()=>setImageFailed(true)} alt={'Grundkartenbild '+entry.card_name} loading="lazy" style={{width:88,height:120,objectFit:'contain',borderRadius:7}}/>:<div style={{width:88,height:120,border:'1px dashed var(--border)',borderRadius:7,display:'grid',placeItems:'center',fontSize:11}}>Kein Bild verfügbar</div>}
+    <span style={{fontSize:10,opacity:.7}}>Grundkartenbild</span>
+   </div>
    <div style={{flex:'1 1 210px',minWidth:0}}><strong>{entry.card_name||entry.card_id} · #{entry.printed_number||'?'}</strong>
-    <div style={{fontSize:12,opacity:.75}}>{entry.set_id} · {entry.language.toUpperCase()} · {entry.print_type}{entry.subtype?' · '+entry.subtype:''}{entry.foil?' · '+entry.foil:''}{entry.stamps&&entry.stamps!=='[]'?' · '+entry.stamps:''}</div>
+    <div style={{fontSize:12,opacity:.75}}>{entry.set_name||entry.set_id} ({entry.set_id}) · {entry.language.toUpperCase()} · {entry.print_type}</div><div style={{fontSize:13,marginTop:4}}><strong>Gesuchte Variante:</strong> {variantLabel}</div><div style={{fontSize:11,opacity:.7}}>Hinweis: Das Grundkartenbild muss den seltenen Stempel nicht zeigen.</div>
     <div style={{fontSize:13,marginTop:5}}><strong>Problem:</strong> {shortIssue()}</div>
    </div>
    <button type="button" className="ghostButton" onClick={()=>setDetailsOpen(v=>!v)}>{detailsOpen?'Details schließen':'Details'}</button>
@@ -109,6 +114,8 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
     <strong style={{fontSize:13}}>Gefundene Cardmarket-Produktseiten</strong>
     {entry.matched_set_ids.length>0?<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{entry.matched_set_ids.map(id=><a key={id} href={productLink(id)} target="_blank" rel="noopener noreferrer" style={{fontSize:13,padding:'8px 10px',border:'1px solid var(--border)',borderRadius:9,fontWeight:600}}>Produkt {id} ansehen</a>)}</div>:<span style={{fontSize:13,opacity:.75}}>Kein geprüfter Produktlink gefunden.</span>}
     {entry.suggested_product_url&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>Gefundene Produktseite öffnen</a><button type="button" className="ghostButton" onClick={()=>setManualUrl(entry.suggested_product_url||'')}>Link übernehmen</button></div>}
+    {entry.version_page_url&&<a href={entry.version_page_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>Alle Druckversionen auf Cardmarket vergleichen</a>}
+    {Boolean(entry.version_family_product_count)&&<small style={{opacity:.75}}>Automatisch erkannte Reprint-Familie: {entry.version_family_product_count} Katalogprodukte{entry.version_same_expansion_ids?.length?' · davon '+entry.version_same_expansion_ids.length+' im bestätigten Set':''}. Ähnliche Reprints aus fremden Sets werden nicht als dieselbe Karte bestätigt.</small>}
     <a href={searchUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Auf Cardmarket suchen</a>
    </div>
    <section style={{display:'grid',gap:8}}>
