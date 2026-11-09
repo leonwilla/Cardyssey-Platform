@@ -39,6 +39,9 @@ def collect(path,language,now=None):
         reverse=x.get('expected_reverse_holo')
         first=x.get('expected_first_edition')
         if reverse not in ('Y','N') or first not in ('Y','N'):continue
+        # Do not import a mixed print's median under the guise of an exact
+        # copyright, textured foil, promo stamp, or other unsupported print.
+        if x.get('non_filterable_print_attributes') or x.get('exact_print_filter_supported') is False:continue
         if q.get('isReverseHolo')!=[reverse] or q.get('isFirstEd')!=[first]:continue
         try:seen=datetime.fromisoformat(str(x.get('seen_at') or '').replace('Z','+00:00')).astimezone(timezone.utc)
         except (ValueError,TypeError):continue

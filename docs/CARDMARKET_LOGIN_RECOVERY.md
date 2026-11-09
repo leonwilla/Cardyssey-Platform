@@ -37,3 +37,24 @@ must never be presented as proof that a product does not exist.
 queued card variant (no product mapping or price edits), which the existing
 scanner prioritizes in the next batch. Failed cases lacking a current queue
 variant are explicitly reported as not actionable instead of guessing an ID.
+
+## Field/filter readiness and unfilterable physical prints
+
+`cardmarket-filter-readiness.py` checks required set/collector/variant/type
+fields across both full queues. The admin monitor shows counts of missing or
+unrecognized standard-filter inputs and special prints not covered by
+Cardmarket's offer filters, instead of presenting them all as false missing
+product identities. The scanner now reports `MISSING_REQUIRED_SCAN_FIELDS`
+with the exact field names *before* navigating to Cardmarket. Normal and Holo
+both imply `isReverseHolo=N`; Reverse implies `Y`. German `1. Auflage` and
+English `1st-edition` both imply `isFirstEd=Y`; explicit Unlimited or
+`Copyright 1999-2000` imply no First Edition.
+
+Cardmarket's normal offer filters do NOT verify ©1999-2000, shadowless,
+cosmos/other foil patterns, and many promo stamps. For those, an independently
+validated print/product match is still required and a general filtered offer
+median may not be imported as the exact-print price. The importer refuses
+observations explicitly marked with unfilterable print attributes. Do not
+infer that all special-print cases need a human; first seek product-level
+version evidence. Basic fields present in the queues do not imply the provider
+supports a filter for every stored variant field.

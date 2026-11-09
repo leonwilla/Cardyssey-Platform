@@ -3,6 +3,7 @@
 import argparse
 import csv
 import json
+import importlib.util
 from datetime import datetime,timezone
 from collections import Counter
 from pathlib import Path
@@ -71,11 +72,18 @@ def snapshot(base:Path,language:str):
          and str(x['seen_at'])[:19]>=rescan_epoch.isoformat()[:19]
          and (x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED'))
          for x in completed.values())
+    # Surface missing vs non-filterable fields as proactive data guidance.
+    spec=importlib.util.spec_from_file_location('cardmarket_filter_readiness',Path(__file__).with_name('cardmarket-filter-readiness.py'))
+    audit=importlib.util.module_from_spec(spec);spec.loader.exec_module(audit)
+    readiness=[audit.analyze(row) for row in rows]
+    missing_filter_inputs=sum(bool(x['missing']) for x in readiness)
+    nonfilterable_specials=sum(bool(x['unsupported']) for x in readiness)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
        'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':sum(str(r.get('scan_tier'))=='4' and r.get('needs_price')=='NO' for r in rows),'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
        'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
        'browserRemaining':max(0,len(browser)-done),
+       'missingFilterInputs':missing_filter_inputs,'nonfilterableSpecialPrints':nonfilterable_specials,
        'progressPercent':round(done/len(browser)*100,2) if browser else 100,
        'totalReviewedPercent':round((total-len(browser)+done)/total*100,2) if total else 100,
        'status':'RUNNING_STALLED' if stalled else raw_status,

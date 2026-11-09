@@ -388,6 +388,32 @@ try {
     }
 
     try {
+      # Validate required inputs BEFORE using the browser. Report the actual
+      # missing field, not a misleading "card not found" conclusion.
+      $missingInputs=@()
+      foreach($field in @('set_id','kartennummer','variante_id','drucktyp')){
+        if([string]::IsNullOrWhiteSpace([string]$case.$field)){$missingInputs+= $field}
+      }
+      if($missingInputs.Count -gt 0){
+        $out.status='MISSING_REQUIRED_SCAN_FIELDS'
+        $out.missing_fields=@($missingInputs)
+        $out.error='MISSING_CARD_INPUT:'+($missingInputs -join ',')
+        $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+        Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        [void]$processed.Add($key)
+        Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+        continue
+      }
+      $out.non_filterable_print_attributes=@()
+      if([string]$case.sonderdruck -match '(?i)copyright|1999-2000|schattenlos|shadowless|e-reader|fehler|error|missing|fehlend') {
+        $out.non_filterable_print_attributes+= 'sonderdruck:'+([string]$case.sonderdruck)
+      }
+      if(-not [string]::IsNullOrWhiteSpace([string]$case.foil)){
+        $out.non_filterable_print_attributes+= 'foil:'+([string]$case.foil)
+      }
+      if(([string]$case.stempel -notin @('','[]')) -and ([string]$case.stempel -notmatch '(?i)1\. auflage|1st.edition|first.edition')){
+        $out.non_filterable_print_attributes+= 'special_stamp:'+([string]$case.stempel)
+      }
       if ([string]$case.candidate_status -eq 'SET_EXPANSION_AMBIGUOUS' -and [string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID') {
         $out.status='SET_MAPPING_PENDING'
         $out.error='MULTIPLE_CARDMARKET_EXPANSIONS_MATCH_SAME_SET_CARD_NAMES'
@@ -609,10 +635,14 @@ try {
             $out.status = 'MAPPED_NO_PRICE_REQUIRED'
           } else {
             $out.status = 'PRODUCT_PAGE_MATCH_REVIEW'
-            $reverseCode = if ([string]$case.drucktyp -match '(?i)reverse') { 'Y' } elseif ([string]$case.drucktyp -match '(?i)normal') { 'N' } else { '0' }
-            $firstCode = if ([string]$case.stempel -match '(?i)1\. auflage|first.edition') { 'Y' } elseif ([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited)$') { 'N' } else { '0' }
+            $reverseCode = if ([string]$case.drucktyp -match '(?i)^reverse$') { 'Y' } elseif ([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') { 'N' } else { '0' }
+            $firstCode = if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') { 'Y' } elseif ([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') { 'N' } else { '0' }
             $out.expected_reverse_holo = $reverseCode
             $out.expected_first_edition = $firstCode
+            # A provider filter cannot distinguish ©1999–2000, special
+            # cosmo foil patterns or collection stamps; never claim the
+            # filtered result proves that physical special print.
+            $out.exact_print_filter_supported=(@($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
             $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
             $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
             $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
