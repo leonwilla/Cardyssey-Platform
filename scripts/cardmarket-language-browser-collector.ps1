@@ -566,7 +566,20 @@ try {
           Start-Sleep -Milliseconds 500
         }
         $out.product_id = $candidateId
-        $allowed = [string]$case.cardmarket_ids -split ','
+        $allowed = @([string]$case.cardmarket_ids -split ',' | Where-Object {$_ -match '^[0-9]+$'})
+        # The Cardyssey print can lack a product ID while the exact CARD is
+        # already known in the independently matched Cardmarket expansion.
+        # These are card candidates, NOT verified physical-print identities.
+        $cardCandidates=@([string]$case.set_card_candidate_ids -split ',' | Where-Object {$_ -match '^[0-9]+$'})
+        $numberEvidence=$false
+        $observedPath=([string]$out.url).Split('?')[0]
+        # Only the FINAL slug suffix is a candidate collector number.
+        # Never accidentally parse -V1 as card #1 in -V1-BS13.
+        $numberTail=[regex]::Match($observedPath,'(?i)-[A-Z]{1,8}([0-9]{1,4})$')
+        if($numberTail.Success){
+          try{$numberEvidence=([int]$numberTail.Groups[1].Value -eq [int]([string]$case.kartennummer))}catch{}
+        }
+        $out.card_number_url_verified=$numberEvidence
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
@@ -577,11 +590,17 @@ try {
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($candidateId -ne [string]$case.catalog_singleton_id -and
                   -not ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and $candidateId -in $allowed)) {
-          # A nonempty scraped ID is NOT proof of this exact card print. Only
-          # a verified human route or a verified-set catalog singleton can
-          # promote this product URL to a durable mapped identity.
-          $out.status = 'PRODUCT_ID_NOT_IN_VERIFIED_SET'
-          $out.error = 'UNVERIFIED_SET_OR_AMBIGUOUS_PRINT'
+          # A product can be proven in the CORRECT CARD/SET but not be proven
+          # to match this particular physical edition (1999-2000, 1st Ed,
+          # shadowless, reverse, V1/V2). These are different states.
+          if(($candidateId -in $cardCandidates -or $candidateId -in $allowed) -and $numberEvidence -and
+             $setSlugGuards.ContainsKey([string]$case.set_id)) {
+            $out.status = 'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error = 'CARD_AND_COLLECTOR_NUMBER_MATCH_PRINT_NEEDS_EVIDENCE'
+          } else {
+            $out.status = 'PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+            $out.error = 'SET_CARD_NUMBER_OR_PRINT_UNVERIFIED'
+          }
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } else {
           # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.

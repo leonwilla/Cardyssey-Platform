@@ -17,7 +17,11 @@ WITH source AS (
         k.provider_product_ids,k.candidate_status
  FROM catalog_cards_mirror c
  LEFT JOIN cardmarket_catalog_link_candidates k
-   ON k.language_code=c.language_code AND k.card_id=c.card_id
+   ON k.language_code='de' AND k.card_id=c.card_id
+   -- The Cardmarket expansion/product is defined by the set and collector
+   -- card identity, not the requested offering language. DE is the verified
+   -- set-candidate source for both DE/EN queues. A physical print is still
+   -- unverified when only the card-level ID is available.
  WHERE c.language_code='{language}'
 )
 SELECT
@@ -60,6 +64,13 @@ SELECT
   ELSE '' END AS manual_scan_requested_at,
  COALESCE(r.verification_state,'UNVERIFIED') AS routing_state,
  COALESCE(c.candidate_status,'NO_CATALOG_CANDIDATE') AS candidate_status,
+ -- Cardmarket candidates for the CARD, used only for print-uncertain hints.
+ -- Never promote these into a variant-level verified route.
+ COALESCE((SELECT string_agg(x.id,',' ORDER BY x.id) FROM (
+     SELECT DISTINCT jsonb_array_elements_text(
+       CASE WHEN jsonb_typeof(c.provider_product_ids)='array'
+         THEN c.provider_product_ids ELSE '[]'::jsonb END) AS id
+   ) x), '') AS set_card_candidate_ids,
  CASE WHEN lower(coalesce(v.value->>'type','')) IN ('normal','nonholo','common') THEN '4' ELSE '2' END AS scan_tier,
  'YES' AS needs_price
 FROM source c

@@ -89,6 +89,15 @@ def main():
                 ids=sorted({i for i in r["cardmarket_ids"].split(",") if i.isdigit()})
                 exp=all_sets.get(r["set_id"])
                 matched=[i for i in ids if i in products and exp is not None and str(products[i]["idExpansion"])==exp]
+                # When a special print has NO exact Cardmarket product ID,
+                # preserve card-level candidates from the independently
+                # mapped expansion as UNVERIFIED PRINT candidates. This is
+                # NEVER a confirmed physical print or a publishable price.
+                print_missing=not matched and not ids
+                card_candidates=sorted({i for i in r.get('set_card_candidate_ids','').split(',')
+                    if i in products and exp is not None and str(products[i]['idExpansion'])==exp})
+                if print_missing and card_candidates:
+                    matched=card_candidates
                 human_confirmed=(r.get('routing_state')=='VERIFIED_PRODUCT_ID' and
                     bool(r.get('known_url')) and len(ids)==1 and ids[0] in products)
                 if human_confirmed:
@@ -98,6 +107,7 @@ def main():
                     matched=[ids[0]]
                     exp=str(products[ids[0]].get('idExpansion') or exp or '')
                 if exp is None:state="SET_NOT_VERIFIED"
+                elif print_missing and matched:state="CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED"
                 elif not ids:state="NO_PRODUCT_ID"
                 elif not matched:state="NO_MATCH_IN_VERIFIED_SET"
                 elif len(matched)>1:state="MULTIPLE_PRODUCTS_IN_VERIFIED_SET"
@@ -112,11 +122,11 @@ def main():
                 if human_confirmed:state='HUMAN_CONFIRMED_EXACT_PRINT'
                 elif special:state += "_SPECIAL_PRINT"
                 counts[lang][state]+=1
-                chosen=matched[0] if len(matched)==1 else ""
+                chosen=matched[0] if len(matched)==1 and not print_missing else ""
                 data=dict(language=lang,card_id=r["cardyssey_karte"],variant_id=r["variante_id"],
                           set_id=r["set_id"],number=r["kartennummer"],name=r["kartenname_suche"],
                           type=r["drucktyp"],foil=r["foil"],subtype=r["sonderdruck"],stamps=r["stempel"],
-                          candidate_ids=",".join(ids),matched_set_ids=",".join(matched),
+                          candidate_ids=",".join(sorted(set(ids+matched))),matched_set_ids=",".join(matched),
                           expansion_id=exp or "",classification=state,
                           product_names=" | ".join(products[i].get("name","") for i in matched[:5]),
                           requires_confirmation="SET_NUMBER_LANGUAGE_PRINT_FOIL_STAMP",

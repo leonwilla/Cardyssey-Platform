@@ -4,6 +4,21 @@ class VariantRecheckTests(unittest.TestCase):
  def setUp(self):
   self.products={'479679':{'idMetacard':226279},'581845':{'idMetacard':226279}}
   self.row={'matched_set_ids':'479679,581845','classification':'MULTIPLE_PRODUCTS_IN_VERIFIED_SET'}
+ def test_card_level_candidates_are_not_verified_print_or_price(self):
+  row={'matched_set_ids':'273708,660215','classification':'CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED_SPECIAL_PRINT'}
+  x=candidate_audit(row,{'273708':{'idExpansion':1523},'660215':{'idExpansion':1523}},None)
+  self.assertEqual(x['category'],'AUTO_PRINT_VERIFICATION')
+  self.assertFalse(x['printVerified'])
+  self.assertFalse(x['priceApproved'])
+ def test_card_set_number_confirmed_but_print_unverified_stays_automatic(self):
+  row={'matched_set_ids':'','classification':'NO_PRODUCT_ID_SPECIAL_PRINT'}
+  obs={'status':'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED','product_id':'273708',
+       'url':'https://www.cardmarket.com/de/Pokemon/Products/Singles/Base-Set/Poliwrath-V1-BS13',
+       'identity_confirmed':False}
+  x=candidate_audit(row,{'273708':{'idExpansion':1523}},obs)
+  self.assertEqual(x['category'],'AUTO_CATALOG_RECHECK')
+  self.assertFalse(x['printVerified'])
+  self.assertFalse(x['priceApproved'])
  def test_user_supplied_link_is_separate_manual_review_not_verified_price(self):
   row={'matched_set_ids':'412849','classification':'ONE_PRODUCT_IN_VERIFIED_SET'}
   x=candidate_audit(row,{'412849':{'idExpansion':2829}},None,user_reference_url='https://www.cardmarket.com/de/Pokemon/Products/Singles/McDonalds-Collection-2019/Caterpie-MCD191')

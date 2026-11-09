@@ -49,7 +49,10 @@ def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
     # A user-supplied URL is a useful lookup hint, not a reason to require
     # manual set assignment. One catalog product in the independently
     # verified set must first go through automatic print/language checking.
-    if not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
+    if 'CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED' in row.get('classification','') and ids:
+        category='AUTO_PRINT_VERIFICATION'
+        reason='Kartennummer und Cardmarket-Set sind bekannt; Produktkandidaten sind noch keiner physischen Druckvariante zugewiesen.'
+    elif not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
         category='AUTO_CATALOG_RECHECK'
         reason='Set oder Produktidentität zunächst durch Automatik klären'
     elif len(ids)>1:
@@ -57,6 +60,9 @@ def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
         reason=('Version auf einer bestätigten Produktseite gefunden; andere Kandidaten müssen noch verglichen werden' if confirmed_url else
                 'V1/V2-Bilder wurden bereitgestellt, die numerischen Produkt-IDs sind aber noch keiner Version verlässlich zugeordnet' if user_version_compare else
                 'Mehrere Produkte: erst V1/V2, Bilder und Druck der Kandidaten nachweisen')
+    elif obs and obs.get('status')=='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED':
+        category='AUTO_PRINT_VERIFICATION'
+        reason='Produkt ist im bestätigten Set mit passender Kartennummer gefunden; nur die konkrete Druck-/Editionsvariante ist noch offen.'
     elif has_filtered and lang_proof:
         category='AUTO_PRINT_VERIFICATION'
         reason='Produktseite und Angebote in dieser Sprache gefunden; Druck/Edition noch zu verifizieren'

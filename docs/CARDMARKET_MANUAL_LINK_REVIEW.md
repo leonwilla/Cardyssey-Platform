@@ -38,3 +38,33 @@ accessible through the explicit 'Alle automatischen Nachprüfungen anzeigen'
 mode, where the UI makes clear that the user does not have to assign a set.
 The variant-recheck data refreshes every two minutes and the browser page
 reloads the review summary every 30 seconds.
+
+## Verified card is not a verified print: Quappo BS13 regression
+
+For `base1-13` Quappo/Poliwrath, the official Cardmarket product catalog
+lists **273708** (V1) and **660215** (V2) in expansion 1523, the confirmed
+Base Set. Cardyssey's special physical print `Copyright 1999–2000` has no
+specific `cardmarketProductId`. The older scanner incorrectly emitted
+`PRODUCT_ID_NOT_IN_VERIFIED_SET` even when Cardmarket resolved to V1 BS13.
+It was conflating a missing *variant* ID with a missing *card in its set*.
+
+The queue now exports `set_card_candidate_ids` separately from the exact
+`cardmarket_ids`; the former are official candidate products for the given
+card, not a verified print. The scanner validates (1) the confirmed set URL
+slug where a trusted guard exists, (2) the collector number from the **final**
+URL suffix (`-BS13`, never the preceding `-V1`), and (3) membership in the
+card's or variant's product candidate IDs. If correct card/set are found but
+print attribution is missing, it emits
+`PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED`, with `identity_confirmed=false`.
+No language-specific price or exact print mapping can be published from that
+status. With no card-number evidence it remains an unresolved product result.
+
+Card-level candidates are shared in DE and EN from the independently mapped
+DE card identity, not inferred from the locale. Worklist/review records for
+missing-variant IDs retain those *candidate IDs* with classification
+`CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED_SPECIAL_PRINT`, rather than falsely
+showing zero possible products. The 1999–2000 print is still pending a real
+version/edition comparison. This change is durable across the next catalog
+export and the next two-minute review refresh. The exact Quappo variant has
+been queued for targeted retest in both DE and EN once the saved Cardmarket
+session is allowed by the provider again.
