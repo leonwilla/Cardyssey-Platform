@@ -11,7 +11,8 @@ param(
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,180)][int]$ChallengeWaitSeconds = 90,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
-  [switch]$ForcePublicMode  # diagnostic: use public behavior even if signed in
+  [switch]$ForcePublicMode,  # diagnostic: use public behavior even if signed in
+  [switch]$RequireLogin  # production: pause instead of scraping as guest
 )
 $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
@@ -347,9 +348,10 @@ try {
     }
 
     try {
-      # Public Cardmarket catalogue is usable without an account. Prefer the
-      # logged-in session when available, but never stop the queue for logout.
-      $auth = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
+      # Fail closed when full Cardmarket session is required. Guest pages
+      # cannot reliably paginate, so they must not create misleading results.
+      $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
+      if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }
       $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
 
       $name = [string]$case.kartenname_suche
@@ -420,6 +422,9 @@ try {
               }
               Start-Sleep -Seconds ([Math]::Max(10,$DelaySeconds))
               continue
+            }
+            if ($RequireLogin -and -not (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")')) {
+              throw 'CARDMARKET_LOGIN_REQUIRED'
             }
             $searchExpr = 'JSON.stringify({title:document.title,blocked:/(?:nur einen moment|just a moment|attention required|checking your browser|captcha|robot check|access denied|zugriff verweigert|too many requests)/i.test(document.title+" "+(document.body?.innerText||"").slice(0,1600)),links:[...document.querySelectorAll("a[href*=\"/Products/Singles/\"]")].map(a=>({text:a.textContent.trim().slice(0,140),url:new URL(a.getAttribute("href"),location.origin).href})).filter(x=>x.text)})'
             # Cardmarket's result list is injected AFTER document.readyState
@@ -504,6 +509,7 @@ try {
         # search page. Never treat an inaccessible account as authenticated.
         $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
         $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
+        if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }
         $candidateId = ''
         for ($pi = 0; $pi -lt 20; $pi++) {
           $candidateId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""')
@@ -595,6 +601,7 @@ try {
               if (-not $stillSignedIn) {
                 $auth=$false
                 $out.access_mode='PUBLIC_LIMITED'
+                if ($RequireLogin) { throw 'CARDMARKET_LOGIN_REQUIRED' }
                 if (-not $out.pagination_failure) { $out.pagination_failure='SESSION_EXPIRED_OR_PUBLIC' }
               }
               $out.all_pages_complete=($auth -and $data.filtered -and
@@ -659,6 +666,14 @@ try {
       }
     } catch {
       $message = $_.Exception.Message
+      if ($message -match 'CARDMARKET_LOGIN_REQUIRED') {
+        $out.status='LOGIN_REQUIRED'
+        $out.error='CARDMARKET_LOGIN_REQUIRED'
+        $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+        ($out | ConvertTo-Json -Depth 6 -Compress) | Add-Content -Encoding UTF8 -Path $resultsPath
+        Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED' $case.cardyssey_karte
+        break
+      }
       if ($message -match 'CARDMARKET_PROVIDER_CHALLENGE') {
         $out.status = 'BLOCKED'
         $out.error = 'CARDMARKET_PROVIDER_CHALLENGE'

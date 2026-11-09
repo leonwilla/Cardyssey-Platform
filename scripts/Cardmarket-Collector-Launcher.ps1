@@ -1,6 +1,6 @@
 ﻿# Resume Cardmarket account review on the dedicated local Chrome profile.
 # Authentication and login checks remain entirely in Chrome; no cookie export.
-param([switch]$ResumeAfterClearance)
+param([switch]$ResumeAfterClearance,[switch]$ManualResume)
 $ErrorActionPreference="Stop"
 $base=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketCollector"
 $profile=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketEdgeProfile"
@@ -15,8 +15,8 @@ if (Test-Path $progressFile) {
   try {
     $progress=Get-Content -Raw $progressFile | ConvertFrom-Json
     $last=[datetime]::Parse([string]$progress.updated_at).ToUniversalTime()
-    if (!$ResumeAfterClearance -and
-        $progress.status -in @("CONNECTION_LOST","PROVIDER_TIMEOUT","BLOCKED","LOGIN_REQUIRED") -and
+    if (!$ResumeAfterClearance -and !$ManualResume -and
+        $progress.status -in @("CONNECTION_LOST","PROVIDER_TIMEOUT","BLOCKED","LOGIN_REQUIRED","LOGIN_UNVERIFIED") -and
         $last -gt [datetime]::UtcNow.AddHours(-2)) {return}
   } catch {}
 }
@@ -37,4 +37,20 @@ if (!$ready) {
   }
 }
 if (!$ready) {throw "Cardmarket browser debugging endpoint unavailable; preserve profile and retry later"}
-Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","40","-DelaySeconds","8","-Languages","de","-RunMinutes","95","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+# Both automatic and manual resume obey the same provider/login gate.
+$diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
+if(Test-Path $diagnose){
+  $health=& $diagnose | ConvertFrom-Json
+  $progress=Join-Path $base 'progress-de.json'
+  if($health.status -ne 'AVAILABLE' -or $health.login -ne 'AUTHENTICATED'){
+    $pause=if($health.status -eq 'BLOCKED'){'BLOCKED'}elseif($health.login -eq 'LOGIN_REQUIRED'){'LOGIN_REQUIRED'}else{'LOGIN_UNVERIFIED'}
+    if(Test-Path $progress){
+      $x=Get-Content -Raw $progress | ConvertFrom-Json
+      $x.status=$pause;$x.updated_at=[DateTime]::UtcNow.ToString('o')
+      $x|ConvertTo-Json -Compress|Set-Content -Encoding UTF8 -Path $progress
+    }
+    Write-Output ('CARDMARKET_PAUSED '+$pause)
+    return
+  }
+}
+Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","40","-DelaySeconds","8","-Languages","both","-RunMinutes","95","-ScanMode","identity","-RequireLogin") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")

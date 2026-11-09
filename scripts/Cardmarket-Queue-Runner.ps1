@@ -5,7 +5,8 @@ param(
   [ValidateRange(3,120)][int]$DelaySeconds = 8,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 95,
-  [ValidateSet('identity','missing')][string]$ScanMode='identity'
+  [ValidateSet('identity','missing')][string]$ScanMode='identity',
+  [switch]$RequireLogin
 )
 $ErrorActionPreference = 'Stop'
 $base = Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
@@ -19,11 +20,11 @@ $stop=$false
 foreach ($language in $selectedLanguages) {
   do {
     Write-Output ('LANGUAGE_BEGIN ' + $language + ' ' + [DateTime]::UtcNow.ToString('o'))
-    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -ScanMode $ScanMode
+    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
     if (!$?) { throw "Collector failed for $language" }
     $progress = Get-Content -Raw (Join-Path $base "progress-$language.json") | ConvertFrom-Json
     Write-Output ('LANGUAGE_END ' + $language + ' status=' + $progress.status + ' processed=' + $progress.done)
-    if ($progress.status -in @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED')) {
+    if ($progress.status -in @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED')) {
       Write-Output 'STOP_ON_PROVIDER_OR_CONNECTION_ERROR'
       $stop=$true
       break

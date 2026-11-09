@@ -14,6 +14,7 @@ try {
     $diag=& $checker | ConvertFrom-Json
     if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
     if($diag.login -eq 'LOGIN_REQUIRED'){Note 'CARDMARKET_LOGIN_REQUIRED';return}
+    if($diag.status -ne 'AVAILABLE' -or $diag.login -ne 'AUTHENTICATED'){Note 'CARDMARKET_SESSION_NOT_VERIFIED';return}
   }
   $busy=@(Get-CimInstance Win32_Process | Where-Object {
      $_.Name -eq 'powershell.exe' -and $_.CommandLine -match '-File.*Cardmarket-Queue-Runner[.]ps1'
@@ -22,7 +23,7 @@ try {
   $progressPath=Join-Path $base 'progress-de.json'
   if(!(Test-Path $progressPath)){return}
   $state=Get-Content -Raw $progressPath | ConvertFrom-Json
-  if([string]$state.status -notin @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED')){return}
+  if([string]$state.status -notin @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED')){return}
   $pages=@(Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5 |
       Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') })
   if(!$pages.Count){Note 'NO_CARDMARKET_TAB';return}
