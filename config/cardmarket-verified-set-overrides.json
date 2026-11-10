@@ -13,5 +13,10 @@
     "expansionId": "1607",
     "slug": "Wizards-Black-Star-Promos",
     "reason": "Official product catalog Pikachu WP1 idProduct 275420 belongs to expansion 1607; Cardmarket official set page lists Pikachu WP1. This proves set not specific 1st-edition-error print."
+  },
+  "sv01": {
+    "expansionId": "5223",
+    "slug": "Scarlet-Violet",
+    "reason": "Both verified live Cardmarket SVI 013 pages: Sprigatito V1 idProduct 689763 and V2 idProduct 691000 are in official product feed expansion 5223 and display Scarlet & Violet + 013. This confirms SET only, NOT which physical foil/stamp maps to V1/V2."
   }
 }

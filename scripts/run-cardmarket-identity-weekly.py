@@ -58,6 +58,15 @@ def main():
     report['variant_candidate_reconciliation']=json.loads(run(
         ROOT/'scripts/reconcile-cardmarket-variant-identity-review.py',
         *(['--apply'] if a.apply else [])))
+    # The generic exporter intentionally does not promote ambiguous print
+    # product IDs. Restore all *independently verified* set-local candidate
+    # lists after regeneration; never change a human-approved print or price.
+    overrides=json.loads((ROOT/'config/cardmarket-verified-set-overrides.json').read_text(encoding='utf-8'))
+    report['verified_expansion_repairs']={}
+    for set_id in sorted(overrides):
+        report['verified_expansion_repairs'][set_id]=json.loads(run(
+            ROOT/'scripts/repair-cardmarket-verified-expansions.py','--set',set_id,
+            *(['--apply'] if a.apply else [])))
     # Durable exact-card URL leads supplied by the collector owner. Import
     # AFTER regenerating/merging queue columns; do not promote print prices.
     for lang in ('de','en'):

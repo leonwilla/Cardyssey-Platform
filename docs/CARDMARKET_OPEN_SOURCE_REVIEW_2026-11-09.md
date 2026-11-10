@@ -105,3 +105,46 @@ assigned unless every row passes language, condition, print and completeness
 checks. The provider may have independent limits, so this doesn't guarantee
 full pagination for all products. The scanner uses the updated script only on
 its next launcher batch; the running collector need not be reset.
+
+## 2026-11-10: Felori SVI013 print and V1/V2 reproducible validation
+
+- The user-supplied Cardmarket `Cards/Sprigatito-Scratch-Leafage/Versions`
+  belongs to a 21-product reprint family in the official singles feed. It is
+  **not** the same physical printing 21 times.
+- Independently verified the **same-set** Cardmarket Scarlet Violet product
+  pages in the signed-in dedicated Edge browser:
+  `Sprigatito-V1-SVI013` product ID `689763`, and `Sprigatito-V2-SVI013`
+  product ID `691000`, both from official expansion `5223`, number `013`,
+  shared Cardmarket `idMetacard=415179`. The user's Chinese `Gem-Pack-Vol-1`
+  page maps to product `806289`, expansion `6001`, a different physical
+  expansion; it must never be assigned to DE/EN `sv01-013` just because the
+  illustration and metacard are shared.
+- `config/cardmarket-verified-set-overrides.json` permanently pins Cardyssey
+  `sv01` to Cardmarket `5223` for regular re-runs. A one-time verified-set
+  repair re-evaluated all **258 cards**, with 98 single-product, 156 multi-
+  product and 4 name-missing cases; DE/EN review candidates updated without
+  approving prints or touching human-verified routes and prices.
+- The V1 product page has a dedicated *Only Reverse?* control, and the
+  `?language=3&minCondition=2&isReverseHolo=N|Y` deep links were validated in
+  the persistent browser: the N page is normal product 689763, the Y page
+  changes to Felori (Foil) and remains product 689763. Both values still
+  require form/offer-attribute verification during the scanner's real price
+  pass. `cardmarket-known-print-page-hints.json` specifies this **standard
+  offer-filter candidate**, only for normal + ordinary reverse in `sv01-013`.
+  The collector resumes language/NM/edition/reverse offer filters rather than
+  short-circuiting these into print-review failures. This is explicitly not
+  human confirmation of an exact print or its price.
+- The *Grass symbol* reverse and the separate Holo curated DE rows retain
+  BOTH exact same-set V1/V2 IDs as candidates. We have **not** proved which
+  one (if either) represents the physical special printing. They do not get
+  the ordinary reverse price, even if a similar-looking Chinese print exists.
+- Cardmarket's real V1 and V2 images were observed at
+  `https://product-images.s3.cardmarket.com/51/SVI/689763/689763.jpg`
+  and `/51/SVI/691000/691000.jpg`. Admin review now displays the two verified
+  product-version photos and links side by side as a *comparison*, not proof
+  of a physical edition, stamp or foil. This reusable version-photo map can
+  be extended when another split product page has been independently checked.
+- The existing official-product-family and verified-expansion mapping work
+  generically across sets, but a **global V1/V2 means normal/special rule is
+  forbidden**. Only positive source evidence may select a product version;
+  all other ambiguous prints remain in print review, not guessed prices.

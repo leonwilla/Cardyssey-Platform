@@ -5,7 +5,7 @@ export type Entry={language:string;card_id:string;variant_id:string;set_id:strin
  candidate_ids:string[];matched_set_ids:string[];product_names:string;
  provider_expansion_id:string;classification:string;status:string;
  selected_product_id:string|null;reviewer_note:string|null;
- card_image_url?:string|null;version_page_url?:string|null;version_family_product_count?:number;version_same_expansion_ids?:string[];related_sets?:{set_id:string;set_name:string;card_id:string;printed_number:string}[];suggested_product_url?:string|null;
+ card_image_url?:string|null;version_product_images?:{id:string;version:string;url:string;imageUrl:string;evidence:string}[];version_page_url?:string|null;version_family_product_count?:number;version_same_expansion_ids?:string[];related_sets?:{set_id:string;set_name:string;card_id:string;printed_number:string}[];suggested_product_url?:string|null;
  diagnosis?:{kind:string;reason:string;action:string;proofAvailable:boolean;sameMetacard:boolean;candidates:{id:string;name:string;expansionId:string;metacardId:string;addedAt:string}[]};
  recheckEvidence?:{category:string;reason:string;versionObserved:string|null;versionProductId:string|null;languageAvailability:string;sameMetacard:boolean;lastScanStatus:string;versionPages?:{version:string;url:string;visualNote:string}[]};
  reference_values?:Record<string,{avg30:number|null;avg30_holo:number|null;trend:number|null;trend_holo:number|null}>;};
@@ -112,8 +112,15 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
   </div>:<>
    <div style={{display:'grid',gap:7}}>
     <strong style={{fontSize:13}}>Gefundene Cardmarket-Produktseiten</strong>
-    {entry.matched_set_ids.length>0?<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{entry.matched_set_ids.map(id=><a key={id} href={productLink(id)} target="_blank" rel="noopener noreferrer" style={{fontSize:13,padding:'8px 10px',border:'1px solid var(--border)',borderRadius:9,fontWeight:600}}>Produkt {id} ansehen</a>)}</div>:<span style={{fontSize:13,opacity:.75}}>Kein geprüfter Produktlink gefunden.</span>}
-    {entry.suggested_product_url&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>Gefundene Produktseite öffnen</a><button type="button" className="ghostButton" onClick={()=>setManualUrl(entry.suggested_product_url||'')}>Link übernehmen</button></div>}
+    {entry.version_product_images?.length? <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+      {entry.version_product_images.map(v=><div key={v.id} style={{width:130,border:'1px solid var(--border)',borderRadius:9,padding:8,display:'grid',gap:5,justifyItems:'center'}}>
+        <img src={v.imageUrl} alt={'Cardmarket '+v.version+' Produkt '+v.id} loading="lazy" style={{width:95,height:135,objectFit:'contain'}}/>
+        <strong style={{fontSize:12}}>{v.version} · ID {v.id}</strong>
+        <a href={v.url} target="_blank" rel="noopener noreferrer" style={{fontSize:12}}>Produkt ansehen</a>
+      </div>)}
+      <small style={{width:'100%',opacity:.8}}>Zwei Produktversionen im selben Set. Bilder dienen dem Vergleich – Sonderstempel und Holo-Muster sind dadurch noch nicht automatisch bestätigt.</small>
+    </div>:entry.matched_set_ids.length>0?<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{entry.matched_set_ids.map(id=><a key={id} href={productLink(id)} target="_blank" rel="noopener noreferrer" style={{fontSize:13,padding:'8px 10px',border:'1px solid var(--border)',borderRadius:9,fontWeight:600}}>Produkt {id} ansehen</a>)}</div>:<span style={{fontSize:13,opacity:.75}}>Kein geprüfter Produktlink gefunden.</span>}
+    {entry.suggested_product_url&&<div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><a href={entry.suggested_product_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>{entry.matched_set_ids.length>1?'Produktkandidat öffnen (Druck noch offen)':'Gefundene Produktseite öffnen'}</a><button type="button" className="ghostButton" onClick={()=>setManualUrl(entry.suggested_product_url||'')}>Link übernehmen</button></div>}
     {entry.version_page_url&&<a href={entry.version_page_url} target="_blank" rel="noopener noreferrer" style={{fontSize:13,fontWeight:600}}>Alle Druckversionen auf Cardmarket vergleichen</a>}
     {Boolean(entry.version_family_product_count)&&<small style={{opacity:.75}}>Automatisch erkannte Reprint-Familie: {entry.version_family_product_count} Katalogprodukte{entry.version_same_expansion_ids?.length?' · davon '+entry.version_same_expansion_ids.length+' im bestätigten Set':''}. Ähnliche Reprints aus fremden Sets werden nicht als dieselbe Karte bestätigt.</small>}
     <a href={searchUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:13}}>Auf Cardmarket suchen</a>
@@ -129,7 +136,7 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
    {entry.matched_set_ids.length>0&&<label style={{display:'grid',gap:5,fontSize:13}}><strong>Richtiges Produkt wählen</strong>
     <select aria-label="Cardmarket-Produkt wählen" value={pid} onChange={e=>{setPid(e.target.value);setConfirmed(false)}}>
      <option value="">Produkt auswählen</option>
-     {entry.matched_set_ids.map((id,i)=><option value={id} key={id}>{candidate(id)?.name||names[i]||entry.card_name} · ID {id}</option>)}
+     {entry.matched_set_ids.map((id,i)=><option value={id} key={id}>{candidate(id)?.name||names[i]||entry.card_name} {entry.version_product_images?.find(v=>v.id===id)?.version||''} · ID {id}</option>)}
     </select>
    </label>}
    {entry.matched_set_ids.length>0&&<label style={{display:'flex',gap:8,alignItems:'flex-start',fontSize:13}}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/><span>Ich habe Karte, Set, Nummer, Sprache und genaue Druckvariante verglichen.</span></label>}

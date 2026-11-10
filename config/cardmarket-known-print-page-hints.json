@@ -66,5 +66,37 @@
         "printVerified": false
       }
     }
+  },
+  "sv01-013": {
+    "setSlug": "Scarlet-Violet",
+    "collectorSuffix": "SVI013",
+    "variants": {
+      "endfynwn4n10gzq": {
+        "slug": "Sprigatito-V1-SVI013",
+        "evidence": "V1 and V2 are official set-number candidates; ordinary print candidate V1 must still be physically differentiated from V2 before exact print confirmation",
+        "printVerified": false,
+        "standardFilterProductId": "689763",
+        "standardFilterExpansionId": "5223",
+        "standardFilterEvidence": "Cardmarket V1 SVI013 live page: standard offers with Reverse selector; compare physical language and offer attributes, never stamp or exact print from this reference alone"
+      },
+      "cm4kqul3x1bwlz1f": {
+        "slug": "Sprigatito-V1-SVI013",
+        "evidence": "V1 product offers a Reverse filter; exact Reverse offer is not proven without selecting the filter and inspecting offer attributes",
+        "printVerified": false,
+        "standardFilterProductId": "689763",
+        "standardFilterExpansionId": "5223",
+        "standardFilterEvidence": "Cardmarket V1 SVI013 live page: standard offers with Reverse selector; compare physical language and offer attributes, never stamp or exact print from this reference alone"
+      },
+      "curated:de:sv01:013:grass-stamp": {
+        "slug": "Sprigatito-V2-SVI013",
+        "evidence": "V2 is the other same-set print candidate; grass symbol / stamped artwork is NOT confirmed for V2. Do not price or auto confirm the grass-stamped card from this page alone.",
+        "printVerified": false
+      },
+      "curated:de:sv01:013:holo": {
+        "slug": "Sprigatito-V2-SVI013",
+        "evidence": "V2 only as alternative same-set product; full holo print not independently established",
+        "printVerified": false
+      }
+    }
   }
 }

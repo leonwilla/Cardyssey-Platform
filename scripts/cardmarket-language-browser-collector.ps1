@@ -699,7 +699,7 @@ try {
           $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
           $out.error='CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
-        } elseif ($out.reference_page_used -eq $true -and [string]$case.reference_print_verified -eq 'NO') {
+        } elseif ($out.reference_page_used -eq $true -and [string]$case.reference_print_verified -eq 'NO' -and [string]$case.reference_standard_filter_supported -ne 'YES') {
           # Direct URL proves the page/print family, not the special edition.
           # A single WP4 product is shared by different movie-stamp variants;
           # Aerodactyl V3 includes more than one prerelease foil pattern.
@@ -729,7 +729,10 @@ try {
         } else {
           # Identitaet bestaetigt: ID + URL dauerhaft, unabhaengig vom Preis.
           $out.identity_confirmed = $true
-          if($out.catalog_direct_id_verified -eq $true){$out.exact_print_verified=$false}
+          if($out.catalog_direct_id_verified -eq $true -or $out.reference_page_used -eq $true){$out.exact_print_verified=$false}
+          if($out.reference_page_used -eq $true -and [string]$case.reference_standard_filter_supported -eq 'YES'){
+            $out.standard_offer_filter_candidate=$true
+          }
           if (-not $priceNeeded) {
             $out.status = 'MAPPED_NO_PRICE_REQUIRED'
           } else {

@@ -1,0 +1,16 @@
+{
+  "sv01-013": {
+    "689763": {
+      "version": "V1",
+      "productUrlSlug": "Sprigatito-V1-SVI013",
+      "imageUrl": "https://product-images.s3.cardmarket.com/51/SVI/689763/689763.jpg",
+      "evidence": "Product page and actual product image seen in persistent Cardmarket browser, same Scarlet Violet set, collector 013. Standard product's Reverse offer filter exists; exact language/printing must still be selected via offers."
+    },
+    "691000": {
+      "version": "V2",
+      "productUrlSlug": "Sprigatito-V2-SVI013",
+      "imageUrl": "https://product-images.s3.cardmarket.com/51/SVI/691000/691000.jpg",
+      "evidence": "Second verified live product page for Scarlet Violet SVI013, same metacard. Distinguishing physical print is not established just from V2."
+    }
+  }
+}

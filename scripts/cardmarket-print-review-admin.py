@@ -282,6 +282,9 @@ def list_cases(data):
         if group and group!='0':version_families[group].append((product_id,str(meta.get('idExpansion') or '')))
     seed_path=Path('/home/tv/cardshop/config/cardmarket-version-page-seeds.json')
     version_seeds=json.loads(seed_path.read_text(encoding='utf-8')) if seed_path.is_file() else {}
+    image_map_path=Path('/home/tv/cardshop/config/cardmarket-verified-version-page-images.json')
+    verified_images=json.loads(image_map_path.read_text(encoding='utf-8')) if image_map_path.is_file() else {}
+    version_set_guards=json.loads(Path('/home/tv/cardshop/config/cardmarket-set-url-guards.json').read_text(encoding='utf-8'))
     user_links_path=Path('/home/tv/cardshop/config/cardmarket-user-reference-links.json')
     user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
     print_hints_path=Path('/home/tv/cardshop/config/cardmarket-known-print-page-hints.json')
@@ -297,6 +300,14 @@ def list_cases(data):
         row['version_same_expansion_ids']=sorted(
             {i for m in metacards for i,e in version_families.get(m,[]) if same_set and e==same_set})[:15]
         row['version_page_url']=seed.get('pageUrl') or None
+        choices=verified_images.get(row['card_id']) or {}
+        row['version_product_images']=[{
+            'id':pid,'version':choices[pid]['version'],
+            'url':'https://www.cardmarket.com/'+lang+'/Pokemon/Products/Singles/'+
+                version_set_guards.get(row['set_id'],'')+'/'+choices[pid]['productUrlSlug'],
+            'imageUrl':choices[pid]['imageUrl'],
+            'evidence':choices[pid]['evidence']}
+            for pid in row.get('matched_set_ids') or [] if pid in choices]
         hint_set=print_hints.get(row['card_id']) or {}
         hint=(hint_set.get('variants') or {}).get(row['variant_id'])
         from_hint=('https://www.cardmarket.com/'+row['language']+'/Pokemon/Products/Singles/'+

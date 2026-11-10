@@ -5,7 +5,7 @@ sp=importlib.util.spec_from_file_location('print_hints',ROOT/'cardmarket-apply-p
 class Tests(unittest.TestCase):
  def test_known_urls_are_never_print_verified(self):
   data=json.loads((ROOT.parent/'config/cardmarket-known-print-page-hints.json').read_text())
-  self.assertEqual(set(data),{'basep-1','basep-4','base3-1'})
+  self.assertEqual(set(data),{'basep-1','basep-4','base3-1','sv01-013'})
   for card,rule in data.items():
    for variant,x in rule['variants'].items():
     self.assertFalse(x['printVerified']);self.assertTrue(x['slug'].endswith(rule['collectorSuffix']))
@@ -29,6 +29,30 @@ class Tests(unittest.TestCase):
     self.assertTrue(all(x['reference_print_verified']=='NO' and x['cardmarket_ids']=='12345' for x in rows))
     self.assertTrue(all('/'+lang+'/Pokemon/' in x['reference_product_url'] for x in rows))
     self.assertTrue('V1-FO1' in rows[0]['reference_product_url']);self.assertTrue('V3-FO1' in rows[1]['reference_product_url'])
+ def test_felori_standard_vs_special_are_independent(self):
+  with tempfile.TemporaryDirectory() as td:
+   root=Path(td);(root/'config').mkdir()
+   (root/'config/cardmarket-known-print-page-hints.json').write_text((ROOT.parent/'config/cardmarket-known-print-page-hints.json').read_text())
+   fields=['cardyssey_karte','variante_id','set_id','cardmarket_ids','routing_state','drucktyp','stempel','foil','sonderdruck']
+   names=[('endfynwn4n10gzq','Normal','[]',''),('cm4kqul3x1bwlz1f','Reverse','[]',''),('curated:de:sv01:013:grass-stamp','Reverse','["grass-symbol"]','Grass symbol'),('curated:de:sv01:013:holo','Holo','[]','')]
+   for lang in ('de','en'):
+    with (root/f'queue-{lang}.csv').open('w',encoding='utf-8-sig',newline='') as f:
+     w=csv.DictWriter(f,fieldnames=fields);w.writeheader()
+     for var,typ,st,foil in names:
+      w.writerow({'cardyssey_karte':'sv01-013','variante_id':var,'set_id':'sv01','cardmarket_ids':'689763,691000','routing_state':'UNVERIFIED','drucktyp':typ,'stempel':st,'foil':foil,'sonderdruck':''})
+    result=h.apply(lang,base=root,root=root)
+    self.assertEqual(result['standardOfferFilterCandidates'],2)
+    with (root/f'queue-{lang}.csv').open(encoding='utf-8-sig') as f:rows={x['variante_id']:x for x in csv.DictReader(f)}
+    for var in ('endfynwn4n10gzq','cm4kqul3x1bwlz1f'):
+     self.assertEqual(rows[var]['catalog_singleton_id'],'689763')
+     self.assertEqual(rows[var]['catalog_expansion_id'],'5223')
+     self.assertEqual(rows[var]['reference_standard_filter_supported'],'YES')
+     self.assertEqual(rows[var]['reference_print_verified'],'NO')
+     self.assertEqual(rows[var]['cardmarket_ids'],'689763,691000')
+    for var in ('curated:de:sv01:013:grass-stamp','curated:de:sv01:013:holo'):
+     self.assertEqual(rows[var]['catalog_singleton_id'],'')
+     self.assertEqual(rows[var]['reference_standard_filter_supported'],'NO')
+     self.assertIn('/Sprigatito-V2-SVI013',rows[var]['reference_product_url'])
  def test_scanner_checks_reference_before_search_and_never_confirms_price(self):
   s=(ROOT/'cardmarket-language-browser-collector.ps1').read_text(encoding='utf-8-sig')
   self.assertIn('reference_page_used=$true',s)
@@ -36,4 +60,8 @@ class Tests(unittest.TestCase):
   self.assertIn("[string]$case.reference_print_verified -eq 'NO'",s)
   a=s.index("$out.reference_page_used -eq $true");b=s.index("} elseif ($candidateId -ne",a)
   self.assertNotIn('identity_confirmed = $true',s[a:b]);self.assertNotIn('sample_median_eur=',s[a:b])
+  self.assertIn("[string]$case.reference_standard_filter_supported -ne 'YES'",s)
+  self.assertIn("$out.standard_offer_filter_candidate=$true",s)
+  self.assertIn('expected_reverse_holo',s)
+  self.assertIn('all_pages_complete',s)
 if __name__=='__main__':unittest.main()
