@@ -666,6 +666,16 @@ try {
           Start-Sleep -Milliseconds 500
         }
         $out.product_id = $candidateId
+        # Reprints are linked directly from the *opened* product page. Capture
+        # the family URL for later independent version-page checks. This adds
+        # no Cardmarket navigation and NEVER verifies a foil or price.
+        if($candidateId -match '^[0-9]{4,12}$'){
+          $familyLink=[string](Js '(()=>{const a=[...document.querySelectorAll("a[href]")].find(x=>{try{const u=new URL(x.href);return u.origin==="https://www.cardmarket.com"&&/^\/(de|en)\/Pokemon\/Cards\/[^/]+\/Versions$/.test(u.pathname)}catch{return false}});return a?a.href.split("?")[0]:""})()')
+          if($familyLink -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Cards/[^/]+/Versions$'){
+            $out.version_page_url=$familyLink
+            $out.version_family_status='PAGE_LINK_FOUND_PRINT_UNVERIFIED'
+          }
+        }
         $allowed = @([string]$case.cardmarket_ids -split ',' | Where-Object {$_ -match '^[0-9]+$'})
         # The Cardyssey print can lack a product ID while the exact CARD is
         # already known in the independently matched Cardmarket expansion.

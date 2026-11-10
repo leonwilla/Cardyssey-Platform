@@ -1,0 +1,87 @@
+{
+  "sv01-013": {
+    "cardId": "sv01-013",
+    "versionPageUrl": "https://www.cardmarket.com/de/Pokemon/Cards/Sprigatito-Scratch-Leafage/Versions",
+    "pageHeading": "Felori [Scratch | Leafage]\nSprigatito [Scratch | Leafage] - 21 versions",
+    "totalVersionsObserved": 21,
+    "otherSetVersionsExcluded": 19,
+    "sameSetCardNumberCandidates": [
+      {
+        "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/Scarlet-Violet/Sprigatito-V2-SVI013",
+        "setSlug": "Scarlet-Violet",
+        "productSlug": "Sprigatito-V2-SVI013",
+        "version": "V2",
+        "versionLabel": "Karmesin und Purpur\n\nVersion 2\n\n434 verfügbar\n\nAb 0,02 €",
+        "productId": "691000",
+        "productIdChecked": true,
+        "exactPrintVerified": false,
+        "priceVerified": false,
+        "imageUrl": "https://product-images.s3.cardmarket.com/51/SVI/691000/691000.jpg",
+        "expansionId": "5223",
+        "metacardId": "415179"
+      },
+      {
+        "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/Scarlet-Violet/Sprigatito-V1-SVI013",
+        "setSlug": "Scarlet-Violet",
+        "productSlug": "Sprigatito-V1-SVI013",
+        "version": "V1",
+        "versionLabel": "Karmesin und PurpurVersion 1 10469 VerfügbarAb 0,02 €",
+        "productId": "689763",
+        "productIdChecked": true,
+        "exactPrintVerified": false,
+        "priceVerified": false,
+        "imageUrl": "https://product-images.s3.cardmarket.com/51/SVI/689763/689763.jpg",
+        "expansionId": "5223",
+        "metacardId": "415179"
+      }
+    ],
+    "candidateCount": 2,
+    "allCandidatesHaveCheckedProductId": true,
+    "exactPrintVerified": false,
+    "safeToAutoPrice": false,
+    "status": "VERSION_FAMILY_PRINT_UNVERIFIED"
+  },
+  "sv10.5w-033": {
+    "cardId": "sv10.5w-033",
+    "versionPageUrl": "https://www.cardmarket.com/de/Pokemon/Cards/Joltik-Surprise-Attack/Versions",
+    "pageHeading": "Wattzapf [Surprise Attack]\nJoltik [Surprise Attack] - 11 versions",
+    "totalVersionsObserved": 11,
+    "otherSetVersionsExcluded": 9,
+    "sameSetCardNumberCandidates": [
+      {
+        "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/White-Flare-Additionals/Joltik-V1-xWHT033",
+        "setSlug": "White-Flare-Additionals",
+        "productSlug": "Joltik-V1-xWHT033",
+        "version": "V1",
+        "versionLabel": "Weiße Flammen: Ergänzungen\n\nVersion 1\n\n1079 verfügbar\n\nAb 0,03 €",
+        "productId": "836552",
+        "productIdChecked": true,
+        "exactPrintVerified": false,
+        "priceVerified": false,
+        "imageUrl": "https://product-images.s3.cardmarket.com/51/xWHT/836552/836552.jpg",
+        "expansionId": "6198",
+        "metacardId": "450173"
+      },
+      {
+        "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/White-Flare-Additionals/Joltik-V2-xWHT033",
+        "setSlug": "White-Flare-Additionals",
+        "productSlug": "Joltik-V2-xWHT033",
+        "version": "V2",
+        "versionLabel": "Weiße Flammen: Ergänzungen\n\nVersion 2\n\n86 verfügbar\n\nAb 4,00 €",
+        "productId": "836551",
+        "productIdChecked": true,
+        "exactPrintVerified": false,
+        "priceVerified": false,
+        "imageUrl": "https://product-images.s3.cardmarket.com/51/xWHT/836551/836551.jpg",
+        "expansionId": "6198",
+        "metacardId": "450173"
+      }
+    ],
+    "candidateCount": 2,
+    "allCandidatesHaveCheckedProductId": true,
+    "exactPrintVerified": false,
+    "safeToAutoPrice": false,
+    "status": "VERSION_FAMILY_PRINT_UNVERIFIED",
+    "printAssignmentWarning": "Mögliche vertauschte Pokéball-/Meisterball-Bezeichnungen aus TCGdex: 836551 gehört zu V2 (deutlich teurer), 836552 zu V1. Druckmuster und Preise vor jeder Freigabe manuell abgleichen."
+  }
+}

@@ -284,6 +284,8 @@ def list_cases(data):
     version_seeds=json.loads(seed_path.read_text(encoding='utf-8')) if seed_path.is_file() else {}
     image_map_path=Path('/home/tv/cardshop/config/cardmarket-verified-version-page-images.json')
     verified_images=json.loads(image_map_path.read_text(encoding='utf-8')) if image_map_path.is_file() else {}
+    family_evidence_path=Path('/home/tv/cardshop/config/cardmarket-version-family-evidence.json')
+    family_evidence=json.loads(family_evidence_path.read_text(encoding='utf-8')) if family_evidence_path.is_file() else {}
     version_set_guards=json.loads(Path('/home/tv/cardshop/config/cardmarket-set-url-guards.json').read_text(encoding='utf-8'))
     user_links_path=Path('/home/tv/cardshop/config/cardmarket-user-reference-links.json')
     user_links=json.loads(user_links_path.read_text(encoding='utf-8')) if user_links_path.exists() else {}
@@ -308,6 +310,26 @@ def list_cases(data):
             'imageUrl':choices[pid]['imageUrl'],
             'evidence':choices[pid]['evidence']}
             for pid in row.get('matched_set_ids') or [] if pid in choices]
+        # An actually observed Cardmarket /Cards/.../Versions page resolves
+        # the matching physical SET + collector number, excluding unrelated
+        # reprints. Never upgrade this evidence into a foil/stamp/price match.
+        family_observed=family_evidence.get(row['card_id']) or {}
+        if (family_observed.get('status')=='VERSION_FAMILY_PRINT_UNVERIFIED'
+                and family_observed.get('cardId')==row['card_id']):
+            entries=family_observed.get('sameSetCardNumberCandidates') or []
+            candidates=[{
+                'id':str(v['productId']), 'version':v.get('version') or 'Version offen',
+                'url':v['productUrl'], 'imageUrl':v['imageUrl'],
+                'evidence':'Version und Produkt-ID auf Cardmarket geprüft; genaue Druckvariante nicht zugeordnet.'
+            } for v in entries if v.get('productIdChecked') and v.get('productId')
+                  and str(v.get('imageUrl') or '').startswith('https://product-images.s3.cardmarket.com/')]
+            if candidates:
+                row['version_product_images']=candidates
+                row['version_page_url']=family_observed.get('versionPageUrl')
+                row['version_family_observed_total']=family_observed.get('totalVersionsObserved',0)
+                row['version_family_observed_matches']=len(candidates)
+                row['version_family_excluded_other_sets']=family_observed.get('otherSetVersionsExcluded',0)
+                row['version_family_warning']=family_observed.get('printAssignmentWarning')
         hint_set=print_hints.get(row['card_id']) or {}
         hint=(hint_set.get('variants') or {}).get(row['variant_id'])
         from_hint=('https://www.cardmarket.com/'+row['language']+'/Pokemon/Products/Singles/'+
