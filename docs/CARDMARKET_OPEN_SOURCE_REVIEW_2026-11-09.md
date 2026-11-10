@@ -79,3 +79,29 @@ mapping. The full live browser scanner will exercise the new path on its next
 batch; the two separate product-URL probes do not validate every expansion,
 rare stamp or price listing. Existing manual confirmations, provider routes
 and published prices have not been changed by this work.
+
+## 2026-11-10: Cardmarket price-offer pagination diagnostics and fix
+
+Inspecting the active signed-in Edge profile with a temporary independent
+browser tab confirmed that the user is signed in, offer rows start at 50,
+`#loadMoreButton` is a visible enabled `type=submit` button, and
+`#articlePage=1`. The product filter offers language, condition, reverse,
+seller country, seller type, reputation and amount (not a price-range filter).
+
+Among 495 DE incomplete price observations since Nov 9 21:00 UTC, 260 had
+`LOAD_MORE_DISABLED_OR_LIMIT_REACHED`, 187 hit our artificial
+`CARDMARKET_300_CAP`, 40 had `LOAD_MORE_NO_NEW_OFFERS`, and the balance had
+other evidence failures. These were *not* caused by an unauthenticated session.
+
+The collector now supports up to 1,200 extracted rows and 24 AJAX pages per
+card, instead of artificially declaring all cases at 300 incomplete. If a
+load-more call ends without new rows, the scanner waits for 4 stable DOM
+checks and requires the actual button to be **removed** (not merely disabled)
+before it clears the incomplete pagination reason. A still-visible button,
+reached page cap, changed filter, nonunique offer IDs, mismatching offer flags,
+expired login or an incomplete scrape still fails closed. The median of the
+visible sample remains diagnostic only; a complete market median is not
+assigned unless every row passes language, condition, print and completeness
+checks. The provider may have independent limits, so this doesn't guarantee
+full pagination for all products. The scanner uses the updated script only on
+its next launcher batch; the running collector need not be reset.

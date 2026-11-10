@@ -746,7 +746,12 @@ try {
             $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
             $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
             if ($filterOk) {
-              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,300).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
+              # A deliberately bounded but larger collector window.
+              # Never mark a market as complete if the provider still exposes
+              # more offers at this limit.
+              $offerCap=1200
+              $maxOfferPages=24
+              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
               $data = $null
               for ($fi = 0; $fi -lt 12; $fi++) {
                 Start-Sleep -Milliseconds 500
@@ -759,11 +764,11 @@ try {
               # Public mode collects visible rows, without assuming that a
               # public session can paginate or that its sample is exhaustive.
               if (-not $auth) { $out.pagination_failure='PUBLIC_SESSION_LIMITED_SAMPLE' }
-              # Logged-in mode progressively appends batches (site may cap at 300).
+              # Logged-in mode progressively appends offer blocks (provider cap unknown).
               if ($data.filtered -and $auth) {
-                for ($pageAttempt=0; $pageAttempt -lt 6 -and $data.hasMore; $pageAttempt++) {
+                for ($pageAttempt=0; $pageAttempt -lt $maxOfferPages -and $data.hasMore; $pageAttempt++) {
                   $beforeRows=[int]$data.totalRows
-                  if ($beforeRows -ge 300) { $out.pagination_failure='CARDMARKET_300_CAP';break }
+                  if ($beforeRows -ge $offerCap) { $out.pagination_failure='CARDMARKET_COLLECTOR_CAP';break }
                   $out.offer_pages_attempted++
                   # Do not mistake a hidden/disabled load-more button for a successful click.
                   $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
@@ -792,6 +797,13 @@ try {
                   Start-Sleep -Milliseconds 800
                 }
               }
+              # A bounded iteration count is not proof of the end.
+              if([int]$data.totalRows -ge $offerCap -and !$out.pagination_failure){
+                $out.pagination_failure='CARDMARKET_COLLECTOR_CAP'
+              }
+              if($data.hasMore -and !$out.pagination_failure){
+                $out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'
+              }
               # Login may expire while fetching pages; a public result is
               # never promoted into a full-market price on that transition.
               $stillSignedIn = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
@@ -801,8 +813,30 @@ try {
                 if ($RequireLogin) { throw 'CARDMARKET_LOGIN_REQUIRED' }
                 if (-not $out.pagination_failure) { $out.pagination_failure='SESSION_EXPIRED_OR_PUBLIC' }
               }
+              # Re-read the actual final DOM after AJAX pagination: an old
+              # `hasMore` snapshot can remain true after the last successful
+              # batch, while the load-more element has disappeared. Require
+              # a stable, strictly matching row count + final missing button;
+              # a hidden/disabled button alone never proves completeness.
+              if($auth -and $data.filtered -and [int]$data.totalRows -gt 0 -and
+                 [int]$data.totalRows -lt $offerCap -and $out.pagination_failure -in
+                   @('LOAD_MORE_DISABLED_OR_LIMIT_REACHED','LOAD_MORE_BUTTON_LOST','LOAD_MORE_NO_NEW_OFFERS')) {
+                $stableEnd=$false
+                $finalCount=[int]$data.totalRows
+                for($settle=0;$settle -lt 4;$settle++){
+                  Start-Sleep -Milliseconds 700
+                  $last=Js $rowsExpr | ConvertFrom-Json
+                  if(!$last -or !$last.filtered -or [int]$last.totalRows -ne $finalCount){break}
+                  # The end of Cardmarket's AJAX list is indicated by removal
+                  # of #loadMoreButton, not just a disabled element.
+                  $lastButton=Js '(()=>{const b=document.querySelector("#loadMoreButton");return b?"PRESENT":"ABSENT"})()'
+                  if($lastButton -ne 'ABSENT'){break}
+                  if($settle -eq 3){$stableEnd=$true;$data=$last}
+                }
+                if($stableEnd){$out.pagination_failure='';$out.pagination_end_evidence='BUTTON_REMOVED_STABLE_4_CHECKS'}
+              }
               $out.all_pages_complete=($auth -and $data.filtered -and
-                -not $data.hasMore -and [int]$data.totalRows -lt 300 -and
+                -not $data.hasMore -and [int]$data.totalRows -lt $offerCap -and
                 -not $out.pagination_failure)
               # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
               # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
