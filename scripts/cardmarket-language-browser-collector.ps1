@@ -214,7 +214,7 @@ function Js([string]$expression, [int]$TimeoutSec = 20) {
 }
 
 function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
-  return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser')
+  return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests')
 }
 
 function Move-To([string]$url) {

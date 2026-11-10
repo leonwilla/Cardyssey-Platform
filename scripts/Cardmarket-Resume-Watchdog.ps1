@@ -37,7 +37,7 @@ try {
   $pages=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5
   $active=$pages | Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') } | Select-Object -First 1
   if(!$active){Note 'NO_CARDMARKET_TAB';return}
-  if([string]$active.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser'){
+  if([string]$active.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests'){
     Note 'CHALLENGE_STILL_PRESENT';return
   }
   # Title alone cannot prove a valid product page, but after a prior block

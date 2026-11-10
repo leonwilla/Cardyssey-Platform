@@ -10,7 +10,7 @@ try {
   $page=$targets | Where-Object {$_.type -eq 'page' -and ([string]$_.url) -match '^https://www[.]cardmarket[.]com/'} | Select-Object -First 1
   if(!$page){$state.status='NO_CARDMARKET_TAB';$state.reason='Browser tab unavailable'}
   else {
-    if([string]$page.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser'){
+    if([string]$page.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests'){
       $state.status='BLOCKED';$state.reason='CLOUDFLARE_CHALLENGE'
     } elseif (!$page.webSocketDebuggerUrl){
       $state.status='BROWSER_UNAVAILABLE'
@@ -19,7 +19,7 @@ try {
       $ws.Options.SetRequestHeader('Origin','http://localhost')
       $cts=[Threading.CancellationTokenSource]::new(5000)
       try{$ws.ConnectAsync([uri]$page.webSocketDebuggerUrl,$cts.Token).GetAwaiter().GetResult()|Out-Null}finally{$cts.Dispose()}
-      $js='JSON.stringify({title:document.title,blocked:/(nur einen moment|just a moment|attention required|checking your browser|captcha)/i.test(document.title),loginForm:!!document.querySelector("form[action*=Login],form[action*=login],input[type=password]"),logoutLink:!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),accountHint:!!document.querySelector("a[href*=User_Profile],a[href*=User_Account],a[href*=MyAccount]"),pageReady:document.readyState})'
+      $js='JSON.stringify({title:document.title,blocked:/(nur einen moment|just a moment|attention required|checking your browser|captcha|access denied|cloudflare to restrict access|too many requests)/i.test(document.title),loginForm:!!document.querySelector("form[action*=Login],form[action*=login],input[type=password]"),logoutLink:!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),accountHint:!!document.querySelector("a[href*=User_Profile],a[href*=User_Account],a[href*=MyAccount]"),pageReady:document.readyState})'
       $packet=@{id=7;method='Runtime.evaluate';params=@{expression=$js;returnByValue=$true}}|ConvertTo-Json -Compress -Depth 5
       $buffer=[Text.Encoding]::UTF8.GetBytes($packet)
       $ws.SendAsync([ArraySegment[byte]]::new($buffer),[Net.WebSockets.WebSocketMessageType]::Text,$true,[Threading.CancellationToken]::None).GetAwaiter().GetResult()|Out-Null
