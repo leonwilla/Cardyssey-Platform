@@ -33,7 +33,8 @@ def safe_url(value: str):
 
 def resolve_version_family(raw: dict, *, card_id: str, set_slug: str,
                            collector_suffix: str, observations: list[dict] = (),
-                           catalog: dict | None = None) -> dict:
+                           catalog: dict | None = None,
+                           additional_print_groups: list[dict] = ()) -> dict:
     page = safe_url(raw.get("href", ""))
     if not page or not VERSIONS.fullmatch(page.path):
         raise ValueError("A verified Cardmarket Cards/.../Versions page is required")
@@ -43,6 +44,12 @@ def resolve_version_family(raw: dict, *, card_id: str, set_slug: str,
         raise ValueError("Unsafe set slug")
     if not re.fullmatch(r"[A-Za-z0-9-]{2,32}", collector_suffix):
         raise ValueError("Unsafe collector code")
+    groups = [(set_slug, collector_suffix)]
+    for group in additional_print_groups:
+        gs, gn = str(group.get('setSlug', '')), str(group.get('collectorSuffix', ''))
+        if not re.fullmatch(r"[A-Za-z0-9-]{2,90}", gs) or not re.fullmatch(r"[A-Za-z0-9-]{2,32}", gn):
+            raise ValueError("Unsafe additional group")
+        groups.append((gs, gn))
     expected_path = "/" + page.path.strip("/").split("/")[0] + "/Pokemon/Products/Singles/"
     seen = set()
     all_versions, matched = [], []
@@ -70,7 +77,7 @@ def resolve_version_family(raw: dict, *, card_id: str, set_slug: str,
             "priceVerified": False,
         }
         all_versions.append(record)
-        if m.group(2) == set_slug and product_slug.upper().endswith("-" + collector_suffix.upper()):
+        if any(m.group(2) == gs and product_slug.upper().endswith("-" + gn.upper()) for gs, gn in groups):
             matched.append(record)
     if not all_versions:
         raise ValueError("No Cardmarket version links visible")
@@ -131,7 +138,8 @@ def main():
         feed = json.loads(Path(case["catalogFile"]).read_text(encoding="utf-8-sig"))
         catalog = {str(x["idProduct"]): x for x in feed["products"]}
     result = resolve_version_family(raw, card_id=case["cardId"], set_slug=case["setSlug"],
-        collector_suffix=case["collectorSuffix"], observations=observations, catalog=catalog)
+        collector_suffix=case["collectorSuffix"], observations=observations, catalog=catalog,
+        additional_print_groups=case.get("additionalPrintGroups", []))
     Path(a.output).parent.mkdir(parents=True, exist_ok=True)
     Path(a.output).write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps({"cardId": result["cardId"], "familyVersions": result["totalVersionsObserved"],

@@ -44,6 +44,13 @@ class VersionFamilyChecks(unittest.TestCase):
         self.assertEqual(ids,['836552',None])
         self.assertTrue(x['sameSetCardNumberCandidates'][0]['imageUrl'].endswith('/836552/836552.jpg'))
         self.assertFalse(x['allCandidatesHaveCheckedProductId'])
+    def test_additional_expansion_can_be_included_without_collapsing_prints(self):
+        x=mod.resolve_version_family(observed(),card_id='sv10.5w-033',
+                set_slug='White-Flare-Additionals',collector_suffix='xWHT033',
+                additional_print_groups=[{'setSlug':'White-Flare','collectorSuffix':'WHT033'}])
+        self.assertEqual(x['candidateCount'],3)
+        self.assertEqual(x['otherSetVersionsExcluded'],0)
+        self.assertFalse(x['safeToAutoPrice'])
     def test_challenge_wrong_host_and_wrong_family_rejected(self):
         x=observed();x['challenge']=True
         with self.assertRaises(ValueError):mod.resolve_version_family(x,card_id='x',set_slug='White-Flare',collector_suffix='WHT033')
@@ -51,7 +58,7 @@ class VersionFamilyChecks(unittest.TestCase):
         with self.assertRaises(ValueError):mod.resolve_version_family(x,card_id='x',set_slug='White-Flare',collector_suffix='WHT033')
     def test_real_observations_21_and_11_expected(self):
         results=json.loads((ROOT/'config/cardmarket-version-family-evidence.json').read_text())
-        for card,count,ids in [('sv01-013',21,{'689763','691000'}),('sv10.5w-033',11,{'836551','836552'})]:
+        for card,count,ids in [('sv01-013',21,{'689763','691000'}),('sv10.5w-033',11,{'835967','836551','836552'})]:
             x=results[card]
             self.assertEqual(x['totalVersionsObserved'],count)
             self.assertEqual({p['productId'] for p in x['sameSetCardNumberCandidates']},ids)

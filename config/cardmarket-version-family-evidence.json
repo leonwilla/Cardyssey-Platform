@@ -46,7 +46,7 @@
     "versionPageUrl": "https://www.cardmarket.com/de/Pokemon/Cards/Joltik-Surprise-Attack/Versions",
     "pageHeading": "Wattzapf [Surprise Attack]\nJoltik [Surprise Attack] - 11 versions",
     "totalVersionsObserved": 11,
-    "otherSetVersionsExcluded": 9,
+    "otherSetVersionsExcluded": 8,
     "sameSetCardNumberCandidates": [
       {
         "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/White-Flare-Additionals/Joltik-V1-xWHT033",
@@ -75,9 +75,23 @@
         "imageUrl": "https://product-images.s3.cardmarket.com/51/xWHT/836551/836551.jpg",
         "expansionId": "6198",
         "metacardId": "450173"
+      },
+      {
+        "productUrl": "https://www.cardmarket.com/de/Pokemon/Products/Singles/White-Flare/Joltik-V1-WHT033",
+        "setSlug": "White-Flare",
+        "productSlug": "Joltik-V1-WHT033",
+        "version": "V1",
+        "versionLabel": "Weiße Flammen\n\nVersion 1\n\n10495 verfügbar\n\nAb 0,02 €",
+        "productId": "835967",
+        "productIdChecked": true,
+        "exactPrintVerified": false,
+        "priceVerified": false,
+        "imageUrl": "https://product-images.s3.cardmarket.com/51/WHT/835967/835967.jpg",
+        "expansionId": "6135",
+        "metacardId": "450173"
       }
     ],
-    "candidateCount": 2,
+    "candidateCount": 3,
     "allCandidatesHaveCheckedProductId": true,
     "exactPrintVerified": false,
     "safeToAutoPrice": false,
