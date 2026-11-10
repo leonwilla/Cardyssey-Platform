@@ -72,6 +72,15 @@ def main():
     for lang in ('de','en'):
         report[lang]['known_page_hints']=json.loads(run(
             ROOT/'scripts/cardmarket-apply-print-page-hints.py','--language',lang))
+    # Compact read-only artifacts for safe browser scoring and guide
+    # diagnostics; neither may assign prints or write price caches.
+    if a.apply:
+        report['observed_set_guards']=json.loads(run(
+            ROOT/'scripts/cardmarket-build-observed-set-guards.py',
+            '--output',BASE/'observed-set-url-guards.json'))
+        report['product_guide_diagnostics']=json.loads(run(
+            ROOT/'scripts/cardmarket-build-guide-diagnostics.py',
+            '--output',BASE/'cardmarket-guide-diagnostic.json'))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(
         json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

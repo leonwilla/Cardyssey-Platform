@@ -139,7 +139,13 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
           'name':q.get('kartenname_suche') or entry.get('name') or card,
           'language':language,'status':status,'type':group,
           'detail':str(entry.get('error') or entry.get('pagination_failure') or entry.get('reason') or '')[:220],
-          'productId':str(entry.get('product_id') or ''), 'seenAt':entry.get('seen_at') or ''}
+          'productId':str(entry.get('product_id') or ''), 'seenAt':entry.get('seen_at') or '',
+          'scoreMatchState':str(entry.get('score_matching_status') or ''),
+          'scorePageCandidateOnly':entry.get('score_page_candidate_only') is True,
+          'scoreCandidateUrls':[u for u in (entry.get('score_top_candidate_urls') or [])[:5]
+             if isinstance(u,str) and u.startswith('https://www.cardmarket.com/')],
+          'filterMode':str(entry.get('filter_mode') or ''),
+          'officialProductGuide':entry.get('official_guide_product_aggregate') or None}
         if search.strip() and search.strip().casefold() not in ' '.join(str(v) for v in item.values()).casefold():continue
         output.append(item)
     output.sort(key=lambda e:e['seenAt'],reverse=True)

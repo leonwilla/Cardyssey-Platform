@@ -49,6 +49,47 @@ if(Test-Path $familyEvidenceFile){
     foreach($entry in $familyJson.PSObject.Properties){$versionFamilies[$entry.Name]=$entry.Value}
   } catch {throw 'Bad cardmarket-version-family-evidence.json'}
 }
+# Fail closed if ranking code is missing or unparsable. It never verifies a price.
+$scoreModule=Join-Path $PSScriptRoot 'cardmarket-search-score.ps1'
+if(!(Test-Path $scoreModule)){throw 'CARDMARKET_SCORE_MODULE_MISSING'}
+. $scoreModule
+$filterModule=Join-Path $PSScriptRoot 'cardmarket-filter-url.ps1'
+if(!(Test-Path $filterModule)){throw 'CARDMARKET_FILTER_URL_MODULE_MISSING'}
+. $filterModule
+# A read-only product-wide guide is never a DE/EN/NM/foil price.
+$guidePrices=@{};$guideDate=''
+$guideFile=Join-Path $OutputDir 'cardmarket-guide-diagnostic.json'
+if(Test-Path $guideFile){
+ try {
+  $guideInfo=Get-Content -Raw -Encoding UTF8 $guideFile | ConvertFrom-Json
+  if($guideInfo.canPublishAsLanguagePrintPrice -ne $false -or
+     [string]$guideInfo.scope -ne 'PRODUCT_AGGREGATE_NOT_LANGUAGE_CONDITION_OR_EXACT_PRINT'){
+    throw 'NOT_DIAGNOSTIC_PRICE_GUIDE'
+  }
+  $guideDate=[string]$guideInfo.createdAt
+  foreach($x in $guideInfo.products.PSObject.Properties){$guidePrices[$x.Name]=$x.Value}
+ }catch{throw 'INVALID_CARDMARKET_GUIDE_DIAGNOSTIC'}
+}
+# Independently observed set path from >=5 distinct catalog-ID-validated cards.
+# Human-confirmed set guards are always stronger. Special editions can be
+# listed in a separate Additionals expansion, so inferred guards apply to
+# ordinary prints only and must never confirm an individual print.
+$derivedSetSlugs=@{}
+$observedGuardFile=Join-Path $OutputDir 'observed-set-url-guards.json'
+if(Test-Path $observedGuardFile){
+ try{
+  $og=Get-Content -Raw -Encoding UTF8 $observedGuardFile | ConvertFrom-Json
+  if([int]$og.minimumDistinctCards -lt 5){throw 'INSUFFICIENT_OBSERVATION'}
+  foreach($e in $og.setSlugs.PSObject.Properties){
+   $v=$e.Value
+   if([int]$v.distinctLiveCards -ge 5 -and
+      [string]$v.proof -eq 'OFFICIAL_PRODUCT_ID_AND_LIVE_NUMBER_AND_UNIQUE_SET_PATH' -and
+      [string]$v.setSlug -match '^[A-Za-z0-9-]{2,90}$'){
+     $derivedSetSlugs[$e.Name]=[string]$v.setSlug
+   }
+  }
+ }catch{throw 'INVALID_OBSERVED_SET_SLUGS'}
+}
 $setSlugGuards = @{}
 $setGuardFile=Join-Path $OutputDir 'verified-set-url-guards.json'
 if(Test-Path $setGuardFile){
@@ -339,6 +380,7 @@ $searchCacheHits=0
 $searchCacheMisses=0
 $consecutiveProviderTimeouts=0
 $catalogIdLookupUnsupported=$false
+$directUrlFilterSupported=$true
 Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
 try {
@@ -645,13 +687,23 @@ try {
           }
           $out.search_hits = $links.Count
           $out.query=[string]$queryText
-          if ($queryText -eq $catalogName -and
-              [string]$case.catalog_singleton_id -match '^[0-9]+$') {
-            # Candidate ID must STILL be independently checked on the page.
-            # Do not infer print identity from a product title alone.
-            $likely=@($links | Select-Object -First 6)
+          # Hard gates: exact trailing collector number and independently
+          # confirmed expansion slug (when available). Brackets/V2 are not
+          # automatically treated as a stamp. This is only PAGE ranking.
+          $guard=[string]$setSlugGuards[[string]$case.set_id]
+          if(!$guard -and !$isSpecialPrint){$guard=[string]$derivedSetSlugs[[string]$case.set_id]}
+          $rank=Resolve-CardmarketSearchCandidates -Links $links -PrintedNumber $number -SetSlug $guard -Name $name -Stamp ([string]$case.stempel) -Foil ([string]$case.foil) -PrintType ([string]$case.drucktyp) -AllowedProductIds $allowedIds
+          $out.score_matching_status=[string]$rank.reason
+          $out.score_candidate_count=[int]$rank.candidateCount
+          $out.score_matched_set=[bool]$guard
+          $out.score_top_candidate_urls=@($rank.candidates | Select-Object -First 5 | ForEach-Object {$_.url})
+          if($rank.uniquePageCandidate){
+            $likely=@([pscustomobject]@{url=$rank.uniquePageCandidate.url;text=$rank.uniquePageCandidate.text})
+            # The chosen product must still pass the live idProduct check.
+            # NEVER infer the physical foil/stamp or a language-specific price.
+            $out.score_page_candidate_only=$true
           } else {
-            $likely=@($links | Where-Object { $_.text -match "\b0*$([regex]::Escape($number))\b" })
+            $likely=@($rank.candidates | Select-Object -First 8 | ForEach-Object {[pscustomobject]@{url=$_.url;text=$_.text}})
           }
           if ($likely.Count -gt 0) { break }
         }
@@ -705,6 +757,18 @@ try {
           Start-Sleep -Milliseconds 500
         }
         $out.product_id = $candidateId
+        if($candidateId -and $guidePrices.ContainsKey($candidateId)){
+          $g=$guidePrices[$candidateId]
+          $out.official_guide_product_aggregate=@{
+            source='OFFICIAL_CARDMARKET_PRODUCT_GUIDE_NOT_VARIANT_PRICE'
+            guide_date=$guideDate
+            trend=if($g.trend -gt 0){$g.trend}else{$null}
+            trend_holo=if($g.'trend-holo' -gt 0){$g.'trend-holo'}else{$null}
+            avg30=if($g.avg30 -gt 0){$g.avg30}else{$null}
+            avg30_holo=if($g.'avg30-holo' -gt 0){$g.'avg30-holo'}else{$null}
+            can_publish_language_print_price=$false
+          }
+        }
         # Reprints are linked directly from the *opened* product page. Capture
         # the family URL for later independent version-page checks. This adds
         # no Cardmarket navigation and NEVER verifies a foil or price.
@@ -731,6 +795,24 @@ try {
         $out.card_number_url_verified=$numberEvidence
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif([string]$out.score_matching_status -eq 'SET_NOT_INDEPENDENTLY_VERIFIED'){
+          # A perfect-looking number and title still cannot prove the set.
+          $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+          $out.error='SEARCH_RANK_SET_NOT_INDEPENDENTLY_VERIFIED'
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif($out.score_page_candidate_only -eq $true -and
+                 ($out.non_filterable_print_attributes.Count -gt 0 -or [string]$case.catalog_singleton_id -notmatch '^[0-9]{4,12}$')){
+          # A scored title is not independent evidence of the exact print.
+          # The card/number/actual page are recorded for review only.
+          if($numberEvidence -and ([string]$candidateId -in $allowed -or
+                                  [string]$candidateId -in $cardCandidates)){
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error='SCORED_PAGE_IN_CATALOG_PRINT_NOT_CONFIRMED'
+          }else{
+            $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+            $out.error=if($numberEvidence){'SCORED_PAGE_NOT_IN_CATALOG_CANDIDATES'}else{'SCORED_PAGE_NUMBER_FAILED'}
+          }
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif($out.version_family_candidate_used -eq $true){
           # V1/V2 product ID proves the actual page within the observed family.
@@ -809,14 +891,38 @@ try {
             $out.exact_print_filter_supported=(@($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
             $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
             $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
-            $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
+            $filterOk=$false
+            # Prefer canonical server-side parameters; verify the returned
+            # language, condition and print flags before trusting any rows.
+            # If the provider does not honor these parameters, restore the
+            # product page and use the existing validated form as fallback.
+            if($reverseCode -ne '0' -and $directUrlFilterSupported){
+              try {
+                $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
+                $out.direct_filter_attempted=$true
+                if(Move-To $targetFilter){
+                  $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+(if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'})+'})()')
+                  if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}
+                  else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
+                }
+              } catch {
+                if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED'){throw}
+                $out.direct_filter_fallback='PARAMETERS_NOT_VERIFIED'
+                $directUrlFilterSupported=$false
+              }
+            }
+            if(!$filterOk){
+              if($out.direct_filter_attempted){if(!(Move-To ([string]$out.url).Split('?')[0])){throw 'FILTER_RESTORE_PRODUCT_FAILED'}}
+              $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
+              if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
+            }
             if ($filterOk) {
               # A deliberately bounded but larger collector window.
               # Never mark a market as complete if the provider still exposes
               # more offers at this limit.
               $offerCap=1200
               $maxOfferPages=24
-              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
+              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
               $data = $null
               for ($fi = 0; $fi -lt 12; $fi++) {
                 Start-Sleep -Milliseconds 500
