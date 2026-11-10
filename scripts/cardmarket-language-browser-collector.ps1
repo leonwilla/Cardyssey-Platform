@@ -40,6 +40,15 @@ $resultsPath  = Join-Path $OutputDir "browser-observations-$Language.jsonl"
 $unverifyPath = Join-Path $OutputDir "unverified-candidates-$Language.jsonl"
 $progressPath = Join-Path $OutputDir "progress-$Language.json"
 $errorPath    = Join-Path $OutputDir "connection-errors-$Language.jsonl"
+# Independently browser-observed set/number version leads; never prices.
+$versionFamilies=@{}
+$familyEvidenceFile=Join-Path $OutputDir 'cardmarket-version-family-evidence.json'
+if(Test-Path $familyEvidenceFile){
+  try {
+    $familyJson=Get-Content -Raw -Encoding UTF8 $familyEvidenceFile | ConvertFrom-Json
+    foreach($entry in $familyJson.PSObject.Properties){$versionFamilies[$entry.Name]=$entry.Value}
+  } catch {throw 'Bad cardmarket-version-family-evidence.json'}
+}
 $setSlugGuards = @{}
 $setGuardFile=Join-Path $OutputDir 'verified-set-url-guards.json'
 if(Test-Path $setGuardFile){
@@ -312,7 +321,7 @@ foreach ($case in $cases) {
   if($null -ne $fullRecheckAfter){
     try {
       $seen=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
-      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and
+      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and
         [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET') -and
         -not ([string]$prev.status -like 'DEFERRED*'))
     } catch {}
@@ -435,6 +444,29 @@ try {
       $out.query = "$name $number"
       $savedUrl = ''
       $allowedIds = @([string]$case.cardmarket_ids -split ',')
+      # A verified family contains multiple same-name reprints but no verified
+      # per-print ID. An ID from the existing catalog is only a page candidate.
+      # This branch performs an actual browser read of the candidate page;
+      # it never accepts foil/stamp identity or writes its asking price.
+      $familyCandidate=$null
+      $isSpecialPrint=([string]$case.foil -ne '' -or [string]$case.stempel -notin @('','[]') -or
+                       [string]$case.sonderdruck -ne '' -or [string]$case.drucktyp -notin @('Normal','Reverse','normal','reverse'))
+      if($isSpecialPrint -and $versionFamilies.ContainsKey([string]$case.cardyssey_karte)){
+        $family=$versionFamilies[[string]$case.cardyssey_karte]
+        if([string]$family.status -eq 'VERSION_FAMILY_PRINT_UNVERIFIED' -and
+           [string]$family.cardId -eq [string]$case.cardyssey_karte){
+          $matches=@($family.sameSetCardNumberCandidates | Where-Object {
+            $_.productIdChecked -eq $true -and [string]$_.productId -in $allowedIds -and
+            [string]$_.productUrl -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'
+          })
+          if($matches.Count -eq 1){
+            $familyCandidate=$matches[0]
+            $out.version_family_candidate_id=[string]$familyCandidate.productId
+            $out.version_family_candidate_url=[string]$familyCandidate.productUrl
+            $out.version_family_status='BROWSER_OBSERVED_PRODUCT_CANDIDATE_PRINT_UNVERIFIED'
+          }
+        }
+      }
       # Trusted queue mapping: skip unreliable text search, but validate the
       # actual idProduct on the destination page before accepting it.
       if ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
@@ -464,6 +496,13 @@ try {
             $out.reference_page_evidence=[string]$case.reference_evidence
           }
         } catch {}
+      }
+      # On special prints, use an independently browser-observed product
+      # candidate when no manually trusted page or configured hint exists.
+      # Exact print mapping remains UNVERIFIED even if ID + number are true.
+      if(!$savedUrl -and $familyCandidate){
+        $savedUrl=[string]$familyCandidate.productUrl
+        $out.version_family_candidate_used=$true
       }
       if (!$savedUrl -and $latest.ContainsKey($key)) {
         $prior = $latest[$key]
@@ -692,6 +731,19 @@ try {
         $out.card_number_url_verified=$numberEvidence
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif($out.version_family_candidate_used -eq $true){
+          # V1/V2 product ID proves the actual page within the observed family.
+          # It does not distinguish Pokeball/Masterball or other print details.
+          $sameProduct=([string]$candidateId -eq [string]$out.version_family_candidate_id -and
+            ([string]$out.url).Split('?')[0] -eq [string]$out.version_family_candidate_url)
+          if($sameProduct -and $numberEvidence){
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error='VERSION_FAMILY_PAGE_AND_NUMBER_PROVED_PRINT_UNVERIFIED'
+          } else {
+            $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+            $out.error='VERSION_FAMILY_LIVE_PRODUCT_PAGE_MISMATCH'
+          }
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($setSlugGuards.ContainsKey([string]$case.set_id) -and
                   ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
