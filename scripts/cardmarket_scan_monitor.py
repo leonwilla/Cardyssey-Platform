@@ -11,6 +11,42 @@ from pathlib import Path
 
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
+# Mirrors the Windows launcher/watchdog. The timestamp is the earliest safe
+# resume time, NOT a guarantee that a scheduled task starts exactly then.
+COOLDOWN_MINUTES={'BLOCKED':240,'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
+    'LOGIN_REQUIRED':20,'LOGIN_UNVERIFIED':20,
+    'BATCH_COMPLETE_MORE_PENDING':45,'COMPLETED_WITH_DEFERRED':90}
+
+def timestamp(value):
+    if not value:return None
+    try:
+        d=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except (ValueError,TypeError):return None
+
+def cooldown_info(base,now=None):
+    """Account for BOTH queues: either language may extend the safe pause."""
+    from datetime import timedelta
+    now=now or datetime.now(timezone.utc)
+    resume_at=None
+    triggers=[]
+    for lang in ('de','en'):
+        p=base/f'progress-{lang}.json'
+        if not p.exists():continue
+        try:x=json.loads(p.read_text(encoding='utf-8-sig'))
+        except (ValueError,OSError):continue
+        status=str(x.get('status') or '')
+        last=timestamp(x.get('updated_at'))
+        minutes=COOLDOWN_MINUTES.get(status,0)
+        if not last or minutes<=0:continue
+        safe=last+timedelta(minutes=minutes)
+        if resume_at is None or safe>resume_at:resume_at=safe
+        triggers.append({'language':lang,'status':status,'until':safe.isoformat()})
+    wait=max(0,int((resume_at-now).total_seconds())) if resume_at else 0
+    return {'nextAllowedAt':resume_at.isoformat() if resume_at else None,
+        'cooldownActive':wait>0,'secondsUntilAllowed':wait,
+        'cooldownTriggers':triggers}
+
 
 def feed_only_covered(row):
     """Mirror the non-destructive browser gate in the Windows collector."""
@@ -40,6 +76,9 @@ def snapshot(base:Path,language:str):
                 except (ValueError,TypeError):continue
                 k=(x.get('card_id'),x.get('variant_id'))
                 if k in browser:completed[k]=x
+    # Observations are appended to JSONL, but replacing an existing key in a
+    # dict does NOT move it to the end. Sort by seen_at for the actual latest.
+    chronological=sorted(completed.values(),key=lambda r:timestamp(r.get('seen_at')) or datetime.min.replace(tzinfo=timezone.utc),reverse=True)
     scanned={key:r for key,r in completed.items() if r.get('status') not in ('STARTED','ERROR','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT')}
     pending=[x for x in completed.values() if x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED')]
     progress_path=base/f'progress-{language}.json'
@@ -58,7 +97,6 @@ def snapshot(base:Path,language:str):
     rescan_done=None
     epoch_file=base/'full-rescan-epoch.json'
     if epoch_file.exists():
-        from datetime import datetime,timezone
         try:
             epoch=json.loads(epoch_file.read_text(encoding='utf-8-sig'))
             rescan_epoch=datetime.fromisoformat(epoch['requestedAt'].replace('Z','+00:00'))
@@ -82,6 +120,12 @@ def snapshot(base:Path,language:str):
             if last.tzinfo is None:last=last.replace(tzinfo=timezone.utc)
             stalled=(datetime.now(timezone.utc)-last).total_seconds()>300
         except ValueError:pass
+    current_cycle=[x for x in chronological if rescan_epoch is not None and
+        (timestamp(x.get('seen_at')) or datetime.min.replace(tzinfo=timezone.utc))>=rescan_epoch]
+    current_cycle_issues=sum(x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED')
+        for x in current_cycle)
+    newest=chronological[0] if chronological else None
+    resume=cooldown_info(base)
     current_problems=sum(bool(x.get('seen_at')) and rescan_epoch is not None
          and str(x['seen_at'])[:19]>=rescan_epoch.isoformat()[:19]
          and (x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED'))
@@ -103,12 +147,21 @@ def snapshot(base:Path,language:str):
        'status':'RUNNING_STALLED' if stalled else raw_status,
        'problemCountCurrentCycle':current_problems,
        'browserSession':session,
-       'lastCard':str(progress.get('last_card') or ''),'updatedAt':progress.get('updated_at'),
+       'lastCard':str(progress.get('last_card') or (newest or {}).get('card_id') or ''),
+       'lastVariant':str((newest or {}).get('variant_id') or ''),
+       'lastResultStatus':str((newest or {}).get('status') or ''),
+       'lastObservedAt':(newest or {}).get('seen_at'),
+       'currentCycleObserved':len(current_cycle),'currentCycleIssues':current_cycle_issues,
+       'nextAllowedAt':resume['nextAllowedAt'],'cooldownActive':resume['cooldownActive'],
+       'secondsUntilAllowed':resume['secondsUntilAllowed'],
+       'cooldownTriggers':resume['cooldownTriggers'],
+       'updatedAt':progress.get('updated_at'),
        'problemCountInObserved':len(pending),
        'recentProblems':[{'cardId':x.get('card_id'),'variantId':x.get('variant_id'),'status':x.get('status'),
           'setId':x.get('set_id'),'detail':str(x.get('error') or x.get('pagination_failure') or '')[:160]}
-          for x in reversed(pending[-8:])],
-       'recentEvents':[{'cardId':x.get('card_id'),'status':x.get('status'),'at':x.get('seen_at')} for x in list(completed.values())[-6:][::-1]]}
+          for x in sorted(pending,key=lambda r:timestamp(r.get('seen_at')) or datetime.min.replace(tzinfo=timezone.utc),reverse=True)[:8]],
+       'recentEvents':[{'cardId':x.get('card_id'),'variantId':x.get('variant_id'),
+           'status':x.get('status'),'at':x.get('seen_at')} for x in chronological[:6]]}
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--language',choices=('de','en'),default='de');a=p.parse_args()
