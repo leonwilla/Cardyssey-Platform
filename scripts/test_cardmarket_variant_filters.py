@@ -69,7 +69,7 @@ class CheckVariants(unittest.TestCase):
         self.assertIn('extra[isReverseHolo]',s)
     def test_priced_bulk_is_routed_to_feed_not_browser(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
-        self.assertIn("$bulkFeedOnly = @($allCases | Where-Object {",s)
+        self.assertIn("$bulkFeedOnlyRows=@($allCases | Where-Object {",s)
         self.assertIn("$priceNeeded = [string]$case.scan_tier -ne '4'",s)
         self.assertIn("bulk_feed_only_variants = $bulkFeedOnly",s)
     def test_batch_has_pending_limit_and_resume(self):

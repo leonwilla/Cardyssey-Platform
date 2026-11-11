@@ -87,6 +87,9 @@ def main():
         report['metacard_candidate_index']=json.loads(run(
             ROOT/'scripts/cardmarket-build-metacard-family-index.py',
             '--output',BASE/'cardmarket-metacard-family-index.json'))
+        report['cross_language_page_candidates']=json.loads(run(
+            ROOT/'scripts/cardmarket-build-cross-language-page-cache.py',
+            '--output',BASE/'cardmarket-cross-language-page-cache.json'))
         # The main queue can be regenerated after a catalog refresh; put
         # exact-print review first again without modifying card/price data.
         report['recovery_priority']=json.loads(run(

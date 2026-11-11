@@ -53,7 +53,10 @@ class ResolverTests(unittest.TestCase):
         self.assertEqual(m.classified_comment('nur Pokéball','masterball'),'contradiction')
         self.assertEqual(m.classified_comment('no master ball','masterball'),'ambiguous')
         self.assertEqual(m.classified_comment('Pokeball / Masterball','masterball'),'contradiction')
-        self.assertEqual(m.classified_comment('MB','masterball'),'missing')
+        self.assertEqual(m.classified_comment('MB','masterball'),'shorthand_hint')
+        self.assertEqual(m.classified_comment('PB','pokeball'),'shorthand_hint')
+        self.assertEqual(m.classified_comment('no MB','masterball'),'ambiguous')
+        self.assertEqual(m.classified_comment('PB / MB','masterball'),'contradiction')
         self.assertEqual(m.classified_comment('','masterball'),'missing')
         self.assertEqual(m.classified_comment('play mat new','stamp:play-pokemon'),'missing')
     def offer(self,oid,price,**kw):
@@ -94,6 +97,14 @@ class ResolverTests(unittest.TestCase):
         x=m.price_diagnostic(p)
         self.assertEqual(x['accepted_offers'],1)
         self.assertEqual(x['rejected'].get('PRINT_COMMENT_MISSING'),1)
+    def test_shorthand_only_usable_with_independent_print_confirmation(self):
+        row=self.offer('a',7.0,comment='NM, MB')
+        self.assertEqual(m.price_diagnostic(self.price([row]))['accepted_offers'],0)
+        doc=self.price([row])
+        doc['expected']['confirmed_print_identity']=True
+        out=m.price_diagnostic(doc)
+        self.assertEqual(out['accepted_offers'],1)
+        self.assertTrue(out['safe_to_publish'])
     def test_negative_listing_on_masterball_page(self):
         p=self.price([self.offer('a',.5,comment='only Pokeball reverse'),
                       self.offer('b',6.4)])

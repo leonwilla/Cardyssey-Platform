@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "source": "CARDYSSEY_DIAGNOSTIC_ONLY",
+  "explicit": {
+    "masterball": "(?i)(?<!\\w)(?:master\\s*ball|meister\\s*ball|masterball|meisterball)(?!\\w)",
+    "pokeball": "(?i)(?<!\\w)(?:pok[eé]\\s*ball|pok[eé]ball)(?!\\w)"
+  },
+  "shorthand": {
+    "masterball": "(?i)(?<!\\w)mb(?!\\w)",
+    "pokeball": "(?i)(?<!\\w)pb(?!\\w)"
+  },
+  "negation": "(?i)\\b(?:no|not|kein(?:e|en|er|es)?|ohne|non|nicht|sin|sans|wrong|falsch)\\s+(?:(?:a|ein|eine|an)\\s+)?(?:master\\s*ball|meister\\s*ball|masterball|meisterball|pok[eé]\\s*ball|pok[eé]ball|mb|pb)\\b",
+  "stamps": {
+    "prerelease": "(?i)\\b(?:prerelease|pre.release|vorabversion)\\b",
+    "play-pokemon": "(?i)\\b(?:play!?\\s*pok[eé]mon|play!\\s*pokemon)\\b",
+    "professor-program": "(?i)\\b(?:professor.?s?\\s+program(?:me)?|professorenprogramm)\\b",
+    "cosmos": "(?i)\\bcosmos\\s*(?:holo|foil)?\\b"
+  }
+}

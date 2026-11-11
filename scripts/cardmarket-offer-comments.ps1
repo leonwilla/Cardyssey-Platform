@@ -1,34 +1,44 @@
-# Cardmarket seller remarks are diagnostic evidence, not an automatic print ID.
-# In particular an absent comment does not mean Pokeball for Japanese reverse.
+# Shared comment grammar: config/cardmarket-comment-rules.json copied beside
+# this script on Tiny. Neither a bare MB/PB abbreviation nor an empty seller
+# comment proves a physical print; it remains a review/price diagnostic hint.
+$rulePath=Join-Path $PSScriptRoot 'cardmarket-comment-rules.json'
+if(!(Test-Path $rulePath)){throw 'CARDMARKET_COMMENT_RULES_MISSING'}
+try {
+  $script:cmCommentRules=Get-Content -Raw -Encoding UTF8 $rulePath | ConvertFrom-Json
+  if([int]$script:cmCommentRules.schema -ne 1 -or
+     [string]$script:cmCommentRules.source -ne 'CARDYSSEY_DIAGNOSTIC_ONLY'){
+    throw 'INVALID_COMMENT_RULES_SCHEMA'
+  }
+} catch {throw 'CARDMARKET_COMMENT_RULES_INVALID'}
 function Get-CardmarketOfferCommentClassification {
  param([string]$Comment,[string]$TargetPrint)
  $text=[string]$Comment
  $target=[string]$TargetPrint
  if([string]::IsNullOrWhiteSpace($text)){return 'MISSING'}
- $mb=($text -match '(?i)(?<!\w)(?:master\s*ball|meister\s*ball|masterball|meisterball)(?!\w)')
- $pb=($text -match '(?i)(?<!\w)(?:pok[eé]\s*ball|pok[eé]ball)(?!\w)')
- $no=($text -match '(?i)\b(?:no|not|kein(?:e|en|er|es)?|ohne|non|nicht|sin|sans)\s+(?:(?:a|ein|eine|an)\s+)?(?:master\s*ball|meister\s*ball|masterball|pok[eé]\s*ball|pok[eé]ball)')
- if($no){return 'AMBIGUOUS'}
+ if($text -match [string]$script:cmCommentRules.negation){return 'AMBIGUOUS'}
+ $mb=($text -match [string]$script:cmCommentRules.explicit.masterball)
+ $pb=($text -match [string]$script:cmCommentRules.explicit.pokeball)
+ $mbShort=($text -match [string]$script:cmCommentRules.shorthand.masterball)
+ $pbShort=($text -match [string]$script:cmCommentRules.shorthand.pokeball)
  if($target -eq 'masterball'){
-   if($pb){return 'CONTRADICTION'}
+   if($pb -or $pbShort){return 'CONTRADICTION'}
    if($mb){return 'POSITIVE'}
+   if($mbShort){return 'SHORTHAND_HINT'}
    return 'MISSING'
  }
  if($target -eq 'pokeball'){
-   if($mb){return 'CONTRADICTION'}
+   if($mb -or $mbShort){return 'CONTRADICTION'}
    if($pb){return 'POSITIVE'}
+   if($pbShort){return 'SHORTHAND_HINT'}
    return 'MISSING'
  }
  if($target -like 'stamp:*'){
    $stamp=$target.Substring(6)
-   switch($stamp){
-     'prerelease' {$ok=($text -match '(?i)\b(?:prerelease|pre.release)\b')}
-     'professor-program' {$ok=($text -match '(?i)\b(?:professor.?s?\s+program(?:me)?|professorenprogramm)\b')}
-     'play-pokemon' {$ok=($text -match '(?i)\bplay!?\s*pok[eé]mon\b')}
-     'cosmos' {$ok=($text -match '(?i)\bcosmos\b')}
-     default {$ok=$false}
+   $pattern=$script:cmCommentRules.stamps.PSObject.Properties[$stamp]
+   if($pattern -and $text -match [string]$pattern.Value -and
+      $text -notmatch '(?i)\b(?:no|not|kein(?:e|en|er|es)?|ohne|nicht|wrong|falsch)\b'){
+     return 'POSITIVE'
    }
-   if($ok){return 'POSITIVE'}
    return 'MISSING'
  }
  return 'NOT_APPLICABLE'

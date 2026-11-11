@@ -22,18 +22,18 @@ from urllib.parse import urlsplit
 PRINTS={"normal","reverse","pokeball","masterball","stamp","holo","cosmos","unknown"}
 LANGUAGES={"de","en","ja","ko","zh-cn","zh-tw"}
 CONDITIONS={"NM","MT","NEAR MINT","MINT"}
-BALL_PATTERNS={
- "masterball":re.compile(r"(?i)(?<!\w)(?:master\s*ball|meister\s*ball|masterball|meisterball)(?!\w)"),
- "pokeball":re.compile(r"(?i)(?<!\w)(?:pok[eé]\s*ball|pok[eé]ball)(?!\w)"),
-}
+# Python and Windows PowerShell read the SAME comment rules. Avoid drifting
+# classifications between the live browser and the offline median diagnostic.
+COMMENT_RULES_PATH=Path(__file__).resolve().parent.parent/'config/cardmarket-comment-rules.json'
+COMMENT_RULES=json.loads(COMMENT_RULES_PATH.read_text(encoding='utf-8'))
+if COMMENT_RULES.get('schema')!=1 or COMMENT_RULES.get('source')!='CARDYSSEY_DIAGNOSTIC_ONLY':
+    raise ValueError('Unsupported Cardmarket comment-rules schema')
+BALL_PATTERNS={k:re.compile(v) for k,v in COMMENT_RULES['explicit'].items()}
+SHORT_PATTERNS={k:re.compile(v) for k,v in COMMENT_RULES['shorthand'].items()}
+NEGATED_BALL=re.compile(COMMENT_RULES['negation'])
 NEGATIONS=re.compile(r"(?i)(?:\b(?:no|not|kein(?:e|en|er|es)?|ohne|non|nicht|sin|sans)\b|\b(?:wrong|falsch)\b)")
-NEGATED_BALL=re.compile(r"(?i)\b(?:no|not|kein(?:e|en|er|es)?|ohne|non|nicht|sin|sans)\s+(?:(?:a|ein|eine|an)\s+)?(?:master\s*ball|meister\s*ball|masterball|pok[eé]\s*ball|pok[eé]ball)")
-STAMP_WORDS={
- "prerelease":re.compile(r"(?i)\b(?:prerelease|pre.release|vorabversion)\b"),
- "play-pokemon":re.compile(r"(?i)\b(?:play!?\s*pok[eé]mon|play!\s*pokemon)\b"),
- "professor-program":re.compile(r"(?i)\b(?:professor.?s?\s+program(?:me)?|professorenprogramm)\b"),
- "cosmos":re.compile(r"(?i)\bcosmos\s*(?:holo|foil)?\b"),
-}
+STAMP_WORDS={k:re.compile(v) for k,v in COMMENT_RULES['stamps'].items()}
+
 def labels(text:str)->set[str]:
     text=str(text or "")
     out={key for key,rx in BALL_PATTERNS.items() if rx.search(text)}
@@ -52,8 +52,13 @@ def classified_comment(comment:str, target:str)->str:
     if NEGATED_BALL.search(comment):return "ambiguous"
     if target in {"pokeball","masterball"}:
         other={"pokeball","masterball"}-{target}
-        if found&other:return "contradiction"
+        short_found={key for key,rx in SHORT_PATTERNS.items() if rx.search(comment)}
+        if (found|short_found)&other:return "contradiction"
         if target in found:return "positive"
+        # MB/PB is useful supporting evidence but isn't an unambiguous
+        # product/foil identity. Permit it in prices only for an independently
+        # confirmed print, never to certify an unknown printing.
+        if target in short_found:return "shorthand_hint"
         return "missing"
     if target.startswith("stamp:"):
         stamp=target.partition(":")[2]
@@ -222,7 +227,9 @@ def price_diagnostic(data:dict)->dict:
             excluded["WRONG_REVERSE_FLAG"]+=1;continue
         if target in {"pokeball","masterball"}:
             comment_status=classified_comment(row.get("comment") or "",target)
-            if comment_status!="positive":
+            if comment_status!="positive" and not (
+                    comment_status=="shorthand_hint" and
+                    exp.get("confirmed_print_identity") is True):
                 excluded["PRINT_COMMENT_"+comment_status.upper()]+=1;continue
             if lang=="ja" and not reverse:
                 excluded["JAPANESE_SPECIAL_REQUIRES_REVERSE"]+=1;continue

@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import importlib.util
+from decimal import Decimal,InvalidOperation
 from datetime import datetime,timezone
 from collections import Counter
 from pathlib import Path
@@ -11,12 +12,25 @@ from pathlib import Path
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
 
+def feed_only_covered(row):
+    """Mirror the non-destructive browser gate in the Windows collector."""
+    if row.get('scan_tier')!='4' or row.get('needs_price')!='NO':return False
+    if str(row.get('manual_scan_requested_at') or ''):return False
+    if str(row.get('foil') or '') or str(row.get('sonderdruck') or ''):return False
+    if str(row.get('stempel') or '') not in ('','[]','null'):return False
+    if not row.get('existing_source'):return False
+    try:return Decimal(str(row.get('existing_price_eur') or '0'))>0
+    except InvalidOperation:return False
+
 def snapshot(base:Path,language:str):
     if language not in ('de','en'):raise ValueError('unsupported language')
     queue=base/f'queue-{language}.csv'
     with queue.open(encoding='utf-8-sig',newline='') as f:rows=list(csv.DictReader(f))
     expected={(r['cardyssey_karte'],r['variante_id']) for r in rows}
-    browser={(r['cardyssey_karte'],r['variante_id']) for r in rows}
+    # Same eligibility policy as the live scanner: the 31k priced ordinary
+    # bulk cards remain in the catalog and price feeds, not browser work.
+    feed_only={(r['cardyssey_karte'],r['variante_id']) for r in rows if feed_only_covered(r)}
+    browser=expected-feed_only
     completed={}
     events=base/f'browser-observations-{language}.jsonl'
     if events.exists():
@@ -79,7 +93,7 @@ def snapshot(base:Path,language:str):
     missing_filter_inputs=sum(bool(x['missing']) for x in readiness)
     nonfilterable_specials=sum(bool(x['unsupported']) for x in readiness)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
-       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':sum(str(r.get('scan_tier'))=='4' and r.get('needs_price')=='NO' for r in rows),'browserObserved':len(completed),
+       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':len(feed_only),'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
        'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
        'browserRemaining':max(0,len(browser)-done),

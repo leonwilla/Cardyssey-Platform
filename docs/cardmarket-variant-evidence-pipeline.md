@@ -91,3 +91,65 @@ Preisabstand, pHash oder fehlendem Verkäuferkommentar.
   kein endloses Zurücksetzen der Scan-Zeitstempel.
 * Der wöchentliche Identitätslauf wendet die Priorisierung nach einem
   erneuten CSV-Export wieder an.
+
+## Scanner-Optimierung nach externem Code-Review (11.11.2026)
+
+**Grundsatz:** Keinen Sicherheitsmechanismus umgehen, keine Druckvariante
+allein aus Kurztext/Preis ableiten, keine Karten/Preise bei Queue-Optimierung
+löschen. Bei 403/429/503 und Cloudflare-Challenges bleibt der Lauf pausiert.
+
+### Bulk ohne Browser, aber weiterhin im Katalog
+
+Im aktuellen Bestand sind **15.060 DE und 16.168 EN** normale, bereits
+bepreiste Bulk-Varianten als `FEED_ONLY` für die Browserprüfung geeignet.
+Die neun noch unbepreisten Bulk-Varianten bleiben im Browser-Backlog.
+Ein manueller Scanwunsch übersteuert diesen Skip. Die CSV selbst bleibt
+vollständig und enthält alle 65.647 Varianten; keine Daten gehen verloren.
+Der Monitor zeigt ab jetzt die wirklich browserberechtigten Positionen
+(DE 16.381 / EN 18.038 auf Basis der Inventur vom 11.11.2026),
+nicht mehr die vollständige Katalogmenge als vermeintlichen Browser-Backlog.
+Eine bereits bepreiste Bulk-Karte hat dadurch noch **keine** separat
+verifizierte Cardmarket-Produkt-ID; dieser Unterschied bleibt sichtbar.
+
+### Einmal validierte Produktseiten sprachübergreifend nutzen
+
+`scripts/cardmarket-build-cross-language-page-cache.py` liest ausschließlich
+lokale DE/EN-Queue- und Beobachtungsdaten. Eine wiederverwendbare URL
+benötigt **beidseitig denselben Cardyssey-Karten-/Variantenbezeichner**,
+identische offizielle `catalog_singleton_id` und `catalog_expansion_id` sowie
+einen unabhängigen Live-Beleg für ID und Kartennummer an der Quellseite.
+Sonderdrucke und unbestätigte Metakarten-Kandidaten werden hier nicht
+stillschweigend übernommen. Die Zielseite muss Produkt-ID und Kartennummer
+noch einmal selbst verifizieren und ihre Sprach-/Reverse-Filter neu anwenden.
+Erster Quervergleich: 165 sichere *Seitenkandidaten*; **0** dadurch neu
+bestätigte Sonderdrucke oder Preise. Der Runner versucht den Cache nach
+jedem erfolgreichen Sprachbatch lokal über WSL zu erneuern; wenn WSL nicht
+antwortet, bleibt der letzte Index erhalten und der Scanner nutzt seine
+vorhandenen normalen Suchrouten.
+
+### Leichte Suchabfrage mit Fallback
+
+`scripts/cardmarket-lightweight-search.ps1` versucht zunächst eine
+same-origin HTML-Suchabfrage **im bereits angemeldeten Browserkontext**.
+Sie verwendet keine exportierten Cookies, keine Browserfingerprint-Fälschung,
+keine Captcha-/Cloudflare-Umgehung. Ergebnisse aus HTML werden nur als
+Suchkandidaten gewertet. Rendert Cardmarket die Treffer erst nachträglich
+im DOM oder fehlen belegbare Suchtreffer, fällt der Scanner auf die bereits
+bewährte vollständige Navigation zurück. 403/429/503 sind Abbruchzustände.
+Der Server muss diese Abrufart natürlich zulassen; ein garantierter
+Zeit-/Bandbreitengewinn ist damit nicht belegt.
+
+### Kommentarkürzel synchron und beweissicher
+
+`config/cardmarket-comment-rules.json` ist jetzt die einzige Regex-Quelle
+für Python und PowerShell. `MB`/`PB` alleine bedeuten **SHORTHAND_HINT**,
+keine automatisch verifizierte physische Druckvariante. Eindeutig
+anders beschriftete oder negierte Kommentare werden ausgeschlossen.
+Der aktive Angebotspreis-Diagnostiker kann einen Shorthand-Hinweis nur bei
+zuvor unabhängig bestätigter Druckvariante berücksichtigen.
+
+### Archiv
+
+Sechs nicht mehr referenzierte Prototypen wurden in `scripts/archive/`
+verschoben; aktive Skripte, Tests, Quellpreise und Scanwarteschlangen
+bleiben unverändert.

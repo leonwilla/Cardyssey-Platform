@@ -60,6 +60,10 @@ if(!(Test-Path $filterModule)){throw 'CARDMARKET_FILTER_URL_MODULE_MISSING'}
 $commentModule=Join-Path $PSScriptRoot 'cardmarket-offer-comments.ps1'
 if(!(Test-Path $commentModule)){throw 'CARDMARKET_OFFER_COMMENT_MODULE_MISSING'}
 . $commentModule
+# Optional safe search acceleration. No clearance workarounds, no cookie export.
+$lightSearchModule=Join-Path $PSScriptRoot 'cardmarket-lightweight-search.ps1'
+if(!(Test-Path $lightSearchModule)){throw 'CARDMARKET_LIGHTWEIGHT_SEARCH_MODULE_MISSING'}
+. $lightSearchModule
 # Exported from human-confirmed Cardyssey review decisions only; candidate
 # version pages are stored separately and never auto-promote a print.
 $verifiedPrintMappings=@{}
@@ -326,14 +330,30 @@ function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) 
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------
 $allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
-# Identity is needed for ALL variants, even when they already have a price.
-# Priced bulk skips the costly offer pagination but still gets ID/URL mapping.
+# All rows remain in the durable CSV (and remain available to the offline
+# catalog/price-feed pipeline). Do not send common/uncommon ordinary variants
+# which ALREADY have a positive fallback price to the browser for another URL
+# identity lookup. The nine missing-price bulk variants remain eligible.
+# Manual refresh requests always override the feed-only exclusion.
+$bulkFeedOnlyRows=@($allCases | Where-Object {
+  [string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO' -and
+  [string]$_.manual_scan_requested_at -eq '' -and
+  [string]$_.foil -eq '' -and [string]$_.sonderdruck -eq '' -and
+  [string]$_.stempel -in @('','[]','null') -and
+  [string]$_.existing_price_eur -match '^(?:0*[1-9][0-9]*|0*\.[0-9]*[1-9][0-9]*)' -and
+  [string]$_.existing_source -ne ''
+})
+$bulkFeedOnly=$bulkFeedOnlyRows.Count
+$feedOnlyKeys=[Collections.Generic.HashSet[string]]::new()
+foreach($feedCase in $bulkFeedOnlyRows){
+  [void]$feedOnlyKeys.Add(('{0}|{1}' -f $feedCase.cardyssey_karte,$feedCase.variante_id))
+}
+$browserCases=@($allCases | Where-Object {
+  -not $feedOnlyKeys.Contains(('{0}|{1}' -f $_.cardyssey_karte,$_.variante_id))
+})
 $cases = if ($ScanMode -eq 'missing') {
-  @($allCases | Where-Object { [string]$_.needs_price -eq 'YES' })
-} else { $allCases }
-$bulkFeedOnly = @($allCases | Where-Object {
-  [string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO'
-}).Count
+  @($browserCases | Where-Object { [string]$_.needs_price -eq 'YES' })
+} else { $browserCases }
 $runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
 
 $processed = [Collections.Generic.HashSet[string]]::new()
@@ -359,6 +379,28 @@ if(Test-Path $epochFile){
   }catch { throw 'INVALID_FULL_RESCAN_EPOCH' }
 }
 
+# Candidate page paths confirmed by another language's actual product page.
+# The target language still MUST validate idProduct and the collector number.
+# Never reuse the source language's price/condition/foil filter arguments.
+$crossLanguagePages=@{}
+$crossLangCacheFile=Join-Path $OutputDir 'cardmarket-cross-language-page-cache.json'
+if(Test-Path $crossLangCacheFile){
+  try{
+    $crossData=Get-Content -Raw -Encoding UTF8 $crossLangCacheFile | ConvertFrom-Json
+    if([int]$crossData.schema -ne 1 -or
+       [string]$crossData.source -ne 'OFFICIAL_SINGLETON_AND_LIVE_NUMBER_CONFIRMED_CANDIDATE_ONLY'){
+      throw 'INVALID_CROSS_LANGUAGE_SCHEMA'
+    }
+    foreach($entry in $crossData.entries.PSObject.Properties){
+      $candidate=$entry.Value
+      if([string]$candidate.destinationLanguage -ne $Language -or
+         $candidate.targetProductValidated -ne $false -or
+         $candidate.exactPrintVerified -ne $false -or
+         $candidate.languagePriceVerified -ne $false){continue}
+      $crossLanguagePages[$entry.Name]=$candidate
+    }
+  }catch{throw 'INVALID_CROSS_LANGUAGE_PAGE_CANDIDATES'}
+}
 # Identitaets-Mapping: ID + URL dauerhaft, unabhaengig vom Preis.
 $knownProductPages = @{}
 foreach ($record in $latest.Values) {
@@ -471,10 +513,8 @@ try {
     # Diagnostics only: measure actual elapsed work before tuning delays.
     $caseTimer=[Diagnostics.Stopwatch]::StartNew()
 
-    # Bulk-Karten: Preisstufe ueberspringen, ID-/URL-Mapping NICHT (Punkt 3).
-    # Collect filtered offers on the SAME validated product page if this is
-    # a valuable/special print or currently unpriced. Already priced bulk
-    # still needs product identity, but not another costly offer scan.
+    # Unpriced bulk variants stay in the browser queue for review. Already
+    # priced, ordinary bulk is feed-only and never enters this loop.
     $priceNeeded = [string]$case.scan_tier -ne '4' -or [string]$case.needs_price -eq 'YES' -or !!([string]$case.manual_scan_requested_at)
 
     $out = [ordered]@{
@@ -569,6 +609,33 @@ try {
           }
         }
       }
+      # Cross-language leads are allowed for ordinary cards only, with
+      # same Cardyssey variant, same official idProduct + expansion, and
+      # independent source live page evidence. Revalidate target page below.
+      $crossKey=$Language+'|'+([string]$case.cardyssey_karte)+'|'+([string]$case.variante_id)
+      if(!$savedUrl -and !$isSpecialPrint -and $crossLanguagePages.ContainsKey($crossKey)){
+        $cross=$crossLanguagePages[$crossKey]
+        $candidateId=[string]$cross.productId
+        $candidateUrl=[string]$cross.url
+        if($cross.cardId -eq $case.cardyssey_karte -and
+           $cross.variantId -eq $case.variante_id -and
+           $cross.setId -eq $case.set_id -and
+           $candidateId -match '^[0-9]{4,12}$' -and
+           $candidateId -eq [string]$case.catalog_singleton_id -and
+           $candidateId -in $allowedIds -and
+           $cross.officialExpansionId -eq [string]$case.catalog_expansion_id -and
+           $cross.catalogProductIdValidatedAtSource -eq $true -and
+           $candidateUrl -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'){
+          $u=[uri]$candidateUrl
+          if($u.AbsolutePath.StartsWith($LangCfg.PathPrefix+'/Products/Singles/')){
+            $savedUrl=$candidateUrl
+            $out.cross_language_page_lead=$true
+            $out.cross_language_source=[string]$cross.sourceLanguage
+            $out.cross_language_print_verified=$false
+          }
+        }
+      }
+
       # Trusted queue mapping: skip unreliable text search, but validate the
       # actual idProduct on the destination page before accepting it.
       if ([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
@@ -701,6 +768,25 @@ try {
             $links=@($searchCache[$searchUrl]);$out.search_cache_hit=$true;$searchCacheHits++
           } else {
             $searchCacheMisses++
+            $lightSearch=$null
+            try {
+              $lightSearch=Search-CardmarketSameOrigin -SearchPath ($searchPath+'?searchString='+$encoded) -Authenticated ([bool]$auth)
+            }catch{
+              # An explicit provider challenge is a terminal condition;
+              # never hide it behind a slower full-page navigation.
+              if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}
+              $out.lightweight_search_fallback='REQUEST_OR_CDP_UNAVAILABLE'
+            }
+            if($lightSearch -and @($lightSearch.links).Count -gt 0){
+              $links=@($lightSearch.links)
+              $out.search_load_mode='SAME_ORIGIN_SEARCH_HTML'
+              $consecutiveProviderTimeouts=0
+              if($searchCache.Count -ge 250){$searchCache.Clear()}
+              $searchCache[$searchUrl]=$links
+            } else {
+            # Search results dynamically injected by Cardmarket require the
+            # existing validated full-page DOM flow; no false zero results.
+            $out.search_load_mode='FULL_PAGE_SEARCH_FALLBACK'
             if (!(Move-To $searchUrl)) {
               $out.status='DEFERRED_PROVIDER_TIMEOUT'
               $out.error='SEARCH_PAGE_TIMEOUT'
@@ -745,6 +831,7 @@ try {
               if ($searchCache.Count -ge 250) { $searchCache.Clear() }
               $searchCache[$searchUrl] = $links
             }
+            } # End same-origin fallback to full-page search
           }
           $out.search_hits = $links.Count
           $out.query=[string]$queryText
@@ -1098,7 +1185,7 @@ try {
               elseif([string]$case.stempel -match '(?i)play.?pokemon'){$targetPrint='stamp:play-pokemon'}
               elseif([string]$case.stempel -match '(?i)prerelease'){$targetPrint='stamp:prerelease'}
               if($targetPrint){
-                $counts=@{positive=0;contradiction=0;ambiguous=0;missing=0;not_applicable=0;comment_fields_visible=0}
+                $counts=@{positive=0;shorthand_hint=0;contradiction=0;ambiguous=0;missing=0;not_applicable=0;comment_fields_visible=0}
                 foreach($row in $accepted){
                   if($row.commentVisible){$counts.comment_fields_visible++}
                   $verdict=Get-CardmarketOfferCommentClassification -Comment ([string]$row.comment) -TargetPrint $targetPrint
