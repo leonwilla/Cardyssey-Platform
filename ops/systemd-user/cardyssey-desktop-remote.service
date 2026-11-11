@@ -8,7 +8,7 @@ Type=simple
 WorkingDirectory=/home/tv
 Environment=HOME=/home/tv
 Environment=PATH=/home/tv/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/tv/.local/bin/cardyssey-desktop-remote-start
+ExecStart=/home/tv/.local/bin/cardyssey-desktop-remote-supervisor
 Restart=always
 RestartSec=30
 TimeoutStopSec=15

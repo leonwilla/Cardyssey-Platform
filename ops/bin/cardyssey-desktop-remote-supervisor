@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Never replace a user's active manual remote session. Hold service alive
+# while it exists, then automatically connect with the persistent profile.
+while /usr/bin/pgrep -f '[d]esktop-commander/dist/index.js' >/dev/null; do
+  /usr/bin/sleep 5
+done
+exec /home/tv/.local/bin/cardyssey-desktop-remote-start

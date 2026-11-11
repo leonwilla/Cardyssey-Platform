@@ -11,7 +11,10 @@ Konfiguration und Prüfergebnis: **11.11.2026**.
 2. WSL Ubuntu hat `systemd=true` in `/etc/wsl.conf` und für Benutzer `tv`
    `Linger=yes`. Der Benutzer-Dienst
    `~/.config/systemd/user/cardyssey-desktop-remote.service` ist aktiviert
-   (Vorlage unter `ops/systemd-user/`). Er startet den vorhandenen
+   (Vorlage unter `ops/systemd-user/`). Er startet den Supervisor
+   `/home/tv/.local/bin/cardyssey-desktop-remote-supervisor` (Vorlage unter
+   `ops/bin/`). Solange eine manuelle Desktop-Commander-Verbindung läuft,
+   wartet er, statt einen weiteren Agenten zu starten. Danach startet er
    `/home/tv/.local/bin/cardyssey-desktop-remote-start`, der per `flock`
    parallele Autostarts derselben Instanz verhindert.
 3. Bricht der Remote-Prozess ab, versucht der WSL-Dienst nach **30 Sekunden**
@@ -60,7 +63,8 @@ python3 -m unittest discover -s scripts/cardmarket/tests -q
 curl -I http://127.0.0.1:3000/login
 ```
 
-Der Zustand `inactive` des **neuen** Remote-Dienstes ist bei der erstmaligen
-Einrichtung beabsichtigt, solange bereits die manuelle Terminalverbindung
-besteht. Ein tatsächlicher vollständig automatischer Start wird erst beim
-nächsten Windows-/WSL-Neustart im Livebetrieb verifiziert.
+Der neue Remote-Dienst ist bereits `active`, wartet jedoch bei vorhandenen
+manuellen Verbindungen, statt eine dritte Verbindung zu erzeugen. Beim
+Beenden der manuellen Agenten übernimmt er automatisch. Der automatische
+Wiederanlauf nach einem vollständigen Windows-/WSL-Neustart wurde noch
+nicht praktisch getestet.
