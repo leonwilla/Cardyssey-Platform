@@ -4841,3 +4841,12 @@ body.cardysseyAppPreview :is(button,a,input,select,textarea):focus-visible{outli
 .editorMarketSwitch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border:1px solid var(--border);border-radius:12px;background:var(--navy-card)}
 .editorMarketSwitch button{min-height:42px;border:0;border-radius:9px;cursor:pointer;font-weight:850;background:transparent;color:var(--secondary)}
 .editorMarketSwitch button.selected{background:var(--navy-raised);color:var(--cyan)}
+
+/* Collection has exactly three summary KPIs; keep columns balanced without
+   reserving space for the removed server-entry count. */
+@media(min-width:1151px){
+  .collectionStatsGrid{grid-template-columns:2fr repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .collectionStatsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

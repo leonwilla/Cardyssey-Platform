@@ -1288,7 +1288,7 @@ export default function CollectionPage() {
       {!loading &&
         !error && (
           <>
-            <section className="statsGrid">
+            <section className="statsGrid collectionStatsGrid">
               <div className="statCard heroStat">
                 <span>
                   Sammlungswert
@@ -1376,17 +1376,6 @@ export default function CollectionPage() {
                 </small>
               </div>
 
-              <div className="statCard">
-                <span>
-                  Einträge
-                </span>
-                <strong>
-                  {items.length}
-                </strong>
-                <small>
-                  serverseitig
-                </small>
-              </div>
             </section>
 
             <section className="sectionBlock collectionSection">
@@ -1619,9 +1608,6 @@ export default function CollectionPage() {
                     </button>
                   )}
 
-                  <span className="syncBadge">
-                    {sortedItems.length}/{items.length} Einträge · ● Server verbunden
-                  </span>
                 </div>
               </div>
 
