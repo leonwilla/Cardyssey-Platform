@@ -88,7 +88,9 @@ class CheckVariants(unittest.TestCase):
         self.assertIn("PUBLIC_SESSION_LIMITED_SAMPLE",s)
         self.assertIn("$auth -and $data.filtered",s)
         self.assertIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",s)
-        self.assertIn("if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }",s)
+        self.assertIn("if ($RequireLogin -and -not $auth) { Assert-CardmarketAuthenticated }",s)
+        self.assertIn("throw 'CARDMARKET_LOGIN_REQUIRED'",s)
+        self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",s)
         self.assertIn("if ($data.filtered -and $auth)",s)
     def test_verified_queue_mapping_precedes_unreliable_text_search(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")

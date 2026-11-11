@@ -20,20 +20,43 @@ try {
      $_.Name -eq 'powershell.exe' -and $_.CommandLine -match '-File.*Cardmarket-Queue-Runner[.]ps1'
   })
   if($busy.Count -gt 0){return}
-  $progressPath=Join-Path $base 'progress-de.json'
-  if(!(Test-Path $progressPath)){return}
-  $state=Get-Content -Raw $progressPath | ConvertFrom-Json
-  $stalled=($state.status -eq 'RUNNING' -and
-    [DateTime]::Parse([string]$state.updated_at).ToUniversalTime() -lt [DateTime]::UtcNow.AddMinutes(-5))
-  if($stalled){
-    # The runner has vanished, but progress.json still claims RUNNING. Recover
-    # from the last durable observation rather than leave a phantom scan.
-    $state.status='INTERRUPTED'
-    $state.updated_at=[DateTime]::UtcNow.ToString('o')
-    $state | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
-    Note 'STALE_RUNNING_SCAN_INTERRUPTED_AND_RESTART_REQUESTED'
+  $states=@()
+  foreach($language in @('de','en')){
+    $progressPath=Join-Path $base ("progress-$language.json")
+    if(-not (Test-Path $progressPath)){continue}
+    $state=Get-Content -Raw -Encoding UTF8 $progressPath | ConvertFrom-Json
+    $last=[DateTime]::Parse([string]$state.updated_at).ToUniversalTime()
+    $stalled=($state.status -eq 'RUNNING' -and $last -lt [DateTime]::UtcNow.AddMinutes(-6))
+    if($stalled){
+      $state.status='INTERRUPTED'
+      $state.updated_at=[DateTime]::UtcNow.ToString('o')
+      $state | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+      $last=[DateTime]::UtcNow
+      Note ('STALE_RUNNING_INTERRUPTED '+$language)
+    }
+    $states+= [pscustomobject]@{language=$language;status=[string]$state.status;last=$last}
   }
-  if([string]$state.status -notin @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED','INTERRUPTED','QUEUED')){return}
+  if($states.Count -eq 0){return}
+  $remaining=@($states | Where-Object { $_.status -notin @('COMPLETED','COMPLETE') })
+  if($remaining.Count -eq 0){return}
+  # Do not restart a blocked provider immediately just because a static page
+  # or cached logout link can still be read. Only read-only probes are allowed
+  # before the full backoff expires. After normal batches use shorter breaks.
+  foreach($s in $remaining){
+    $minutes=switch($s.status){
+      'BLOCKED' {240;break}
+      'PROVIDER_TIMEOUT' {90;break}
+      'CONNECTION_LOST' {60;break}
+      'LOGIN_REQUIRED' {20;break}
+      'LOGIN_UNVERIFIED' {20;break}
+      'BATCH_COMPLETE_MORE_PENDING' {45;break}
+      'COMPLETED_WITH_DEFERRED' {90;break}
+      default {0}
+    }
+    if($minutes -gt 0 -and [DateTime]::UtcNow -lt $s.last.AddMinutes($minutes)){
+      return
+    }
+  }
   $pages=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5
   $active=$pages | Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') } | Select-Object -First 1
   if(!$active){Note 'NO_CARDMARKET_TAB';return}

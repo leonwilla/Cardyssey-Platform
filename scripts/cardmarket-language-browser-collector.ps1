@@ -7,7 +7,8 @@ param(
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
-  [int]$DelaySeconds = 8,
+  [int]$DelaySeconds = 10,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 10,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,180)][int]$ChallengeWaitSeconds = 90,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
@@ -238,7 +239,32 @@ function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
   return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests')
 }
 
+$script:lastProviderRequestUtc=[DateTime]::MinValue
+function Wait-CardmarketRequestBudget {
+  # Global to this single browser tab/collector process. Limit provider
+  # navigation AND AJAX page requests, not merely completed card checks.
+  # Keep delays fixed and conservative; never forge browser fingerprints.
+  if($script:lastProviderRequestUtc -ne [DateTime]::MinValue){
+    $elapsed=([DateTime]::UtcNow-$script:lastProviderRequestUtc).TotalSeconds
+    if($elapsed -lt $MinRequestGapSeconds){
+      $waitMs=[int][Math]::Ceiling(($MinRequestGapSeconds-$elapsed)*1000)
+      if($waitMs -gt 0){Start-Sleep -Milliseconds $waitMs}
+    }
+  }
+  $script:lastProviderRequestUtc=[DateTime]::UtcNow
+}
+function Assert-CardmarketAuthenticated {
+  # An auth indicator can vanish behind a Cloudflare block. Report BLOCKED
+  # rather than telling the owner to login again unnecessarily.
+  $read=Js 'JSON.stringify({title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests)/i.test((document.body?.innerText||"").slice(0,1700)),loggedIn:!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")})' | ConvertFrom-Json
+  if(Is-CardmarketChallenge ([string]$read.title) ([bool]$read.challenge)){
+    throw 'CARDMARKET_PROVIDER_CHALLENGE'
+  }
+  if($read.loggedIn){return}
+  throw 'CARDMARKET_LOGIN_REQUIRED'
+}
 function Move-To([string]$url) {
+  Wait-CardmarketRequestBudget
   Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
   $desired = [uri]$url
   $attemptStart=[DateTime]::UtcNow
@@ -248,7 +274,7 @@ function Move-To([string]$url) {
   # forge clearance cookies, replay private tokens, or bypass a challenge.
   for ($i = 0; $i -lt 380; $i++) {
     Start-Sleep -Milliseconds 400
-    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")})' 10
+    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
     if (Is-CardmarketChallenge ([string]$s.title) ([bool]$s.challenge)) {
@@ -499,7 +525,7 @@ try {
       # Fail closed when full Cardmarket session is required. Guest pages
       # cannot reliably paginate, so they must not create misleading results.
       $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
-      if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }
+      if ($RequireLogin -and -not $auth) { Assert-CardmarketAuthenticated }
       $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
 
       $name = [string]$case.kartenname_suche
@@ -611,10 +637,11 @@ try {
         $resolved=''
         $challenged=$false
         try {
+          Wait-CardmarketRequestBudget
           Send-Cdp 'Page.navigate' @{url=$lookup} 12 | Out-Null
           for($attempt=0;$attempt -lt 18;$attempt++) {
             Start-Sleep -Milliseconds 300
-            $state=Js 'JSON.stringify({url:location.href,title:document.title,id:document.querySelector("input[name=idProduct]")?.value||"",ready:document.readyState,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")})' 8 | ConvertFrom-Json
+            $state=Js 'JSON.stringify({url:location.href,title:document.title,id:document.querySelector("input[name=idProduct]")?.value||"",ready:document.readyState,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 8 | ConvertFrom-Json
             if(Is-CardmarketChallenge ([string]$state.title) ([bool]$state.challenge)) {
               $challenged=$true
               break
@@ -783,7 +810,7 @@ try {
         # search page. Never treat an inaccessible account as authenticated.
         $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
         $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
-        if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }
+        if ($RequireLogin -and -not $auth) { Assert-CardmarketAuthenticated }
         $candidateId = ''
         for ($pi = 0; $pi -lt 20; $pi++) {
           $candidateId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""')
@@ -950,6 +977,7 @@ try {
                 $restoreUrl=([string]$out.url).Split('?')[0]
                 if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
               }
+              Wait-CardmarketRequestBudget
               $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
               if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
             }
@@ -979,6 +1007,7 @@ try {
                   if ($beforeRows -ge $offerCap) { $out.pagination_failure='CARDMARKET_COLLECTOR_CAP';break }
                   $out.offer_pages_attempted++
                   # Do not mistake a hidden/disabled load-more button for a successful click.
+                  Wait-CardmarketRequestBudget
                   $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
                   if ($clicked -ne 'CLICKED') {
                     $out.pagination_failure=if($clicked -eq 'DISABLED') {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_BUTTON_LOST'}

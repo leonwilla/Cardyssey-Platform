@@ -1,11 +1,12 @@
-# Cardmarket scanning is scheduled on Windows and shares one Edge CDP tab.
+﻿# Cardmarket scanning is scheduled on Windows and shares one Edge CDP tab.
 # Rotate German/English batches so neither backlog can starve the other.
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
-  [ValidateRange(1,1000)][int]$BatchLimit = 40,
-  [ValidateRange(3,120)][int]$DelaySeconds = 8,
+  [ValidateRange(1,1000)][int]$BatchLimit = 16,
+  [ValidateRange(4,120)][int]$DelaySeconds = 10,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 10,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
-  [ValidateRange(0,110)][int]$RunMinutes = 95,
+  [ValidateRange(0,110)][int]$RunMinutes = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
   [switch]$RequireLogin
 )
@@ -23,7 +24,7 @@ do {
     if($done[$language]){continue}
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -ge $deadline){break}
     Write-Output ('LANGUAGE_BEGIN '+$language+' '+[DateTime]::UtcNow.ToString('o'))
-    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
+    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -MinRequestGapSeconds $MinRequestGapSeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
     if(!$?){throw "Collector failed for $language"}
     $progress=Get-Content -Raw (Join-Path $base "progress-$language.json") | ConvertFrom-Json
     Write-Output ('LANGUAGE_END '+$language+' status='+$progress.status+' processed='+$progress.done)

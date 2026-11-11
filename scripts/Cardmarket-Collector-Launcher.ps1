@@ -9,16 +9,35 @@ New-Item -ItemType Directory -Force -Path $base | Out-Null
 if (!(Test-Path $runner)) {throw "Cardmarket queue runner missing"}
 $already=Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -match "-File.*Cardmarket-Queue-Runner[.]ps1" -and $_.Name -eq "powershell.exe"}
 if ($already) {return}
-# Avoid hammering the same stalled Cardmarket request overnight.
-$progressFile=Join-Path $base "progress-de.json"
-if (Test-Path $progressFile) {
-  try {
-    $progress=Get-Content -Raw $progressFile | ConvertFrom-Json
-    $last=[datetime]::Parse([string]$progress.updated_at).ToUniversalTime()
-    if (!$ResumeAfterClearance -and !$ManualResume -and
-        $progress.status -in @("CONNECTION_LOST","PROVIDER_TIMEOUT","BLOCKED","LOGIN_REQUIRED","LOGIN_UNVERIFIED") -and
-        $last -gt [datetime]::UtcNow.AddHours(-2)) {return}
-  } catch {}
+# Durable provider-specific cooldown across Windows Task Scheduler launches.
+# Never assume that a persistent login or cf_clearance guarantees access.
+# Manual resume is still allowed only after the same live login/Block check.
+if (-not $ManualResume){
+  foreach($lang in @('de','en')){
+    $progressFile=Join-Path $base ("progress-$lang.json")
+    if(-not (Test-Path $progressFile)){continue}
+    try{
+      $x=Get-Content -Raw -Encoding UTF8 $progressFile | ConvertFrom-Json
+      $last=[datetime]::Parse([string]$x.updated_at).ToUniversalTime()
+      $cooldown= switch([string]$x.status){
+        'BLOCKED' {240;break}
+        'PROVIDER_TIMEOUT' {90;break}
+        'CONNECTION_LOST' {60;break}
+        'LOGIN_REQUIRED' {20;break}
+        'LOGIN_UNVERIFIED' {20;break}
+        'BATCH_COMPLETE_MORE_PENDING' {45;break}
+        'COMPLETED_WITH_DEFERRED' {90;break}
+        default {0}
+      }
+      if($cooldown -gt 0 -and [DateTime]::UtcNow -lt $last.AddMinutes($cooldown)){
+        Write-Output ('CARDMARKET_COOLDOWN '+$lang+' '+$x.status+' until '+$last.AddMinutes($cooldown).ToString('o'))
+        return
+      }
+    }catch{
+      Write-Output ('CARDMARKET_PROGRESS_UNREADABLE '+$lang)
+      return
+    }
+  }
 }
 
 $ready=$false
@@ -53,4 +72,4 @@ if(Test-Path $diagnose){
     return
   }
 }
-Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","40","-DelaySeconds","8","-Languages","both","-RunMinutes","95","-ScanMode","identity","-RequireLogin") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","16","-DelaySeconds","10","-MinRequestGapSeconds","10","-Languages","both","-RunMinutes","40","-ScanMode","identity","-RequireLogin") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")

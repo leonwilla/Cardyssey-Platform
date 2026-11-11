@@ -9,7 +9,9 @@ class LoginPausePolicyTests(unittest.TestCase):
   self.assertIn("'BLOCKED'",runner)
  def test_collector_stops_instead_of_scanning_as_guest(self):
   scanner=(ROOT/'cardmarket-language-browser-collector.ps1').read_text(encoding='utf-8-sig')
-  self.assertIn("if ($RequireLogin -and -not $auth) { throw 'CARDMARKET_LOGIN_REQUIRED' }",scanner)
+  self.assertIn("if ($RequireLogin -and -not $auth) { Assert-CardmarketAuthenticated }",scanner)
+  self.assertIn("function Assert-CardmarketAuthenticated",scanner)
+  self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",scanner)
   self.assertIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",scanner)
   self.assertIn("Save-Progress $processed.Count $runTotal 'BLOCKED'",scanner)
  def test_resume_gate_does_not_retry_blocked_or_logged_out_session(self):
