@@ -14,14 +14,14 @@ export async function POST(request:Request){
   const action=String((body as {action?:string}).action);
   let reset:null|{ok:boolean;startedAt:string;historyPreserved:boolean}=null;
   if(action==='rescan'){
-   const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket-reset-rescan.py','--execute'],{timeout:35000,maxBuffer:14000});
+   const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-reset-rescan.py','--execute'],{timeout:35000,maxBuffer:14000});
    reset=JSON.parse(stdout);
   }
   let retry:null|{ok:boolean;cardId:string;variantId:string}=null;
   if(action==='retry'){
    const d=body as Record<string,unknown>;
    if(!['de','en'].includes(String(d.language))||typeof d.cardId!=='string'||typeof d.variantId!=='string')return Response.json({error:'invalid_card_identity'},{status:400});
-   const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket-retry-one.py','--language',String(d.language),'--card',d.cardId,'--variant',d.variantId],{timeout:15000,maxBuffer:14000});
+   const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-retry-one.py','--language',String(d.language),'--card',d.cardId,'--variant',d.variantId],{timeout:15000,maxBuffer:14000});
    retry=JSON.parse(stdout);
   }
   await exec('/mnt/c/Windows/System32/schtasks.exe',['/Run','/TN','Cardyssey Cardmarket Manual Resume'],{timeout:10000,maxBuffer:14000});

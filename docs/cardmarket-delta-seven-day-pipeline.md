@@ -91,12 +91,12 @@ Profilkonfiguration anzulegen erlaubt noch keinen Preisimport anderer TCGs.
 ## Ausführung, Betrieb und Tests
 
 ```bash
-python3 -m unittest discover -s scripts -p 'test_cardmarket_*.py' -q
-python3 scripts/cardmarket_delta_scan.py                # DRY_RUN, keine Queue-Änderung
-python3 scripts/run-cardmarket-identity-weekly.py --apply  # NICHT während aktivem Scanner
+python3 -m unittest discover -s scripts/cardmarket/tests -q
+python3 scripts/cardmarket/core/cardmarket_delta_scan.py                # DRY_RUN, keine Queue-Änderung
+python3 scripts/cardmarket/core/run-cardmarket-identity-weekly.py --apply  # NICHT während aktivem Scanner
 ```
 
-- Eigene Tests: `scripts/test_cardmarket_delta_scan.py` (Guide-Grenzwerte,
+- Eigene Tests: `scripts/cardmarket/tests/test_cardmarket_delta_scan.py` (Guide-Grenzwerte,
   Erstlauf, Sprache, Druckmerkmale, Alter, bestätigt/nicht bestätigt,
   15-EUR-Grenze, fehlende Werte, Queue-Erhaltung, keine Preisänderungen).
 - Vor produktivem Queue-Neuschreiben wird ein jüngst als `RUNNING`

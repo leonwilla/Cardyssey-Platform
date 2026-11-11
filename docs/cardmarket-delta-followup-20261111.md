@@ -28,7 +28,7 @@ Stand 11.11.2026, Server Europe/Berlin. Fortführung ab Commit `7e40501`.
 - Tiny-`crontab`: am **12.11.2026** 08:05, 09:05, 10:05, 11:05 Uhr,
   über ein festes Tagesdatum begrenzt. Keine täglichen Pollings, höchstens
   vier Versuche falls Guide noch unverändert oder Scanner belegt ist.
-- `scripts/cardmarket-next-day-delta-20261112.py` lädt den S3-Guide frisch
+- `scripts/cardmarket/core/cardmarket-next-day-delta-20261112.py` lädt den S3-Guide frisch
   vom offiziellen Server, verlangt einen tatsächlich **neueren `createdAt`**,
   errechnet im ersten Schritt **rein lesend** sichere Skips.
 - Bei gerade laufendem Scanner **nur Vorschau**, niemals Queue-Mutation.
@@ -64,6 +64,6 @@ Stand 11.11.2026, Server Europe/Berlin. Fortführung ab Commit `7e40501`.
 
 ## Tests
 
-`python3 -m unittest discover -s scripts -p 'test_cardmarket_*.py' -q`:
+`python3 -m unittest discover -s scripts/cardmarket/tests -q`:
 **176 Tests bestanden, 1 optionaler Test übersprungen**.
 Zusätzlich Python-Kompilierung, PowerShell-Parser und TypeScript geprüft.

@@ -87,7 +87,7 @@ jobs:
       - name: Refresh verified Cardmarket prices and persist unresolved diagnostics
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
         run: |
-          python3 scripts/refresh-cardmarket-price-cache.py --fallback-report /tmp/cardyssey-weekly-price-review.json
+          python3 scripts/cardmarket/core/refresh-cardmarket-price-cache.py --fallback-report /tmp/cardyssey-weekly-price-review.json
           python3 scripts/store-price-review-cases.py --report /tmp/cardyssey-weekly-price-review.json --apply
           # Product-page scraping is an optional diagnostic, not the scheduled
           # pricing path. TCGCSV/Cardmarket feeds are processed by their existing
@@ -187,7 +187,7 @@ jobs:
 
       - name: Bridge exact CardTrader identities to Cardmarket
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}
-        run: python3 scripts/resolve-cardmarket-cardtrader-bridge.py
+        run: python3 scripts/cardmarket/core/resolve-cardmarket-cardtrader-bridge.py
 
       - name: Refresh exact in-stock Korean retail offers
         if: ${{ !cancelled() && steps.price_tests.outcome == 'success' }}

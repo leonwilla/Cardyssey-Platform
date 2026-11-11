@@ -2,7 +2,7 @@ import {priceMonitorAllowed} from '@/lib/server/price-monitor-access';
 import {spawn} from 'node:child_process';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const SCRIPT='/home/tv/cardshop/scripts/cardmarket-print-review-admin.py';
+const SCRIPT='/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-print-review-admin.py';
 function run(action:'list'|'review'|'undo',payload:Record<string,unknown>):Promise<{status:number;data:unknown}>{
  return new Promise(resolve=>{
   const child=spawn('python3',[SCRIPT,'--action',action],{stdio:['pipe','pipe','pipe']});

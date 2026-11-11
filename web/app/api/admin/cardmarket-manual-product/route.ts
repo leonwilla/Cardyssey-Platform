@@ -2,7 +2,7 @@ import {priceMonitorAllowed} from '@/lib/server/price-monitor-access';
 import {spawn} from 'node:child_process';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-const SCRIPT='/home/tv/cardshop/scripts/cardmarket-manual-product-review.py';
+const SCRIPT='/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-manual-product-review.py';
 export async function POST(request:Request){
  if(!await priceMonitorAllowed())return Response.json({error:'forbidden'},{status:403});
  const body=await request.json().catch(()=>null);

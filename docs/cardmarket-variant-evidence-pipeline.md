@@ -50,14 +50,14 @@ Preisabstand, pHash oder fehlendem Verkäuferkommentar.
 
 ## Betrieb und Grenzen
 
-* `scripts/cardmarket_variant_resolver.py`: konservative Klassifikation,
+* `scripts/cardmarket/core/cardmarket_variant_resolver.py`: konservative Klassifikation,
   Kommentare, Preisdiagnose; keine DB-Preisänderungen.
-* `scripts/cardmarket-build-metacard-family-index.py`: ganzer DE/EN-Katalog
+* `scripts/cardmarket/core/cardmarket-build-metacard-family-index.py`: ganzer DE/EN-Katalog
   als lokaler Kandidatenindex ohne neue Browserabfragen.
-* `scripts/cardmarket-sync-print-mapping-cache.py --apply`:
+* `scripts/cardmarket/core/cardmarket-sync-print-mapping-cache.py --apply`:
   bestätigte Identitäten und offene Versionskandidaten in DB; nur bestätigte
   Identitäten werden in den Scanner-Cache exportiert.
-* `scripts/cardmarket-language-browser-collector.ps1`: liest eindeutige
+* `scripts/cardmarket/core/cardmarket-language-browser-collector.ps1`: liest eindeutige
   Produktzuordnungen und kommentiert Sonderdruck-Anzeigen im Monitoring.
 * Bei LOGIN_REQUIRED oder Cloudflare-Sperre wird regulär pausiert; kein
   Proxy-/Challenge-Bypass. Neue Angebotsseiten können erst nach normaler
@@ -113,7 +113,7 @@ verifizierte Cardmarket-Produkt-ID; dieser Unterschied bleibt sichtbar.
 
 ### Einmal validierte Produktseiten sprachübergreifend nutzen
 
-`scripts/cardmarket-build-cross-language-page-cache.py` liest ausschließlich
+`scripts/cardmarket/core/cardmarket-build-cross-language-page-cache.py` liest ausschließlich
 lokale DE/EN-Queue- und Beobachtungsdaten. Eine wiederverwendbare URL
 benötigt **beidseitig denselben Cardyssey-Karten-/Variantenbezeichner**,
 identische offizielle `catalog_singleton_id` und `catalog_expansion_id` sowie
@@ -129,7 +129,7 @@ vorhandenen normalen Suchrouten.
 
 ### Leichte Suchabfrage mit Fallback
 
-`scripts/cardmarket-lightweight-search.ps1` versucht zunächst eine
+`scripts/cardmarket/core/cardmarket-lightweight-search.ps1` versucht zunächst eine
 same-origin HTML-Suchabfrage **im bereits angemeldeten Browserkontext**.
 Sie verwendet keine exportierten Cookies, keine Browserfingerprint-Fälschung,
 keine Captcha-/Cloudflare-Umgehung. Ergebnisse aus HTML werden nur als

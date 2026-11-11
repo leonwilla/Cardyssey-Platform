@@ -9,7 +9,7 @@ export async function GET(request:Request){
  const language=new URL(request.url).searchParams.get('language')||'de';
  if(!['de','en'].includes(language))return Response.json({error:'invalid_language'},{status:400});
  try{
-  const {stdout}=await run('python3',['/home/tv/cardshop/scripts/cardmarket_scan_monitor.py','--language',language],{timeout:15000,maxBuffer:160000});
+  const {stdout}=await run('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket_scan_monitor.py','--language',language],{timeout:15000,maxBuffer:160000});
   return Response.json(JSON.parse(stdout),{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'scan_monitor_unavailable'},{status:503})}
 }

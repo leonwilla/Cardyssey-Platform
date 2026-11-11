@@ -11,7 +11,7 @@ export async function GET(request:Request){
  const page=Number(p.get('page')||'0'),search=(p.get('search')||'').slice(0,120);
  if(!['de','en'].includes(language)||!['all','current'].includes(scope)||!['karten','preise','technik','drucke','alle'].includes(kind)||!Number.isInteger(page)||page<0||page>2000)return Response.json({error:'invalid_query'},{status:400});
  try{
-  const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket-live-failures.py','--language',language,'--scope',scope,'--kind',kind,'--page',String(page),'--search',search],{timeout:20000,maxBuffer:200000});
+  const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-live-failures.py','--language',language,'--scope',scope,'--kind',kind,'--page',String(page),'--search',search],{timeout:20000,maxBuffer:200000});
   return Response.json(JSON.parse(stdout),{headers:{'Cache-Control':'no-store'}});
  }catch{return Response.json({error:'scan_failure_list_unavailable'},{status:503})}
 }
