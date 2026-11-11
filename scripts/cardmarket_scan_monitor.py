@@ -133,6 +133,12 @@ def snapshot(base:Path,language:str):
     current_cycle_issues=sum(x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED')
         for x in current_cycle)
     newest=chronological[0] if chronological else None
+    preview={}
+    preview_file=base/'cardmarket-next-day-delta-report-20261112.json'
+    if preview_file.exists():
+        try:preview=json.loads(preview_file.read_text(encoding='utf-8-sig'))
+        except (ValueError,OSError):pass
+    preview_data=((preview.get('preview') or {}).get('languages') or {}).get(language) or {}
     resume=cooldown_info(base)
     current_problems=sum(bool(x.get('seen_at')) and rescan_epoch is not None
          and str(x['seen_at'])[:19]>=rescan_epoch.isoformat()[:19]
@@ -145,7 +151,12 @@ def snapshot(base:Path,language:str):
     missing_filter_inputs=sum(bool(x['missing']) for x in readiness)
     nonfilterable_specials=sum(bool(x['unsupported']) for x in readiness)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
-       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':len(feed_only),'deltaBrowserSkips':len(delta_skipped-feed_only),'browserObserved':len(completed),
+       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':len(feed_only),'deltaBrowserSkips':len(delta_skipped-feed_only),
+       'deltaPreviewSkips':int(preview_data.get('safeSkips') or 0),
+       'deltaPreviewStatus':preview.get('status'),
+       'deltaPreviewGuideAt':preview.get('latestGuideAt'),
+       'deltaPreviewCheckedAt':preview.get('checkedAt'),
+       'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
        'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
        'browserRemaining':max(0,len(browser)-done),

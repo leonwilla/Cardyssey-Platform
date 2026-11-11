@@ -56,6 +56,25 @@ if (!$ready) {
   }
 }
 if (!$ready) {throw "Cardmarket browser debugging endpoint unavailable; preserve profile and retry later"}
+# One gentle homepage navigation AFTER all cooldown/duplicate-runner gates.
+# Never solve challenges or export session tokens. Fail closed if the normal
+# navigation cannot be verified. Session-Status still decides authentication.
+$warmupScript=Join-Path $base 'Cardmarket-Session-Warmup.ps1'
+if(!(Test-Path $warmupScript)){
+  Write-Output 'CARDMARKET_WARMUP_MISSING_NO_SCAN'
+  return
+}
+try{
+  $warmup=& $warmupScript | ConvertFrom-Json
+  if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK'){
+    Write-Output ('CARDMARKET_WARMUP_PAUSED '+[string]$warmup.status)
+    return
+  }
+  Write-Output 'CARDMARKET_WARMUP_DONE_6S'
+}catch{
+  Write-Output 'CARDMARKET_WARMUP_UNVERIFIED_NO_SCAN'
+  return
+}
 # Both automatic and manual resume obey the same provider/login gate.
 $diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
 if(Test-Path $diagnose){

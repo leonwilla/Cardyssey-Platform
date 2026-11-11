@@ -8,9 +8,13 @@ from cardmarket_game_profile import load_game_profile
 from cardmarket_delta_scan import lock_queue_active
 from datetime import datetime,timezone
 import argparse
+import csv
+import io
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from price_feed_client import fetch_json
 
@@ -24,6 +28,54 @@ def run(*args):
     if p.returncode:
         raise RuntimeError(str(args[:2])+": "+p.stderr[-1000:]+p.stdout[-300:])
     return p.stdout.strip()
+def preserve_manual_scan_requests(current_path,previous):
+    """Carry forward manually requested scan timestamps after queue export.
+
+    The re-export derives manual flags from currently verified DB routes,
+    while the browser queue can contain newer one-time recheck requests.
+    Without this preservation a weekly refresh silently drops those requests.
+    Only the request timestamp is restored, never a card/price/product mapping.
+    """
+    if not previous:return {"preserved":0,"oldRequests":0,"unmatched":0}
+    with current_path.open(encoding='utf-8-sig',newline='') as f:
+        reader=csv.DictReader(f);headers=reader.fieldnames;rows=list(reader)
+    present=set();changed=0
+    for row in rows:
+        key=(row['cardyssey_karte'],row['variante_id'])
+        present.add(key)
+        old=previous.get(key)
+        if not old:continue
+        new=row.get('manual_scan_requested_at') or ''
+        old_time=timestamp(old);new_time=timestamp(new)
+        if old_time and (not new_time or old_time>new_time):
+            row['manual_scan_requested_at']=old
+            changed+=1
+    vanished=set(previous)-present
+    if vanished:raise RuntimeError('Weekly regeneration would lose '+str(len(vanished))+' manually requested variants')
+    buf=io.StringIO(newline='');w=csv.DictWriter(buf,fieldnames=headers)
+    w.writeheader();w.writerows(rows)
+    fd,tmp=tempfile.mkstemp(prefix='cm-restore-manual-',suffix='.csv.tmp',dir=current_path.parent)
+    try:
+        with os.fdopen(fd,'wb') as out:
+            out.write(buf.getvalue().encode('utf-8-sig'));out.flush();os.fsync(out.fileno())
+        os.replace(tmp,current_path)
+    finally:
+        if os.path.exists(tmp):os.unlink(tmp)
+    return {"preserved":changed,"oldRequests":len(previous),"unmatched":0}
+
+def timestamp(value):
+    if not value:return None
+    try:
+        d=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except ValueError:return None
+
+def collect_manual_scan_requests(queue):
+    if not queue.exists():return {}
+    with queue.open(encoding='utf-8-sig',newline='') as f:
+        return {(r['cardyssey_karte'],r['variante_id']):r['manual_scan_requested_at']
+             for r in csv.DictReader(f) if r.get('manual_scan_requested_at')}
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--apply",action="store_true")
@@ -31,6 +83,7 @@ def main():
     # This job rewrites both existing Windows CSV queues. Refuse while a
     # collector is actively writing/reading them; NEVER interrupt the scan.
     lock_queue_active(BASE,datetime.now(timezone.utc))
+    earlier_manual={lang:collect_manual_scan_requests(BASE/f'queue-{lang}.csv') for lang in ('de','en')}
     products=fetch_json(PRODUCT_URL,max_age=20*3600)
     prices=fetch_json(PRICE_URL,max_age=20*3600)
     if len(products.get("products") or [])<50000 or len(prices.get("priceGuides") or [])<50000:
@@ -45,6 +98,8 @@ def main():
     for lang in ("de","en"):
         result=run(ROOT/"scripts/export-cardmarket-full-queue.py","--language",lang,"--output",BASE/f"queue-{lang}.csv")
         report[lang]=json.loads(result)
+        report[lang]['manualRequestCarryForward']=preserve_manual_scan_requests(
+            BASE/f'queue-{lang}.csv',earlier_manual[lang])
         # Critical: exporter emits needs_price=YES as a placeholder. Never
         # feed that unprioritized raw CSV to the browser scanner again.
         report[lang]['prioritization']=json.loads(run(
