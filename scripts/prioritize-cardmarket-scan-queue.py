@@ -36,7 +36,7 @@ def prioritize(rows, cache):
         rare = str(state.get("rarity") or "").casefold() in {
             "selten","rare","ultra rare","secret rare","illustration rare",
             "special illustration rare","hyper rare","promo"}
-        expensive_row = value >= 20
+        expensive_row = value >= 15
         bulk = str(state.get("rarity") or "").casefold() in {
             "häufig","ungewöhnlich","common","uncommon"}
         # Bulk stays on price feeds EVEN when no price exists yet.
@@ -51,6 +51,10 @@ def prioritize(rows, cache):
         row["existing_price_eur"] = f"{value:.4f}" if not missing else ""
         row["existing_source"] = str(state.get("source") or "")
         row["needs_price"] = "YES" if missing else "NO"
+        # Populated only by cardmarket_delta_scan.py AFTER this base routing
+        # and independently verified product/guide evidence has been checked.
+        row["delta_browser_skip"] = "NO"
+        row["delta_reason"] = ""
         expensive += int(expensive_row)
     rows.sort(key=lambda r:(r["scan_tier"],r.get("prioritaet",""),
                             r.get("set_id",""),r["cardyssey_karte"],r["variante_id"]))

@@ -1,5 +1,10 @@
-# Conservative candidate ranking. A score cannot confirm a physical print,
+﻿# Conservative candidate ranking. A score cannot confirm a physical print,
 # language-specific price, or product ID. Caller must verify the actual page.
+if(!(Get-Command Get-CardmarketGameProfile -ErrorAction SilentlyContinue)){
+ $gameModule=Join-Path $PSScriptRoot 'cardmarket-game-profile.ps1'
+ if(!(Test-Path $gameModule)){throw 'CARDMARKET_GAME_PROFILE_MODULE_MISSING'}
+ . $gameModule
+}
 
 function Resolve-CardmarketSearchCandidates {
  param(
@@ -12,6 +17,7 @@ function Resolve-CardmarketSearchCandidates {
    [string]$PrintType = '',
    [string[]]$AllowedProductIds = @()
  )
+ $gamePath=[string](Get-CardmarketGameProfile).game_path
  $ranked=[Collections.Generic.List[object]]::new()
  $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  $expected=$PrintedNumber.Trim()
@@ -19,7 +25,7 @@ function Resolve-CardmarketSearchCandidates {
    $uri=$null
    try{$uri=[uri]([string]$link.url)}catch{continue}
    if(!$uri -or $uri.Scheme -ne 'https' -or $uri.Host -ne 'www.cardmarket.com') {continue}
-   if($uri.AbsolutePath -notmatch '^/(de|en)/Pokemon/Products/Singles/([A-Za-z0-9-]+)/([A-Za-z0-9-]+)$'){continue}
+   if($uri.AbsolutePath -notmatch ('^/(de|en)/'+$gamePath+'/Products/Singles/([A-Za-z0-9-]+)/([A-Za-z0-9-]+)$')){continue}
    $actualSet=[string]$Matches[2];$productSlug=[string]$Matches[3]
    $path=$uri.GetLeftPart([UriPartial]::Path)
    if(!$seen.Add($path)){continue}

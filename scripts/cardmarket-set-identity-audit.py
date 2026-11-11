@@ -5,6 +5,7 @@ The official singles product feed has idExpansion but not independently proven
 Cardyssey set IDs, numbers, prints or languages. Therefore a shared name list
 is an ambiguity, not proof of a wrong mapping. Never auto-reassign products.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,collections,hashlib,json,subprocess
 from datetime import datetime,timezone
 from pathlib import Path
@@ -15,7 +16,7 @@ sem_name=mapper.sem_name
 
 ROOT=Path('/home/tv/cardshop')
 FEEDS=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')
-PRODUCT_URL='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+PRODUCT_URL=load_game_profile()['product_url']
 
 def assess(names, current_id, expansions, top_limit=5):
     wanted=collections.Counter(sem_name(n) for n in names if sem_name(n))

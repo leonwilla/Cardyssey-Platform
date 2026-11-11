@@ -4,6 +4,7 @@
 No scraping or individual card network calls. Exact existing product IDs only.
 DE/EN are Cardyssey catalog language labels, not language-filtered guide prices.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse
 import json
 import math
@@ -14,7 +15,7 @@ from pathlib import Path
 
 from price_feed_client import fetch_json
 
-PRICE_URL="https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
+PRICE_URL=load_game_profile()['price_url']
 DETAIL=re.compile(r"Cardmarket product (\d+); key ([A-Za-z0-9_-]+)")
 SAFE_KEYS={"avg30","avg30-holo","trend","trend-holo","avg7","avg7-holo","avg","avg-holo","low","low-holo"}
 def db(sql,apply=False):

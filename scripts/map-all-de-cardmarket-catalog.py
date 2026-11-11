@@ -4,6 +4,7 @@
 Batch-match distinct cards against the official product feed and validated
 expansion mappings. Store candidates separately from exact print identity.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse
 import collections
 import json
@@ -15,8 +16,8 @@ from price_feed_client import fetch_json
 from price_identity_validation import split_by_verified_expansion
 from importlib.machinery import SourceFileLoader
 
-PRODUCT_URL="https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json"
-PRICE_URL="https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
+PRODUCT_URL=load_game_profile()['product_url']
+PRICE_URL=load_game_profile()['price_url']
 ROOT=Path(__file__).resolve().parent
 
 def db(sql):

@@ -3,10 +3,12 @@ import unittest
 from pathlib import Path
 SRC=(Path(__file__).with_name('cardmarket-language-browser-collector.ps1')).read_text(encoding='utf-8-sig')
 class PaginationTests(unittest.TestCase):
- def test_more_than_old_300_limit_is_supported(self):
+ def test_at_most_three_load_more_pages_without_false_completeness(self):
   self.assertIn('$offerCap=1200',SRC)
-  self.assertIn('$maxOfferPages=24',SRC)
+  self.assertIn('$maxOfferPages=3',SRC)
   self.assertIn('.slice(0,1200)',SRC)
+  self.assertIn('if($data.hasMore -and !$out.pagination_failure)',SRC)
+  self.assertIn("$out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'",SRC)
   self.assertNotIn('CARDMARKET_300_CAP',SRC)
  def test_only_stable_absent_button_can_convert_old_error_to_complete(self):
   self.assertIn("$lastButton -ne 'ABSENT'",SRC)

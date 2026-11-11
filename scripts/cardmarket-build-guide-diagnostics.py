@@ -4,12 +4,13 @@
 A product-level trend/avg30 has no DE/EN/NM/foil guarantee. This file is
 diagnostic evidence only: never publish into tcg_price_cache or routing.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,csv,hashlib,json,os,tempfile
 from datetime import datetime,timezone
 from pathlib import Path
 ROOT=Path('/home/tv/cardshop')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
-URL='https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json'
+URL=load_game_profile()['price_url']
 CACHE=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')
 def build(base=BASE,cache=CACHE):
     source=cache/(hashlib.sha256(URL.encode()).hexdigest()+'.json')

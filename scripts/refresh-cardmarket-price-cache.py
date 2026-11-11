@@ -8,6 +8,7 @@ Identity resolution is fail-closed:
 Special physical variants are only resolved when the Cardmarket identity cannot
 collapse multiple distinct holo-like variants into one bucket.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse
 import collections
 import concurrent.futures
@@ -21,8 +22,9 @@ from price_feed_client import fetch_json as cached_feed_json
 from price_identity_validation import print_reasons,candidate_status,split_by_verified_expansion
 
 UA = {"User-Agent": "Cardyssey/0.4 cardmarket-price-refresh"}
-PRICE_URL = "https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
-PRODUCT_URL = "https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json"
+GAME=load_game_profile()
+PRICE_URL=GAME["price_url"]
+PRODUCT_URL=GAME["product_url"]
 
 def db(sql):
     return subprocess.run(

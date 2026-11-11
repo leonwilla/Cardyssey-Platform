@@ -2,6 +2,7 @@
 """Preview a user-supplied Cardmarket product link, then record a human-reviewed
 exact-card identity as a durable learning example. No guess-based prices.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse
 import hashlib
 import json
@@ -18,8 +19,8 @@ ROOT=Path('/home/tv/cardshop')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 STORE=Path('/home/tv/.local/state/cardyssey-queue/manual-product-previews')
 PS='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
-PRODUCT_URL='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
-GUIDE_URL='https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json'
+PRODUCT_URL=load_game_profile()['product_url']
+GUIDE_URL=load_game_profile()['price_url']
 
 def valid_link(url):
     if not isinstance(url,str) or len(url)>750:return False

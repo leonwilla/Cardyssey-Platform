@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "default_profile": "pokemon",
+  "profiles": {
+    "pokemon": {
+      "game_id": 6,
+      "game_path": "Pokemon",
+      "catalog_filename": "products_singles_6.json",
+      "price_guide_filename": "price_guide_6.json",
+      "base_url": "https://www.cardmarket.com",
+      "feed_base_url": "https://downloads.s3.cardmarket.com/productCatalog"
+    }
+  }
+}

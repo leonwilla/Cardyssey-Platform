@@ -5,12 +5,13 @@ idMetacard groups printings including separate Additional expansions, but
 does not certify Cardyssey identity, collector number, foil or price. Index
 keeps original official expansion IDs to avoid cross-set autopromotion.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,csv,hashlib,json,os,re,tempfile
 from collections import defaultdict,Counter
 from pathlib import Path
 ROOT=Path('/home/tv/cardshop')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
-URL='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+URL=load_game_profile()['product_url']
 FEEDS=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')
 def build(base=BASE,feeds=FEEDS):
     p=feeds/(hashlib.sha256(URL.encode()).hexdigest()+'.json')

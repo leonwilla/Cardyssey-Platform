@@ -5,10 +5,11 @@ The official product feed validates the expansion. The existing Cardyssey
 variant_id distinguishes identical names printed under different card numbers.
 This does NOT verify language/foil/edition or publish a price.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,hashlib,json,subprocess
 from pathlib import Path
 ROOT=Path('/home/tv/cardshop')
-FEED='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+FEED=load_game_profile()['product_url']
 PRODUCTS=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')/(hashlib.sha256(FEED.encode()).hexdigest()+'.json')
 
 def reconcile(apply=False):

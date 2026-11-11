@@ -4,6 +4,9 @@
 Does not modify published prices, route mappings, or human confirmations.
 Price guide weekly refresh remains a separate, existing job.
 """
+from cardmarket_game_profile import load_game_profile
+from cardmarket_delta_scan import lock_queue_active
+from datetime import datetime,timezone
 import argparse
 import json
 import subprocess
@@ -13,8 +16,9 @@ from price_feed_client import fetch_json
 
 ROOT=Path("/home/tv/cardshop")
 BASE=Path("/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector")
-PRODUCT_URL="https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json"
-PRICE_URL="https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
+GAME=load_game_profile()
+PRODUCT_URL=GAME["product_url"]
+PRICE_URL=GAME["price_url"]
 def run(*args):
     p=subprocess.run([sys.executable,*map(str,args)],cwd=ROOT,capture_output=True,text=True)
     if p.returncode:
@@ -24,6 +28,9 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument("--apply",action="store_true")
     a=p.parse_args()
+    # This job rewrites both existing Windows CSV queues. Refuse while a
+    # collector is actively writing/reading them; NEVER interrupt the scan.
+    lock_queue_active(BASE,datetime.now(timezone.utc))
     products=fetch_json(PRODUCT_URL,max_age=20*3600)
     prices=fetch_json(PRICE_URL,max_age=20*3600)
     if len(products.get("products") or [])<50000 or len(prices.get("priceGuides") or [])<50000:
@@ -72,6 +79,12 @@ def main():
     for lang in ('de','en'):
         report[lang]['known_page_hints']=json.loads(run(
             ROOT/'scripts/cardmarket-apply-print-page-hints.py','--language',lang))
+    # Weekly S3 delta gate: applies only after complete queue regeneration
+    # and human-approved identity validation; a guide timestamp is NOT a new
+    # DE/EN variant price. First run stores a baseline, no speculative skip.
+    if a.apply:
+        report['delta_scan']=json.loads(run(
+            ROOT/'scripts/cardmarket_delta_scan.py','--apply'))
     # Compact read-only artifacts for safe browser scoring and guide
     # diagnostics; neither may assign prints or write price caches.
     if a.apply:

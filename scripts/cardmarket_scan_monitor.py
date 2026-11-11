@@ -66,7 +66,15 @@ def snapshot(base:Path,language:str):
     # Same eligibility policy as the live scanner: the 31k priced ordinary
     # bulk cards remain in the catalog and price feeds, not browser work.
     feed_only={(r['cardyssey_karte'],r['variante_id']) for r in rows if feed_only_covered(r)}
-    browser=expected-feed_only
+    delta_skipped={(r['cardyssey_karte'],r['variante_id']) for r in rows
+        if r.get('delta_browser_skip')=='YES'
+        and r.get('delta_reason')=='GUIDE_STABLE_STANDARD_LAST_VERIFIED_WITHIN_28D'
+        and r.get('needs_price')=='NO'
+        and str(r.get('manual_scan_requested_at') or '')==''
+        and str(r.get('foil') or '')=='' and str(r.get('sonderdruck') or '')==''
+        and str(r.get('stempel') or '') in ('','[]','null')
+        and str(r.get('drucktyp') or '').casefold() in ('normal','nonholo','common')}
+    browser=expected-feed_only-delta_skipped
     completed={}
     events=base/f'browser-observations-{language}.jsonl'
     if events.exists():
@@ -137,7 +145,7 @@ def snapshot(base:Path,language:str):
     missing_filter_inputs=sum(bool(x['missing']) for x in readiness)
     nonfilterable_specials=sum(bool(x['unsupported']) for x in readiness)
     return {'language':language,'totalVariants':total,'uniqueCards':len({r['cardyssey_karte'] for r in rows}),
-       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':len(feed_only),'browserObserved':len(completed),
+       'browserTotal':len(browser),'rescanStartedAt':rescan_epoch.isoformat() if rescan_epoch else None,'rescanProcessed':rescan_done,'feedOnly':len(feed_only),'deltaBrowserSkips':len(delta_skipped-feed_only),'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
        'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
        'browserRemaining':max(0,len(browser)-done),

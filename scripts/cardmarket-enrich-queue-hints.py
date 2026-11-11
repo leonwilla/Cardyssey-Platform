@@ -2,11 +2,12 @@
 """Conservative catalog search hints from verified-set singleton candidates.
 Never treats a catalog candidate as an authenticated product-page proof.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,csv,hashlib,json,os
 from pathlib import Path
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 FEEDS=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')
-URL='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+URL=load_game_profile()['product_url']
 ROOT=Path('/home/tv/cardshop')
 def enrich(language,base=BASE,root=ROOT,feeds=FEEDS):
     if language not in ('de','en'):raise ValueError('language')

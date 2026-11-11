@@ -19,10 +19,15 @@ $ErrorActionPreference = "Stop"
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 # --- Sprach-Parameterisierung -------------------------------------------------
+$gameProfileModule=Join-Path $PSScriptRoot 'cardmarket-game-profile.ps1'
+if(!(Test-Path $gameProfileModule)){throw 'CARDMARKET_GAME_PROFILE_MODULE_MISSING'}
+. $gameProfileModule
+$gameProfile=Get-CardmarketGameProfile
+$gamePath=[string]$gameProfile.game_path
 $LangCfg = if ($Language -eq 'de') {
   [pscustomobject]@{
     UrlSegment     = 'de'
-    PathPrefix     = '/de/Pokemon'
+    PathPrefix     = '/de/'+[string]$gameProfile.game_path
     LanguageId     = 3                      # language[3] = Deutsch
     LanguageNames  = @('Deutsch')
     ConditionNames = @('Near Mint','Mint')
@@ -30,7 +35,7 @@ $LangCfg = if ($Language -eq 'de') {
 } else {
   [pscustomobject]@{
     UrlSegment     = 'en'
-    PathPrefix     = '/en/Pokemon'
+    PathPrefix     = '/en/'+[string]$gameProfile.game_path
     LanguageId     = 1                      # language[1] = Englisch
     LanguageNames  = @('English','Englisch')
     ConditionNames = @('Near Mint','Mint')
@@ -349,7 +354,14 @@ foreach($feedCase in $bulkFeedOnlyRows){
   [void]$feedOnlyKeys.Add(('{0}|{1}' -f $feedCase.cardyssey_karte,$feedCase.variante_id))
 }
 $browserCases=@($allCases | Where-Object {
-  -not $feedOnlyKeys.Contains(('{0}|{1}' -f $_.cardyssey_karte,$_.variante_id))
+  -not $feedOnlyKeys.Contains(('{0}|{1}' -f $_.cardyssey_karte,$_.variante_id)) -and
+  -not ([string]$_.delta_browser_skip -eq 'YES' -and
+     [string]$_.delta_reason -eq 'GUIDE_STABLE_STANDARD_LAST_VERIFIED_WITHIN_28D' -and
+     [string]$_.needs_price -eq 'NO' -and
+     [string]$_.manual_scan_requested_at -eq '' -and
+     [string]$_.foil -eq '' -and [string]$_.sonderdruck -eq '' -and
+     [string]$_.stempel -in @('','[]','null') -and
+     [string]$_.drucktyp -match '(?i)^(normal|nonholo|common)$')
 })
 $cases = if ($ScanMode -eq 'missing') {
   @($browserCases | Where-Object { [string]$_.needs_price -eq 'YES' })
@@ -579,7 +591,7 @@ try {
         $out.print_mapping_cache='HUMAN_CONFIRMED'
         $out.verified_print_product_id=[string]$confirmed.product_id
         $known=[string]$confirmed.product_url
-        if($known -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'){
+        if($known -match ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$')){
           $parsed=[uri]$known
           if($parsed.AbsolutePath.StartsWith($LangCfg.PathPrefix+'/Products/Singles/') -and
               [string]$confirmed.product_id -in $allowedIds){$savedUrl=$known}
@@ -599,7 +611,7 @@ try {
            [string]$family.cardId -eq [string]$case.cardyssey_karte){
           $matches=@($family.sameSetCardNumberCandidates | Where-Object {
             $_.productIdChecked -eq $true -and [string]$_.productId -in $allowedIds -and
-            [string]$_.productUrl -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'
+            [string]$_.productUrl -match ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$')
           })
           if($matches.Count -eq 1){
             $familyCandidate=$matches[0]
@@ -625,7 +637,7 @@ try {
            $candidateId -in $allowedIds -and
            $cross.officialExpansionId -eq [string]$case.catalog_expansion_id -and
            $cross.catalogProductIdValidatedAtSource -eq $true -and
-           $candidateUrl -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'){
+           $candidateUrl -match ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$')){
           $u=[uri]$candidateUrl
           if($u.AbsolutePath.StartsWith($LangCfg.PathPrefix+'/Products/Singles/')){
             $savedUrl=$candidateUrl
@@ -699,7 +711,7 @@ try {
          [string]$case.catalog_expansion_id -match '^[0-9]+$' -and
          [string]$case.candidate_status -ne 'SET_EXPANSION_AMBIGUOUS') {
         $directId=[string]$case.catalog_singleton_id
-        $lookup='https://www.cardmarket.com/Pokemon/Products?idProduct='+$directId
+        $lookup='https://www.cardmarket.com/'+$gamePath+'/Products?idProduct='+$directId
         $out.catalog_direct_id_attempted=$true
         $resolved=''
         $challenged=$false
@@ -716,7 +728,7 @@ try {
             if($state.ready -ne 'complete' -or [string]$state.id -ne $directId){continue}
             $landing=[uri]([string]$state.url)
             if($landing.Host -ne 'www.cardmarket.com' -or
-               $landing.AbsolutePath -notmatch '^/(de|en)/Pokemon/Products/Singles/') {continue}
+               $landing.AbsolutePath -notmatch ('^/(de|en)/'+$gamePath+'/Products/Singles/')) {continue}
             $lastNumber=[regex]::Match($landing.AbsolutePath,'(?i)-[A-Z]{1,8}([0-9]{1,4})$')
             $sameNumber=$false
             if($lastNumber.Success){
@@ -864,7 +876,7 @@ try {
             ForEach-Object { $_.Group[0] })
           $matchesById = @()
           foreach ($link in @($uniqueLinks | Select-Object -First 6)) {
-            if ([string]$link.url -notmatch '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/') { continue }
+            if ([string]$link.url -notmatch ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/')) { continue }
             if (!(Move-To ([string]$link.url))) { continue }
             $pageProductId = ''
             for ($ii = 0; $ii -lt 12; $ii++) {
@@ -891,7 +903,26 @@ try {
         $out.url = $likely[0].url
         $versionMatch=[regex]::Match(([string]$out.url).Split('?')[0],'(?i)(?:^|[-/])V([1-9][0-9]?)(?=[-/]|$)')
         if($versionMatch.Success){$out.observed_url_version='V'+$versionMatch.Groups[1].Value}
-        if (!(Move-To $out.url)) { throw 'PRODUCT_PAGE_TIMEOUT' }
+        $preFilteredUrl=''
+        $preFilteredRequested=$false
+        # For already-known normal cards, combine the initial product visit
+        # with the exact language/NM/foil filter. Identity checks below still
+        # independently re-check the product id and collector number.
+        $preReverseCode=if ([string]$case.drucktyp -match '(?i)^reverse$') {'Y'} elseif([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') {'N'} else {'0'}
+        $preFirstCode=if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') {'Y'} elseif([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') {'N'} else {'0'}
+        if($priceNeeded -and $preReverseCode -ne '0' -and
+           [string]$case.foil -eq '' -and [string]$case.sonderdruck -eq '' -and
+           [string]$case.stempel -in @('','[]','null') -and
+           [string]$case.drucktyp -match '(?i)^(normal|reverse|nonholo|common)$' -and
+           $directUrlFilterSupported){
+          try{
+            $preFilteredUrl=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $preReverseCode -FirstEditionCode $preFirstCode
+            $preFilteredRequested=$true
+            $out.pre_filtered_product_first=$true
+          }catch{$preFilteredUrl=''}
+        }
+        $initialUrl=if($preFilteredUrl){$preFilteredUrl}else{[string]$out.url}
+        if (!(Move-To $initialUrl)) { throw 'PRODUCT_PAGE_TIMEOUT' }
         # The last page may have been a Cloudflare interstitial or a login
         # form. Re-check access on the ACTUAL product page, not the previous
         # search page. Never treat an inaccessible account as authenticated.
@@ -1048,7 +1079,8 @@ try {
               try {
                 $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
                 $out.direct_filter_attempted=$true
-                if(Move-To $targetFilter){
+                $preFilterAlreadyOpen=($preFilteredRequested -and $initialUrl -eq $targetFilter)
+                if($preFilterAlreadyOpen -or (Move-To $targetFilter)){
                   $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
                   $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+$firstCheck+'})()')
                   if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
@@ -1073,7 +1105,7 @@ try {
               # Never mark a market as complete if the provider still exposes
               # more offers at this limit.
               $offerCap=1200
-              $maxOfferPages=24
+              $maxOfferPages=3 # At most three AJAX loads; incomplete lists remain unpublishable.
               $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),comment:r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]")?.textContent?.trim()||null,commentVisible:!!r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]"),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
               $data = $null
               for ($fi = 0; $fi -lt 12; $fi++) {

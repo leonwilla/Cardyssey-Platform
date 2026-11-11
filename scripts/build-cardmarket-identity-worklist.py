@@ -4,6 +4,7 @@
 Read-only against all existing price tables. Candidate set identities are staged
 separately and never treated as per-language NM prices or verified foil/stamps.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse
 import csv
 import hashlib
@@ -16,7 +17,7 @@ from pathlib import Path
 ROOT=Path("/home/tv/cardshop")
 QUEUE=Path("/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector")
 FEEDS=Path("/home/tv/.local/state/cardyssey-queue/price-feeds")
-CAT_URL="https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json"
+CAT_URL=load_game_profile()['product_url']
 OUT=ROOT/"reports"
 FIELDS=("language","card_id","variant_id","set_id","number","name","type","foil","subtype","stamps",
         "candidate_ids","matched_set_ids","expansion_id","classification","product_names","requires_confirmation",

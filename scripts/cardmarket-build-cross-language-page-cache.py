@@ -14,7 +14,9 @@ from pathlib import Path
 from collections import Counter
 from urllib.parse import urlsplit
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
-URL_RE=re.compile(r'^/(?:de|en)/Pokemon/Products/Singles/([A-Za-z0-9-]+)/([A-Za-z0-9-]+)$')
+from cardmarket_game_profile import load_game_profile
+GAME=load_game_profile()
+URL_RE=re.compile(r'^/(?:de|en)/'+re.escape(GAME['game_path'])+r'/Products/Singles/([A-Za-z0-9-]+)/([A-Za-z0-9-]+)$')
 def ordinary(r):
     return bool(r.get('drucktyp','').casefold() in {'normal','reverse'}
        and not r.get('foil') and not r.get('sonderdruck')
@@ -28,7 +30,7 @@ def page_url(url,lang):
     if not m:return None
     # Deliberately strip offer filters: DE and EN use different language
     # params; a print-specific filter must be rebuilt and verified in browser.
-    return f'https://www.cardmarket.com/{lang}/Pokemon/Products/Singles/{m.group(1)}/{m.group(2)}'
+    return f'https://www.cardmarket.com/{lang}/{GAME["game_path"]}/Products/Singles/{m.group(1)}/{m.group(2)}'
 
 def load_queue(base,language):
     with (base/f'queue-{language}.csv').open(encoding='utf-8-sig',newline='') as f:

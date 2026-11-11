@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Admin-only interface for Cardmarket print review; no price publication."""
+from cardmarket_game_profile import load_game_profile
 import argparse
 import csv
 import fcntl
@@ -24,7 +25,7 @@ def quote(t):return "'"+str(t).replace("'","''")+"'"
 @lru_cache(maxsize=1)
 def official_product_details():
     """Official catalog metadata only; none of these fields proves a print/foil."""
-    url='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+    url=load_game_profile()['product_url']
     cache=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')/(hashlib.sha256(url.encode()).hexdigest()+'.json')
     try:
         data=json.loads(cache.read_text(encoding='utf-8'))
@@ -285,7 +286,7 @@ def list_cases(data):
         by_key=defaultdict(list)
         for value in mapping_rows:by_key[(value['card_id'],value['variant_id'])].append(value)
         for row in rows:row['cached_product_candidates']=by_key.get((row['card_id'],row['variant_id']),[])
-    url="https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
+    url=load_game_profile()['price_url']
     cache=Path("/home/tv/.local/state/cardyssey-queue/price-feeds")/(hashlib.sha256(url.encode()).hexdigest()+".json")
     if cache.exists():
         guide=json.loads(cache.read_text(encoding="utf-8"))

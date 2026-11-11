@@ -42,7 +42,8 @@ class BrowserOptimizationTests(unittest.TestCase):
         self.assertIn('candidateId -eq [string]$case.catalog_singleton_id',s)
         self.assertIn('candidateId -in $allowedIds',s)
         self.assertIn('$out.cross_language_print_verified=$false',s)
-        self.assertIn('if (!(Move-To $out.url))',s)
+        self.assertIn('if (!(Move-To $initialUrl))',s)
+        self.assertIn('candidateId =',s)
         self.assertIn('candidateId =',s)
         self.assertIn('targetProductValidated',x)
     def test_same_comment_rules_live_and_offline(self):

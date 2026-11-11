@@ -1,11 +1,17 @@
-# Same-origin search request in the already authenticated Cardmarket tab.
+﻿# Same-origin search request in the already authenticated Cardmarket tab.
 # The server response is parsed as inert HTML; scripts are not executed.
 # If Cardmarket renders results dynamically, safely fall back to the
 # existing full-page flow. Any challenge response halts the collector.
+if(!(Get-Command Get-CardmarketGameProfile -ErrorAction SilentlyContinue)){
+ $gameModule=Join-Path $PSScriptRoot 'cardmarket-game-profile.ps1'
+ if(!(Test-Path $gameModule)){throw 'CARDMARKET_GAME_PROFILE_MODULE_MISSING'}
+ . $gameModule
+}
 function Search-CardmarketSameOrigin {
  param([string]$SearchPath,[bool]$Authenticated=$false)
  if(!$Authenticated){return $null}
- if($SearchPath -notmatch '^/(de|en)/Pokemon/Products/Search[?]searchString=[^#]+$'){return $null}
+ $gamePath=[string](Get-CardmarketGameProfile).game_path
+ if($SearchPath -notmatch ('^/(de|en)/'+$gamePath+'/Products/Search[?]searchString=[^#]+$')){return $null}
  $origin=[string](Js 'location.origin' 6)
  if($origin -ne 'https://www.cardmarket.com'){return $null}
  Wait-CardmarketRequestBudget
@@ -45,9 +51,9 @@ function Search-CardmarketSameOrigin {
    throw 'CARDMARKET_PROVIDER_CHALLENGE'
  }
  if([int]$reply.status -ne 200 -or !$reply.signedIn){return $null}
- if([string]$reply.finalPath -notmatch '^/(de|en)/Pokemon/Products/Search$'){return $null}
+ if([string]$reply.finalPath -notmatch ('^/(de|en)/'+$gamePath+'/Products/Search$')){return $null}
  $links=@($reply.links | Where-Object {
-    [string]$_.url -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/'
+    [string]$_.url -match ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/')
  })
  if($links.Count -eq 0){return $null}
  return [pscustomobject]@{links=$links;mode='SAME_ORIGIN_HTML_SEARCH_CANDIDATES'}

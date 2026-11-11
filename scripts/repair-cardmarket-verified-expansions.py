@@ -5,11 +5,12 @@ Recomputes product candidates from official Cardmarket catalog INSIDE the
 confirmed expansion, preserving ambiguity between physical V1/V2 prints.
 Does not touch prices, human verified routes, or confirmed review decisions.
 """
+from cardmarket_game_profile import load_game_profile
 import argparse,collections,hashlib,json,subprocess,csv,os
 from pathlib import Path
 from importlib.util import spec_from_file_location,module_from_spec
 ROOT=Path('/home/tv/cardshop')
-URL='https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json'
+URL=load_game_profile()['product_url']
 FEEDS=Path('/home/tv/.local/state/cardyssey-queue/price-feeds')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 
