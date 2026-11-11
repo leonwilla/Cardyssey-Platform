@@ -56,6 +56,27 @@ if(!(Test-Path $scoreModule)){throw 'CARDMARKET_SCORE_MODULE_MISSING'}
 $filterModule=Join-Path $PSScriptRoot 'cardmarket-filter-url.ps1'
 if(!(Test-Path $filterModule)){throw 'CARDMARKET_FILTER_URL_MODULE_MISSING'}
 . $filterModule
+$commentModule=Join-Path $PSScriptRoot 'cardmarket-offer-comments.ps1'
+if(!(Test-Path $commentModule)){throw 'CARDMARKET_OFFER_COMMENT_MODULE_MISSING'}
+. $commentModule
+# Exported from human-confirmed Cardyssey review decisions only; candidate
+# version pages are stored separately and never auto-promote a print.
+$verifiedPrintMappings=@{}
+$verifiedPrintFile=Join-Path $OutputDir 'cardmarket-verified-print-mapping-cache.json'
+if(Test-Path $verifiedPrintFile){
+ try{
+  $verifiedData=Get-Content -Raw -Encoding UTF8 $verifiedPrintFile | ConvertFrom-Json
+  if([int]$verifiedData.schema -ne 1 -or [string]$verifiedData.source -ne 'CARDYSSEY_HUMAN_CONFIRMED_PRINT_ONLY'){
+   throw 'NOT_HUMAN_VERIFIED_MAPPING_CACHE'
+  }
+  foreach($map in @($verifiedData.confirmedMappings)){
+   if([string]$map.mapping_status -ne 'HUMAN_CONFIRMED' -or [string]$map.product_id -notmatch '^[0-9]{4,12}$'){continue}
+   $mapKey=([string]$map.language_code)+'|'+([string]$map.card_id)+'|'+([string]$map.variant_id)
+   if($verifiedPrintMappings.ContainsKey($mapKey)){throw 'DUPLICATE_HUMAN_VARIANT_MAPPING'}
+   $verifiedPrintMappings[$mapKey]=$map
+  }
+ }catch{throw 'INVALID_CARDMARKET_VERIFIED_PRINT_MAPPING_CACHE'}
+}
 # A read-only product-wide guide is never a DE/EN/NM/foil price.
 $guidePrices=@{};$guideDate=''
 $guideFile=Join-Path $OutputDir 'cardmarket-guide-diagnostic.json'
@@ -486,6 +507,19 @@ try {
       $out.query = "$name $number"
       $savedUrl = ''
       $allowedIds = @([string]$case.cardmarket_ids -split ',')
+      $cacheKey=$Language+'|'+([string]$case.cardyssey_karte)+'|'+([string]$case.variante_id)
+      if($verifiedPrintMappings.ContainsKey($cacheKey)){
+        $confirmed=$verifiedPrintMappings[$cacheKey]
+        $out.print_mapping_cache='HUMAN_CONFIRMED'
+        $out.verified_print_product_id=[string]$confirmed.product_id
+        $known=[string]$confirmed.product_url
+        if($known -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$'){
+          $parsed=[uri]$known
+          if($parsed.AbsolutePath.StartsWith($LangCfg.PathPrefix+'/Products/Singles/') -and
+              [string]$confirmed.product_id -in $allowedIds){$savedUrl=$known}
+        }
+      }
+
       # A verified family contains multiple same-name reprints but no verified
       # per-print ID. An ID from the existing catalog is only a page candidate.
       # This branch performs an actual browser read of the candidate page;
@@ -901,9 +935,9 @@ try {
                 $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
                 $out.direct_filter_attempted=$true
                 if(Move-To $targetFilter){
-                  $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+(if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'})+'})()')
-                  if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}
-                  else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
+                  $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
+                  $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+$firstCheck+'})()')
+                  if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
                 }
               } catch {
                 if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED'){throw}
@@ -912,7 +946,10 @@ try {
               }
             }
             if(!$filterOk){
-              if($out.direct_filter_attempted){if(!(Move-To ([string]$out.url).Split('?')[0])){throw 'FILTER_RESTORE_PRODUCT_FAILED'}}
+              if($out.direct_filter_attempted){
+                $restoreUrl=([string]$out.url).Split('?')[0]
+                if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
+              }
               $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
               if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
             }
@@ -922,7 +959,7 @@ try {
               # more offers at this limit.
               $offerCap=1200
               $maxOfferPages=24
-              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
+              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.innerText.trim(),comment:r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]")?.textContent?.trim()||null,commentVisible:!!r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]"),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
               $data = $null
               for ($fi = 0; $fi -lt 12; $fi++) {
                 Start-Sleep -Milliseconds 500
@@ -1022,6 +1059,29 @@ try {
                 ($firstCode -eq '0' -or
                   (($firstCode -eq 'Y') -eq ('First Edition' -in @($_.flags))))
               })
+              # Seller comments can reject explicitly mislabeled special
+              # prints but cannot automatically prove an unlabeled foil.
+              $targetPrint=''
+              $f=[string]$case.foil
+              if($f -match '(?i)meisterball|masterball'){$targetPrint='masterball'}
+              elseif($f -match '(?i)pok[eé]ball|poke.?ball'){$targetPrint='pokeball'}
+              elseif([string]$case.stempel -match '(?i)professorenprogramm|professor.program'){$targetPrint='stamp:professor-program'}
+              elseif([string]$case.stempel -match '(?i)play.?pokemon'){$targetPrint='stamp:play-pokemon'}
+              elseif([string]$case.stempel -match '(?i)prerelease'){$targetPrint='stamp:prerelease'}
+              if($targetPrint){
+                $counts=@{positive=0;contradiction=0;ambiguous=0;missing=0;not_applicable=0;comment_fields_visible=0}
+                foreach($row in $accepted){
+                  if($row.commentVisible){$counts.comment_fields_visible++}
+                  $verdict=Get-CardmarketOfferCommentClassification -Comment ([string]$row.comment) -TargetPrint $targetPrint
+                  $keyName=$verdict.ToLowerInvariant()
+                  $counts[$keyName]++
+                }
+                $out.special_print_comment_evidence=@{
+                    target=$targetPrint;counts=$counts;source='VISIBLE_SELLER_COMMENTS_ONLY';
+                    unlabeled_offers_not_verified=$true;not_print_proof=$true;
+                    all_pages_complete=[bool]$out.all_pages_complete
+                }
+              }
               $out.verified_lang_nm_offers = $accepted.Count
               $out.language_offers_observed=($accepted.Count -gt 0)
               $seenOfferIds=@($data.rows | ForEach-Object { [string]$_.id })

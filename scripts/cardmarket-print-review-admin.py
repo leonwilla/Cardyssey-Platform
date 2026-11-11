@@ -188,9 +188,18 @@ COMMIT;"""
     queue=False
     try:queue=revert_queue_identity(lang,card,variant,result.get('candidateIds') or [])
     except (OSError,ValueError):pass # Next queue export uses DB as source.
+    cache_updated=refresh_print_mapping_cache()
     emit({'ok':True,'status':'PENDING_REVIEW','cardId':card,'variantId':variant,
           'humanRouteRemoved':result.get('routeRemoved')==1,'queueUpdated':queue,
-          'existingPricesUntouched':True})
+          'mappingCacheUpdated':cache_updated,'existingPricesUntouched':True})
+
+def refresh_print_mapping_cache():
+    """Rebuild human-confirmed-only cache after any saved manual decision."""
+    try:
+        p=subprocess.run([sys.executable,str(Path(__file__).resolve().parent/'cardmarket-sync-print-mapping-cache.py'),'--apply'],
+            capture_output=True,text=True,timeout=25)
+        return p.returncode==0
+    except (OSError,subprocess.TimeoutExpired):return False
 
 def emit(obj):print(json.dumps(obj,ensure_ascii=False))
 def load_recheck(lang):
@@ -258,6 +267,24 @@ def list_cases(data):
  r.set_id,r.printed_number,r.card_id,r.variant_id
  LIMIT 50 OFFSET {page*50}) x),'[]'::json))::text"""
     result=json.loads(pg(sql))
+    # One bounded batch query; mapping cache contains separate low-confidence
+    # family leads and 14+ human-confirmed identities, never price approvals.
+    rows=result.get('items') or []
+    if rows:
+        pair_sql=','.join(f"({quote(row['card_id'])},{quote(row['variant_id'])})" for row in rows)
+        mapping_sql=f"""SELECT COALESCE(json_agg(z),'[]'::json)::text FROM (
+          SELECT m.card_id,m.variant_id,m.product_id,m.mapping_status,
+            m.print_type,m.confidence,m.evidence_type,m.product_url
+          FROM cardmarket_variant_mappings m
+          JOIN (VALUES {pair_sql}) AS sel(card_id,variant_id)
+            ON sel.card_id=m.card_id AND sel.variant_id=m.variant_id
+          WHERE m.language_code={quote(lang)}
+          ORDER BY m.mapping_status,m.product_id) z"""
+        mapping_rows=json.loads(pg(mapping_sql))
+        from collections import defaultdict
+        by_key=defaultdict(list)
+        for value in mapping_rows:by_key[(value['card_id'],value['variant_id'])].append(value)
+        for row in rows:row['cached_product_candidates']=by_key.get((row['card_id'],row['variant_id']),[])
     url="https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json"
     cache=Path("/home/tv/.local/state/cardyssey-queue/price-feeds")/(hashlib.sha256(url.encode()).hexdigest()+".json")
     if cache.exists():
@@ -406,12 +433,14 @@ def update_case(data):
         emit({"ok":True,"cardId":card,"status":status,
               "sourceRoutingUpdated":False,"routingNote":"Existing verified provider preserved"})
         return
+    cache_updated=refresh_print_mapping_cache() if status=='CONFIRMED_PRINT' else False
     queue_updated=False
     if routed:
         try:queue_updated=sync_queue_identity(lang,card,variant,pid)
         except (OSError,ValueError):pass  # DB confirmation remains durable; next queue export repairs CSV.
     emit({"ok":True,"cardId":card,"status":status,
-          "sourceRoutingUpdated":routed,"scanQueueUpdated":queue_updated})
+          "sourceRoutingUpdated":routed,"scanQueueUpdated":queue_updated,
+          "mappingCacheUpdated":cache_updated})
 def main():
     a=argparse.ArgumentParser()
     a.add_argument("--action",choices=["list","review","undo"],required=True)

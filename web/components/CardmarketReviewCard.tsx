@@ -8,6 +8,7 @@ export type Entry={language:string;card_id:string;variant_id:string;set_id:strin
  card_image_url?:string|null;version_product_images?:{id:string;version:string;url:string;imageUrl:string;evidence:string}[];version_page_url?:string|null;version_family_product_count?:number;version_family_observed_total?:number;version_family_observed_matches?:number;version_family_excluded_other_sets?:number;version_family_warning?:string|null;version_same_expansion_ids?:string[];related_sets?:{set_id:string;set_name:string;card_id:string;printed_number:string}[];suggested_product_url?:string|null;
  diagnosis?:{kind:string;reason:string;action:string;proofAvailable:boolean;sameMetacard:boolean;candidates:{id:string;name:string;expansionId:string;metacardId:string;addedAt:string}[]};
  recheckEvidence?:{category:string;reason:string;versionObserved:string|null;versionProductId:string|null;languageAvailability:string;sameMetacard:boolean;lastScanStatus:string;versionPages?:{version:string;url:string;visualNote:string}[]};
+ cached_product_candidates?:{product_id:string;mapping_status:'HUMAN_CONFIRMED'|'PENDING_REVIEW'|'REJECTED';confidence:string;print_type:string;evidence_type:string;product_url?:string|null}[];
  reference_values?:Record<string,{avg30:number|null;avg30_holo:number|null;trend:number|null;trend_holo:number|null}>;};
 type LinkPreview={token:string;productId:string;productUrl:string;productName:string;expansionId:string;pageHeading:string;pageBreadcrumbs:string[];cardName:string;cardNumber:string;cardSet:string;printType:string;warnings:string[];guide:{avg30:number|null;"avg30-holo":number|null;trend:number|null;"trend-holo":number|null};languageSpecificPrice:number|null;languageSpecificPriceStatus:string};
 export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;onSaved:()=>void;onViewRelated?:(cardId:string)=>void;scanIssue?:{status:string;detail:string}}){
@@ -112,6 +113,10 @@ export function CardReview({entry,onSaved,onViewRelated,scanIssue}:{entry:Entry;
   </div>:<>
    <div style={{display:'grid',gap:7}}>
     <strong style={{fontSize:13}}>Gefundene Cardmarket-Produktseiten</strong>
+    {Boolean(entry.cached_product_candidates?.length)&&<small style={{opacity:.85}}>
+      Mapping-Cache: {entry.cached_product_candidates?.filter(v=>v.mapping_status==='HUMAN_CONFIRMED').length} bestätigte Druckzuordnungen · {entry.cached_product_candidates?.filter(v=>v.mapping_status==='PENDING_REVIEW').length} ungeprüfte Produktkandidaten. Ein Versionshinweis oder höherer Preis bestätigt keine Folienvariante.
+    </small>}
+    {Boolean(entry.cached_product_candidates?.length)&&<div style={{display:'flex',gap:8,flexWrap:'wrap',fontSize:12}}>{entry.cached_product_candidates?.map(v=><a key={v.product_id} href={v.product_url||productLink(v.product_id)} target="_blank" rel="noopener noreferrer" style={{padding:'6px 8px',border:'1px solid var(--border)',borderRadius:7}}>{v.product_id} · {v.mapping_status==='HUMAN_CONFIRMED'?'Manuell bestätigt':'Prüfung offen'}</a>)}</div>}
     {entry.version_family_warning?<small style={{fontWeight:600}}>{entry.version_family_warning}</small>:null}
     {entry.version_family_observed_matches?<small style={{opacity:.82}}>Versionsübersicht im Browser geprüft: {entry.version_family_observed_matches} passende Produktversionen; {entry.version_family_excluded_other_sets} Versionen anderer Sets ausgeschlossen. Drucktyp und Sprachpreis sind weiterhin unbestätigt.</small>:null}
     {entry.version_product_images?.length? <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>

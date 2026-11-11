@@ -145,7 +145,8 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
           'scoreCandidateUrls':[u for u in (entry.get('score_top_candidate_urls') or [])[:5]
              if isinstance(u,str) and u.startswith('https://www.cardmarket.com/')],
           'filterMode':str(entry.get('filter_mode') or ''),
-          'officialProductGuide':entry.get('official_guide_product_aggregate') or None}
+          'officialProductGuide':entry.get('official_guide_product_aggregate') or None,
+          'specialPrintComments':entry.get('special_print_comment_evidence') or None}
         if search.strip() and search.strip().casefold() not in ' '.join(str(v) for v in item.values()).casefold():continue
         output.append(item)
     output.sort(key=lambda e:e['seenAt'],reverse=True)

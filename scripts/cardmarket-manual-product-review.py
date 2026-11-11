@@ -181,9 +181,11 @@ COMMIT;"""
     src=ROOT/'scripts/cardmarket-print-review-admin.py'
     spec=spec_from_file_location('review',src);m=module_from_spec(spec);spec.loader.exec_module(m)
     queueUpdated=m.sync_queue_identity(lang,card,variant,pid,product_url=url)
+    cacheUpdated=m.refresh_print_mapping_cache()
     path.unlink(missing_ok=True)
     return {'ok':True,'productId':pid,'productUrl':url,'queueUpdated':queueUpdated,
         'exampleSaved':result.get('exampleSaved')==1,
+        'mappingCacheUpdated':cacheUpdated,
         'priceStatus':'PENDING_VERIFIED_LANGUAGE_AND_PRINT_FILTER_SCAN'}
 
 def main():

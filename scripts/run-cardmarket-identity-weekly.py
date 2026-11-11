@@ -81,6 +81,12 @@ def main():
         report['product_guide_diagnostics']=json.loads(run(
             ROOT/'scripts/cardmarket-build-guide-diagnostics.py',
             '--output',BASE/'cardmarket-guide-diagnostic.json'))
+    if a.apply:
+        report['verified_print_mapping_cache']=json.loads(run(
+            ROOT/'scripts/cardmarket-sync-print-mapping-cache.py','--apply'))
+        report['metacard_candidate_index']=json.loads(run(
+            ROOT/'scripts/cardmarket-build-metacard-family-index.py',
+            '--output',BASE/'cardmarket-metacard-family-index.json'))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(
         json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
