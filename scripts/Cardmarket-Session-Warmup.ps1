@@ -1,6 +1,7 @@
 # Warm up the EXISTING persistent Edge tab once after the normal provider
 # cooldown. No login automation, cookie reads, challenge solving or retries.
 # Returns exactly one compact JSON status for the launcher to fail closed.
+param([switch]$AllowBlankBootstrap)
 $ErrorActionPreference='Stop'
 $result=[ordered]@{
   checkedAt=[DateTime]::UtcNow.ToString('o')
@@ -14,6 +15,13 @@ try {
   $page=$targets | Where-Object {
     $_.type -eq 'page' -and ([string]$_.url) -match '^https://www[.]cardmarket[.]com/'
   } | Select-Object -First 1
+  # Only a freshly started browser may use its own empty tab as the
+  # bootstrap page; never redirect an unrelated existing user tab.
+  if(!$page -and $AllowBlankBootstrap){
+    $page=$targets | Where-Object {
+      $_.type -eq 'page' -and [string]$_.url -eq 'about:blank'
+    } | Select-Object -First 1
+  }
   if(!$page){
     $result.status='NO_CARDMARKET_TAB'
   } elseif([string]$page.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|too many requests|cloudflare|captcha'){

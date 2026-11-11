@@ -41,6 +41,7 @@ if (-not $ManualResume){
 }
 
 $ready=$false
+$browserNewlyStarted=$false
 try {$null=Invoke-RestMethod -TimeoutSec 2 "http://127.0.0.1:9223/json/list";$ready=$true} catch {}
 if (!$ready) {
   $existing=Get-CimInstance Win32_Process | Where-Object {$_.Name -eq "msedge.exe" -and $_.CommandLine -match "CardmarketEdgeProfile" -and $_.CommandLine -notmatch "--type="} | Select-Object -First 1
@@ -49,7 +50,8 @@ if (!$ready) {
     if ($p) {$null=$p.CloseMainWindow();Start-Sleep -Seconds 3}
   }
   $chrome="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-  Start-Process $chrome -ArgumentList @("--user-data-dir=$profile", "--remote-debugging-port=9223", "--remote-allow-origins=http://localhost", "--no-first-run", "https://www.cardmarket.com/de/Pokemon")
+  Start-Process $chrome -ArgumentList @("--user-data-dir=$profile", "--remote-debugging-port=9223", "--remote-allow-origins=http://localhost", "--no-first-run", "about:blank")
+  $browserNewlyStarted=$true
   for($i=0;$i -lt 25;$i++) {
     Start-Sleep -Seconds 1
     try {$null=Invoke-RestMethod -TimeoutSec 2 "http://127.0.0.1:9223/json/list";$ready=$true;break} catch {}
@@ -65,7 +67,7 @@ if(!(Test-Path $warmupScript)){
   return
 }
 try{
-  $warmup=& $warmupScript | ConvertFrom-Json
+  $warmup=& $warmupScript -AllowBlankBootstrap:$browserNewlyStarted | ConvertFrom-Json
   if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK'){
     Write-Output ('CARDMARKET_WARMUP_PAUSED '+[string]$warmup.status)
     return

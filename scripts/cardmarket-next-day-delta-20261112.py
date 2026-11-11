@@ -48,7 +48,7 @@ def run():
 
     # Separate Windows process guard: status JSON alone can be stale.
     checker='C:\\Users\\TV\\AppData\\Local\\Cardyssey\\CardmarketCollector\\pre-weekly-process-check-20261111.ps1'
-    guard=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',checker],
+    guard=subprocess.run(['/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',checker],
          capture_output=True,text=True,timeout=25)
     if guard.returncode or 'ACTIVE_CARDMARKET_WINDOWS_SCANNERS=0' not in guard.stdout:
         output['status']='PREVIEW_ONLY_SCANNER_ACTIVE'

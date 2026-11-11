@@ -18,7 +18,7 @@ def main():
     BACKUP.mkdir(parents=True,exist_ok=True)
     lock_queue_active(BASE,datetime.now(timezone.utc))
     checker='C:\\Users\\TV\\AppData\\Local\\Cardyssey\\CardmarketCollector\\pre-weekly-process-check-20261111.ps1'
-    guard=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',checker],capture_output=True,text=True,timeout=20)
+    guard=subprocess.run(['/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',checker],capture_output=True,text=True,timeout=20)
     if guard.returncode!=0 or 'ACTIVE_CARDMARKET_WINDOWS_SCANNERS=0' not in guard.stdout:
         raise RuntimeError('Windows scanner still active or unavailable: refuse queue rewrite')
     paths=['queue-de.csv','queue-en.csv','progress-de.json','progress-en.json']
