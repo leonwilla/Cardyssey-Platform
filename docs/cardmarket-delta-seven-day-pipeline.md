@@ -31,8 +31,15 @@ Ein Browser-Skip ist nur möglich, wenn **alle** Bedingungen erfüllt sind:
    Alter **unter 28 Tage**.
 4. Ein **neuer**, nicht veralteter S3-Preisguide; die früher gespeicherte
    Vergleichsversion ist nicht älter als 28 Tage und beide Werte liegen vor.
-   Beide Änderungen sind **strictly weniger als 10 %**. Bei genau 10 %
-   oder darüber wird wieder gescannt.
+   Die Toleranz wird anhand des letzten **bestätigten DE-/EN-Preises** gestaffelt:
+   - Unter **5,00 €** müssen Änderungen bei `avg30` **und** `trend` jeweils
+     strikt **unter 10 %** liegen.
+   - **5,00–14,99 €**: Änderungen bei **beiden** Guide-Werten müssen
+     gleichzeitig strikt **unter 3 % UND unter 0,30 €** bleiben.
+     Beispiel: **12,00 € → 11,50 €** erzwingt einen Browser-Scan.
+   - Ab **15,00 €**: niemals Delta-Skip.
+   Die Schwellen sind strikt: exakt 10 %, 3 % oder 0,30 € reichen nicht
+   für einen Skip. Bei unklaren/mangelnden Belegen wird immer gescannt.
 
 Sind alle Nachweise erfüllt, setzt das Gate `needs_price=NO`,
 `delta_browser_skip=YES` und einen expliziten Begründungscode.

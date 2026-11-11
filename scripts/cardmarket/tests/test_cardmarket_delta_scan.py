@@ -31,7 +31,7 @@ def row(**kw):
        "existing_source":"CARDMARKET_WEB"}
     x.update(kw);return x
 def cached(**kw):
-    x={"price":10,"status":"PRICE_FOUND","primary_provider":"CARDMARKET",
+    x={"price":4,"status":"PRICE_FOUND","primary_provider":"CARDMARKET",
        "verification_state":"VERIFIED_PRODUCT_ID",
        "product_id":"836551","selected_product_id":"836551","manual_confirmed":True}
     x.update(kw);return x
@@ -94,9 +94,54 @@ class DeltaGateTests(unittest.TestCase):
         self.assertIsNone(self.runcheck(o=observed(seen_at=(NOW+timedelta(days=2)).isoformat())))
     def test_never_skip_15_eur_or_no_price_or_no_price_flag(self):
         self.assertIsNone(self.runcheck(c=cached(price=15)))
-        self.assertIsNotNone(self.runcheck(c=cached(price=14.99)))
+        self.assertIsNone(self.runcheck(c=cached(price=14.99))) # 9% is too much for mid tier
         self.assertIsNone(self.runcheck(c=cached(price=0,status='NO_PRICE')))
         self.assertIsNone(self.runcheck(r=row(needs_price='YES')))
+
+    def test_tier_boundaries_5_and_15_euros(self):
+        old={'avg30':'10.00','trend':'10.00'}
+        small={'avg30':'10.29','trend':'10.20'} # 2.9%, < 30 cents
+        self.assertTrue(d.guide_stable_for_price(old,small,'4.99'))
+        self.assertTrue(d.guide_stable_for_price(old,small,'5.00'))
+        self.assertTrue(d.guide_stable_for_price(old,small,'14.99'))
+        self.assertFalse(d.guide_stable_for_price(old,small,'15.00'))
+        self.assertFalse(d.guide_stable_for_price(old,small,'30.00'))
+
+    def test_low_tier_10_percent_strict_both_metrics(self):
+        old={'avg30':'4.00','trend':'4.00'}
+        self.assertTrue(d.guide_stable_for_price(old,{'avg30':'4.39','trend':'3.70'},'4.99'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'4.40','trend':'4.00'},'4.99'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'4.00','trend':'3.60'},'0.50'))
+        self.assertTrue(d.guide_stable_for_price(old,{'avg30':'4.39','trend':'4.00'},'0.50'))
+
+    def test_medium_tier_12_euros_to_11_50_must_scan(self):
+        old={'avg30':'12.00','trend':'12.00'}
+        new={'avg30':'11.50','trend':'11.80'}
+        self.assertFalse(d.guide_stable_for_price(old,new,'12.00'))
+        feed_old=dict(OLD,products={'836551':old})
+        feed_new=dict(NEW,products={'836551':new})
+        self.assertIsNone(self.runcheck(c=cached(price=12),old=feed_old,new=feed_new))
+
+    def test_medium_tier_three_percent_strict(self):
+        old={'avg30':'5.00','trend':'5.00'}
+        self.assertTrue(d.guide_stable_for_price(old,{'avg30':'5.14','trend':'4.86'},'5.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'5.15','trend':'5.00'},'5.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'5.00','trend':'4.85'},'14.99'))
+
+    def test_medium_tier_absolute_30_cents_strict(self):
+        # 0.30 on a 14-euro guide is only 2.14% but STILL requires a scan.
+        old={'avg30':'14.00','trend':'14.00'}
+        self.assertTrue(d.guide_stable_for_price(old,{'avg30':'14.29','trend':'14.00'},'12.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'14.30','trend':'14.00'},'12.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'14.00','trend':'13.70'},'12.00'))
+
+    def test_medium_tier_both_guide_metrics_and_missing_values(self):
+        old={'avg30':'12.00','trend':'12.00'}
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'12.20','trend':'12.40'},'12.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'12.20','trend':None},'12.00'))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'12.20','trend':'12.10'},None))
+        self.assertFalse(d.guide_stable_for_price(old,{'avg30':'12.20','trend':'12.10'},0))
+        self.assertTrue(d.guide_stable_for_price(old,{'avg30':'12.20','trend':'11.80'},'12.00'))
     def test_special_prints_manual_requests_never_skip(self):
         for r in [row(foil='Masterball'),row(stempel='["Staff"]'),
                   row(sonderdruck='Cosmos'),row(drucktyp='Reverse'),

@@ -23,6 +23,15 @@ Stand 11.11.2026, Server Europe/Berlin. Fortführung ab Commit `7e40501`.
   werden durch das Delta-Gate nicht künstlich angepasst. Der Guide ist eine
   Change-Detection-Quelle, kein frisch sprach-/druckverifizierter Preis.
 
+### Nachtrag: Preisstaffel für Delta-Skips (11.11.2026)
+
+Die Skip-Schwelle richtet sich nach dem letzten bestätigten DE-/EN-Preis:
+unter 5 € gelten strikt unter 10 % Preisguide-Bewegung; von 5 € bis unter
+15 € müssen **sowohl unter 3 % als auch unter 0,30 €** pro `avg30` und
+`trend` eingehalten werden; ab 15 € wird immer im Browser geprüft.
+12 € → 11,50 € bleibt daher scanpflichtig. Die Guide-Prüfung schreibt
+weiterhin keine veröffentlichten Preise oder Preis-Zeitstempel um.
+
 ## 2. Einmaliger Folgetagsvergleich – 12.11.2026
 
 - Tiny-`crontab`: am **12.11.2026** 08:05, 09:05, 10:05, 11:05 Uhr,

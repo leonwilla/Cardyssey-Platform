@@ -30,8 +30,11 @@ from price_feed_client import fetch_json
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 STATE=BASE/'cardmarket-guide-delta-state.json'
 MAX_AGE_DAYS=28
-THRESHOLD=Decimal('0.10')
+LOW_PRICE_LIMIT=Decimal('5')
 HIGH_VALUE=Decimal('15')
+LOW_PRICE_THRESHOLD=Decimal('0.10')
+MID_PRICE_THRESHOLD=Decimal('0.03')
+MID_PRICE_ABSOLUTE_LIMIT=Decimal('0.30')
 def parsed_time(value):
     if not value:return None
     try:
@@ -64,6 +67,28 @@ def percent_change(old,new):
     if not prev or not today:return None
     return max(abs(Decimal(today[k])-Decimal(prev[k]))/Decimal(prev[k])
                for k in ('avg30','trend'))
+
+def guide_stable_for_price(old,new,confirmed_price):
+    """Only the original verified DE/EN price selects the risk tier.
+
+    BOTH avg30 and trend must satisfy the tier's strict limits. A product
+    guide is change detection only: this does not confirm a fresh print price.
+    For €5–€14.99, require <3% AND <€0.30 per metric (fail closed).
+    """
+    price=positive_decimal(confirmed_price)
+    if price is None or price>=HIGH_VALUE:return False
+    prev=guide_pair(old);latest=guide_pair(new)
+    if not prev or not latest:return False
+    pct_limit=(LOW_PRICE_THRESHOLD if price<LOW_PRICE_LIMIT
+               else MID_PRICE_THRESHOLD)
+    for metric in ('avg30','trend'):
+        old_amount=Decimal(prev[metric])
+        new_amount=Decimal(latest[metric])
+        difference=abs(new_amount-old_amount)
+        if difference/old_amount>=pct_limit:return False
+        if price>=LOW_PRICE_LIMIT and difference>=MID_PRICE_ABSOLUTE_LIMIT:
+            return False
+    return True
 
 def load_verified_browser_evidence(path):
     """Latest event per variant; old successful event cannot bypass a newer failure."""
@@ -113,8 +138,7 @@ def can_skip(row,cache,observation,old,new,now,previous_guide_time,current_guide
         now-current_guide_time>timedelta(days=2) or
         now-previous_guide_time>timedelta(days=28)):
         return None
-    change=percent_change(old,new)
-    if change is None or change>=THRESHOLD:return None
+    if not guide_stable_for_price(old,new,amount):return None
     return 'GUIDE_STABLE_STANDARD_LAST_VERIFIED_WITHIN_28D'
 
 def db_evidence(language):
