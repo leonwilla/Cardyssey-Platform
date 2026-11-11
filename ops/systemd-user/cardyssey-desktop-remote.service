@@ -1,0 +1,17 @@
+[Unit]
+Description=Cardyssey Remote Desktop Commander (persistent cloud connection)
+Documentation=https://github.com/wonderwhy-er/desktop-commander
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/home/tv
+Environment=HOME=/home/tv
+Environment=PATH=/home/tv/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/tv/.local/bin/cardyssey-desktop-remote-start
+Restart=always
+RestartSec=30
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target
