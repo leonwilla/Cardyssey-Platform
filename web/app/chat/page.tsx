@@ -1,5 +1,7 @@
 "use client";
 
+import { ChatReactions } from "@/components/ChatReactions";
+
 import { SharedChatCard } from "@/components/SharedChatCard";
 import {setChronology} from "@/lib/set-chronology";
 
@@ -1708,51 +1710,7 @@ export default function ChatPage() {
 
                         <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "5px",
-                            flexWrap: "wrap",
-                            marginTop: "7px",
-                          }}
-                        >
-                          {["❤️", "👍", "🔥", "😂", "😮"].map(
-                            (emoji) => {
-                              const reaction =
-                                message.reactions?.find(
-                                  (item) =>
-                                    item.emoji === emoji
-                                );
-
-                              return (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  className="ghostButton"
-                                  style={{
-                                    minHeight: "30px",
-                                    padding: "0 8px",
-                                    opacity:
-                                      reaction?.reactedByMe
-                                        ? 1
-                                        : 0.75,
-                                  }}
-                                  onClick={() =>
-                                    void toggleDirectReaction(
-                                      message.id,
-                                      emoji
-                                    )
-                                  }
-                                >
-                                  {emoji}
-                                  {reaction?.count
-                                    ? ` ${reaction.count}`
-                                    : ""}
-                                </button>
-                              );
-                            }
-                          )}
-                        </div>
+                        <ChatReactions reactions={message.reactions} onToggle={(emoji) => void toggleDirectReaction(message.id, emoji)} />
 
                         <footer>
                           <time>
@@ -2112,51 +2070,7 @@ export default function ChatPage() {
 
                           <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "5px",
-                              flexWrap: "wrap",
-                              marginTop: "7px",
-                            }}
-                          >
-                            {["❤️", "👍", "🔥", "😂", "😮"].map(
-                              (emoji) => {
-                                const reaction =
-                                  message.reactions?.find(
-                                    (item) =>
-                                      item.emoji === emoji
-                                  );
-
-                                return (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    className="ghostButton"
-                                    style={{
-                                      minHeight: "30px",
-                                      padding: "0 8px",
-                                      opacity:
-                                        reaction?.reactedByMe
-                                          ? 1
-                                          : 0.75,
-                                    }}
-                                    onClick={() =>
-                                      void toggleGroupReaction(
-                                        message.id,
-                                        emoji
-                                      )
-                                    }
-                                  >
-                                    {emoji}
-                                    {reaction?.count
-                                      ? ` ${reaction.count}`
-                                      : ""}
-                                  </button>
-                                );
-                              }
-                            )}
-                          </div>
+                          <ChatReactions reactions={message.reactions} onToggle={(emoji) => void toggleGroupReaction(message.id, emoji)} />
 
                           <footer>
                             <time>
@@ -2300,51 +2214,7 @@ export default function ChatPage() {
 
                           <SharedChatCard objectType={message.objectType} payload={message.objectPayload} />
 
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "5px",
-                              flexWrap: "wrap",
-                              marginTop: "7px",
-                            }}
-                          >
-                            {["❤️", "👍", "🔥", "😂", "😮"].map(
-                              (emoji) => {
-                                const reaction =
-                                  message.reactions?.find(
-                                    (item) =>
-                                      item.emoji === emoji
-                                  );
-
-                                return (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    className="ghostButton"
-                                    style={{
-                                      minHeight: "30px",
-                                      padding: "0 8px",
-                                      opacity:
-                                        reaction?.reactedByMe
-                                          ? 1
-                                          : 0.75,
-                                    }}
-                                    onClick={() =>
-                                      void toggleCommunityReaction(
-                                        message.id,
-                                        emoji
-                                      )
-                                    }
-                                  >
-                                    {emoji}
-                                    {reaction?.count
-                                      ? ` ${reaction.count}`
-                                      : ""}
-                                  </button>
-                                );
-                              }
-                            )}
-                          </div>
+                          <ChatReactions reactions={message.reactions} onToggle={(emoji) => void toggleCommunityReaction(message.id, emoji)} />
 
                           <footer>
                             <time>

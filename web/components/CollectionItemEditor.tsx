@@ -412,6 +412,22 @@ export function CollectionItemEditor({
           </button>
         </div>
 
+        <div className="editorCardPreview">
+          <div className="editorCardArtwork">
+            {item.imageBase ? (
+              <img src={`${item.imageBase.replace(/\/$/, "")}/high.webp`} alt={`Kartenbild: ${item.name}`} />
+            ) : (
+              <div className="editorArtworkFallback" aria-label="Kein Kartenbild verfügbar">Kein Bild verfügbar</div>
+            )}
+          </div>
+          <div className="editorCardCaption">
+            <span className="eyebrowText">Deine Karte</span>
+            <strong>{item.name}</strong>
+            <small>{item.setName ?? "Unbekanntes Set"} · #{item.localId ?? "—"}</small>
+            <span>{variantLabel(item)} · {item.languageCode.toUpperCase()}</span>
+          </div>
+        </div>
+
         <div className="editorInfo">
           <div>
             <span>Physische Variante</span>

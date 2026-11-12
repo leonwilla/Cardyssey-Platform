@@ -412,3 +412,300 @@ body.cardysseyAppPreview .editorModal .editorActions :is(button,a) {
 }
 
 body.cardysseyAppPreview .ebayHistoryPanel{margin-top:20px;padding:18px;border:1px solid var(--light-outline);background:var(--light-subtle);border-radius:16px}
+
+/* Cardyssey 2026-11: coherent light surfaces for account, cards and navigation */
+body.cardysseyAppPreview .sidebarSectionLabel{
+  padding:22px 14px 11px;
+  color:var(--light-accent);
+  font-size:10px;font-weight:900;letter-spacing:.15em;
+}
+body.cardysseyAppPreview .sidebarDiscovery{
+  display:flex;align-items:center;gap:10px;padding:14px 12px;
+  margin-top:auto;margin-bottom:12px;
+  border:1px solid var(--light-outline);border-radius:16px;
+  background:linear-gradient(125deg,var(--light-card),var(--light-subtle));
+  color:var(--light-ink);transition:transform .15s ease,border-color .15s ease;
+}
+body.cardysseyAppPreview .sidebarDiscovery:hover{transform:translateY(-2px);border-color:var(--light-accent)}
+body.cardysseyAppPreview .sidebarDiscoveryIcon{
+  width:38px;height:38px;flex:0 0 38px;border-radius:13px;
+  display:grid;place-items:center;color:var(--light-accent);
+  background:var(--light-accent-soft);font-size:21px;
+}
+body.cardysseyAppPreview .sidebarDiscovery>span:nth-child(2){display:grid;gap:3px;min-width:0}
+body.cardysseyAppPreview .sidebarDiscovery strong{font-size:12px}
+body.cardysseyAppPreview .sidebarDiscovery small{font-size:10px;line-height:1.4;color:var(--light-muted,#58665e)}
+body.cardysseyAppPreview .sidebarDiscovery>span:last-child{margin-left:auto;color:var(--light-accent);font-size:18px}
+body.cardysseyAppPreview .sidebarFoot{margin-top:0}
+body.cardysseyAppPreview .sidebar .brand{
+  margin:0 2px 10px;padding:6px 8px 22px;
+  border-bottom:1px solid var(--light-outline);
+}
+body.cardysseyAppPreview .sidebar .navItem{min-height:49px;transition:background .15s ease,transform .15s ease}
+body.cardysseyAppPreview .sidebar .navItem:hover{transform:translateX(2px)}
+body.cardysseyAppPreview .editorCardPreview{
+  display:grid;grid-template-columns:102px minmax(0,1fr);
+  align-items:center;gap:19px;margin:18px 0 20px;
+  padding:16px;border:1px solid var(--light-outline);
+  border-radius:17px;background:var(--light-subtle);
+}
+body.cardysseyAppPreview .editorCardArtwork{
+  display:grid;place-items:center;min-height:143px;
+  border-radius:12px;background:var(--light-card);padding:7px;
+}
+body.cardysseyAppPreview .editorCardArtwork img{
+  display:block;width:100%;max-height:143px;object-fit:contain;
+  filter:drop-shadow(0 4px 7px rgba(21,24,18,.15));
+}
+body.cardysseyAppPreview .editorArtworkFallback{
+  color:var(--secondary);font-size:12px;text-align:center;
+}
+body.cardysseyAppPreview .editorCardCaption{display:grid;align-content:center;gap:6px;min-width:0}
+body.cardysseyAppPreview .editorCardCaption strong{font-size:20px;line-height:1.2}
+body.cardysseyAppPreview .editorCardCaption small{color:var(--secondary)}
+body.cardysseyAppPreview .editorCardCaption>span:last-child{color:var(--light-accent);font-size:12px;font-weight:750}
+/* Reuse the collection editor's polished light appearance for add-card from everywhere. */
+body.cardysseyAppPreview .addCardModal{
+  background:var(--light-card);color:var(--light-ink);
+  border:1px solid var(--light-outline);box-shadow:0 24px 85px #292b2428;
+}
+body.cardysseyAppPreview .addCardModal :is(.addCardSelected,.addCardResult,.addCardResults,.addCardSelectedImage,.addCardResultImage,.variantIdentityPanel,.addCardEmpty){
+  background:var(--light-subtle);color:var(--light-ink);border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .addCardModal :is(.editorField input,.editorField select){
+  background:var(--light-card);color:var(--light-ink);border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .addCardModal :is(.addCardSelectedInfo h3,.addCardResult strong,.addCardResultsHeader strong){
+  color:var(--light-ink);
+}
+body.cardysseyAppPreview .addCardModal :is(.addCardSelectedInfo p,.addCardResult small,.addCardResultsHeader span){
+  color:var(--secondary);
+}
+body.cardysseyAppPreview .addCardModal .addCardResult:hover{background:var(--light-accent-soft);border-color:var(--light-accent)}
+body.cardysseyAppPreview .addCardModal .addCardBack{color:var(--light-accent)}
+body.cardysseyAppPreview .addCardModal .editorActions{border-top:1px solid var(--light-outline);padding-top:16px}
+/* Remove the dark nested surfaces left behind in the Showcase and Privacy tabs. */
+body.cardysseyAppPreview :is(.showcaseSettings,.privacyPanel){
+  background:var(--light-card);color:var(--light-ink);
+  border:1px solid var(--light-outline);box-shadow:0 8px 24px #28221e08;
+  border-radius:20px;
+}
+body.cardysseyAppPreview :is(.showcaseSettings,.privacyPanel) :is(h2,h3,strong){
+  color:var(--light-ink);
+}
+body.cardysseyAppPreview .showcaseSlot{
+  background:var(--light-subtle);color:var(--light-ink);
+  border-color:var(--light-outline);
+}
+body.cardysseyAppPreview :is(.showcasePick,.showcaseMove button,.showcasePickerControls input,.showcasePickerControls select,.privacyRow select){
+  background:var(--light-card);color:var(--light-ink);border:1px solid var(--light-outline);
+}
+body.cardysseyAppPreview .showcasePick.selected{border-color:var(--light-accent);background:var(--light-accent-soft)}
+body.cardysseyAppPreview .showcasePosition{background:var(--light-card);color:var(--light-accent)}
+body.cardysseyAppPreview .privacyRow{border-bottom:1px solid var(--light-outline)}
+body.cardysseyAppPreview .privacyRow:last-child{border-bottom:0}
+body.cardysseyAppPreview .showcaseSaveTop{background:var(--light-card);padding:12px 2px}
+@media(max-width:760px){
+  body.cardysseyAppPreview .editorCardPreview{grid-template-columns:82px minmax(0,1fr);gap:12px;padding:12px}
+  body.cardysseyAppPreview .editorCardArtwork{min-height:116px}
+  body.cardysseyAppPreview .editorCardArtwork img{max-height:116px}
+  body.cardysseyAppPreview .editorCardCaption strong{font-size:17px}
+}
+
+
+/* Compact messenger-style conversations and contextual reactions */
+.chatReactions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:10px;min-height:26px}
+.chatReactionPill,.chatReactionAdd{
+  border:1px solid var(--border);border-radius:999px;
+  background:var(--navy-card);color:var(--text);
+  min-height:28px;padding:3px 9px;cursor:pointer;font-size:13px;line-height:1.1;
+  transition:background .15s ease,border-color .15s ease;
+}
+.chatReactionPill.selected{background:color-mix(in srgb,var(--gold) 15%,var(--navy-card));border-color:var(--gold)}
+.chatReactionPill span{font-size:11px;font-weight:800}
+.chatReactionAdd{font-size:17px;min-width:30px;padding:1px 6px;color:var(--secondary)}
+.chatReactionPicker{position:relative}
+.chatReactionOptions{
+  position:absolute;bottom:34px;left:0;z-index:9;
+  display:flex;gap:3px;padding:7px;border-radius:14px;
+  background:var(--navy-card);border:1px solid var(--border);
+  box-shadow:0 12px 35px rgba(0,0,0,.14);
+}
+.chatReactionOptions button{
+  border:0;border-radius:9px;min-width:35px;min-height:35px;
+  background:transparent;cursor:pointer;font-size:20px;
+}
+.chatReactionOptions button:hover{background:var(--vault)}
+body.cardysseyAppPreview .chatLayout{
+  border-radius:22px;overflow:hidden;min-height:clamp(560px,71vh,830px);
+  border-color:var(--light-outline);background:var(--light-card);
+  box-shadow:0 12px 34px #3024190b;
+}
+body.cardysseyAppPreview .chatThreadList{
+  background:var(--light-subtle);
+  border-color:var(--light-outline);
+  padding:18px 12px;gap:7px;
+}
+body.cardysseyAppPreview .chatThread{
+  border-radius:14px;padding:12px 10px;
+}
+body.cardysseyAppPreview .chatThread:hover,
+body.cardysseyAppPreview .chatThread.active{
+  background:var(--light-card);border-color:var(--light-outline);
+  box-shadow:0 2px 7px #3024190c;
+}
+body.cardysseyAppPreview .chatAvatar{
+  color:white;background:var(--light-accent);
+}
+body.cardysseyAppPreview .chatRoom{
+  min-height:0;background:var(--light-card);
+}
+body.cardysseyAppPreview .chatRoomHead{
+  padding:20px 24px;border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .chatMessages{
+  max-height:min(67vh,690px);min-height:350px;
+  padding:24px;gap:14px;
+  background:linear-gradient(155deg,var(--light-card),var(--light-card) 52%,var(--light-subtle));
+}
+body.cardysseyAppPreview .chatMessage{
+  background:var(--light-card);
+  border:1px solid var(--light-outline);
+  border-radius:17px 17px 17px 5px;
+  padding:13px 15px 10px;
+  box-shadow:0 3px 12px #3024190b;
+}
+body.cardysseyAppPreview .chatMessage.own{
+  border-color:color-mix(in srgb,var(--light-accent) 32%,var(--light-outline));
+  border-radius:17px 17px 5px 17px;
+  background:color-mix(in srgb,var(--light-accent) 11%,var(--light-card));
+}
+body.cardysseyAppPreview .chatReactions .chatReactionPill,
+body.cardysseyAppPreview .chatReactions .chatReactionAdd{
+  background:var(--light-card);color:var(--light-ink);
+  border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .chatReactions .chatReactionPill.selected{
+  color:var(--light-accent);background:var(--light-accent-soft);
+  border-color:var(--light-accent);
+}
+body.cardysseyAppPreview .chatReactionOptions{
+  background:var(--light-card);border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .chatReactionOptions button:hover{background:var(--light-accent-soft)}
+body.cardysseyAppPreview .chatComposer{padding:15px 20px;border-color:var(--light-outline);background:var(--light-card)}
+body.cardysseyAppPreview .chatComposer textarea{
+  border-radius:13px;background:var(--light-card);border-color:var(--light-outline);
+  min-height:48px;color:var(--light-ink);
+}
+body.cardysseyAppPreview .chatComposer textarea:focus{border-color:var(--light-accent)}
+@media(max-width:760px){
+  body.cardysseyAppPreview .chatMessages{min-height:300px;max-height:57vh;padding:14px}
+  body.cardysseyAppPreview .chatMessage{max-width:91%}
+  body.cardysseyAppPreview .chatComposer{padding:10px}
+}
+
+
+/* Founder dashboard: equal KPI cards and restrained service health row */
+body.cardysseyAppPreview .founderOverview{
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;
+}
+body.cardysseyAppPreview .founderOverview .statCard{
+  min-height:123px;padding:19px;
+}
+body.cardysseyAppPreview .founderOverview .heroStat{
+  background:var(--light-card);border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .founderOverview :is(.statCard strong,.heroStat strong){
+  font-size:clamp(24px,2.5vw,31px);line-height:1.1;
+}
+body.cardysseyAppPreview .founderSystemGrid{
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;
+}
+body.cardysseyAppPreview .founderSystemGrid .statCard{
+  min-height:103px;padding:16px;
+  border:1px solid var(--light-outline);
+  border-radius:15px;background:var(--light-card);
+}
+body.cardysseyAppPreview .founderSystemGrid .statCard strong{
+  font-size:19px;margin:5px 0;line-height:1.2;
+}
+body.cardysseyAppPreview .founderSystemGrid .statCard small{
+  font-size:11px;line-height:1.4;color:var(--secondary);
+}
+/* Scan monitoring: only operational numbers in the default view */
+body.cardysseyAppPreview .scanCompactPanel{
+  align-content:start;gap:14px !important;
+  background:var(--light-card);color:var(--light-ink);
+  border:1px solid var(--light-outline);border-radius:18px;
+  box-shadow:0 5px 18px #2b241e07;
+}
+body.cardysseyAppPreview .scanQuickStats{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+}
+body.cardysseyAppPreview .scanQuickStats span{
+  display:grid;gap:5px;background:var(--light-subtle);
+  border:1px solid var(--light-outline);padding:11px 9px;
+  border-radius:12px;font-size:11px;color:var(--secondary);
+}
+body.cardysseyAppPreview .scanQuickStats strong{
+  font-size:18px;color:var(--light-ink);
+}
+body.cardysseyAppPreview .scanDetails{
+  padding:12px 13px;border:1px solid var(--light-outline);
+  border-radius:12px;background:var(--light-card);font-size:12px;
+}
+body.cardysseyAppPreview .scanDetails summary{
+  cursor:pointer;color:var(--light-accent);font-weight:850;
+}
+body.cardysseyAppPreview .scanDetails[open]{
+  display:grid;gap:10px;
+}
+body.cardysseyAppPreview .scanDetails[open] summary{
+  margin-bottom:3px;
+}
+@media(max-width:1100px){
+  body.cardysseyAppPreview .founderOverview,
+  body.cardysseyAppPreview .founderSystemGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  body.cardysseyAppPreview .founderOverview,
+  body.cardysseyAppPreview .founderSystemGrid{grid-template-columns:1fr}
+}
+
+/* Dark theme fallback for the new shared interface elements */
+.sidebarSectionLabel{padding:22px 14px 11px;color:var(--gold);font-size:10px;font-weight:900;letter-spacing:.15em}
+.sidebarDiscovery{
+  display:flex;align-items:center;gap:10px;margin-top:auto;margin-bottom:12px;padding:13px 11px;
+  color:var(--text);background:var(--navy-card);border:1px solid var(--border);border-radius:16px
+}
+.sidebarDiscoveryIcon{
+  width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;
+  border-radius:12px;background:var(--vault);color:var(--gold)
+}
+.sidebarDiscovery>span:nth-child(2){display:grid;gap:3px;min-width:0}
+.sidebarDiscovery strong{font-size:12px}
+.sidebarDiscovery small{font-size:10px;color:var(--secondary);line-height:1.4}
+.sidebarDiscovery>span:last-child{margin-left:auto}
+.sidebarFoot{margin-top:0}
+.editorCardPreview{
+  display:grid;grid-template-columns:102px minmax(0,1fr);align-items:center;
+  gap:18px;margin:17px 0 19px;padding:15px;border-radius:16px;
+  border:1px solid var(--border);background:var(--navy-card)
+}
+.editorCardArtwork{
+  display:grid;place-items:center;padding:7px;min-height:140px;
+  border-radius:12px;background:var(--vault)
+}
+.editorCardArtwork img{width:100%;max-height:143px;object-fit:contain}
+.editorArtworkFallback{color:var(--secondary);text-align:center;font-size:12px}
+.editorCardCaption{display:grid;gap:6px;min-width:0}
+.editorCardCaption strong{font-size:20px}
+.editorCardCaption small{color:var(--secondary)}
+.editorCardCaption>span:last-child{font-size:12px;color:var(--gold)}
+.scanQuickStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.scanQuickStats span{display:grid;gap:4px;padding:11px;background:var(--navy-card);border:1px solid var(--border);border-radius:11px;font-size:11px}
+.scanQuickStats strong{font-size:18px}
+.scanDetails{padding:12px;border:1px solid var(--border);border-radius:12px}
+.scanDetails summary{cursor:pointer;font-weight:800}
+@media(max-width:650px){.editorCardPreview{grid-template-columns:80px minmax(0,1fr)}}

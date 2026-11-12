@@ -304,7 +304,8 @@ export function AppShell({
           <span>{brand}</span>
         </Link>
 
-        <nav className="sideNav">
+        <div className="sidebarSectionLabel">DEIN CARDYSSEY</div>
+        <nav className="sideNav" aria-label="Hauptnavigation">
           {nav.map(([href,label,icon])=>(
             <div key={href} className="sideNavEntry">
               <Link href={href} className={active===href||(href==="/marketplace"&&(active==="/offers"||active==="/shop"))||(href==="/account"&&active==="/friends")?"navItem active":"navItem"}>
@@ -325,6 +326,15 @@ export function AppShell({
             </div>
           )}
         </nav>
+
+        <Link href="/sets" className="sidebarDiscovery">
+          <span className="sidebarDiscoveryIcon" aria-hidden="true">✦</span>
+          <span>
+            <strong>Sets entdecken</strong>
+            <small>Neue Karten für deine Sammlung finden</small>
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
 
         <Link
           href="/account"

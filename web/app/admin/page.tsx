@@ -580,7 +580,7 @@ export default function AdminPage() {
           )}
 
           {overview && (
-            <section className="statsGrid">
+            <section className="statsGrid founderOverview">
               <div className="statCard heroStat">
                 <span>Registrierte Nutzer</span>
                 <strong>
@@ -663,7 +663,7 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="statsGrid">
+              <div className="statsGrid founderSystemGrid">
                 <div className="statCard">
                   <span>Backend</span>
                   <strong style={{ color: "var(--lime)" }}>
