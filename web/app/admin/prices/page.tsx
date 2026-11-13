@@ -29,6 +29,8 @@ export default function PriceMonitorPage(){
  const [reviewTab,setReviewTab]=useState<'cardmarket'|'ebay'>('cardmarket');const [expanded,setExpanded]=useState<string|null>(null);
  const [cardmarketResuming,setCardmarketResuming]=useState(false);const [cardmarketResetting,setCardmarketResetting]=useState(false);const [cardmarketResumeMessage,setCardmarketResumeMessage]=useState('');const [starting,setStarting]=useState<string|null>(null);const [statusError,setStatusError]=useState('');const [reviewError,setReviewError]=useState('');const [ebayError,setEbayError]=useState('');
  const [failures,setFailures]=useState<ScanFailures>({total:0,technical:0,assignment:0,page:0,items:[]});const [failureLang,setFailureLang]=useState<'de'|'en'>('de');const [failureKind,setFailureKind]=useState<'karten'|'preise'|'technik'|'drucke'|'alle'>('karten');const [failureScope,setFailureScope]=useState<'current'|'all'>('current');const [failurePage,setFailurePage]=useState(0);const [failureSearch,setFailureSearch]=useState('');const [failureError,setFailureError]=useState('');const [retryingFailure,setRetryingFailure]=useState<string|null>(null);const [retryFeedback,setRetryFeedback]=useState('');const [showHistory,setShowHistory]=useState<string|null>(null);const [showScanErrors,setShowScanErrors]=useState(true);const [selectedIssue,setSelectedIssue]=useState<string|null>(null);const [issueReview,setIssueReview]=useState<Entry|null>(null);const [issueInfo,setIssueInfo]=useState('');
+ const [exportingFailureLang,setExportingFailureLang]=useState<'de'|'en'|null>(null);
+ const [failureExportError,setFailureExportError]=useState('');
  useEffect(()=>{let mounted=true;fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{if(!r.ok){router.replace('/login');return null}return r.json() as Promise<User>}).then(u=>{if(!u||!mounted)return;if(!u.canAdmin&&u.role!=='ADMIN'&&u.role!=='FOUNDER'){router.replace('/account');return}setUser(u)}).catch(()=>router.replace('/login'));return()=>{mounted=false}},[router]);
  const loadStatuses=useCallback(async()=>{
   const outcomes=await Promise.allSettled([
@@ -56,6 +58,28 @@ export default function PriceMonitorPage(){
  useEffect(()=>{if(!user)return;void loadReviews();const t=setInterval(()=>void loadReviews(),30000);return()=>clearInterval(t)},[user,loadReviews]);
  useEffect(()=>{if(!user)return;void loadEbay()},[user,loadEbay]);
  useEffect(()=>{if(!user||!showScanErrors)return;void loadFailures();const t=setInterval(()=>void loadFailures(),15000);return()=>clearInterval(t)},[user,showScanErrors,loadFailures]);
+ async function exportFailures(language:'de'|'en'){
+  setExportingFailureLang(language);
+  setFailureExportError('');
+  try{
+   const params=new URLSearchParams({language,scope:failureScope,kind:failureKind,search:failureSearch,format:'csv'});
+   const response=await fetch('/api/admin/cardmarket-scan-failures?'+params,{cache:'no-store'});
+   if(!response.ok||!response.headers.get('content-type')?.startsWith('text/csv'))throw Error();
+   const file=await response.blob();
+   const url=URL.createObjectURL(file);
+   const download=document.createElement('a');
+   download.href=url;
+   download.download=response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1]||'offene-pruefungen-'+language+'.csv';
+   document.body.appendChild(download);
+   download.click();
+   download.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch{
+   setFailureExportError('Der CSV-Export konnte nicht geladen werden. Bitte versuche es erneut.');
+  }finally{
+   setExportingFailureLang(null);
+  }
+ }
  async function openIssue(language:'de'|'en',cardId:string,variantId:string){
   const key=language+'|'+cardId+'|'+variantId;
   if(selectedIssue===key){setSelectedIssue(null);setIssueReview(null);return}
@@ -118,7 +142,16 @@ export default function PriceMonitorPage(){
    </div>
    <div style={{marginTop:14,display:'grid',gap:10}}><h3>eBay · Verkaufspreise</h3><p style={{fontSize:13,opacity:.75}}>Nur seltene und besondere Karten. Preise aus bestätigten Verkäufen, keine Bulk-Angebote.</p>{sets.map(set=>{const job=jobs?.jobs.find(x=>x.id===set.id);const n=ebay.filter(x=>x.setId===set.id);return <div className="statusPanel" key={set.id} style={{padding:14,display:'grid',gap:8}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><div><strong>{set.name}</strong><div style={{fontSize:12,opacity:.75}}>{job?readable(job.status):'Kein aktiver Scan'} · {fmt(n.filter(x=>x.price!=null).length)} Preise / {fmt(ebayCount[set.id]||0)} Zielkarten</div></div><button className="ghostButton" disabled={starting!==null||job?.running===true||jobs?.collectorActive===true} onClick={()=>void startSet(set.id)}>{starting===set.id?'Startet …':job?.running?'Läuft …':'Set-Scan starten'}</button></div>{job&&job.total>0&&<><div style={{fontSize:12}}>{fmt(job.done)} / {fmt(job.total)} geprüft · {percent(job.done,job.total)} %</div><Progress done={job.done} total={job.total}/></>}</div>})}</div>
   </section>
-  <section className="sectionBlock" id="offene-pruefungen" aria-label="Offene Kartenprüfungen"><div className="sectionTitle"><div><span className="eyebrowText">02 · Deine Entscheidungen</span><h2>Offene Prüfungen</h2></div></div>
+  <section className="sectionBlock" id="offene-pruefungen" aria-label="Offene Kartenprüfungen">
+   <div className="sectionTitle" style={{gap:12,flexWrap:'wrap'}}>
+    <div><span className="eyebrowText">02 · Deine Entscheidungen</span><h2>Offene Prüfungen</h2></div>
+    {user&&<div role="group" aria-label="CSV-Export" style={{display:'flex',gap:8,flexWrap:'wrap',marginLeft:'auto'}}>
+     {(['de','en'] as const).map(language=><button key={language} type="button" className="ghostButton" disabled={exportingFailureLang!==null} onClick={()=>void exportFailures(language)}>
+      {exportingFailureLang===language?'Export läuft …':language==='de'?'CSV Deutsch':'CSV Englisch'}
+     </button>)}
+    </div>}
+   </div>
+   {failureExportError&&<p role="alert">{failureExportError}</p>}
    <div className="statusPanel" style={{padding:14,marginBottom:16}}><div style={{display:'flex',gap:12,justifyContent:'space-between',alignItems:'center',flexWrap:'wrap'}}><div><strong>Scanprüfungen live · getrennt nach Ursache</strong><div style={{fontSize:12,opacity:.75}}>Neu fehlgeschlagene Karten erscheinen direkt im aktuellen Prüfzyklus. Technische Fehler und Karten-Zuordnungen bleiben getrennt; der Gesamtlauf ist zusätzlich einsehbar.</div></div><button className="ghostButton" onClick={()=>setShowScanErrors(v=>!v)}>{showScanErrors?'Ausblenden':'Letzte Hinweise ansehen'}</button></div>
    {showScanErrors&&<div style={{display:'grid',gap:10,marginTop:14}}>
     <p style={{fontSize:13,margin:0}}>Karten-Zuordnungen, unvollständige Preisabfragen und technische Browserfehler sind getrennt. Preisprüfungen erfordern keine erneute Kartenbestätigung. Die Liste aktualisiert sich alle 15 Sekunden.</p>

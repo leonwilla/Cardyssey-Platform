@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paginated admin-only scan failures, read directly from scanner JSONL logs.
+"""Admin-only scan failures and CSV exports from scanner JSONL logs.
 The worklist remains distinct from catalog print review. No guesses or writes.
 """
 # Import helper modules from the repository scripts root and Cardmarket tree.
@@ -19,6 +19,33 @@ filter_readiness=importlib.util.module_from_spec(spec);spec.loader.exec_module(f
 SUCCESS={'MAPPED_NO_PRICE_REQUIRED','COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED','COMPLETE_FILTERED_ASKING_MEDIAN','SOURCE_ONLY','SUCCESS','SET_MAPPING_PENDING'}
 PRICE_LIMIT_STATUSES={'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','FILTER_NOT_APPLIED'}
 TECHNICAL={'BLOCKED','LOGIN_REQUIRED','ERROR','PROVIDER_ERROR','PROVIDER_TIMEOUT','CONNECTION_LOST','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','FILTER_NOT_APPLIED','NO_CONFIRMED_FILTERED_OFFERS','FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
+CANDIDATE_URL_LIMIT = 5
+CSV_COLUMNS = (
+    ('Sprache', 'language'),
+    ('Prüfbereich', 'type'),
+    ('Statuscode', 'status'),
+    ('Fehlerdetail', 'detail'),
+    ('Set-ID', 'setId'),
+    ('Kartennummer', 'cardNumber'),
+    ('Kartenname', 'name'),
+    ('Karten-ID', 'cardId'),
+    ('Varianten-ID', 'variantId'),
+    ('Drucktyp', 'printType'),
+    ('Sonderdruck', 'specialPrint'),
+    ('Stempel', 'printStamp'),
+    ('Foil', 'printFoil'),
+    ('Produkt-ID', 'productId'),
+    ('Produkt-URL', 'productUrl'),
+    ('Referenz-URL', 'referenceUrl'),
+    ('Suchanfrage', 'searchQuery'),
+    ('Set-/Nummern-Scoring', 'scoreMatchState'),
+    ('Anzahl Suchkandidaten', 'scoreCandidateCount'),
+    ('Nur Seitenkandidat', 'scorePageCandidateOnly'),
+    ('Fehlende Pflichtangaben', 'missingFields'),
+    ('Nicht filterbare Druckmerkmale', 'unfilterablePrintFeatures'),
+    ('Angebotsfilter', 'filterMode'),
+    ('Zuletzt geprüft', 'seenAt'),
+)
 
 def classify(status,entry=None,queue=None):
     if status=='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' and entry and queue:
@@ -100,7 +127,7 @@ def resolved_after_scan(observation,decision):
         return reviewed>=seen
     except (TypeError,ValueError):return False
 
-def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten',decisions=None):
+def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten',decisions=None,*,for_export=False):
     if language not in ('de','en'):raise ValueError('invalid_language')
     if scope not in ('current','all'):raise ValueError('invalid_scope')
     if kind not in ('karten','preise','technik','drucke','alle'):raise ValueError('invalid_kind')
@@ -149,12 +176,21 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
           'productId':str(entry.get('product_id') or ''), 'seenAt':entry.get('seen_at') or '',
           'scoreMatchState':str(entry.get('score_matching_status') or ''),
           'scorePageCandidateOnly':entry.get('score_page_candidate_only') is True,
-          'scoreCandidateUrls':[u for u in (entry.get('score_top_candidate_urls') or [])[:5]
+          'scoreCandidateUrls':[u for u in (entry.get('score_top_candidate_urls') or [])[:CANDIDATE_URL_LIMIT]
              if isinstance(u,str) and u.startswith('https://www.cardmarket.com/')],
           'filterMode':str(entry.get('filter_mode') or ''),
           'officialProductGuide':entry.get('official_guide_product_aggregate') or None,
           'specialPrintComments':entry.get('special_print_comment_evidence') or None}
         if search.strip() and search.strip().casefold() not in ' '.join(str(v) for v in item.values()).casefold():continue
+        if for_export:
+            item.update(
+                cardNumber=q.get('kartennummer') or entry.get('number') or '',
+                printType=q.get('drucktyp') or '',
+                specialPrint=q.get('sonderdruck') or '',
+                productUrl=entry.get('url') or '',
+                searchQuery=entry.get('query') or '',
+                scoreCandidateCount=entry.get('score_candidate_count'),
+            )
         output.append(item)
     output.sort(key=lambda e:e['seenAt'],reverse=True)
     full_counts={'assignment':sum(x['type']=='ZUORDNUNG' for x in output),
@@ -168,7 +204,47 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
     elif kind=='drucke':output=[x for x in output if x['type']=='DRUCKPRUEFUNG']
     return {'language':language,'scope':scope,'kind':kind,'total':len(output),'page':page,'pageSize':50,
             **full_counts,
-            'items':output[page*50:(page+1)*50]}
-if __name__=='__main__':
-    a=argparse.ArgumentParser();a.add_argument('--language',choices=['de','en'],default='de');a.add_argument('--scope',choices=['all','current'],default='current');a.add_argument('--page',type=int,default=0);a.add_argument('--search',default='');a.add_argument('--kind',choices=['karten','preise','technik','drucke','alle'],default='karten');v=a.parse_args()
-    print(json.dumps(list_failures(language=v.language,page=v.page,search=v.search,scope=v.scope,kind=v.kind),ensure_ascii=False))
+            'items':output if for_export else output[page*50:(page+1)*50]}
+
+def csv_cell(value):
+    if isinstance(value, list):
+        value = ' | '.join(map(str, value))
+    text = '' if value is None else str(value)
+    # Prevent spreadsheet software from evaluating text from scanner logs.
+    if text.startswith(('\t', '\r', '\n')) or text.lstrip().startswith(('=', '+', '-', '@', '＝', '＋', '－', '＠')):
+        return "'" + text
+    return text
+
+
+def write_failures_csv(items, stream):
+    stream.write('\ufeff')
+    writer = csv.writer(stream, delimiter=';', lineterminator='\r\n')
+    candidate_headers = [f'Kandidat {i}' for i in range(1, CANDIDATE_URL_LIMIT + 1)]
+    writer.writerow([label for label, _ in CSV_COLUMNS] + candidate_headers)
+    for item in items:
+        row = [csv_cell(item.get(key)) for _, key in CSV_COLUMNS]
+        candidates = item['scoreCandidateUrls']
+        row.extend(csv_cell(url) for url in candidates)
+        row.extend([''] * (CANDIDATE_URL_LIMIT - len(candidates)))
+        writer.writerow(row)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--language', choices=['de', 'en'], default='de')
+    parser.add_argument('--scope', choices=['all', 'current'], default='current')
+    parser.add_argument('--page', type=int, default=0)
+    parser.add_argument('--search', default='')
+    parser.add_argument('--kind', choices=['karten', 'preise', 'technik', 'drucke', 'alle'], default='karten')
+    parser.add_argument('--format', choices=['json', 'csv'], default='json')
+    args = parser.parse_args()
+    exporting = args.format == 'csv'
+    result = list_failures(
+        language=args.language, page=args.page, search=args.search, scope=args.scope,
+        kind=args.kind, for_export=exporting,
+    )
+    if exporting:
+        _cm_sys.stdout.reconfigure(encoding='utf-8', newline='')
+        write_failures_csv(result['items'], _cm_sys.stdout)
+    else:
+        print(json.dumps(result, ensure_ascii=False))

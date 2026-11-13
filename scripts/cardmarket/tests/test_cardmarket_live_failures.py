@@ -4,7 +4,7 @@ _cm_scriptroot=_cm_Path(__file__).resolve().parents[2]
 for _cm_base in (_cm_scriptroot.parent, _cm_scriptroot, _cm_scriptroot/"cardmarket/core", _cm_scriptroot/"cardmarket/admin", _cm_scriptroot/"cardmarket/archive"):
     if str(_cm_base) not in _cm_sys.path:_cm_sys.path.append(str(_cm_base))
 from _paths import source_path
-import csv,importlib.util,json,tempfile,unittest
+import csv,importlib.util,io,json,tempfile,unittest
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -32,6 +32,52 @@ class Tests(unittest.TestCase):
    self.assertEqual(fail.list_failures(b,'de',scope='all',kind='alle')['total'],2)
    self.assertEqual(fail.list_failures(b,'de')['total'],0)
    self.assertEqual(fail.list_failures(b,'de',kind='technik')['total'],1)
+ def test_csv_exports_all_matching_variants_and_safe_cells(self):
+  with tempfile.TemporaryDirectory() as td:
+   base = self.setup(td)
+   start = datetime(2026, 11, 13, 15, tzinfo=timezone.utc)
+   (base/'full-rescan-epoch.json').write_text(json.dumps({'requestedAt':start.isoformat()}))
+   candidate = 'https://www.cardmarket.com/en/Pokemon/Products/Singles/Test/Pikachu'
+   rows = [
+    {'card_id':f'set-{i}', 'variant_id':'reverse', 'set_id':'set', 'number':str(i),
+     'name':'Pikachü', 'status':'MULTIPLE_SEARCH_HITS',
+     'error':'=1+1; "mehrdeutig"\nSet prüfen', 'seen_at':start.isoformat(),
+     'score_candidate_count':1, 'score_top_candidate_urls':[candidate]}
+    for i in range(52)
+   ]
+   rows.extend([
+    {**rows[0], 'card_id':'other-set-1', 'name':'Raupy'},
+    {**rows[0], 'card_id':'old-set-1', 'seen_at':(start-timedelta(days=1)).isoformat()},
+    {**rows[0], 'card_id':'technical-1', 'status':'BLOCKED'},
+    {**rows[0], 'card_id':'resolved-1'},
+   ])
+   for language, observations in [('de', rows[:1]), ('en', rows)]:
+    log = base/f'browser-observations-{language}.jsonl'
+    log.write_text('\n'.join(map(json.dumps, observations)), encoding='utf-8')
+   filters = {
+    'search':'Pikachü', 'kind':'karten',
+    'decisions':{('resolved-1','reverse'):{'status':'CONFIRMED_PRINT','reviewedAt':start.isoformat()}},
+   }
+   page = fail.list_failures(base,'en',page=1,**filters)
+   export = fail.list_failures(base,'en',page=1,for_export=True,**filters)
+   self.assertEqual(len(page['items']),2)
+   self.assertEqual(export['total'],52)
+   self.assertEqual(fail.list_failures(base,'de',for_export=True,**filters)['total'],1)
+
+   stream = io.StringIO(newline='')
+   fail.write_failures_csv(export['items'],stream)
+   csv_text = stream.getvalue()
+   self.assertTrue(csv_text.startswith('\ufeff'))
+   cases = list(csv.DictReader(io.StringIO(csv_text[1:]),delimiter=';'))
+   self.assertEqual(len(cases),52)
+   self.assertEqual({case['Sprache'] for case in cases},{'en'})
+   self.assertEqual(cases[-1]['Karten-ID'],'set-51')
+   self.assertEqual(cases[-1]['Kartennummer'],'51')
+   self.assertEqual(cases[-1]['Varianten-ID'],'reverse')
+   self.assertEqual(cases[-1]['Kartenname'],'Pikachü')
+   self.assertEqual(cases[-1]['Fehlerdetail'],"'=1+1; \"mehrdeutig\"\nSet prüfen")
+   self.assertEqual(cases[-1]['Kandidat 1'],candidate)
+   self.assertEqual(cases[-1]['Kandidat 2'],'')
  def test_30th_verified_product_with_incomplete_offers_is_price_only(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.setup(td);p=b/'queue-de.csv'
