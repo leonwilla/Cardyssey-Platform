@@ -157,7 +157,7 @@ export default function MarketplacePage() {
         <button role="tab" aria-selected={marketTab==="offers"} className={marketTab==="offers"?"active":""} onClick={()=>setMarketTab("offers")}>Meine Angebote</button>
         <button role="tab" aria-selected={marketTab==="browse"} className={marketTab==="browse"?"active":""} onClick={()=>setMarketTab("browse")}>Karten entdecken</button>
       </div>
-      {marketTab==="offers"?<OffersPage embedded />:<>
+      {marketTab==="offers"?<OffersPage embedded onDiscover={()=>setMarketTab("browse")} />:<>
       <div className="pageHeader marketplaceHeader">
         <div>
           <span className="eyebrowText">

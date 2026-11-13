@@ -327,15 +327,6 @@ export function AppShell({
           )}
         </nav>
 
-        <Link href="/sets" className="sidebarDiscovery">
-          <span className="sidebarDiscoveryIcon" aria-hidden="true">✦</span>
-          <span>
-            <strong>Sets entdecken</strong>
-            <small>Neue Karten für deine Sammlung finden</small>
-          </span>
-          <span aria-hidden="true">›</span>
-        </Link>
-
         <Link
           href="/account"
           className="sidebarFoot"

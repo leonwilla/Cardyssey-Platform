@@ -736,3 +736,191 @@ body.cardysseyAppPreview .accountSecurityPanel{background:var(--light-card);bord
 body.cardysseyAppPreview .accountSecurityMessage{background:#fff2e9;color:#793c21;border-color:#ebc5a8}
 body.cardysseyAppPreview .authSuccess{background:#e4f3e6;color:#1c6344;border-color:#afceb8}
 @media(max-width:600px){.accountSecurityForm .primaryButton{width:100%;justify-content:center}}
+
+/* Founder, catalog and marketplace: finishing pass for the cream theme. */
+body.cardysseyAppPreview .founderSystemGrid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+body.cardysseyAppPreview .founderSystemGrid .statCard{
+  min-height:115px;
+  padding:19px 21px;
+}
+body.cardysseyAppPreview .adminCollectionSection{margin-top:26px}
+body.cardysseyAppPreview .adminCollectionHeader{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-bottom:13px;
+}
+body.cardysseyAppPreview .adminCollectionHeader h3{margin:0 0 5px;font-size:20px}
+body.cardysseyAppPreview .adminCollectionHeader p{
+  margin:0;line-height:1.5;font-size:13px;max-width:570px;
+}
+body.cardysseyAppPreview .adminCollectionSearch{
+  display:grid;gap:7px;margin-bottom:12px;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--light-muted);
+}
+body.cardysseyAppPreview .adminCollectionSearch input{
+  width:100%;min-height:46px;padding:0 15px;border-radius:12px;
+  background:var(--light-card);border:1px solid var(--light-outline);
+  color:var(--light-ink);font-size:14px;font-weight:500;text-transform:none;letter-spacing:0;
+}
+body.cardysseyAppPreview .adminCollectionResults{display:grid;gap:2px}
+body.cardysseyAppPreview .adminCollectionResults>div:last-child{border-bottom:0!important}
+body.cardysseyAppPreview .adminCollectionSearchError{color:#a24231;font-size:13px;margin:7px 0}
+/* A page heading should never be a differently colored rectangle. */
+body.cardysseyAppPreview .setCatalogIntro{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  border-radius:0;padding:0;
+}
+body.cardysseyAppPreview .setCatalogIntro h1{color:var(--light-ink)}
+body.cardysseyAppPreview .setCatalogTile{
+  background:var(--light-card)!important;
+  border:1px solid var(--light-outline);
+  box-shadow:0 3px 15px #242a2008;
+}
+body.cardysseyAppPreview .setCatalogVisual{
+  background:var(--light-card);
+  border-right:1px solid var(--light-outline);
+}
+body.cardysseyAppPreview .setCatalogFallback{
+  width:72px;height:72px;border-radius:20px;
+  background:var(--light-subtle);border:1px solid var(--light-outline);
+  color:#84662e;letter-spacing:.045em;
+}
+body.cardysseyAppPreview .setCatalogVisual img{
+  filter:drop-shadow(0 2px 3px #30231424);
+}
+body.cardysseyAppPreview .setCatalogTile:hover{
+  border-color:#c79e61;
+  box-shadow:0 10px 25px #2b30201a;
+}
+body.cardysseyAppPreview .sidebarFoot{margin-top:auto}
+
+/* A full offer area, not tiny browser-default tabs floating in empty space. */
+body.cardysseyAppPreview .offersWorkspace{
+  background:var(--light-card);color:var(--light-ink);
+  border:1px solid var(--light-outline);
+  box-shadow:0 9px 32px #2e292012;
+  border-radius:23px;padding:clamp(18px,2.6vw,30px);
+  min-width:0;
+}
+body.cardysseyAppPreview .offersWorkspaceIntro{
+  display:flex;gap:20px;align-items:center;justify-content:space-between;
+  margin:0 0 22px;flex-wrap:wrap;
+}
+body.cardysseyAppPreview .offersWorkspaceIntro h2{
+  font-size:clamp(22px,2.5vw,28px);
+  letter-spacing:-.035em;line-height:1.2;color:var(--light-ink);
+  margin:7px 0 6px;
+}
+body.cardysseyAppPreview .offersWorkspaceIntro p{
+  margin:0;color:var(--light-muted);font-size:14px;line-height:1.5;
+}
+body.cardysseyAppPreview .offersOverviewCount{
+  border:1px solid var(--light-outline);border-radius:999px;
+  background:var(--light-subtle);color:var(--light-accent);
+  font-size:12px;font-weight:800;padding:9px 13px;white-space:nowrap;
+}
+body.cardysseyAppPreview .offerTabs{
+  display:flex;gap:7px;align-items:stretch;width:fit-content;max-width:100%;
+  padding:6px;margin:0 0 21px;
+  background:var(--light-subtle);border:1px solid var(--light-outline);
+  border-radius:15px;
+}
+body.cardysseyAppPreview .offerTabs button{
+  appearance:none;display:inline-flex;align-items:center;justify-content:center;
+  gap:10px;min-height:44px;border:1px solid transparent;border-radius:11px;
+  background:transparent;padding:9px 17px;color:var(--light-muted);
+  font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;
+  transition:background .16s ease,border-color .16s ease;
+}
+body.cardysseyAppPreview .offerTabs button span{
+  display:inline-grid;min-width:24px;height:22px;place-items:center;
+  padding:0 6px;border-radius:7px;background:#e5d9c9;color:#554a3a;
+  font-weight:850;font-variant-numeric:tabular-nums;
+}
+body.cardysseyAppPreview .offerTabs button.active{
+  color:var(--light-ink);
+  background:var(--light-card);
+  border-color:var(--light-outline);
+  box-shadow:0 2px 6px #332b2112;
+}
+body.cardysseyAppPreview .offerTabs button.active span{
+  background:var(--light-accent-soft);color:var(--light-accent);
+}
+body.cardysseyAppPreview .offerTabs button:focus-visible{
+  outline:2px solid var(--light-accent);outline-offset:3px;
+}
+body.cardysseyAppPreview .offerEmptyState{
+  min-height:245px;display:flex;flex-direction:column;gap:10px;
+  align-items:center;justify-content:center;text-align:center;
+  padding:28px 22px;background:#faf5ed;
+  border:1px solid var(--light-outline);border-radius:17px;
+}
+body.cardysseyAppPreview .offerEmptyIcon{
+  display:grid;place-items:center;width:57px;height:57px;
+  border-radius:16px;background:var(--light-accent-soft);
+  color:var(--light-accent);font-size:24px;
+}
+body.cardysseyAppPreview .offerEmptyState h3{
+  margin:3px 0 0;color:var(--light-ink);font-size:20px;
+}
+body.cardysseyAppPreview .offerEmptyState p{
+  margin:0;max-width:440px;line-height:1.6;
+  color:var(--light-muted);font-size:14px;
+}
+body.cardysseyAppPreview .offerEmptyState button{margin-top:9px}
+body.cardysseyAppPreview .offerGrid{display:grid;gap:15px}
+body.cardysseyAppPreview .offerCard{
+  background:var(--light-card);border:1px solid var(--light-outline);
+  border-radius:17px;padding:17px;box-shadow:none;
+}
+body.cardysseyAppPreview .offerPrices{
+  border-color:var(--light-outline);background:var(--light-subtle);
+}
+body.cardysseyAppPreview .offerMessage,
+body.cardysseyAppPreview .offerPerson{
+  background:var(--light-subtle);color:var(--light-ink);
+  border-color:var(--light-outline);
+}
+body.cardysseyAppPreview .marketplaceSections{margin-bottom:19px}
+@media(max-width:860px){
+  body.cardysseyAppPreview .founderSystemGrid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  body.cardysseyAppPreview .setCatalogVisual{min-height:128px}
+  body.cardysseyAppPreview .offersWorkspace{padding:16px;border-radius:17px}
+  body.cardysseyAppPreview .offersWorkspaceIntro{align-items:flex-start}
+  body.cardysseyAppPreview .offerTabs{width:100%}
+  body.cardysseyAppPreview .offerTabs button{flex:1;padding:9px 7px;gap:6px}
+}
+
+/* One compact overview, rather than four competing dashboard cards. */
+body.cardysseyAppPreview .founderOverview{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;border:1px solid var(--light-outline);border-radius:20px;
+  background:var(--light-card);overflow:hidden;
+}
+body.cardysseyAppPreview .founderOverview .statCard,
+body.cardysseyAppPreview .founderOverview .heroStat{
+  min-height:118px;padding:21px;
+  border:0;border-right:1px solid var(--light-outline);border-radius:0;
+  background:transparent;color:var(--light-ink);box-shadow:none;
+}
+body.cardysseyAppPreview .founderOverview .statCard:last-child{border-right:0}
+body.cardysseyAppPreview .founderOverview .statCard strong,
+body.cardysseyAppPreview .founderOverview .heroStat strong{
+  font-size:29px;color:var(--light-ink);margin:3px 0;
+}
+body.cardysseyAppPreview .founderOverview .statCard span{font-size:13px}
+body.cardysseyAppPreview .founderOverview .statCard small{font-size:12px}
+@media(max-width:900px){
+  body.cardysseyAppPreview .founderOverview{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.cardysseyAppPreview .founderOverview .statCard:nth-child(2){border-right:0}
+  body.cardysseyAppPreview .founderOverview .statCard:nth-child(-n+2){border-bottom:1px solid var(--light-outline)}
+}
+@media(max-width:480px){
+  body.cardysseyAppPreview .founderOverview{grid-template-columns:1fr}
+  body.cardysseyAppPreview .founderOverview .statCard{min-height:90px;border-right:0!important;border-bottom:1px solid var(--light-outline)}
+  body.cardysseyAppPreview .founderOverview .statCard:last-child{border-bottom:0}
+}

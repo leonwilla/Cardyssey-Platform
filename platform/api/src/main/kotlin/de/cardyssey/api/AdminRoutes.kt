@@ -164,6 +164,31 @@ fun Route.adminRoutes(
                 call.respond(detail)
             }
 
+            // Search the entire collection rather than only the first
+            // rows returned in the founder's detail summary. Never expose
+            // this endpoint outside the authenticated admin role.
+            get("/users/{id}/collection") {
+                if (!call.requireAdmin(roles)) return@get
+
+                val userId = call.parameters["id"]?.let {
+                    runCatching { UUID.fromString(it) }.getOrNull()
+                }
+                if (userId == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_user_id"))
+                    return@get
+                }
+                val query = call.request.queryParameters["q"]?.trim()
+                if (query != null && query.length > 120) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_query"))
+                    return@get
+                }
+                if (admin.user(userId) == null) {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "user_not_found"))
+                    return@get
+                }
+                call.respond(admin.collection(userId, query))
+            }
+
             get("/users/{id}/duplicates") {
                 if (!call.requireAdmin(roles)) {
                     return@get

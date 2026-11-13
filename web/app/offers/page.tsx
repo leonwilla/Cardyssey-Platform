@@ -74,7 +74,7 @@ function statusLabel(
   }
 }
 
-export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
+export default function OffersPage({embedded=false,onDiscover}:{embedded?:boolean;onDiscover?:()=>void}={}) {
   const router =
     useRouter();
 
@@ -232,8 +232,17 @@ export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
       ? incoming
       : outgoing;
 
-  const content=(<>
-      <div className="pageIntro">
+  const content=(<section className={embedded?"offersWorkspace embedded":"offersWorkspace"}>
+      {embedded ? (
+        <div className="offersWorkspaceIntro">
+          <div>
+            <span className="eyebrowText">Dein Marktplatz</span>
+            <h2>Kaufangebote im Überblick</h2>
+            <p>Hier siehst du Anfragen zu deinen Karten und Angebote, die du verschickt hast.</p>
+          </div>
+          <span className="offersOverviewCount">{incoming.length + outgoing.length} Angebote</span>
+        </div>
+      ) : <div className="pageIntro">
         <div>
           <span className="eyebrowText">
             Marketplace
@@ -248,8 +257,12 @@ export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
         </div>
       </div>
 
-      <div className="offerTabs">
+      }
+      <div className="offerTabs" role="tablist" aria-label="Kaufangebote filtern">
         <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "incoming"}
           className={
             tab === "incoming"
               ? "active"
@@ -269,6 +282,9 @@ export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
         </button>
 
         <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "outgoing"}
           className={
             tab === "outgoing"
               ? "active"
@@ -294,10 +310,17 @@ export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
           geladen …
         </div>
       ) : items.length === 0 ? (
-        <div className="statusPanel">
-          {tab === "incoming"
-            ? "Du hast aktuell keine eingehenden Angebote."
-            : "Du hast aktuell keine gesendeten Angebote."}
+        <div className="offerEmptyState" role="status">
+          <span className="offerEmptyIcon" aria-hidden="true">✉</span>
+          <h3>{tab === "incoming" ? "Noch keine eingehenden Angebote" : "Noch keine gesendeten Angebote"}</h3>
+          <p>{tab === "incoming"
+            ? "Wenn jemand eine deiner Karten kaufen möchte, erscheint die Anfrage hier."
+            : "Du hast noch kein Kaufangebot verschickt. Entdecke Karten von anderen Sammlern."}</p>
+          {embedded && onDiscover && (
+            <button type="button" className="ghostButton" onClick={onDiscover}>
+              Karten entdecken
+            </button>
+          )}
         </div>
       ) : (
         <div className="offerGrid">
@@ -510,6 +533,6 @@ export default function OffersPage({embedded=false}:{embedded?:boolean}={}) {
           )}
         </div>
       )}
-    </>);
+    </section>);
   return embedded?content:<AppShell active="/offers" user={user}>{content}</AppShell>;
 }

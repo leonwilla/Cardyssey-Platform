@@ -104,7 +104,6 @@ type SystemStatus = {
   service: string;
   version: string;
   justTcgConfigured: boolean;
-  soldCompsConfigured: boolean;
   registeredUsers: number;
   collectionItems: number;
 };
@@ -184,6 +183,10 @@ export default function AdminPage() {
     useState<SystemStatus | null>(null);
   const [search, setSearch] =
     useState("");
+  const [collectionQuery, setCollectionQuery] = useState("");
+  const [collectionMatches, setCollectionMatches] = useState<CollectionItem[]>([]);
+  const [collectionSearching, setCollectionSearching] = useState(false);
+  const [collectionSearchError, setCollectionSearchError] = useState<string | null>(null);
   const [loading, setLoading] =
     useState(true);
   const [detailLoading, setDetailLoading] =
@@ -200,6 +203,43 @@ export default function AdminPage() {
   useEffect(() => {
     void initialize();
   }, []);
+
+  // Search is performed on the server, not only the first 10 loaded cards.
+  // Abort stale searches when the selected user or the query changes.
+  useEffect(() => {
+    if (!detail) return;
+    const query = collectionQuery.trim();
+    if (!query) {
+      setCollectionMatches(detail.collection);
+      setCollectionSearching(false);
+      setCollectionSearchError(null);
+      return;
+    }
+    const controller = new AbortController();
+    let cancelled = false;
+    setCollectionSearching(true);
+    setCollectionSearchError(null);
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/users/${encodeURIComponent(detail.user.id)}/collection?q=${encodeURIComponent(query)}`,
+          { cache: "no-store", signal: controller.signal }
+        );
+        if (!response.ok) throw new Error("Suche momentan nicht verfügbar.");
+        const items = await response.json() as CollectionItem[];
+        if (!cancelled) setCollectionMatches(items);
+      } catch {
+        if (!cancelled) setCollectionSearchError("Suche momentan nicht verfügbar.");
+      } finally {
+        if (!cancelled) setCollectionSearching(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [detail?.user.id, collectionQuery]);
 
   async function initialize() {
     setLoading(true);
@@ -347,6 +387,9 @@ export default function AdminPage() {
     setDetailLoading(true);
     setMessage(null);
     setDuplicates(null);
+    setCollectionQuery("");
+    setCollectionMatches([]);
+    setCollectionSearchError(null);
 
     try {
       const response =
@@ -363,9 +406,9 @@ export default function AdminPage() {
         );
       }
 
-      setDetail(
-        await response.json()
-      );
+      const loadedDetail = await response.json() as UserDetail;
+      setDetail(loadedDetail);
+      setCollectionMatches(loadedDetail.collection);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -629,40 +672,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                  marginBottom: "14px",
-                }}
-              >
-                {duplicates && (
-                  <button
-                    type="button"
-                    className="ghostButton"
-                    onClick={() => void copyDuplicates()}
-                  >
-                    Liste kopieren
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="primaryButton"
-                  disabled={duplicatesLoading}
-                  onClick={async () => {
-                    if (!user?.id) return;
-                    await loadUser(user.id);
-                    await loadDuplicates(user.id);
-                  }}
-                >
-                  {duplicatesLoading
-                    ? "Duplikate werden ausgewertet …"
-                    : "Meine Duplikate auswerten"}
-                </button>
-              </div>
-
               <div className="statsGrid founderSystemGrid">
                 <div className="statCard">
                   <span>Backend</span>
@@ -686,13 +695,6 @@ export default function AdminPage() {
                   <span>JustTCG</span>
                   <strong style={{ color: system.justTcgConfigured ? "var(--lime)" : "var(--gold)" }}>
                     ● {system.justTcgConfigured ? "Konfiguriert" : "Nicht konfiguriert"}
-                  </strong>
-                  <small>Secret wird niemals angezeigt</small>
-                </div>
-                <div className="statCard">
-                  <span>SoldComps</span>
-                  <strong style={{ color: system.soldCompsConfigured ? "var(--lime)" : "var(--gold)" }}>
-                    ● {system.soldCompsConfigured ? "Konfiguriert" : "Nicht konfiguriert"}
                   </strong>
                   <small>Secret wird niemals angezeigt</small>
                 </div>
@@ -1034,10 +1036,29 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    <div className="sectionBlock">
-                      <h3>Sammlung</h3>
-                      <div style={{ display: "grid", gap: "8px" }}>
-                        {detail.collection.slice(0, 50).map((item) => (
+                    <div className="sectionBlock adminCollectionSection">
+                      <div className="adminCollectionHeader">
+                        <div>
+                          <h3>Sammlung</h3>
+                          <p className="muted">{detail.user.collectionItems} Positionen insgesamt. Zehn Karten auf einen Blick – alle weiteren findest du über die Suche.</p>
+                        </div>
+                        <span className="chip mutedChip">Maximal 10 Treffer</span>
+                      </div>
+                      <label className="adminCollectionSearch">
+                        <span>Karten dieses Nutzers suchen</span>
+                        <input
+                          type="search"
+                          value={collectionQuery}
+                          maxLength={120}
+                          placeholder="Kartenname, Set, Nummer, Sprache oder Variante …"
+                          onChange={(event) => setCollectionQuery(event.target.value)}
+                          aria-label="Gesamte Sammlung durchsuchen"
+                        />
+                      </label>
+                      {collectionSearching && <p className="muted" role="status">Karten werden gesucht …</p>}
+                      {collectionSearchError && <p className="adminCollectionSearchError" role="alert">{collectionSearchError}</p>}
+                      <div className="adminCollectionResults" aria-live="polite">
+                        {collectionMatches.slice(0, 10).map((item) => (
                           <div
                             key={item.id}
                             style={{
@@ -1062,9 +1083,9 @@ export default function AdminPage() {
                             </strong>
                           </div>
                         ))}
-                        {detail.collection.length === 0 && (
+                        {!collectionSearching && collectionMatches.length === 0 && (
                           <span className="muted">
-                            Keine Sammlungseinträge.
+                            {collectionQuery.trim() ? "Keine passende Karte gefunden." : "Keine Sammlungseinträge."}
                           </span>
                         )}
                       </div>

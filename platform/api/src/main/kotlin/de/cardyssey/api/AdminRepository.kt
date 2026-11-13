@@ -270,8 +270,9 @@ class AdminRepository(
             }
         }
 
-    private fun collection(
-        userId: UUID
+    fun collection(
+        userId: UUID,
+        search: String? = null
     ): List<AdminCollectionItemResponse> =
         dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -293,11 +294,23 @@ class AdminRepository(
                  AND mp.market = 'TCG'
                 WHERE c.user_id = ?
                   AND c.deleted_at IS NULL
-                ORDER BY c.updated_at DESC
-                LIMIT 500
+                  AND (
+                    ? IS NULL
+                    OR POSITION(
+                        LOWER(?) IN LOWER(CONCAT_WS(' ',
+                            c.name, c.set_name, c.local_id,
+                            c.card_id, c.legacy_variant, c.language_code
+                        ))
+                    ) > 0
+                  )
+                ORDER BY c.updated_at DESC, c.id
+                LIMIT 10
                 """.trimIndent()
             ).use { statement ->
+                val query = search?.trim()?.takeIf { it.isNotEmpty() }
                 statement.setObject(1, userId)
+                statement.setString(2, query)
+                statement.setString(3, query)
 
                 statement.executeQuery().use { result ->
                     buildList {
