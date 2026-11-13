@@ -32,4 +32,7 @@ class LoginPausePolicyTests(unittest.TestCase):
   wrapper=(source_path('Cardmarket-Manual-Resume.ps1')).read_text(encoding='utf-8-sig')
   self.assertIn('& $launcher -ManualResume',wrapper)
   self.assertNotIn('-ForcePublicMode',wrapper)
+  launcher=(source_path('Cardmarket-Collector-Launcher.ps1')).read_text(encoding='utf-8-sig')
+  self.assertNotIn('if (-not $ManualResume)',launcher)
+  self.assertIn('CARDMARKET_COOLDOWN',launcher)
 if __name__=='__main__':unittest.main()

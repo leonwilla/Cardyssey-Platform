@@ -12,6 +12,11 @@ export async function POST(request:Request){
  if(!body||typeof body!=='object'||Array.isArray(body)||!['resume','rescan','retry'].includes(String((body as {action?:string}).action)))return Response.json({error:'invalid_action'},{status:400});
  try{
   const action=String((body as {action?:string}).action);
+  if(action==='resume'){
+   const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket_scan_monitor.py','--language','de'],{timeout:15000,maxBuffer:160000});
+   const scan=JSON.parse(stdout) as {cooldownActive?:boolean;nextAllowedAt?:string;cooldownBlockingLanguage?:string};
+   if(scan.cooldownActive)return Response.json({error:'cooldown_active',nextAllowedAt:scan.nextAllowedAt,blockingLanguage:scan.cooldownBlockingLanguage},{status:409,headers:{'Cache-Control':'no-store'}});
+  }
   let reset:null|{ok:boolean;startedAt:string;historyPreserved:boolean}=null;
   if(action==='rescan'){
    const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket-reset-rescan.py','--execute'],{timeout:35000,maxBuffer:14000});

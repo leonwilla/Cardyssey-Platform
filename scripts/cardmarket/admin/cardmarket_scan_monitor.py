@@ -21,8 +21,9 @@ PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULT
 # Mirrors the Windows launcher/watchdog. The timestamp is the earliest safe
 # resume time, NOT a guarantee that a scheduled task starts exactly then.
 COOLDOWN_MINUTES={'BLOCKED':240,'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
-    'LOGIN_REQUIRED':20,'LOGIN_UNVERIFIED':20,
     'BATCH_COMPLETE_MORE_PENDING':45,'COMPLETED_WITH_DEFERRED':90}
+# LOGIN_REQUIRED and LOGIN_UNVERIFIED must not cause a cooldown while the
+# public provider remains AVAILABLE (the Windows runner uses guest mode).
 
 def timestamp(value):
     if not value:return None
@@ -36,7 +37,9 @@ def cooldown_info(base,now=None):
     from datetime import timedelta
     now=now or datetime.now(timezone.utc)
     resume_at=None
+    blocking=None
     triggers=[]
+    per_language={}
     for lang in ('de','en'):
         p=base/f'progress-{lang}.json'
         if not p.exists():continue
@@ -47,12 +50,20 @@ def cooldown_info(base,now=None):
         minutes=COOLDOWN_MINUTES.get(status,0)
         if not last or minutes<=0:continue
         safe=last+timedelta(minutes=minutes)
-        if resume_at is None or safe>resume_at:resume_at=safe
-        triggers.append({'language':lang,'status':status,'until':safe.isoformat()})
+        active=safe>now
+        per_language[lang]={'until':safe.isoformat(),'active':active,
+                            'status':status,'minutes':minutes}
+        if active and (resume_at is None or safe>resume_at):
+            resume_at=safe
+            blocking={'language':lang,'status':status,'minutes':minutes,
+                      'until':safe.isoformat()}
+        triggers.append({'language':lang,'status':status,'until':safe.isoformat(),
+                         'active':active,'minutes':minutes})
     wait=max(0,int((resume_at-now).total_seconds())) if resume_at else 0
     return {'nextAllowedAt':resume_at.isoformat() if resume_at else None,
         'cooldownActive':wait>0,'secondsUntilAllowed':wait,
-        'cooldownTriggers':triggers}
+        'cooldownTriggers':triggers,'blocking':blocking,
+        'languageCooldowns':per_language}
 
 
 def feed_only_covered(row):
@@ -147,6 +158,31 @@ def snapshot(base:Path,language:str):
         except (ValueError,OSError):pass
     preview_data=((preview.get('preview') or {}).get('languages') or {}).get(language) or {}
     resume=cooldown_info(base)
+    own_cooldown=resume['languageCooldowns'].get(language,{})
+    # The collector's checkpoint is the live progress within its current
+    # batch/run. Historical observations and rescan-epoch totals differ.
+    collector_processed=progress.get('done')
+    collector_total=progress.get('total')
+    if not isinstance(collector_processed,int) or collector_processed<0:
+        collector_processed=None
+    if not isinstance(collector_total,int) or collector_total<=0:
+        collector_total=None
+    last_incident=None
+    if raw_status=='BLOCKED':
+        blocked = next((x for x in chronological if x.get('status')=='BLOCKED'), None)
+        if blocked is not None:
+            last_incident={
+              'at':blocked.get('seen_at'),
+              'cardId':blocked.get('card_id'),
+              'title':str(blocked.get('catalog_direct_id_challenge_title') or '')[:110],
+              'path':str(blocked.get('catalog_direct_id_challenge_path') or '')[:130],
+              'kind':('DIRECT_ID_INTERSTITIAL'
+                      if blocked.get('catalog_direct_id_challenge_title')
+                      else 'PROVIDER_BLOCKED'),
+            }
+    check_at=timestamp(session.get('checkedAt'))
+    session_age_seconds=(max(0,int((datetime.now(timezone.utc)-check_at).total_seconds()))
+                         if check_at else None)
     current_problems=sum(bool(x.get('seen_at')) and rescan_epoch is not None
          and str(x['seen_at'])[:19]>=rescan_epoch.isoformat()[:19]
          and (x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED'))
@@ -171,6 +207,15 @@ def snapshot(base:Path,language:str):
        'progressPercent':round(done/len(browser)*100,2) if browser else 100,
        'totalReviewedPercent':round((total-len(browser)+done)/total*100,2) if total else 100,
        'status':'RUNNING_STALLED' if stalled else raw_status,
+       'collectorProcessed':collector_processed,'collectorTotal':collector_total,
+       'collectorUpdatedAt':progress.get('updated_at'),
+       'lastIncident':last_incident,
+       'sessionCheckAgeSeconds':session_age_seconds,
+       'statusSnapshotAt':datetime.now(timezone.utc).isoformat(),
+       'localCooldownActive':bool(own_cooldown.get('active')),
+       'localNextAllowedAt':own_cooldown.get('until') if own_cooldown.get('active') else None,
+       'cooldownBlockingLanguage':(resume['blocking'] or {}).get('language'),
+       'cooldownBlockingStatus':(resume['blocking'] or {}).get('status'),
        'problemCountCurrentCycle':current_problems,
        'browserSession':session,
        'lastCard':str(progress.get('last_card') or (newest or {}).get('card_id') or ''),

@@ -11,9 +11,10 @@ $already=Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -match "-F
 if ($already) {return}
 # Durable provider-specific cooldown across Windows Task Scheduler launches.
 # Never assume that a persistent login or cf_clearance guarantees access.
-# Manual resume is still allowed only after the same live login/Block check.
-if (-not $ManualResume){
-  foreach($lang in @('de','en')){
+# The provider cooldown is mandatory even for the dashboard's manual
+# resume button. A working homepage is not proof the product-ID endpoint
+# has recovered; repeated manual restarts previously retriggered BLOCKED.
+foreach($lang in @('de','en')){
     $progressFile=Join-Path $base ("progress-$lang.json")
     if(-not (Test-Path $progressFile)){continue}
     try{
@@ -36,7 +37,6 @@ if (-not $ManualResume){
       return
     }
   }
-}
 
 $ready=$false
 $browserNewlyStarted=$false
