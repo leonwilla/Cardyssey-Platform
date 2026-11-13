@@ -23,8 +23,6 @@ if (-not $ManualResume){
         'BLOCKED' {240;break}
         'PROVIDER_TIMEOUT' {90;break}
         'CONNECTION_LOST' {60;break}
-        'LOGIN_REQUIRED' {20;break}
-        'LOGIN_UNVERIFIED' {20;break}
         'BATCH_COMPLETE_MORE_PENDING' {45;break}
         'COMPLETED_WITH_DEFERRED' {90;break}
         default {0}
@@ -77,13 +75,16 @@ try{
   Write-Output 'CARDMARKET_WARMUP_UNVERIFIED_NO_SCAN'
   return
 }
-# Both automatic and manual resume obey the same provider/login gate.
+# Auth is optional when the provider explicitly reports AVAILABLE.
+# Cloudflare / unreadable provider access still fail closed. Guest rows must
+# validate their own language/condition/variant filters and offer completeness.
 $diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
+if(!(Test-Path $diagnose)){Write-Output 'CARDMARKET_SESSION_DIAGNOSTICS_MISSING';return}
 if(Test-Path $diagnose){
   $health=& $diagnose | ConvertFrom-Json
-  $progress=Join-Path $base 'progress-de.json'
-  if($health.status -ne 'AVAILABLE' -or $health.login -ne 'AUTHENTICATED'){
-    $pause=if($health.status -eq 'BLOCKED'){'BLOCKED'}elseif($health.login -eq 'LOGIN_REQUIRED'){'LOGIN_REQUIRED'}else{'LOGIN_UNVERIFIED'}
+  if([string]$health.status -ne 'AVAILABLE'){
+    $pause=if([string]$health.status -eq 'BLOCKED'){'BLOCKED'}else{'LOGIN_UNVERIFIED'}
+    $progress=Join-Path $base 'progress-de.json'
     if(Test-Path $progress){
       $x=Get-Content -Raw $progress | ConvertFrom-Json
       $x.status=$pause;$x.updated_at=[DateTime]::UtcNow.ToString('o')
@@ -92,5 +93,8 @@ if(Test-Path $diagnose){
     Write-Output ('CARDMARKET_PAUSED '+$pause)
     return
   }
+  if([string]$health.login -ne 'AUTHENTICATED'){
+    Write-Output 'CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE'
+  }
 }
-Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","16","-DelaySeconds","10","-MinRequestGapSeconds","10","-Languages","both","-RunMinutes","40","-ScanMode","identity","-RequireLogin") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","16","-DelaySeconds","10","-MinRequestGapSeconds","10","-Languages","both","-RunMinutes","40","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")

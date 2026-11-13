@@ -64,14 +64,13 @@ try {
   if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
   # Login is an incident in itself; do not wait until 50 cards have been
   # marked deferred (the entire queue stops before they are counted).
-  Send-CardmarketTelegramAlert 'LOGIN_REQUIRED' 'Cardyssey: Cardmarket-Anmeldung ist abgelaufen. Der DE/EN-Scanner ist pausiert. Bitte im gespeicherten Edge-Profil auf dem Tiny anmelden.' ([string]$diag.login -eq 'LOGIN_REQUIRED')
-  if($diag.login -eq 'LOGIN_REQUIRED'){Note 'CARDMARKET_LOGIN_REQUIRED';return}
+  Send-CardmarketTelegramAlert 'LOGIN_REQUIRED' 'Cardyssey: Cardmarket-Login abgelaufen. Gastscan läuft weiter, solange öffentlich verfügbare Angebotslisten vollständig sind. Für mehrseitige Angebote bitte im Edge-Profil anmelden.' ([string]$diag.login -eq 'LOGIN_REQUIRED')
+  if($diag.login -eq 'LOGIN_REQUIRED'){Note 'CARDMARKET_GUEST_SESSION_AVAILABLE'}
   # Windows reboot may close Edge while leaving a valid persistent profile.
   # Only the normal launcher may bootstrap a closed browser, and only AFTER
   # the complete cooldown check below. The launcher repeats all auth checks.
   $browserNeedsBootstrap=([string]$diag.status -eq 'BROWSER_UNAVAILABLE')
-  if(!$browserNeedsBootstrap -and
-     ($diag.status -ne 'AVAILABLE' -or $diag.login -ne 'AUTHENTICATED')){
+  if(!$browserNeedsBootstrap -and $diag.status -ne 'AVAILABLE'){
     Note 'CARDMARKET_SESSION_NOT_VERIFIED';return
   }
   $busy=@(Get-CimInstance Win32_Process | Where-Object {
@@ -105,8 +104,6 @@ try {
       'BLOCKED' {240;break}
       'PROVIDER_TIMEOUT' {90;break}
       'CONNECTION_LOST' {60;break}
-      'LOGIN_REQUIRED' {20;break}
-      'LOGIN_UNVERIFIED' {20;break}
       'BATCH_COMPLETE_MORE_PENDING' {45;break}
       'COMPLETED_WITH_DEFERRED' {90;break}
       default {0}
@@ -120,7 +117,7 @@ try {
   if($browserNeedsBootstrap){
     # Do not try to inspect a non-existent Edge CDP tab. Launcher starts the
     # saved profile once, performs the ordinary six-second homepage warm-up,
-    # and refuses to scan without AVAILABLE + AUTHENTICATED.
+    # and only starts if the provider is AVAILABLE (guest accepted).
     Note 'BROWSER_COLD_START_AFTER_COOLDOWN'
     & $launcher -ResumeAfterClearance
     return

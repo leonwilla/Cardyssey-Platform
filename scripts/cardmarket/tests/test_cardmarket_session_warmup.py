@@ -14,7 +14,9 @@ class SessionWarmupTests(unittest.TestCase):
   order=[s.index('CARDMARKET_COOLDOWN'),s.index("$warmupScript=Join-Path"),s.index("$diagnose=Join-Path"),s.index('Start-Process -FilePath "powershell.exe"')]
   self.assertEqual(order,sorted(order))
   self.assertIn("if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK')",s)
-  self.assertIn("$health.status -ne 'AVAILABLE' -or $health.login -ne 'AUTHENTICATED'",s)
+  self.assertIn("if([string]$health.status -ne 'AVAILABLE')",s)
+  self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)
+  self.assertNotIn('"-RequireLogin"',s)
   self.assertIn("'BLOCKED' {240;break}",s)
   self.assertIn('"-BatchLimit","16"',s)
   self.assertIn('"-MinRequestGapSeconds","10"',s)

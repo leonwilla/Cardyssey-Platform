@@ -18,6 +18,12 @@ remote_rev="$(run_tv git rev-parse origin/main)"
 if [[ "$local_rev" != "$remote_rev" ]]; then
   run_tv git pull --ff-only origin main
 fi
+# Sync dedicated Windows collector modules on every automatic deployment
+# check, including commits without web changes. Windows scanner process gate
+# refuses a write during an active browser run; next timer pass retries.
+if ! run_tv python3 "$ROOT/scripts/cardmarket/core/deploy-windows-modules.py" --apply; then
+  echo 'WARNING: Cardmarket Windows modules are pending idle-scanner sync.' >&2
+fi
 target="$(run_tv git rev-parse HEAD)"
 active="$(systemctl show -p WorkingDirectory --value "$SERVICE")"
 if [[ -z "$active" || ! -d "$active" ]]; then

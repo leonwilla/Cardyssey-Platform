@@ -8,7 +8,7 @@ param(
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
-  [switch]$RequireLogin
+  [switch]$RequireLogin  # optional diagnostics only; production launcher omits it
 )
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'

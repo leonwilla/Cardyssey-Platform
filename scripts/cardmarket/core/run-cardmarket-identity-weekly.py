@@ -141,6 +141,12 @@ def main():
     for lang in ('de','en'):
         report[lang]['known_page_hints']=json.loads(run(
             ROOT/'scripts/cardmarket/core/cardmarket-apply-print-page-hints.py','--language',lang))
+    # Restore conservative offline V1 page leads AFTER weekly queue export.
+    # Holo/reverse filters are candidates only; shadowless/stamps remain
+    # unfilterable manual-print reviews and never receive variant prices.
+    report['offline_multiple_hits']=json.loads(run(
+        ROOT/'scripts/cardmarket/core/resolve-multiple-search-hits.py',
+        *(['--apply'] if a.apply else [])))
     # Weekly S3 delta gate: applies only after complete queue regeneration
     # and human-approved identity validation; a guide timestamp is NOT a new
     # DE/EN variant price. First run stores a baseline, no speculative skip.

@@ -42,10 +42,10 @@ class SessionPacingPolicyTests(unittest.TestCase):
    source=self.source(name)
    self.assertIn("'BLOCKED' {240;break}",source)
    self.assertIn("'BATCH_COMPLETE_MORE_PENDING' {45;break}",source)
-   self.assertIn("'LOGIN_REQUIRED' {20;break}",source)
+   self.assertNotIn("'LOGIN_REQUIRED' {20;break}",source)
   watchdog=self.source('Cardmarket-Resume-Watchdog.ps1')
   self.assertIn("foreach($language in @('de','en'))",watchdog)
-  self.assertIn("$diag.login -ne 'AUTHENTICATED'",watchdog)
+  self.assertIn("if(!$browserNeedsBootstrap -and $diag.status -ne 'AVAILABLE')",watchdog)
  def test_access_denied_not_mislabeled_logout(self):
   status=self.source('Cardmarket-Session-Status.ps1')
   scanner=self.source('cardmarket-language-browser-collector.ps1')

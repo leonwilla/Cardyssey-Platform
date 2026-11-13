@@ -5,7 +5,7 @@ Do not touch browser profile, cookies, price files, queues or progress. Never
 replace modules while an actual Windows collector is executing.
 """
 from __future__ import annotations
-import argparse,os,subprocess,shutil,tempfile
+import argparse,os,subprocess,shutil,tempfile,hashlib
 from pathlib import Path
 
 CORE=Path(__file__).resolve().parent
@@ -18,7 +18,6 @@ PS='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
 def manifest():
     result={}
     for p in CORE.glob('*.ps1'):
-        if not p.name.startswith(('Cardmarket-','cardmarket-')):continue
         result[p.name]=p
     for p in ADMIN.glob('*.ps1'):
         if p.name.startswith(('Cardmarket-','cardmarket-')):result[p.name]=p
@@ -37,7 +36,6 @@ def scanner_idle():
         raise RuntimeError('Windows scanner active or process check failed')
 
 def deploy(dest=DEFAULT_DEST,dry_run=True,require_idle=True):
-    if require_idle:scanner_idle()
     files=manifest()
     if not dest.is_dir():raise ValueError('Windows collector directory missing')
     changes=[]
@@ -46,6 +44,8 @@ def deploy(dest=DEFAULT_DEST,dry_run=True,require_idle=True):
         contents=src.read_bytes()
         if target.exists() and target.read_bytes()==contents:continue
         changes.append((name,src,contents))
+    if not dry_run and changes and require_idle:
+        scanner_idle()
     if dry_run:return {'mode':'DRY_RUN','changed':[name for name,_,_ in changes]}
     # Preserve exact prior modules for rollback. Never modify running data.
     backup=dest/'module-backups'
@@ -60,7 +60,11 @@ def deploy(dest=DEFAULT_DEST,dry_run=True,require_idle=True):
             os.replace(temp,target)
         finally:
             if os.path.exists(temp):os.unlink(temp)
-    return {'mode':'APPLIED','changed':[name for name,_,_ in changes]}
+    mismatches=[name for name,src in files.items() if not (dest/name).is_file() or
+                hashlib.sha256(src.read_bytes()).digest()!=hashlib.sha256((dest/name).read_bytes()).digest()]
+    if mismatches:raise RuntimeError('Module SHA256 mismatches: '+','.join(mismatches))
+    return {'mode':'APPLIED','changed':[name for name,_,_ in changes],
+            'verified':len(files),'sha256_identical':True}
 
 if __name__=='__main__':
     import json

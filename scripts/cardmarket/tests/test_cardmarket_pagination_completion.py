@@ -26,7 +26,10 @@ class PaginationTests(unittest.TestCase):
   self.assertIn("$out.pagination_failure='CARDMARKET_COLLECTOR_CAP'",SRC)
   self.assertIn("$out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'",SRC)
   self.assertIn('not $data.hasMore',SRC)
-  self.assertIn('$out.all_pages_complete=($auth',SRC)
+  self.assertIn('$out.all_pages_complete=($data.filtered',SRC)
+  self.assertIn("($auth -or [int]$data.totalRows -le 25)",SRC)
+  self.assertIn('GUEST_MORE_THAN_25_ROWS_UNVERIFIED',SRC)
+  self.assertIn('DEFERRED_LOGIN_REQUIRED',SRC)
  def test_median_requires_verified_full_market_and_all_offer_flags(self):
   self.assertIn('$out.median_all_offers_eur=if($out.all_pages_complete)',SRC)
   self.assertIn('$uniqueOfferIds.Count -ne [int]$data.totalRows',SRC)

@@ -25,7 +25,9 @@ class LoginPausePolicyTests(unittest.TestCase):
   self.assertIn("$health.login -ne 'AUTHENTICATED'",launcher)
   self.assertIn("'LOGIN_UNVERIFIED'",launcher)
   self.assertIn('"-Languages","both"',launcher)
-  self.assertIn('"-RequireLogin"',launcher)
+  self.assertNotIn('"-RequireLogin"',launcher)
+  self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",launcher)
+  self.assertIn("if([string]$health.status -ne 'AVAILABLE')",launcher)
  def test_manual_resume_does_not_override_access_gate(self):
   wrapper=(source_path('Cardmarket-Manual-Resume.ps1')).read_text(encoding='utf-8-sig')
   self.assertIn('& $launcher -ManualResume',wrapper)

@@ -1,6 +1,14 @@
-# Install an automatic resume shortcut for the existing isolated browser scanner.
+﻿# Install an automatic resume shortcut for the existing isolated browser scanner.
 $ErrorActionPreference = "Stop"
 $base = Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketCollector"
+# The WSL deployment timer keeps core modules in this Windows directory.
+# At installation, perform the same idempotent, scanner-idle-checked sync.
+$syncScript='/home/tv/cardshop/scripts/cardmarket/core/deploy-windows-modules.py'
+$wslExe=Join-Path $env:SystemRoot 'System32\wsl.exe'
+if(Test-Path $wslExe){
+  & $wslExe -d Ubuntu -e python3 $syncScript --apply
+  if($LASTEXITCODE -ne 0){throw 'CARDMARKET_WINDOWS_MODULE_SYNC_FAILED'}
+}
 $launcher = Join-Path $base "Cardmarket-Collector-Launcher.ps1"
 if (!(Test-Path $launcher)) {throw "Collector launcher does not exist"}
 $startup = [Environment]::GetFolderPath("Startup")
