@@ -28,6 +28,18 @@ class LoginPausePolicyTests(unittest.TestCase):
   self.assertNotIn('"-RequireLogin"',launcher)
   self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",launcher)
   self.assertIn("if([string]$health.status -ne 'AVAILABLE')",launcher)
+ def test_streak_policy_shared_between_runner_launcher_watchdog(self):
+  policy=(source_path('Cardmarket-Backoff-Policy.ps1')).read_text(encoding='utf-8-sig')
+  for name in ('Cardmarket-Collector-Launcher.ps1','Cardmarket-Resume-Watchdog.ps1'):
+   text=(source_path(name)).read_text(encoding='utf-8-sig')
+   self.assertIn('Cardmarket-Backoff-Policy.ps1',text)
+   self.assertIn('Get-CardmarketCooldownMinutes',text)
+  runner=(source_path('Cardmarket-Queue-Runner.ps1')).read_text(encoding='utf-8-sig')
+  self.assertIn('Update-CardmarketBlockedStreak',runner)
+  self.assertIn('cardmarket-blocked-streak.json',policy)
+  self.assertIn("$streak -eq 1 -and $ProviderStatus -eq 'AVAILABLE'",policy)
+  self.assertIn('return 30',policy)
+  self.assertIn('return 240',policy)
  def test_manual_resume_does_not_override_access_gate(self):
   wrapper=(source_path('Cardmarket-Manual-Resume.ps1')).read_text(encoding='utf-8-sig')
   self.assertIn('& $launcher -ManualResume',wrapper)

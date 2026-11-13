@@ -20,7 +20,7 @@ BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
 # Mirrors the Windows launcher/watchdog. The timestamp is the earliest safe
 # resume time, NOT a guarantee that a scheduled task starts exactly then.
-COOLDOWN_MINUTES={'BLOCKED':240,'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
+COOLDOWN_MINUTES={'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
     'BATCH_COMPLETE_MORE_PENDING':45,'COMPLETED_WITH_DEFERRED':90}
 # LOGIN_REQUIRED and LOGIN_UNVERIFIED must not cause a cooldown while the
 # public provider remains AVAILABLE (the Windows runner uses guest mode).
@@ -32,10 +32,27 @@ def timestamp(value):
         return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
     except (ValueError,TypeError):return None
 
+def blocked_streak(base:Path)->int:
+    """Fail closed when there is no trustworthy durable run history."""
+    try:
+        raw=json.loads((base/'cardmarket-blocked-streak.json').read_text(encoding='utf-8-sig'))
+        if raw.get('lastStatus')!='BLOCKED':return 0
+        count=int(raw['count'])
+        return min(count,2) if count>0 else 2
+    except (OSError,ValueError,TypeError,KeyError):
+        return 2
+
+
 def cooldown_info(base,now=None):
-    """Account for BOTH queues: either language may extend the safe pause."""
+    """One shared scanner: identify which language is holding the queue."""
     from datetime import timedelta
     now=now or datetime.now(timezone.utc)
+    try:
+        session=json.loads((base/'browser-session-status.json').read_text(encoding='utf-8-sig'))
+    except (OSError,ValueError,TypeError):
+        session={}
+    provider_status=session.get('status') or 'UNKNOWN'
+    streak=blocked_streak(base)
     resume_at=None
     blocking=None
     triggers=[]
@@ -47,7 +64,8 @@ def cooldown_info(base,now=None):
         except (ValueError,OSError):continue
         status=str(x.get('status') or '')
         last=timestamp(x.get('updated_at'))
-        minutes=COOLDOWN_MINUTES.get(status,0)
+        minutes=(30 if status=='BLOCKED' and streak==1 and provider_status=='AVAILABLE'
+                 else 240 if status=='BLOCKED' else COOLDOWN_MINUTES.get(status,0))
         if not last or minutes<=0:continue
         safe=last+timedelta(minutes=minutes)
         active=safe>now
@@ -63,6 +81,7 @@ def cooldown_info(base,now=None):
     return {'nextAllowedAt':resume_at.isoformat() if resume_at else None,
         'cooldownActive':wait>0,'secondsUntilAllowed':wait,
         'cooldownTriggers':triggers,'blocking':blocking,
+        'blockedStreak':streak,'backoffSessionStatus':provider_status,
         'languageCooldowns':per_language}
 
 
@@ -216,6 +235,9 @@ def snapshot(base:Path,language:str):
        'localNextAllowedAt':own_cooldown.get('until') if own_cooldown.get('active') else None,
        'cooldownBlockingLanguage':(resume['blocking'] or {}).get('language'),
        'cooldownBlockingStatus':(resume['blocking'] or {}).get('status'),
+       'cooldownMinutes':(resume['blocking'] or {}).get('minutes'),
+       'blockedStreak':resume['blockedStreak'],
+       'backoffSessionStatus':resume['backoffSessionStatus'],
        'problemCountCurrentCycle':current_problems,
        'browserSession':session,
        'lastCard':str(progress.get('last_card') or (newest or {}).get('card_id') or ''),

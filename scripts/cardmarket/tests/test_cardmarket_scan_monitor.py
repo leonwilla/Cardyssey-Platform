@@ -86,6 +86,37 @@ class ScanMonitorTests(unittest.TestCase):
    self.assertEqual(result['lastIncident']['cardId'],'a')
    self.assertEqual(result['browserSession']['status'],'AVAILABLE')
    self.assertIsNotNone(result['statusSnapshotAt'])
+ def test_staged_backoff_requires_first_block_and_provider_available(self):
+  from datetime import datetime,timezone
+  from scripts.cardmarket.admin.cardmarket_scan_monitor import cooldown_info
+  with tempfile.TemporaryDirectory() as path:
+   b=Path(path)
+   now=datetime(2026,11,13,14,49,tzinfo=timezone.utc)
+   (b/'progress-de.json').write_text(json.dumps({
+    'status':'BLOCKED','updated_at':'2026-11-13T14:43:00Z'}))
+   (b/'browser-session-status.json').write_text(json.dumps({'status':'AVAILABLE',
+    'login':'AUTHENTICATED','checkedAt':'2026-11-13T14:48:00Z'}))
+   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
+    'count':1,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'one'}))
+   first=cooldown_info(b,now)
+   self.assertTrue(first['cooldownActive'])
+   self.assertEqual(first['blocking']['minutes'],30)
+   self.assertEqual(first['blocking']['until'],'2026-11-13T15:13:00+00:00')
+   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
+    'count':2,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'two'}))
+   second=cooldown_info(b,now)
+   self.assertEqual(second['blocking']['minutes'],240)
+   (b/'cardmarket-blocked-streak.json').unlink()
+   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],240)
+   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
+    'count':1,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'one'}))
+   (b/'browser-session-status.json').write_text(json.dumps({'status':'BLOCKED'}))
+   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],240)
+   (b/'progress-de.json').write_text(json.dumps({
+    'status':'BATCH_COMPLETE_MORE_PENDING','updated_at':'2026-11-13T14:43:00Z'}))
+   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
+    'count':0,'lastStatus':'BATCH_COMPLETE_MORE_PENDING','lastLanguage':'de','lastRunId':'ok'}))
+   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],45)
  def test_last_card_is_most_recent_even_if_key_was_replaced(self):
   with tempfile.TemporaryDirectory() as d:
    base=Path(d)

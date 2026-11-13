@@ -13,6 +13,10 @@ param(
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
 $collector=Join-Path $base 'cardmarket-language-browser-collector.ps1'
+$backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
+if(!(Test-Path $backoffScript)){throw 'CARDMARKET_BACKOFF_POLICY_MISSING'}
+. $backoffScript
+$runnerId=[guid]::NewGuid().ToString('N')
 # The official, validated DE/EN product-page leads are rebuilt locally after
 # a language batch. The target scanner still checks its own idProduct and
 # printed number; a localized URL is not a price or print confirmation.
@@ -48,6 +52,10 @@ do {
     if(!$?){throw "Collector failed for $language"}
     $progress=Get-Content -Raw (Join-Path $base "progress-$language.json") | ConvertFrom-Json
     Write-Output ('LANGUAGE_END '+$language+' status='+$progress.status+' processed='+$progress.done)
+    # Durable streak is updated ONCE per completed language run.
+    # Provider/connection errors keep prior streak; verified normal batches
+    # reset it. Neither queue nor observation files are modified here.
+    Update-CardmarketBlockedStreak -Base $base -Status ([string]$progress.status) -Language $language -ProgressAt ([string]$progress.updated_at) -RunId $runnerId
     if($progress.status -eq 'BATCH_COMPLETE_MORE_PENDING' -and $selectedLanguages.Count -gt 1){
       Update-CrossLanguagePageCache
     }

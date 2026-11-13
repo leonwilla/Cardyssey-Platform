@@ -9,6 +9,23 @@ New-Item -ItemType Directory -Force -Path $base | Out-Null
 if (!(Test-Path $runner)) {throw "Cardmarket queue runner missing"}
 $already=Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -match "-File.*Cardmarket-Queue-Runner[.]ps1" -and $_.Name -eq "powershell.exe"}
 if ($already) {return}
+$backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
+if(!(Test-Path $backoffScript)){Write-Output 'CARDMARKET_BACKOFF_POLICY_MISSING';return}
+. $backoffScript
+# Query the saved Cardmarket tab read-only for a first-block retry.
+# The normal homepage can be available while product redirects remain blocked.
+# A failed check gives the full 240-minute fallback; never assume clearance.
+$firstBlocked=(Get-CardmarketBlockedStreak $base) -eq 1
+$providerStatusForBackoff='UNKNOWN'
+if($firstBlocked){
+  try {
+    $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
+    if(Test-Path $checker){
+      $sessionResult=& $checker | ConvertFrom-Json
+      $providerStatusForBackoff=[string]$sessionResult.status
+    }
+  } catch {$providerStatusForBackoff='UNKNOWN'}
+}
 # Durable provider-specific cooldown across Windows Task Scheduler launches.
 # Never assume that a persistent login or cf_clearance guarantees access.
 # The provider cooldown is mandatory even for the dashboard's manual
@@ -20,14 +37,7 @@ foreach($lang in @('de','en')){
     try{
       $x=Get-Content -Raw -Encoding UTF8 $progressFile | ConvertFrom-Json
       $last=[datetime]::Parse([string]$x.updated_at).ToUniversalTime()
-      $cooldown= switch([string]$x.status){
-        'BLOCKED' {240;break}
-        'PROVIDER_TIMEOUT' {90;break}
-        'CONNECTION_LOST' {60;break}
-        'BATCH_COMPLETE_MORE_PENDING' {45;break}
-        'COMPLETED_WITH_DEFERRED' {90;break}
-        default {0}
-      }
+      $cooldown=Get-CardmarketCooldownMinutes -Status ([string]$x.status) -Base $base -ProviderStatus $providerStatusForBackoff
       if($cooldown -gt 0 -and [DateTime]::UtcNow -lt $last.AddMinutes($cooldown)){
         Write-Output ('CARDMARKET_COOLDOWN '+$lang+' '+$x.status+' until '+$last.AddMinutes($cooldown).ToString('o'))
         return

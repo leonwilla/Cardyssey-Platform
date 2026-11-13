@@ -10,8 +10,8 @@ class RebootRecoveryPolicyTests(unittest.TestCase):
         self.assertLess(s.index("foreach($s in $remaining)"),s.index("if($browserNeedsBootstrap){"))
         self.assertIn("Note 'BROWSER_COLD_START_AFTER_COOLDOWN'",s)
         self.assertIn("& $launcher -ResumeAfterClearance",s)
-        self.assertIn("'BLOCKED' {240;break}",s)
-        self.assertIn("'BATCH_COMPLETE_MORE_PENDING' {45;break}",s)
+        self.assertIn("Get-CardmarketCooldownMinutes",s)
+        self.assertIn("Get-CardmarketCooldownMinutes",s)
     def test_blocked_login_required_unknown_state_fail_closed(self):
         s=(SRC/"Cardmarket-Resume-Watchdog.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}",s)

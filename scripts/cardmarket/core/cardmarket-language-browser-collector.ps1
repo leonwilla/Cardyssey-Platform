@@ -507,7 +507,10 @@ $searchCache=@{}
 $searchCacheHits=0
 $searchCacheMisses=0
 $consecutiveProviderTimeouts=0
-$catalogIdLookupUnsupported=$false
+# The legacy /Pokemon/Products?idProduct redirect may land on a
+# provider interstitial. Always use the existing same-origin Search endpoint
+# followed by exact live idProduct, card number and set validation.
+$catalogIdLookupUnsupported=$true
 $directUrlFilterSupported=$true
 Save-Progress $processed.Count $runTotal 'RUNNING' ''
 
@@ -728,6 +731,9 @@ try {
         if ($reuse.Count -eq 1) { $savedUrl = $knownProductPages["$($case.cardyssey_karte)|$($reuse[0])"] }
       }
 
+      # Disabled by default: this legacy direct-ID redirect must never be
+      # attempted in production. Normal lookup below uses Same-Origin Search
+      # and verifies the candidate against catalog_singleton_id on the page.
       # Catalog idProduct is a much stronger lookup key than translated
       # search text. The official feed provides both the product ID and its
       # expansion; we still require the live page to reveal the SAME ID and

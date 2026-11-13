@@ -17,7 +17,7 @@ class SessionWarmupTests(unittest.TestCase):
   self.assertIn("if([string]$health.status -ne 'AVAILABLE')",s)
   self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)
   self.assertNotIn('"-RequireLogin"',s)
-  self.assertIn("'BLOCKED' {240;break}",s)
+  self.assertIn("Get-CardmarketCooldownMinutes",s)
   self.assertIn('"-BatchLimit","16"',s)
   self.assertIn('"-MinRequestGapSeconds","10"',s)
  def test_one_normal_navigation_six_seconds_no_challenge_bypass(self):

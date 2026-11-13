@@ -40,8 +40,8 @@ class SessionPacingPolicyTests(unittest.TestCase):
  def test_backoff_persists_between_runner_invocations(self):
   for name in ('Cardmarket-Collector-Launcher.ps1','Cardmarket-Resume-Watchdog.ps1'):
    source=self.source(name)
-   self.assertIn("'BLOCKED' {240;break}",source)
-   self.assertIn("'BATCH_COMPLETE_MORE_PENDING' {45;break}",source)
+   self.assertIn("Get-CardmarketCooldownMinutes",source)
+   self.assertIn("Get-CardmarketCooldownMinutes",source)
    self.assertNotIn("'LOGIN_REQUIRED' {20;break}",source)
   watchdog=self.source('Cardmarket-Resume-Watchdog.ps1')
   self.assertIn("foreach($language in @('de','en'))",watchdog)

@@ -27,6 +27,17 @@ class CatalogIdTests(unittest.TestCase):
   self.assertIn('catalogIdLookupUnsupported=$true',s)
   self.assertIn('$landing.GetLeftPart([UriPartial]::Path)',s)
   self.assertIn("$out.catalog_direct_id_verified=$true",s)
+ def test_direct_redirect_disabled_and_normal_search_uses_catalog_verification(self):
+  # The legacy branch remains only for audit compatibility, permanently
+  # gated by a true default. There is no idProduct redirect at runtime.
+  self.assertIn('$catalogIdLookupUnsupported=$true',s)
+  self.assertNotIn('$catalogIdLookupUnsupported=$false',s)
+  self.assertIn('if(!$savedUrl -and !$catalogIdLookupUnsupported -and',s)
+  self.assertIn("Search-CardmarketSameOrigin -SearchPath",s)
+  self.assertIn("'SAME_ORIGIN_SEARCH_HTML'",s)
+  self.assertIn('catalog_singleton_id',s)
+  self.assertIn('if ($pageProductId -eq [string]$case.catalog_singleton_id',s)
+  self.assertIn('Js-CardmarketProduct',s)
  def test_direct_id_never_auto_proves_physical_print_or_price(self):
   branch=s.split("} elseif ($out.catalog_direct_id_verified -eq $true -and",1)[1].split('} elseif (',1)[0]
   self.assertIn('PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED',branch)

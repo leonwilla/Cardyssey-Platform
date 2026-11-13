@@ -2,6 +2,9 @@
 # Never solve a challenge; resume only when Cardmarket has cleared it itself.
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
+$backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
+if(!(Test-Path $backoffScript)){throw 'CARDMARKET_BACKOFF_POLICY_MISSING'}
+. $backoffScript
 $log=Join-Path $base 'resume-watchdog.log'
 function Note($value) {
   ('{0} {1}' -f [DateTime]::UtcNow.ToString('o'),$value) | Add-Content -Path $log -Encoding UTF8
@@ -100,14 +103,7 @@ try {
   # or cached logout link can still be read. Only read-only probes are allowed
   # before the full backoff expires. After normal batches use shorter breaks.
   foreach($s in $remaining){
-    $minutes=switch($s.status){
-      'BLOCKED' {240;break}
-      'PROVIDER_TIMEOUT' {90;break}
-      'CONNECTION_LOST' {60;break}
-      'BATCH_COMPLETE_MORE_PENDING' {45;break}
-      'COMPLETED_WITH_DEFERRED' {90;break}
-      default {0}
-    }
+    $minutes=Get-CardmarketCooldownMinutes -Status $s.status -Base $base -ProviderStatus ([string]$diag.status)
     if($minutes -gt 0 -and [DateTime]::UtcNow -lt $s.last.AddMinutes($minutes)){
       return
     }
