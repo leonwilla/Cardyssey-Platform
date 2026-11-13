@@ -4850,3 +4850,109 @@ body.cardysseyAppPreview :is(button,a,input,select,textarea):focus-visible{outli
 @media(max-width:760px){
   .collectionStatsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Shared purchase-offer layout for every theme, including non-preview dark mode. */
+.offersWorkspace{
+  min-width:0;padding:clamp(18px,2.5vw,28px);
+  border:1px solid var(--border);border-radius:20px;
+  background:var(--navy-card);color:var(--text);
+}
+.offersWorkspaceIntro{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;flex-wrap:wrap;margin-bottom:20px;
+}
+.offersWorkspaceIntro h2{margin:6px 0;font-size:clamp(22px,2.5vw,29px);letter-spacing:-.035em}
+.offersWorkspaceIntro p{margin:0;font-size:14px;line-height:1.55;color:var(--secondary)}
+.offersOverviewCount{
+  border:1px solid var(--border);border-radius:999px;
+  padding:8px 12px;font-weight:800;font-size:12px;
+  color:var(--text);background:var(--vault);
+}
+.offerTabs{
+  display:flex;gap:6px;width:fit-content;max-width:100%;
+  padding:5px;margin:0 0 20px;border:1px solid var(--border);
+  border-radius:14px;background:var(--vault);
+}
+.offerTabs button{
+  display:inline-flex;justify-content:center;align-items:center;gap:9px;
+  min-height:43px;padding:9px 15px;border:1px solid transparent;
+  border-radius:10px;background:transparent;
+  color:var(--secondary);font-size:13px;font-weight:800;cursor:pointer;
+}
+.offerTabs button.active{
+  background:var(--navy-card);color:var(--text);border-color:var(--border);
+}
+.offerTabs button span{
+  min-width:24px;min-height:22px;padding:3px 6px;
+  display:inline-grid;place-items:center;
+  border-radius:7px;background:var(--navy-raised);
+  color:var(--text);font-variant-numeric:tabular-nums;font-size:12px;
+}
+.offerTabs button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.offerGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));
+  gap:15px;
+}
+.offerCard{
+  min-width:0;display:grid;
+  grid-template-columns:112px minmax(0,1fr);gap:18px;
+  padding:17px;border:1px solid var(--border);
+  border-radius:17px;background:var(--navy-card);
+}
+.offerImage{
+  width:100%;aspect-ratio:2.5 / 3.5;max-height:186px;
+  border-radius:12px;display:grid;place-items:center;
+  background:var(--vault);overflow:hidden;
+}
+.offerImage img{display:block;width:100%;height:100%;object-fit:contain}
+.offerContent{display:flex;flex-direction:column;gap:11px;min-width:0}
+.offerTop{display:flex;align-items:start;justify-content:space-between;gap:10px}
+.offerTop h3{margin:4px 0 4px;font-size:19px;line-height:1.25}
+.offerStatus{
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;padding:6px 10px;border:1px solid var(--border);
+  color:var(--secondary);font-size:11px;font-weight:850;white-space:nowrap;
+}
+.offerStatus.pending{color:#a36b24;border-color:#d8ae70}
+.offerStatus.accepted{color:#398365;border-color:#7abe9a}
+.offerStatus.rejected,.offerStatus.withdrawn{color:#a65746;border-color:#d2a598}
+.offerPrices{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;padding:12px;background:var(--vault);
+  border:1px solid var(--border);border-radius:12px;
+}
+.offerPrices>div{display:grid;gap:4px;min-width:0}
+.offerPrices small{font-size:11px;color:var(--secondary)}
+.offerPrices strong{font-size:15px;color:var(--text);font-variant-numeric:tabular-nums}
+.offerMessage,.offerPerson{
+  padding:11px 12px;margin:0;border:1px solid var(--border);
+  border-radius:11px;color:var(--secondary);background:var(--vault);
+  font-size:13px;line-height:1.5;
+}
+.offerPerson{padding:6px 0;background:transparent;border:0}
+.offerActions{display:flex;gap:9px;flex-wrap:wrap}
+.offerActions :is(button,.ghostButton){flex:1;min-width:100px}
+.offerWithdraw{align-self:start}
+.offerEmptyState{
+  min-height:238px;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;gap:9px;
+  padding:24px;border:1px solid var(--border);border-radius:16px;
+  background:var(--vault);text-align:center;
+}
+.offerEmptyIcon{
+  display:grid;place-items:center;width:56px;height:56px;
+  border-radius:16px;color:var(--gold);background:var(--navy-raised);font-size:24px;
+}
+.offerEmptyState h3{margin:4px 0 0;font-size:19px;color:var(--text)}
+.offerEmptyState p{max-width:450px;margin:0;font-size:14px;line-height:1.55;color:var(--secondary)}
+.offerEmptyState button{margin-top:8px}
+@media(max-width:560px){
+  .offersWorkspace{padding:16px}
+  .offerTabs{width:100%}
+  .offerTabs button{flex:1;padding:8px 7px}
+  .offerCard{grid-template-columns:83px minmax(0,1fr);gap:12px;padding:12px}
+  .offerImage{max-height:132px}
+  .offerTop{flex-wrap:wrap}
+  .offerPrices{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
