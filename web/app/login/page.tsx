@@ -13,8 +13,10 @@ export default function LoginPage() {
   const [shopReturnTo,setShopReturnTo]=useState("");
   const [error, setError] =
     useState<string | null>(null);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   useEffect(() => {
+    setPasswordChanged(new URLSearchParams(window.location.search).get("password_changed") === "1");
     const code =
       new URLSearchParams(
         window.location.search
@@ -68,6 +70,10 @@ export default function LoginPage() {
             Registrieren
           </a>
         </div>
+
+        {passwordChanged && (
+          <p className="authSuccess" role="status">Passwort erfolgreich geändert. Bitte melde dich erneut an.</p>
+        )}
 
         <form
           className="authForm"

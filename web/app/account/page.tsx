@@ -22,6 +22,7 @@ import {
 } from "@/components/ShowcaseSettingsPanel";
 
 import FriendsPanel from "@/components/FriendsPanel";
+import { AccountSecurityPanel } from "@/components/AccountSecurityPanel";
 
 import {
   AppearanceSettingsPanel,
@@ -71,6 +72,7 @@ export default function AccountPage() {
       "showcase" |
       "privacy" |
       "appearance" |
+      "security" |
       "app"
     >("profile");
 
@@ -503,6 +505,7 @@ export default function AccountPage() {
             </button>
 
             <button type="button" className={accountTab==="friends"?"active":""} onClick={()=>setAccountTab("friends")}>Freunde</button>
+            <button type="button" className={accountTab==="security"?"active":""} onClick={()=>setAccountTab("security")}>Sicherheit</button>
 
             <button
               type="button"
@@ -691,6 +694,7 @@ export default function AccountPage() {
             </div>
           </section>
           )}
+          {accountTab === "security" && <div className="accountTabPanel"><AccountSecurityPanel /></div>}
           {accountTab === "friends" && <div className="accountTabPanel"><FriendsPanel embedded /></div>}
           {accountTab === "showcase" && (
             <div className="accountTabPanel">

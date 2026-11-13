@@ -22,6 +22,12 @@ data class UpdateMeRequest(
     val collectingFocus: String? = null
 )
 
+@Serializable
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
 private val EMAIL_REGEX =
     Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 
@@ -448,6 +454,49 @@ fun Route.authRoutes(
             )
         }
 
+
+        post("/api/v1/me/password") {
+            val id = call.authenticatedUserId()
+            if (id == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@post
+            }
+            val request = call.receive<ChangePasswordRequest>()
+            if (request.currentPassword.length !in 1..128 ||
+                request.newPassword.length !in 12..128 ||
+                request.currentPassword == request.newPassword) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "invalid_password")
+                )
+                return@post
+            }
+            val user = repository.findById(id)
+            if (user == null) {
+                call.respond(HttpStatusCode.Unauthorized)
+                return@post
+            }
+            if (!loginAttemptGuard.allowed(user.email)) {
+                call.respond(
+                    HttpStatusCode.TooManyRequests,
+                    mapOf("error" to "too_many_attempts")
+                )
+                return@post
+            }
+            val changed = repository.changePassword(
+                id, request.currentPassword, request.newPassword
+            )
+            if (!changed) {
+                loginAttemptGuard.failure(user.email)
+                call.respond(
+                    HttpStatusCode.Forbidden,
+                    mapOf("error" to "incorrect_current_password")
+                )
+                return@post
+            }
+            loginAttemptGuard.success(user.email)
+            call.respond(HttpStatusCode.NoContent)
+        }
 
         delete("/api/v1/me") {
             val id = call.authenticatedUserId()

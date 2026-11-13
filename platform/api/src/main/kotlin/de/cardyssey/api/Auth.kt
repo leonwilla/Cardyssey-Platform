@@ -519,6 +519,55 @@ class AuthRepository(
     }
 
 
+    /**
+     * Change credentials only after validating the old password.
+     * Row locking prevents concurrent password changes. On success,
+     * revoke refresh sessions across all devices in the same transaction.
+     */
+    fun changePassword(id: UUID, oldPassword: String, newPassword: String): Boolean {
+        dataSource.connection.use { connection ->
+            connection.autoCommit = false
+            try {
+                val existingHash = connection.prepareStatement(
+                    "SELECT password_hash FROM users WHERE id = ? AND disabled_at IS NULL FOR UPDATE"
+                ).use { statement ->
+                    statement.setObject(1, id)
+                    statement.executeQuery().use { result ->
+                        if (result.next()) result.getString("password_hash") else null
+                    }
+                }
+                if (existingHash == null || !PasswordHasher.verify(existingHash, oldPassword)) {
+                    connection.rollback()
+                    return false
+                }
+                val newHash = PasswordHasher.hash(newPassword)
+                connection.prepareStatement(
+                    "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ? AND disabled_at IS NULL"
+                ).use { statement ->
+                    statement.setString(1, newHash)
+                    statement.setObject(2, id)
+                    if (statement.executeUpdate() != 1) {
+                        connection.rollback()
+                        return false
+                    }
+                }
+                connection.prepareStatement(
+                    "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL"
+                ).use { statement ->
+                    statement.setObject(1, id)
+                    statement.executeUpdate()
+                }
+                connection.commit()
+                return true
+            } catch (exception: Throwable) {
+                connection.rollback()
+                throw exception
+            } finally {
+                connection.autoCommit = true
+            }
+        }
+    }
+
     fun storeRefreshToken(
         userId: UUID,
         tokenHash: String,

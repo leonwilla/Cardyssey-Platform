@@ -6,13 +6,65 @@ $log=Join-Path $base 'resume-watchdog.log'
 function Note($value) {
   ('{0} {1}' -f [DateTime]::UtcNow.ToString('o'),$value) | Add-Content -Path $log -Encoding UTF8
 }
+
+function Send-CardmarketTelegramAlert([string]$Incident,[string]$Message,[bool]$Active) {
+  $token=[Environment]::GetEnvironmentVariable('CARDMARKET_TELEGRAM_BOT_TOKEN','User')
+  $chat=[Environment]::GetEnvironmentVariable('CARDMARKET_TELEGRAM_CHAT_ID','User')
+  $tokenFile=Join-Path $base 'telegram-bot-token.dpapi'
+  $chatFile=Join-Path $base 'telegram-chat-id.txt'
+  # Prefer the locally DPAPI-protected token over older environment values.
+  if(Test-Path $tokenFile){
+    try{
+      $secured=Get-Content -Raw -Encoding UTF8 $tokenFile | ConvertTo-SecureString
+      $cred=New-Object System.Management.Automation.PSCredential('telegram',$secured)
+      $token=$cred.GetNetworkCredential().Password
+    }catch{Note 'TELEGRAM_DPAPI_UNREADABLE';return}
+  }
+  if(Test-Path $chatFile){$chat=(Get-Content -Raw -Encoding UTF8 $chatFile).Trim()}
+  if(!$token -or $chat -notmatch '^[0-9]{6,20}$'){
+    if($Active){Note 'TELEGRAM_UNCONFIGURED'}
+    return
+  }
+  $path=Join-Path $base 'telegram-alert-state.json'
+  $state=@{}
+  if(Test-Path $path){try{$loaded=Get-Content -Raw -Encoding UTF8 $path|ConvertFrom-Json;foreach($p in $loaded.PSObject.Properties){$state[$p.Name]=$p.Value}}catch{Note 'TELEGRAM_STATE_INVALID';return}}
+  if(!$Active){if($state.ContainsKey($Incident)){$state.Remove($Incident);$state|ConvertTo-Json|Set-Content -Encoding UTF8 $path};return}
+  if($state.ContainsKey($Incident)){return}
+  $now=[DateTime]::Now
+  # Quiet hours (local clock): hold the incident until the next watchdog
+  # pass after 07:30; do not mark it sent during the night.
+  if($now.TimeOfDay -ge [TimeSpan]::Parse('23:00') -or $now.TimeOfDay -lt [TimeSpan]::Parse('07:30')){return}
+  try{
+    $uri='https://api.telegram.org/bot'+$token+'/sendMessage'
+    $reply=Invoke-RestMethod -Method Post -Uri $uri -Body @{chat_id=$chat;text=$Message} -TimeoutSec 12
+    if($reply.ok){$state[$Incident]=[DateTime]::UtcNow.ToString('o');$state|ConvertTo-Json|Set-Content -Encoding UTF8 $path;Note ('TELEGRAM_SENT '+$Incident)}
+  }catch{Note ('TELEGRAM_FAILED '+$Incident)}
+}
+function Get-DeferredLoginCount {
+  $count=0
+  foreach($language in @('de','en')){
+    $file=Join-Path $base ("browser-observations-$language.jsonl")
+    if(!(Test-Path $file)){continue}
+    $latest=@{}
+    foreach($line in [System.IO.File]::ReadLines($file)){
+      try{$r=$line|ConvertFrom-Json;if($r.card_id -and $r.variant_id){$latest[([string]$r.card_id+'|'+[string]$r.variant_id)]=[string]$r.status}}catch{}
+    }
+    $count+=@($latest.Values|Where-Object{$_ -eq 'DEFERRED_LOGIN_REQUIRED'}).Count
+  }
+  return $count
+}
+
 try {
   # Diagnose the persistent profile on every watchdog pass, even if a scan is
   # running. Read-only: never access stored passwords or bypass the provider.
   $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
   if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}
   $diag=& $checker | ConvertFrom-Json
+  Send-CardmarketTelegramAlert 'BLOCKED' 'Cardyssey: Cardmarket Cloudflare-Challenge aktiv. Scanner bleibt in Schutzpause.' ([string]$diag.status -eq 'BLOCKED')
   if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
+  # Login is an incident in itself; do not wait until 50 cards have been
+  # marked deferred (the entire queue stops before they are counted).
+  Send-CardmarketTelegramAlert 'LOGIN_REQUIRED' 'Cardyssey: Cardmarket-Anmeldung ist abgelaufen. Der DE/EN-Scanner ist pausiert. Bitte im gespeicherten Edge-Profil auf dem Tiny anmelden.' ([string]$diag.login -eq 'LOGIN_REQUIRED')
   if($diag.login -eq 'LOGIN_REQUIRED'){Note 'CARDMARKET_LOGIN_REQUIRED';return}
   # Windows reboot may close Edge while leaving a valid persistent profile.
   # Only the normal launcher may bootstrap a closed browser, and only AFTER
