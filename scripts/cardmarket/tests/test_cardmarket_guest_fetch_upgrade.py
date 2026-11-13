@@ -46,6 +46,18 @@ class GuestFetchUpgradeTests(unittest.TestCase):
         self.assertNotIn("'LOGIN_REQUIRED' {20;break}", watchdog)
         self.assertNotIn("'LOGIN_REQUIRED' {20;break}", launcher)
 
+    def test_catalog_direct_id_does_not_abort_on_transient_challenge(self):
+        s = P.read_text(encoding="utf-8-sig")
+        self.assertIn("$lookupDeadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds+10)", s)
+        self.assertIn("for($attempt=0;($attempt -lt 18 -or $challengeSeen) -and", s)
+        self.assertIn("CARDMARKET_DIRECT_ID_CHALLENGE_WAITING: no further provider requests", s)
+        self.assertIn("CARDMARKET_DIRECT_ID_CHALLENGE_CLEARED: resuming current browser page", s)
+        self.assertIn("if($challengeSeen){$challenged=$true}", s)
+        start = s.index("if(!$savedUrl -and !$catalogIdLookupUnsupported")
+        end = s.index("if ($savedUrl) {", start)
+        block = s[start:end]
+        self.assertEqual(block.count("Send-Cdp 'Page.navigate'"), 1)
+
     def test_candidate_lookup_keeps_shadowless_as_unverified_special(self):
         m = load_resolver()
         guard = {"base1": "Base-Set", "sv01": "Scarlet-Violet"}

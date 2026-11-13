@@ -743,15 +743,31 @@ try {
         $out.catalog_direct_id_attempted=$true
         $resolved=''
         $challenged=$false
+        $challengeSeen=$false
+        $lookupDeadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds+10)
         try {
           Wait-CardmarketRequestBudget
           Send-Cdp 'Page.navigate' @{url=$lookup} 12 | Out-Null
-          for($attempt=0;$attempt -lt 18;$attempt++) {
-            Start-Sleep -Milliseconds 300
+          for($attempt=0;($attempt -lt 18 -or $challengeSeen) -and
+               [DateTime]::UtcNow -lt $lookupDeadline;$attempt++) {
+            # Observe only the existing browser page; do not send repeat
+            # provider requests or try to complete a security challenge.
+            Start-Sleep -Milliseconds $(if($challengeSeen){1000}else{300})
             $state=Js 'JSON.stringify({url:location.href,title:document.title,id:document.querySelector("input[name=idProduct]")?.value||"",ready:document.readyState,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 8 | ConvertFrom-Json
             if(Is-CardmarketChallenge ([string]$state.title) ([bool]$state.challenge)) {
-              $challenged=$true
-              break
+              if(-not $challengeSeen){
+                Write-Host 'CARDMARKET_DIRECT_ID_CHALLENGE_WAITING: no further provider requests'
+                $out.catalog_direct_id_challenge_title=([string]$state.title).Substring(0,[Math]::Min(110,([string]$state.title).Length))
+                try{$out.catalog_direct_id_challenge_path=([uri]([string]$state.url)).AbsolutePath}catch{}
+              }
+              $challengeSeen=$true
+              continue
+            }
+            if($challengeSeen){
+              Write-Host 'CARDMARKET_DIRECT_ID_CHALLENGE_CLEARED: resuming current browser page'
+              $out.catalog_direct_id_challenge_cleared=$true
+              $challengeSeen=$false
+              $attempt=0
             }
             if($state.ready -ne 'complete' -or [string]$state.id -ne $directId){continue}
             $landing=[uri]([string]$state.url)
@@ -772,6 +788,7 @@ try {
               break
             }
           }
+          if($challengeSeen){$challenged=$true}
           if($challenged){throw 'CARDMARKET_PROVIDER_CHALLENGE'}
         } catch {
           if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}
