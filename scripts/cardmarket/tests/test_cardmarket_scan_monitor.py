@@ -86,6 +86,12 @@ class ScanMonitorTests(unittest.TestCase):
    self.assertEqual(result['lastIncident']['cardId'],'a')
    self.assertEqual(result['browserSession']['status'],'AVAILABLE')
    self.assertIsNotNone(result['statusSnapshotAt'])
+
+   (root/'progress-de.json').write_text(json.dumps({'status':'BLOCKED','done':726,
+     'total':16381,'updated_at':'2026-11-13T19:23:00Z','provider_block_stage':'SESSION_BOOTSTRAP'}))
+   result=snapshot(root,'de')
+   self.assertEqual(result['lastIncident'],{'kind':'SESSION_BOOTSTRAP','at':'2026-11-13T19:23:00Z'})
+
  def test_staged_backoff_requires_first_block_and_provider_available(self):
   from datetime import datetime,timezone
   from scripts.cardmarket.admin.cardmarket_scan_monitor import cooldown_info

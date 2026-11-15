@@ -19,7 +19,7 @@ try {
       $ws.Options.SetRequestHeader('Origin','http://localhost')
       $cts=[Threading.CancellationTokenSource]::new(5000)
       try{$ws.ConnectAsync([uri]$page.webSocketDebuggerUrl,$cts.Token).GetAwaiter().GetResult()|Out-Null}finally{$cts.Dispose()}
-      $js='JSON.stringify({title:document.title,blocked:/(nur einen moment|just a moment|attention required|checking your browser|captcha|access denied|cloudflare to restrict access|too many requests)/i.test(document.title)||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700)),loginForm:!!document.querySelector("form[action*=Login],form[action*=login],input[type=password]"),logoutLink:!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),accountHint:!!document.querySelector("a[href*=User_Profile],a[href*=User_Account],a[href*=MyAccount]"),pageReady:document.readyState})'
+      $js='JSON.stringify({title:document.title,origin:location.origin,blocked:!!document.querySelector("#challenge-running,#cf-challenge-running,#challenge-stage")||/(nur einen moment|just a moment|attention required|checking your browser|captcha|access denied|cloudflare to restrict access|too many requests)/i.test(document.title)||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700)),loginForm:!!document.querySelector("form[action*=Login],form[action*=login],input[type=password]"),logoutLink:!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),accountHint:!!document.querySelector("a[href*=User_Profile],a[href*=User_Account],a[href*=MyAccount]"),pageReady:document.readyState})'
       $packet=@{id=7;method='Runtime.evaluate';params=@{expression=$js;returnByValue=$true}}|ConvertTo-Json -Compress -Depth 5
       $buffer=[Text.Encoding]::UTF8.GetBytes($packet)
       $ws.SendAsync([ArraySegment[byte]]::new($buffer),[Net.WebSockets.WebSocketMessageType]::Text,$true,[Threading.CancellationToken]::None).GetAwaiter().GetResult()|Out-Null
@@ -37,6 +37,9 @@ try {
       }
       if(!$result){$state.status='BROWSER_STATE_UNREADABLE'}
       elseif($result.blocked){$state.status='BLOCKED';$state.reason='CLOUDFLARE_CHALLENGE'}
+      elseif($result.origin -ne 'https://www.cardmarket.com' -or $result.pageReady -ne 'complete'){
+        $state.status='BROWSER_STATE_UNREADABLE';$state.reason='CARDMARKET_PAGE_NOT_READY'
+      }
       elseif($result.logoutLink){$state.status='AVAILABLE';$state.login='AUTHENTICATED';$state.reason='VISIBLE_LOGOUT_LINK'}
       elseif($result.loginForm){$state.status='AVAILABLE';$state.login='LOGIN_REQUIRED';$state.reason='VISIBLE_LOGIN_FORM'}
       else{$state.status='AVAILABLE';$state.login='UNVERIFIED';$state.reason='NO_RELIABLE_LOGIN_INDICATOR'}

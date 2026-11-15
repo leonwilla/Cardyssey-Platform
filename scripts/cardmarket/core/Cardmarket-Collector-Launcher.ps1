@@ -66,45 +66,49 @@ if (!$ready) {
   }
 }
 if (!$ready) {throw "Cardmarket browser debugging endpoint unavailable; preserve profile and retry later"}
-# One gentle homepage navigation AFTER all cooldown/duplicate-runner gates.
-# Never solve challenges or export session tokens. Fail closed if the normal
-# navigation cannot be verified. Session-Status still decides authentication.
-$warmupScript=Join-Path $base 'Cardmarket-Session-Warmup.ps1'
-if(!(Test-Path $warmupScript)){
-  Write-Output 'CARDMARKET_WARMUP_MISSING_NO_SCAN'
-  return
-}
-try{
-  $warmup=& $warmupScript -AllowBlankBootstrap:$browserNewlyStarted | ConvertFrom-Json
-  if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK'){
-    Write-Output ('CARDMARKET_WARMUP_PAUSED '+[string]$warmup.status)
+# Bootstrap a newly started browser once. An existing tab is verified in
+# place, so a manual clearance or normal page survives a scheduled resume.
+if($browserNewlyStarted){
+  $warmupScript=Join-Path $base 'Cardmarket-Session-Warmup.ps1'
+  if(!(Test-Path $warmupScript)){
+    Write-Output 'CARDMARKET_WARMUP_MISSING_NO_SCAN'
     return
   }
-  Write-Output 'CARDMARKET_WARMUP_DONE_6S'
-}catch{
-  Write-Output 'CARDMARKET_WARMUP_UNVERIFIED_NO_SCAN'
-  return
+  try{
+    $warmup=& $warmupScript -AllowBlankBootstrap:$browserNewlyStarted | ConvertFrom-Json
+    if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK'){
+      Write-Output ('CARDMARKET_WARMUP_PAUSED '+[string]$warmup.status)
+      return
+    }
+    Write-Output 'CARDMARKET_WARMUP_DONE_6S'
+  }catch{
+    Write-Output 'CARDMARKET_WARMUP_UNVERIFIED_NO_SCAN'
+    return
+  }
 }
 # Auth is optional when the provider explicitly reports AVAILABLE.
 # Cloudflare / unreadable provider access still fail closed. Guest rows must
 # validate their own language/condition/variant filters and offer completeness.
 $diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
 if(!(Test-Path $diagnose)){Write-Output 'CARDMARKET_SESSION_DIAGNOSTICS_MISSING';return}
-if(Test-Path $diagnose){
-  $health=& $diagnose | ConvertFrom-Json
-  if([string]$health.status -ne 'AVAILABLE'){
-    $pause=if([string]$health.status -eq 'BLOCKED'){'BLOCKED'}else{'LOGIN_UNVERIFIED'}
+$health=& $diagnose | ConvertFrom-Json
+if([string]$health.status -ne 'AVAILABLE'){
+  # Looking at an existing challenge is not a new failed request. Only a
+  # block after a fresh bootstrap navigation gets a new cooldown timestamp.
+  if($browserNewlyStarted -and $health.status -eq 'BLOCKED'){
     $progress=Join-Path $base 'progress-de.json'
     if(Test-Path $progress){
-      $x=Get-Content -Raw $progress | ConvertFrom-Json
-      $x.status=$pause;$x.updated_at=[DateTime]::UtcNow.ToString('o')
-      $x|ConvertTo-Json -Compress|Set-Content -Encoding UTF8 -Path $progress
+      $x=Get-Content -Raw -Encoding UTF8 $progress | ConvertFrom-Json
+      $x.status='BLOCKED'
+      $x.updated_at=[DateTime]::UtcNow.ToString('o')
+      $x | Add-Member NoteProperty provider_block_stage 'SESSION_BOOTSTRAP' -Force
+      $x | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progress
     }
-    Write-Output ('CARDMARKET_PAUSED '+$pause)
-    return
   }
-  if([string]$health.login -ne 'AUTHENTICATED'){
-    Write-Output 'CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE'
-  }
+  Write-Output ('CARDMARKET_PAUSED '+[string]$health.status)
+  return
+}
+if([string]$health.login -ne 'AUTHENTICATED'){
+  Write-Output 'CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE'
 }
 Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","16","-DelaySeconds","10","-MinRequestGapSeconds","10","-Languages","both","-RunMinutes","40","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")

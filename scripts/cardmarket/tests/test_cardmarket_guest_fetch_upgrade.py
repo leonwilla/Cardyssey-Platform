@@ -34,7 +34,12 @@ class GuestFetchUpgradeTests(unittest.TestCase):
         s = P.read_text(encoding="utf-8-sig")
         launcher = LAUNCHER.read_text(encoding="utf-8-sig")
         watchdog = WATCHDOG.read_text(encoding="utf-8-sig")
-        self.assertIn("if($result.status -eq 'BLOCKED'){throw 'CARDMARKET_PROVIDER_CHALLENGE'}", s)
+        start = s.index("if($result.status -eq 'BLOCKED'){")
+        end = s.index("return $result",start)
+        block = s[start:end]
+        self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",block)
+        self.assertIn("httpStatus=[int]$result.httpStatus",block)
+        self.assertIn("'HTTP_STATUS'",block)
         self.assertIn("if (-not $auth -and $data.hasMore) { $out.pagination_failure='DEFERRED_LOGIN_REQUIRED' }", s)
         self.assertIn("if ($data.filtered -and $auth) {", s)
         self.assertIn("($auth -or [int]$data.totalRows -le 25)", s)

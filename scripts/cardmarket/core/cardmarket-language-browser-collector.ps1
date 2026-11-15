@@ -293,11 +293,17 @@ function Get-CardmarketProductFetch([string]$url) {
   }
   Wait-CardmarketRequestBudget
   $jsonUrl=ConvertTo-Json -InputObject $url -Compress
-  $expr='(async()=>{window.__cardysseyFetchedProduct=null;const target='+$jsonUrl+';const expected=new URL(target);if(location.origin!==expected.origin)return {status:"WRONG_ORIGIN"};try{const response=await fetch(target,{credentials:"include",redirect:"follow"});const html=await response.text();const doc=new DOMParser().parseFromString(html,"text/html");const body=(doc.body?.textContent||"").slice(0,2400);const challenge=!!doc.querySelector("#challenge-running,#cf-challenge-running")||/(you have been blocked|you are unable to access|access denied|error 1020|too many requests|just a moment|checking your browser)/i.test((doc.title||"")+" "+body);const blocked=challenge||[403,429,503].includes(response.status);const got=new URL(response.url);const validPath=got.origin===expected.origin&&got.pathname===expected.pathname;const id=doc.querySelector("input[name=idProduct]")?.value||"";const forms=[...doc.forms].filter(f=>(f.getAttribute("action")||"").includes("Product_Filter_FilterProduct"));const result={status:blocked?"BLOCKED":!response.ok?"HTTP_ERROR":!validPath?"REDIRECT_OTHER_PATH":"OK",httpStatus:response.status,finalUrl:response.url,title:doc.title,productId:id,hasMore:!!doc.querySelector("#loadMoreButton"),offerRows:doc.querySelectorAll(".article-row").length,login:!!doc.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),filterForm:forms.length>0};if(result.status==="OK"&&/^[0-9]{4,12}$/.test(id)&&result.filterForm){window.__cardysseyFetchedProduct={doc,url:response.url};result.snapshotReady=true;}return result;}catch(e){return {status:"NETWORK_ERROR",message:String(e).slice(0,150)}}})()'
+  $expr='(async()=>{window.__cardysseyFetchedProduct=null;const target='+$jsonUrl+';const expected=new URL(target);if(location.origin!==expected.origin)return {status:"WRONG_ORIGIN"};try{const response=await fetch(target,{credentials:"include",redirect:"follow"});const html=await response.text();const doc=new DOMParser().parseFromString(html,"text/html");const body=(doc.body?.textContent||"").slice(0,2400);const challenge=!!doc.querySelector("#challenge-running,#cf-challenge-running")||/(you have been blocked|you are unable to access|access denied|error 1020|too many requests|just a moment|checking your browser)/i.test((doc.title||"")+" "+body);const blocked=challenge||[403,429,503].includes(response.status);const got=new URL(response.url);const validPath=got.origin===expected.origin&&got.pathname===expected.pathname;const id=doc.querySelector("input[name=idProduct]")?.value||"";const forms=[...doc.forms].filter(f=>(f.getAttribute("action")||"").includes("Product_Filter_FilterProduct"));const result={status:blocked?"BLOCKED":!response.ok?"HTTP_ERROR":!validPath?"REDIRECT_OTHER_PATH":"OK",httpStatus:response.status,challengeMarker:challenge,finalUrl:response.url,title:doc.title,productId:id,hasMore:!!doc.querySelector("#loadMoreButton"),offerRows:doc.querySelectorAll(".article-row").length,login:!!doc.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),filterForm:forms.length>0};if(result.status==="OK"&&/^[0-9]{4,12}$/.test(id)&&result.filterForm){window.__cardysseyFetchedProduct={doc,url:response.url};result.snapshotReady=true;}return result;}catch(e){return {status:"NETWORK_ERROR",message:String(e).slice(0,150)}}})()'
 
   $result=Js $expr 45
   if($result -is [string]){$result=$result | ConvertFrom-Json}
-  if($result.status -eq 'BLOCKED'){throw 'CARDMARKET_PROVIDER_CHALLENGE'}
+  if($result.status -eq 'BLOCKED'){
+    $script:providerBlock=@{
+      stage='PRODUCT_FETCH';httpStatus=[int]$result.httpStatus
+      signal=if($result.challengeMarker){'RESPONSE_MARKER'}else{'HTTP_STATUS'}
+    }
+    throw 'CARDMARKET_PROVIDER_CHALLENGE'
+  }
   return $result
 }
 function Move-To([string]$url) {
@@ -320,6 +326,8 @@ function Move-To([string]$url) {
         Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
       }
       if (([DateTime]::UtcNow-$challengeStart).TotalSeconds -ge $ChallengeWaitSeconds) {
+        $stage=if($desired.AbsolutePath.EndsWith('/Products/Search')){'SEARCH_PAGE'}else{'PRODUCT_PAGE'}
+        $script:providerBlock=@{stage=$stage;signal='PAGE_MARKER'}
         throw 'CARDMARKET_PROVIDER_CHALLENGE'
       }
       continue
@@ -520,6 +528,7 @@ try {
   Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
     $script:cmFetchedProductActive=$false
+    $script:providerBlock=$null
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
     # Diagnostics only: measure actual elapsed work before tuning delays.
@@ -894,6 +903,7 @@ try {
               Start-Sleep -Milliseconds 400
             }
             if ($searchResult.blocked) {
+              $script:providerBlock=@{stage='SEARCH_PAGE';signal='PAGE_MARKER'}
               throw 'CARDMARKET_PROVIDER_CHALLENGE'
             }
             $consecutiveProviderTimeouts=0
@@ -1442,6 +1452,11 @@ try {
       if ($message -match 'CARDMARKET_PROVIDER_CHALLENGE') {
         $out.status = 'BLOCKED'
         $out.error = 'CARDMARKET_PROVIDER_CHALLENGE'
+        if($script:providerBlock){
+          $out.provider_block_stage=$script:providerBlock.stage
+          $out.provider_block_signal=$script:providerBlock.signal
+          if($script:providerBlock.httpStatus){$out.provider_http_status=$script:providerBlock.httpStatus}
+        }
         $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
         Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
         Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte

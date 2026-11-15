@@ -48,6 +48,10 @@ function Search-CardmarketSameOrigin {
 "@
  $reply=Js $expr 18 | ConvertFrom-Json
  if($reply.blocked -or [int]$reply.status -in @(403,429,503)){
+   $script:providerBlock=@{
+     stage='SEARCH_FETCH';httpStatus=[int]$reply.status
+     signal=if($reply.blocked){'RESPONSE_MARKER'}else{'HTTP_STATUS'}
+   }
    throw 'CARDMARKET_PROVIDER_CHALLENGE'
  }
  if([int]$reply.status -ne 200 -or !$reply.signedIn){return $null}

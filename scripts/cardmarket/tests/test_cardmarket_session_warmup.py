@@ -9,10 +9,11 @@ import unittest
 from pathlib import Path
 ROOT=Path(__file__).parent
 class SessionWarmupTests(unittest.TestCase):
- def test_launcher_order_cooldown_then_warmup_then_health_then_runner(self):
+ def test_launcher_checks_cooldown_then_bootstraps_only_new_browser(self):
   s=(source_path('Cardmarket-Collector-Launcher.ps1')).read_text(encoding='utf-8-sig')
   order=[s.index('CARDMARKET_COOLDOWN'),s.index("$warmupScript=Join-Path"),s.index("$diagnose=Join-Path"),s.index('Start-Process -FilePath "powershell.exe"')]
   self.assertEqual(order,sorted(order))
+  self.assertIn("if($browserNewlyStarted){\n  $warmupScript=",s)
   self.assertIn("if([string]$warmup.status -ne 'READY_FOR_HEALTH_CHECK')",s)
   self.assertIn("if([string]$health.status -ne 'AVAILABLE')",s)
   self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)

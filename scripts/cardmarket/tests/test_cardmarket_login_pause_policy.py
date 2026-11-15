@@ -20,10 +20,10 @@ class LoginPausePolicyTests(unittest.TestCase):
   self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",scanner)
   self.assertIn("Save-Progress $processed.Count $runTotal 'LOGIN_REQUIRED'",scanner)
   self.assertIn("Save-Progress $processed.Count $runTotal 'BLOCKED'",scanner)
- def test_resume_gate_does_not_retry_blocked_or_logged_out_session(self):
+ def test_resume_gate_blocks_unavailable_provider_but_allows_guests(self):
   launcher=(source_path('Cardmarket-Collector-Launcher.ps1')).read_text(encoding='utf-8-sig')
   self.assertIn("$health.login -ne 'AUTHENTICATED'",launcher)
-  self.assertIn("'LOGIN_UNVERIFIED'",launcher)
+  self.assertIn("if($browserNewlyStarted -and $health.status -eq 'BLOCKED')",launcher)
   self.assertIn('"-Languages","both"',launcher)
   self.assertNotIn('"-RequireLogin"',launcher)
   self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",launcher)

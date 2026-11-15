@@ -187,7 +187,9 @@ def snapshot(base:Path,language:str):
     if not isinstance(collector_total,int) or collector_total<=0:
         collector_total=None
     last_incident=None
-    if raw_status=='BLOCKED':
+    if raw_status=='BLOCKED' and progress.get('provider_block_stage')=='SESSION_BOOTSTRAP':
+        last_incident={'at':progress.get('updated_at'),'kind':'SESSION_BOOTSTRAP'}
+    elif raw_status=='BLOCKED':
         blocked = next((x for x in chronological if x.get('status')=='BLOCKED'), None)
         if blocked is not None:
             last_incident={
@@ -195,6 +197,9 @@ def snapshot(base:Path,language:str):
               'cardId':blocked.get('card_id'),
               'title':str(blocked.get('catalog_direct_id_challenge_title') or '')[:110],
               'path':str(blocked.get('catalog_direct_id_challenge_path') or '')[:130],
+              'stage':blocked.get('provider_block_stage'),
+              'httpStatus':blocked.get('provider_http_status'),
+              'signal':blocked.get('provider_block_signal'),
               'kind':('DIRECT_ID_INTERSTITIAL'
                       if blocked.get('catalog_direct_id_challenge_title')
                       else 'PROVIDER_BLOCKED'),
