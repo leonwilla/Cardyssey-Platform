@@ -73,3 +73,67 @@ function Update-CardmarketBlockedStreak([string]$Base,[string]$Status,
     if(Test-Path -LiteralPath $tmp){Remove-Item -LiteralPath $tmp -Force}
   }
 }
+
+# Keep semantic ambiguities and blocked products out of consecutive batches.
+function Test-CardmarketUnresolvedObservation {
+  param($Observation, $Epoch)
+  if(!$Observation){return $false}
+  $status=[string]$Observation.status
+  if($status -eq 'BLOCKED'){return $true}
+  if($status -notin @('MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT',
+                     'PRODUCT_ID_NOT_VERIFIED_FOR_CARD','PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED')){
+    return $false
+  }
+  try {
+    return ($null -eq $Epoch -or [DateTimeOffset]::Parse([string]$Observation.seen_at).UtcDateTime -ge $Epoch)
+  } catch {return $true}
+}
+
+function Get-CardmarketDueCases {
+  param([object[]]$Cases, [hashtable]$Latest, $Processed, [datetime]$NowUtc, $Epoch)
+  $priority=[Collections.Generic.List[object]]::new()
+  $fresh=[Collections.Generic.List[object]]::new()
+  $retry=[Collections.Generic.List[object]]::new()
+  $unresolved=[Collections.Generic.List[object]]::new()
+  foreach($item in $Cases){
+    $key='{0}|{1}' -f $item.cardyssey_karte,$item.variante_id
+    if($Processed.Contains($key)){continue}
+    $prior=$Latest[$key]
+    $seen=$null
+    if($prior){
+      try {$seen=[DateTimeOffset]::Parse([string]$prior.seen_at).UtcDateTime} catch {}
+    }
+    if(Test-CardmarketUnresolvedObservation $prior $Epoch){
+      if($null -ne $seen -and $seen -le $NowUtc.AddHours(-72)){$unresolved.Add($item)}
+      continue
+    }
+    $manualRequested=$false
+    if([string]$item.manual_scan_requested_at){
+      try {
+        $requested=[DateTimeOffset]::Parse([string]$item.manual_scan_requested_at).UtcDateTime
+        $manualRequested=($null -eq $seen -or $requested -gt $seen)
+      } catch {}
+    }
+    if($manualRequested){$priority.Add($item)}
+    elseif($prior -and $prior.status -like 'DEFERRED*'){
+      if($null -ne $seen -and $seen -le $NowUtc.AddHours(-2)){$retry.Add($item)}
+    }
+    elseif($prior -and ($prior.status -eq 'ERROR' -or
+           ($prior.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and [int]$prior.search_hits -eq 0))){
+      $retry.Add($item)
+    }
+    else {$fresh.Add($item)}
+  }
+  return $priority.ToArray() + $fresh.ToArray() + $retry.ToArray() + $unresolved.ToArray()
+}
+
+function Get-CardmarketLanguageOrder {
+  param([string]$Base, [string]$Languages)
+  if($Languages -ne 'both'){return $Languages}
+  return @('de','en') | Sort-Object -Property @{Expression={
+    try {
+      $progress=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $Base "progress-$_.json") | ConvertFrom-Json
+      [DateTimeOffset]::Parse([string]$progress.updated_at).UtcDateTime
+    } catch {[datetime]::MinValue}
+  }}, @{Expression={$_}}
+}

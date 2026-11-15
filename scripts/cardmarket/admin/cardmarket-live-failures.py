@@ -13,6 +13,7 @@ import argparse,csv,json,importlib.util,subprocess
 from datetime import datetime,timezone
 from pathlib import Path
 from urllib.parse import urlsplit
+from cardmarket_print_routes import SUBSET_EVIDENCE, VINTAGE_EVIDENCE, reference_urls
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 spec=importlib.util.spec_from_file_location('filter_readiness',Path(__file__).resolve().parents[0].parent/'core'/'cardmarket-filter-readiness.py')
 filter_readiness=importlib.util.module_from_spec(spec);spec.loader.exec_module(filter_readiness)
@@ -20,6 +21,8 @@ SUCCESS={'MAPPED_NO_PRICE_REQUIRED','COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVER
 PRICE_LIMIT_STATUSES={'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','FILTER_NOT_APPLIED'}
 TECHNICAL={'BLOCKED','LOGIN_REQUIRED','ERROR','PROVIDER_ERROR','PROVIDER_TIMEOUT','CONNECTION_LOST','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','FILTER_NOT_APPLIED','NO_CONFIRMED_FILTERED_OFFERS','FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
 CANDIDATE_URL_LIMIT = 5
+PRINT_PAGE_REVIEW_STATUSES = {'MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT',
+    'PRODUCT_ID_NOT_VERIFIED_FOR_CARD','PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED','PRODUCT_SET_SLUG_MISMATCH'}
 CSV_COLUMNS = (
     ('Sprache', 'language'),
     ('Prüfbereich', 'type'),
@@ -47,7 +50,13 @@ CSV_COLUMNS = (
     ('Zuletzt geprüft', 'seenAt'),
 )
 
-def classify(status,entry=None,queue=None):
+def classify(status,entry=None,queue=None,references=()):
+    if status in PRINT_PAGE_REVIEW_STATUSES and references:
+        return 'DRUCKPRUEFUNG'
+    if (status == 'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' and entry
+            and entry.get('reference_page_evidence') in (SUBSET_EVIDENCE,VINTAGE_EVIDENCE)
+            and entry.get('exact_print_filter_supported') is False):
+        return 'DRUCKPRUEFUNG'
     if status=='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' and entry and queue:
         if (entry.get('catalog_direct_id_verified') is True and
             str(entry.get('product_id') or '')==str(queue.get('catalog_singleton_id') or '') and
@@ -161,7 +170,8 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
         if resolved_after_scan(entry,decisions.get(key)):continue
         status=str(entry.get('status') or '')
         q=queue.get(key,{})
-        group=classify(status,entry,q)
+        references=reference_urls(q,language)
+        group=classify(status,entry,q,references)
         if not group:continue
         card,var=key
         readiness=filter_readiness.analyze(q) if q else {'missing':[],'unsupported':[]}
@@ -176,7 +186,7 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
           'productId':str(entry.get('product_id') or ''), 'seenAt':entry.get('seen_at') or '',
           'scoreMatchState':str(entry.get('score_matching_status') or ''),
           'scorePageCandidateOnly':entry.get('score_page_candidate_only') is True,
-          'scoreCandidateUrls':[u for u in (entry.get('score_top_candidate_urls') or [])[:CANDIDATE_URL_LIMIT]
+          'scoreCandidateUrls':[u for u in (references or entry.get('score_top_candidate_urls') or [])[:CANDIDATE_URL_LIMIT]
              if isinstance(u,str) and u.startswith('https://www.cardmarket.com/')],
           'filterMode':str(entry.get('filter_mode') or ''),
           'officialProductGuide':entry.get('official_guide_product_aggregate') or None,

@@ -70,4 +70,56 @@ class Tests(unittest.TestCase):
   self.assertIn("$out.standard_offer_filter_candidate=$true",s)
   self.assertIn('expected_reverse_holo',s)
   self.assertIn('all_pages_complete',s)
+
+ def test_cross_locale_vintage_page_is_card_only(self):
+  with tempfile.TemporaryDirectory() as td:
+   root=Path(td);(root/'config').mkdir()
+   hints=ROOT.parent/'config/cardmarket-known-print-page-hints.json'
+   (root/'config'/hints.name).write_bytes(hints.read_bytes())
+   fields=['cardyssey_karte','variante_id','set_id','kartennummer','drucktyp','stempel',
+           'sonderdruck','cardmarket_ids','known_url','routing_state']
+   expected={'base1':('8','Machamp-V1-BS8','1523','273703','schattenlos'),
+             'base2':('13','Venomoth-V1-JU13','1525','273810','Fehlendes Erweiterungssymbol'),
+             'base3':('15','Zapdos-V1-FO15','1526','273883','Copyright 1999-2000')}
+   guards={'base1':'Base-Set','base2':'Jungle','base3':'Fossil'}
+   for lang in ('de','en'):
+    with (root/f'queue-{lang}.csv').open('w',encoding='utf-8-sig',newline='') as f:
+     writer=csv.DictWriter(f,fieldnames=fields);writer.writeheader()
+     for sid,(number,slug,_,pid,subtype) in expected.items():
+      card=dict(cardyssey_karte=f'{sid}-{number}',set_id=sid,kartennummer=number,
+                drucktyp='Holo',stempel='[]',routing_state='SOURCE_ONLY')
+      url=f'https://www.cardmarket.com/en/Pokemon/Products/Singles/{guards[sid]}/{slug}'
+      writer.writerow(dict(card,variante_id='base',cardmarket_ids=pid,known_url=url if lang=='en' else ''))
+      writer.writerow(dict(card,variante_id='sub',cardmarket_ids='',sonderdruck=subtype))
+   products={pid:{'idExpansion':int(exp)} for _,_,exp,pid,_ in expected.values()}
+   counts=h.apply('de',base=root,root=root,products=products)
+   with (root/'queue-de.csv').open(encoding='utf-8-sig') as f:
+    cases=[r for r in csv.DictReader(f) if r['variante_id']=='sub']
+   self.assertEqual(counts['vintagePages'],3)
+   for row in cases:
+    sid=row['set_id'];_,slug,_,pid,_=expected[sid]
+    self.assertEqual(row['reference_product_id'],pid)
+    self.assertEqual(row['reference_product_url'],f'https://www.cardmarket.com/de/Pokemon/Products/Singles/{guards[sid]}/{slug}')
+    self.assertEqual(row['reference_print_verified'],'NO')
+    self.assertEqual(row['reference_standard_filter_supported'],'NO')
+    self.assertEqual(row['exact_print_filter_supported'],'false')
+    self.assertEqual(row['cardmarket_ids'],'')
+
+ def test_stamp_routes_validate_original_set_number_and_scope(self):
+  from cardmarket_print_routes import stamp_route, subset_urls
+  row={'set_id':'dp6','kartennummer':'144','stempel':'["David Cohen"]'}
+  correct='https://www.cardmarket.com/en/Pokemon/Products/Singles/WCD-2009/Mewtwo-LVX-WCD09LA-144'
+  wrong=[
+      correct.replace('09LA','09GE'),
+      correct.replace('144','140'),
+      correct.replace('WCD-2009','WCD-2008'),
+      correct.replace('www.cardmarket.com','evil.example'),
+  ]
+  route=stamp_route(row)
+  self.assertEqual(route,'WORLD_CHAMPIONSHIPS')
+  self.assertEqual(subset_urls(row,[correct,*wrong],'de',route),[correct.replace('/en/','/de/')])
+  self.assertEqual(stamp_route({**row,'stempel':'["Jason Klaczynski"]'}),route)
+  self.assertEqual(stamp_route({**row,'stempel':'["michael-pramawat"]'}),route)
+  self.assertEqual(stamp_route({**row,'set_id':'sv05'}),'')
+
 if __name__=='__main__':unittest.main()

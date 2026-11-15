@@ -80,7 +80,7 @@ class CheckVariants(unittest.TestCase):
         self.assertIn("bulk_feed_only_variants = $bulkFeedOnly",s)
     def test_batch_has_pending_limit_and_resume(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
-        for token in ("[int]$BatchLimit = 0", "-not $processed.Contains($k)", "Select-Object -First $BatchLimit", "BATCH_COMPLETE_MORE_PENDING"):
+        for token in ("[int]$BatchLimit = 0", "Get-CardmarketDueCases", "Select-Object -First $BatchLimit", "BATCH_COMPLETE_MORE_PENDING"):
             self.assertIn(token,s)
     def test_qc_reports_complete_prices_as_print_unverified(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")

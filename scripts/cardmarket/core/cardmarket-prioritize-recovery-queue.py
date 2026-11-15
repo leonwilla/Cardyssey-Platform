@@ -11,6 +11,7 @@ Priority:
   6  remaining technical / mapping errors
   7  ordinary non-bulk (current-epoch incomplete)
   8  bulk (has feed fallback; not deleted)
+  9  unresolved in this scan cycle or last blocked by the provider
 The scanner applies its own due/epoch gate, so this only changes order, not
 whether a card should be scanned. No price/cache/identity DB writes.
 """
@@ -34,6 +35,9 @@ FAILED={'MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_IN_VERIFIED
 'FILTER_NOT_APPLIED','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET',
 'DEFERRED_SEARCH_RESULTS_UNVERIFIED','BLOCKED','LOGIN_REQUIRED','ERROR',
 'PROVIDER_ERROR','PROVIDER_TIMEOUT','CONNECTION_LOST','MISSING_REQUIRED_SCAN_FIELDS'}
+UNRESOLVED={'MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT',
+            'PRODUCT_ID_NOT_VERIFIED_FOR_CARD','PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'}
+
 def moment(value):
     try:
         d=datetime.fromisoformat(str(value).replace('Z','+00:00'))
@@ -49,7 +53,13 @@ def is_pending_manually(row, obs):
     request=moment(row.get('manual_scan_requested_at'))
     previous=moment(obs.get('seen_at')) if obs else None
     return bool(request and (not previous or request>previous))
-def classify(row, obs, known_key=False):
+def classify(row, obs, known_key=False, epoch=None):
+    if obs:
+        status=obs.get('status')
+        seen=moment(obs.get('seen_at'))
+        if status=='BLOCKED' or (status in UNRESOLVED and
+                                 (epoch is None or seen is None or seen>=epoch)):
+            return 9
     special=is_special(row)
     manual=is_pending_manually(row,obs)
     failed=bool(obs and str(obs.get('status') or '') in FAILED)
@@ -64,11 +74,11 @@ def classify(row, obs, known_key=False):
     if str(row.get('scan_tier') or '')!='4':return 7
     return 8
 
-def prioritize(rows:list,latest:dict,manual_candidates:set)->tuple[list,dict]:
+def prioritize(rows:list,latest:dict,manual_candidates:set,epoch=None)->tuple[list,dict]:
     items=[]
     for i,row in enumerate(rows):
         key=(row['cardyssey_karte'],row['variante_id'])
-        rank=classify(row,latest.get(key),key in manual_candidates)
+        rank=classify(row,latest.get(key),key in manual_candidates,epoch)
         items.append((rank,i,row))
     items.sort(key=lambda x:(x[0],x[1]))
     output=[x[2] for x in items]
@@ -107,6 +117,8 @@ def run(base=BASE,apply=False,candidates=None,recheck_open=False,now=None):
     report={'mode':'APPLY' if apply else 'DRY_RUN','selectedOpenMappingCases':len(candidates),
        'recheckOpenRequested':recheck_open,'recheckAlreadyScheduled':bool(recheck_open and sentinel.exists()),
        'languages':{}}
+    epoch_file=base/'full-rescan-epoch.json'
+    epoch=moment(json.loads(epoch_file.read_text(encoding='utf-8-sig')).get('requestedAt')) if epoch_file.is_file() else None
     for lang in ('de','en'):
         path=base/f'queue-{lang}.csv'
         with (base/f'queue-{lang}.review.lock').open('a') as lock:
@@ -128,7 +140,7 @@ def run(base=BASE,apply=False,candidates=None,recheck_open=False,now=None):
                     if seen and (not requested or requested<=seen):
                         row['manual_scan_requested_at']=stamp.isoformat()
                         marked+=1
-            out,stats=prioritize(rows,latest,specific)
+            out,stats=prioritize(rows,latest,specific,epoch)
             report['languages'][lang]={'total':len(rows),
                'openMappingCasesInQueue':sum((a['cardyssey_karte'],a['variante_id']) in specific for a in rows),
                'specialRecheckMarked':marked,**stats}

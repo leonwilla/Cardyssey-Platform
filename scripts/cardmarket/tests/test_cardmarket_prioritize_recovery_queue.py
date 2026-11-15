@@ -27,9 +27,21 @@ class PrioritizeRecoveryTests(unittest.TestCase):
     ('fail','v1'):{'status':'ERROR','seen_at':(now-timedelta(days=1)).isoformat()}}
   output,report=mod.prioritize(rows,latest,{('mapped','v1')})
   self.assertEqual([r['cardyssey_karte'] for r in output],
-                   ['mapped','pokeball','fail','old-error','bulk'])
+                   ['mapped','pokeball','fail','bulk','old-error'])
   self.assertEqual(len(output),5)
   self.assertEqual(output[0]['existing_price_eur'],'0.15')
+ def test_unresolved_current_cycle_and_provider_blocks_follow_fresh_cases(self):
+  now=datetime.now(timezone.utc)
+  epoch=now-timedelta(days=4)
+  rows=[self.make(f'old-{i}','Pokeball',manual=now.isoformat()) for i in range(17)]
+  rows.extend(self.make(f'fresh-{i}',tier='2') for i in range(16))
+  states=list(mod.UNRESOLVED)+['BLOCKED']
+  latest={(r['cardyssey_karte'],'v1'):{'status':states[i%len(states)],
+           'seen_at':(now-timedelta(hours=1)).isoformat()} for i,r in enumerate(rows[:17])}
+  output,report=mod.prioritize(rows,latest,set(latest),epoch)
+  self.assertEqual([r['cardyssey_karte'] for r in output[:16]],[f'fresh-{i}' for i in range(16)])
+  self.assertEqual(report['tiers'][9],17)
+
  def test_same_card_keeps_distinct_variant_rows(self):
   rows=[self.make('wattzapf','Meisterball'),self.make('wattzapf','Pokeball')]
   rows[1]['variante_id']='v2'

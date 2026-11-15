@@ -56,7 +56,9 @@ def collect(files, queue, language, set_slugs=None):
                         reasons["INVALID_ID_OR_URL"]+=1
                         continue
                     set_slug=set_slugs.get(q.get('set_id'))
-                    if set_slug and not urlsplit(url).path.split('/')[5].startswith(set_slug):
+                    exact_route = (q.get('routing_state') == 'VERIFIED_PRODUCT_ID'
+                                   and q.get('known_url','').split('?')[0] == url)
+                    if set_slug and urlsplit(url).path.split('/')[5] != set_slug and not exact_route:
                         reasons['WRONG_CARDMARKET_SET']+=1
                         continue
                     allowed={x.strip() for x in (q.get("cardmarket_ids") or "").split(",")}

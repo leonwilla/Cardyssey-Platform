@@ -11,10 +11,9 @@ _cm_root=_cm_Path(__file__).resolve().parents[2]
 for _cm_import in (_cm_root, _cm_root/'cardmarket/core', _cm_root/'cardmarket/admin', _cm_root/'cardmarket/archive'):
     if str(_cm_import) not in _cm_sys.path:
         _cm_sys.path.insert(0,str(_cm_import))
-from cardmarket_game_profile import load_game_profile
+from cardmarket_print_routes import load_evidence, official_products, read_queue
 import argparse
 import csv
-import hashlib
 import json
 import re
 import subprocess
@@ -23,20 +22,15 @@ from pathlib import Path
 
 ROOT=Path("/home/tv/cardshop")
 QUEUE=Path("/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector")
-FEEDS=Path("/home/tv/.local/state/cardyssey-queue/price-feeds")
-CAT_URL=load_game_profile()['product_url']
 OUT=ROOT/"reports"
 FIELDS=("language","card_id","variant_id","set_id","number","name","type","foil","subtype","stamps",
         "candidate_ids","matched_set_ids","expansion_id","classification","product_names","requires_confirmation",
-        "guide_has_30day","guide_product_id")
+        "guide_has_30day","guide_product_id","stamp_route","reference_candidate_urls",
+        "reference_product_url","reference_product_id","exact_print_filter_supported")
 def db_json(sql):
     p=subprocess.run(["docker","exec","cardyssey-db","psql","-X","-v","ON_ERROR_STOP=1",
                       "-U","cardyssey","-d","cardyssey","-At","-c",sql],capture_output=True,text=True,check=True)
     return [json.loads(line) for line in p.stdout.splitlines() if line.strip()]
-def official_products():
-    p=FEEDS/(hashlib.sha256(CAT_URL.encode()).hexdigest()+".json")
-    raw=json.loads(p.read_text())
-    return {str(x["idProduct"]):x for x in raw["products"]},raw.get("createdAt")
 def set_mapping():
     rows=db_json("""SELECT json_build_object('set',set_id,'exp',provider_expansion_id)::text
        FROM cardmarket_catalog_link_candidates
@@ -66,7 +60,9 @@ def infer_english_sets(products,known):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--review-limit",type=int,default=2000)
+    ap.add_argument('--output-dir',type=Path,default=OUT)
     args=ap.parse_args()
+    args.output_dir.mkdir(parents=True,exist_ok=True)
     products,feed_date=official_products()
     sets=set_mapping()
     inferred,flagged=infer_english_sets(products,sets)
@@ -84,15 +80,16 @@ def main():
                 if r['status']=='AMBIGUOUS_OVERLAPPING_EXPANSIONS'
                 and not (r.get('independentlyConfirmedOverride') or r.get('variantIdConsensusMatch'))}
             for sid in quarantined:all_sets.pop(sid,None)
+    queues={lang:read_queue(QUEUE/f'queue-{lang}.csv') for lang in ('de','en')}
+    routing=load_evidence(QUEUE,queues,products)
     review=[]
     counts={}
     for lang in ("de","en"):
         counts[lang]=Counter()
-        out=OUT/f"cardmarket-identity-worklist-{lang}.csv"
-        with (QUEUE/f"queue-{lang}.csv").open(encoding="utf-8-sig",newline="") as f,out.open("w",encoding="utf-8",newline="") as w:
-            reader=csv.DictReader(f)
+        out=args.output_dir/f"cardmarket-identity-worklist-{lang}.csv"
+        with out.open("w",encoding="utf-8",newline="") as w:
             writer=csv.DictWriter(w,fieldnames=FIELDS);writer.writeheader()
-            for r in reader:
+            for r in queues[lang]:
                 counts[lang]["total"]+=1
                 ids=sorted({i for i in r["cardmarket_ids"].split(",") if i.isdigit()})
                 exp=all_sets.get(r["set_id"])
@@ -120,17 +117,24 @@ def main():
                 elif not matched:state="NO_MATCH_IN_VERIFIED_SET"
                 elif len(matched)>1:state="MULTIPLE_PRODUCTS_IN_VERIFIED_SET"
                 else:state="ONE_PRODUCT_IN_VERIFIED_SET"
-                typ=(r["drucktyp"] or "").casefold()
-                finish="REVERSE" if "reverse" in typ else ("HOLO" if "holo" in typ else "NORMAL")
                 special=bool(r["sonderdruck"].strip() or r["foil"].strip() or r["stempel"].strip() not in ("","[]","null"))
                 # Inferred English set identities are only consensus suggestions.
                 # They are not equivalent to the independently mapped DE set crosswalk.
                 if lang=="en" and r["set_id"] in inferred:
                     state=state.replace("VERIFIED_SET","INFERRED_SET")
+                route=routing[lang].get((r['cardyssey_karte'],r['variante_id']),{})
                 if human_confirmed:state='HUMAN_CONFIRMED_EXACT_PRINT'
+                elif route.get('reference_product_id'):
+                    pid=route['reference_product_id']
+                    matched=[pid];exp=str(products[pid]['idExpansion'])
+                    state='VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED'
+                elif route.get('reference_candidate_urls'):
+                    state='STAMP_SUBSET_SET_NUMBER_CANDIDATES'
+                elif route.get('stamp_route'):
+                    state='STAMP_SUBSET_SEARCH_REQUIRED'
                 elif special:state += "_SPECIAL_PRINT"
                 counts[lang][state]+=1
-                chosen=matched[0] if len(matched)==1 and not print_missing else ""
+                chosen=matched[0] if len(matched)==1 and not print_missing and not route else ""
                 data=dict(language=lang,card_id=r["cardyssey_karte"],variant_id=r["variante_id"],
                           set_id=r["set_id"],number=r["kartennummer"],name=r["kartenname_suche"],
                           type=r["drucktyp"],foil=r["foil"],subtype=r["sonderdruck"],stamps=r["stempel"],
@@ -139,12 +143,12 @@ def main():
                           product_names=" | ".join(products[i].get("name","") for i in matched[:5]),
                           requires_confirmation="SET_NUMBER_LANGUAGE_PRINT_FOIL_STAMP",
                           guide_has_30day="",guide_product_id=chosen)
+                data.update({col:route.get(col,'') for col in FIELDS[-5:]})
                 writer.writerow(data)
                 if state not in ('ONE_PRODUCT_IN_VERIFIED_SET','HUMAN_CONFIRMED_EXACT_PRINT'):
                     review.append(data)
     # Prefer existing ownership and missing price when shown in admin; no automatic price publication.
-    OUT.mkdir(parents=True,exist_ok=True)
-    with (OUT/"cardmarket-print-review-all.csv").open("w",encoding="utf-8",newline="") as f:
+    with (args.output_dir/"cardmarket-print-review-all.csv").open("w",encoding="utf-8",newline="") as f:
         w=csv.DictWriter(f,fieldnames=FIELDS);w.writeheader();w.writerows(review)
     status={"feed_date":feed_date,"official_catalog_size":len(products),"de_set_candidate_crosswalks":len(sets),
             "inferred_unverified_en_set_mappings":len(inferred),"en_set_conflicts":len(flagged),
@@ -152,6 +156,6 @@ def main():
             "manual_review_rows":len(review),
             "catalog_set_ambiguities_held":sorted(quarantined),
             "safety":"CANDIDATES ONLY. No prices or routing rows have been written."}
-    (OUT/"cardmarket-identity-pipeline-status.json").write_text(json.dumps(status,ensure_ascii=False,indent=2)+"\n")
+    (args.output_dir/"cardmarket-identity-pipeline-status.json").write_text(json.dumps(status,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(status,ensure_ascii=False))
 if __name__=="__main__":main()

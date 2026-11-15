@@ -113,6 +113,8 @@ def build_updates(rows: list[dict], candidates: list[dict],
             counters["rejected_identity_or_set"] += 1
             output.append(row)
             continue
+        if row.get('stamp_route') or row.get('reference_evidence') == 'VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED':
+            continue
         current = str(row.get("reference_product_url") or "").split("?")[0]
         if (current and current != url) or str(row.get("reference_print_verified") or "") == "YES":
             counters["rejected_existing_reference"] += 1

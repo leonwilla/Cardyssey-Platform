@@ -46,6 +46,7 @@ $resultsPath  = Join-Path $OutputDir "browser-observations-$Language.jsonl"
 $unverifyPath = Join-Path $OutputDir "unverified-candidates-$Language.jsonl"
 $progressPath = Join-Path $OutputDir "progress-$Language.json"
 $errorPath    = Join-Path $OutputDir "connection-errors-$Language.jsonl"
+$providerAttempted=$false
 # Independently browser-observed set/number version leads; never prices.
 $versionFamilies=@{}
 $familyEvidenceFile=Join-Path $OutputDir 'cardmarket-version-family-evidence.json'
@@ -56,6 +57,7 @@ if(Test-Path $familyEvidenceFile){
   } catch {throw 'Bad cardmarket-version-family-evidence.json'}
 }
 # Fail closed if ranking code is missing or unparsable. It never verifies a price.
+. (Join-Path $PSScriptRoot 'Cardmarket-Backoff-Policy.ps1')
 $scoreModule=Join-Path $PSScriptRoot 'cardmarket-search-score.ps1'
 if(!(Test-Path $scoreModule)){throw 'CARDMARKET_SCORE_MODULE_MISSING'}
 . $scoreModule
@@ -191,7 +193,6 @@ function Connect-Cdp {
   [CdpPump]::Start($script:ws, $script:rxQueue, $script:rxAvail, $script:rxCts.Token)
   $script:cdpRequestId = 0
 }
-Connect-Cdp
 
 function Send-Cdp([string]$method, [hashtable]$parameters, [int]$TimeoutSec = 20) {
   $script:cdpRequestId += 1
@@ -356,7 +357,7 @@ function Append-Observation([string]$path, [string]$line) {
 }
 
 function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) {
-  $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath}
+  $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath;provider_attempted=$providerAttempted}
   $s | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
 }
 
@@ -395,6 +396,7 @@ $cases = if ($ScanMode -eq 'missing') {
 } else { $browserCases }
 $runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
 
+$candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
 $processed = [Collections.Generic.HashSet[string]]::new()
 $latest = @{}
 if (Test-Path $resultsPath) {
@@ -456,7 +458,7 @@ foreach ($record in $latest.Values) {
   } catch {}
 }
 
-foreach ($case in $cases) {
+foreach ($case in $candidateCases) {
   $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
   if (!$latest.ContainsKey($key)) { continue }
   $prev = $latest[$key]
@@ -512,43 +514,10 @@ $consecutiveProviderTimeouts=0
 # followed by exact live idProduct, card number and set validation.
 $catalogIdLookupUnsupported=$true
 $directUrlFilterSupported=$true
-Save-Progress $processed.Count $runTotal 'RUNNING' ''
-
 try {
-  $candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
-  # Do not get stuck on the same provider-timeout rows at every launch.
-  # New, not-yet-attempted cases get priority; deferred cases retry after 2h.
-  # A retry is never counted as completed until actual evidence is received.
-  $due=@($candidateCases | Where-Object {
-    $k = '{0}|{1}' -f $_.cardyssey_karte, $_.variante_id
-    -not $processed.Contains($k)
-  })
-  $priority = [Collections.Generic.List[object]]::new()
-  $fresh = [Collections.Generic.List[object]]::new()
-  $retry = [Collections.Generic.List[object]]::new()
-  foreach($item in $due) {
-    $k = '{0}|{1}' -f $item.cardyssey_karte, $item.variante_id
-    $prior = if ($latest.ContainsKey($k)) { $latest[$k] } else { $null }
-    $manualRequested=$false
-    if([string]$item.manual_scan_requested_at){
-      try{
-        $requested=[datetime]::Parse([string]$item.manual_scan_requested_at).ToUniversalTime()
-        $manualRequested=(!$prior -or $requested -gt [datetime]::Parse([string]$prior.seen_at).ToUniversalTime())
-      }catch{$manualRequested=$true}
-    }
-    if($manualRequested){$priority.Add($item)}
-    elseif ($prior -and [string]$prior.status -eq 'NO_EXACT_NUMBER_SEARCH_HIT' -and [int]$prior.search_hits -eq 0) {
-      # Never let the old 8,902 false zero-results starve new cards.
-      $retry.Add($item)
-    }
-    elseif ($prior -and [string]$prior.status -like 'DEFERRED*') {
-      $oldEnough=$false
-      try { $oldEnough=([datetime]::Parse([string]$prior.seen_at).ToUniversalTime() -lt $nowUtc.AddHours(-2)) } catch {}
-      if($oldEnough){ $retry.Add($item) }
-    } else { $fresh.Add($item) }
-  }
-  $ordered=@($priority.ToArray()) + @($fresh.ToArray()) + @($retry.ToArray())
+  $ordered=@(Get-CardmarketDueCases -Cases $candidateCases -Latest $latest -Processed $processed -NowUtc $nowUtc -Epoch $fullRecheckAfter)
   $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
+  Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
     $script:cmFetchedProductActive=$false
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
@@ -596,7 +565,14 @@ try {
       if(([string]$case.stempel -notin @('','[]')) -and ([string]$case.stempel -notmatch '(?i)1\. auflage|1st.edition|first.edition')){
         $out.non_filterable_print_attributes+= 'special_stamp:'+([string]$case.stempel)
       }
-      if ([string]$case.candidate_status -eq 'SET_EXPANSION_AMBIGUOUS' -and [string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID') {
+      $guard=[string]$setSlugGuards[[string]$case.set_id]
+      $stampRoute=Get-CardmarketStampRoute -SetId $case.set_id -Stamp $case.stempel
+      $vintageRoute=Test-CardmarketVintageSubtype -SetId $case.set_id -Subtype $case.sonderdruck
+      $cacheKey=$Language+'|'+([string]$case.cardyssey_karte)+'|'+([string]$case.variante_id)
+      if($stampRoute -or $vintageRoute){$out.exact_print_filter_supported=$false}
+      if($stampRoute){$out.stamp_route=$stampRoute}
+      if ([string]$case.candidate_status -eq 'SET_EXPANSION_AMBIGUOUS' -and
+          [string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID' -and !$stampRoute -and !$vintageRoute) {
         $out.status='SET_MAPPING_PENDING'
         $out.error='MULTIPLE_CARDMARKET_EXPANSIONS_MATCH_SAME_SET_CARD_NAMES'
         $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
@@ -605,6 +581,44 @@ try {
         Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
         continue
       }
+      # Existing card-page evidence can go straight to print review.
+      # Do not fetch offers or confirm an exact print from these references.
+      if([string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID' -and !$verifiedPrintMappings.ContainsKey($cacheKey)){
+        $referenceLinks=@()
+        if($vintageRoute -and [string]$case.reference_evidence -eq 'VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED' -and
+           [string]$case.reference_product_id -match '^\d+$' -and
+           [string]$case.reference_product_id -in ([string]$case.vintage_card_candidate_ids -split ',')){
+          $referenceLinks=@(@{url=[string]$case.reference_product_url})
+        } elseif($stampRoute -and [string]$case.reference_candidate_urls){
+          try {
+            $referenceLinks=@((ConvertFrom-Json -InputObject ([string]$case.reference_candidate_urls)) |
+              ForEach-Object {@{url=[string]$_}})
+          } catch {}
+        }
+        if($referenceLinks.Count){
+          $rank=Resolve-CardmarketSearchCandidates -Links $referenceLinks -PrintedNumber $case.kartennummer -SetSlug $guard -SetId $case.set_id -Language $Language -Stamp $case.stempel -PreferBasePage:$vintageRoute
+          if($rank.candidateCount -gt 0){
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error=if($vintageRoute){'VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED'}else{'STAMP_SUBSET_SET_NUMBER_CANDIDATES'}
+            $out.reference_page_evidence=$out.error
+            $out.score_top_candidate_urls=@($rank.candidates | Select-Object -First 5 | ForEach-Object {$_.url})
+            $out.score_matching_status=[string]$rank.reason
+            $out.score_candidate_count=[int]$rank.candidateCount
+            $out.score_page_candidate_only=$true
+            $out.exact_print_verified=$false
+            if($rank.uniquePageCandidate){$out.url=$rank.uniquePageCandidate.url}
+            if($vintageRoute){$out.product_id=[string]$case.reference_product_id}
+            $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+            Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+            Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
+            [void]$processed.Add($key)
+            Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+            continue
+          }
+        }
+      }
+      if(!$ws){Connect-Cdp}
+      $providerAttempted=$true
       # Fail closed when full Cardmarket session is required. Guest pages
       # cannot reliably paginate, so they must not create misleading results.
       $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
@@ -616,7 +630,6 @@ try {
       $out.query = "$name $number"
       $savedUrl = ''
       $allowedIds = @([string]$case.cardmarket_ids -split ',')
-      $cacheKey=$Language+'|'+([string]$case.cardyssey_karte)+'|'+([string]$case.variante_id)
       if($verifiedPrintMappings.ContainsKey($cacheKey)){
         $confirmed=$verifiedPrintMappings[$cacheKey]
         $out.print_mapping_cache='HUMAN_CONFIRMED'
@@ -625,7 +638,10 @@ try {
         if($known -match ('^https://www[.]cardmarket[.]com/(de|en)/'+$gamePath+'/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$')){
           $parsed=[uri]$known
           if($parsed.AbsolutePath.StartsWith($LangCfg.PathPrefix+'/Products/Singles/') -and
-              [string]$confirmed.product_id -in $allowedIds){$savedUrl=$known}
+              [string]$confirmed.product_id -in $allowedIds){
+            $savedUrl=$known
+            $out.trusted_print_route=$true
+          }
         }
       }
 
@@ -636,7 +652,7 @@ try {
       $familyCandidate=$null
       $isSpecialPrint=([string]$case.foil -ne '' -or [string]$case.stempel -notin @('','[]') -or
                        [string]$case.sonderdruck -ne '' -or [string]$case.drucktyp -notin @('Normal','Reverse','normal','reverse'))
-      if($isSpecialPrint -and $versionFamilies.ContainsKey([string]$case.cardyssey_karte)){
+      if($isSpecialPrint -and !$stampRoute -and !$vintageRoute -and $versionFamilies.ContainsKey([string]$case.cardyssey_karte)){
         $family=$versionFamilies[[string]$case.cardyssey_karte]
         if([string]$family.status -eq 'VERSION_FAMILY_PRINT_UNVERIFIED' -and
            [string]$family.cardId -eq [string]$case.cardyssey_karte){
@@ -689,6 +705,7 @@ try {
           if ($candidate.Scheme -eq 'https' -and $candidate.Host -eq 'www.cardmarket.com' -and
               $candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) {
             $savedUrl = $candidate.AbsoluteUri
+            $out.trusted_print_route=$true
           }
         } catch {}
       }
@@ -696,7 +713,7 @@ try {
       # Human-supplied CARD-page hints only: navigate directly to the
       # correct Cardmarket page, but NEVER interpret this as proof of a rare
       # stamp/foil, nor as a verified edition-specific price.
-      if(!$savedUrl -and [string]$case.reference_print_verified -eq 'NO' -and
+      if(!$savedUrl -and !$stampRoute -and !$vintageRoute -and [string]$case.reference_print_verified -eq 'NO' -and
          -not [string]::IsNullOrWhiteSpace([string]$case.reference_product_url)) {
         try {
           $referenceUri=[uri]([string]$case.reference_product_url)
@@ -716,7 +733,7 @@ try {
         $savedUrl=[string]$familyCandidate.productUrl
         $out.version_family_candidate_used=$true
       }
-      if (!$savedUrl -and $latest.ContainsKey($key)) {
+      if (!$savedUrl -and !$stampRoute -and !$vintageRoute -and $latest.ContainsKey($key)) {
         $prior = $latest[$key]
         if (([string]$prior.product_id -in $allowedIds) -and $prior.identity_confirmed -eq $true) {
           try {
@@ -726,7 +743,7 @@ try {
           } catch {}
         }
       }
-      if (!$savedUrl) {
+      if (!$savedUrl -and !$stampRoute -and !$vintageRoute) {
         $reuse = @($allowedIds | Where-Object { $_ -and $knownProductPages.ContainsKey("$($case.cardyssey_karte)|$_") })
         if ($reuse.Count -eq 1) { $savedUrl = $knownProductPages["$($case.cardyssey_karte)|$($reuse[0])"] }
       }
@@ -819,7 +836,7 @@ try {
         $catalogName=[string]$case.catalog_search_name
         $searchQueries = @($out.query)
         if (![string]::IsNullOrWhiteSpace($catalogName) -and
-            [string]$case.catalog_singleton_id -match '^[0-9]+$') {
+            ($stampRoute -or $vintageRoute -or [string]$case.catalog_singleton_id -match '^[0-9]+$')) {
           $searchQueries=@($catalogName,$out.query)
         }
         $likely=@()
@@ -877,10 +894,7 @@ try {
               Start-Sleep -Milliseconds 400
             }
             if ($searchResult.blocked) {
-              $out.status='BLOCKED'
-              $out.error='CARDMARKET_PROVIDER_CHALLENGE'
-              Save-Progress $processed.Count $runTotal 'BLOCKED' $case.cardyssey_karte
-              break
+              throw 'CARDMARKET_PROVIDER_CHALLENGE'
             }
             $consecutiveProviderTimeouts=0
             $links = @($searchResult.links)
@@ -903,11 +917,20 @@ try {
           # automatically treated as a stamp. This is only PAGE ranking.
           $guard=[string]$setSlugGuards[[string]$case.set_id]
           if(!$guard -and !$isSpecialPrint){$guard=[string]$derivedSetSlugs[[string]$case.set_id]}
-          $rank=Resolve-CardmarketSearchCandidates -Links $links -PrintedNumber $number -SetSlug $guard -Name $name -Stamp ([string]$case.stempel) -Foil ([string]$case.foil) -PrintType ([string]$case.drucktyp) -AllowedProductIds $allowedIds
+          $rank=Resolve-CardmarketSearchCandidates -Links $links -PrintedNumber $number -SetSlug $guard -SetId $case.set_id -Language $Language -Name $name -Stamp ([string]$case.stempel) -Foil ([string]$case.foil) -PrintType ([string]$case.drucktyp) -AllowedProductIds $allowedIds -PreferBasePage:$vintageRoute
           $out.score_matching_status=[string]$rank.reason
           $out.score_candidate_count=[int]$rank.candidateCount
           $out.score_matched_set=[bool]$guard
           $out.score_top_candidate_urls=@($rank.candidates | Select-Object -First 5 | ForEach-Object {$_.url})
+          if($rank.stampRoute -and $rank.candidateCount -gt 0){
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error='STAMP_SUBSET_SET_NUMBER_CANDIDATES'
+            $out.reference_page_evidence=$out.error
+            $out.score_page_candidate_only=$true
+            $out.exact_print_verified=$false
+            if($rank.uniquePageCandidate){$out.url=$rank.uniquePageCandidate.url}
+            break
+          }
           if($rank.uniquePageCandidate){
             $likely=@([pscustomobject]@{url=$rank.uniquePageCandidate.url;text=$rank.uniquePageCandidate.text})
             # The chosen product must still pass the live idProduct check.
@@ -922,7 +945,7 @@ try {
         if ($out.status -eq 'PROVIDER_TIMEOUT' -or $out.status -eq 'BLOCKED') { break }
         # Multiple identical card-number hits: check the REAL idProduct, not search rank.
         # Limit page visits to avoid excessive requests; unresolved stays for review.
-        if ($likely.Count -gt 1 -and $allowedIds.Count -gt 0) {
+        if (!$stampRoute -and !$vintageRoute -and $likely.Count -gt 1 -and $allowedIds.Count -gt 0) {
           $uniqueLinks = @($likely | Group-Object { ([string]$_.url).Split('?')[0] } |
             ForEach-Object { $_.Group[0] })
           $matchesById = @()
@@ -950,7 +973,9 @@ try {
         }
       }
 
-      if ($likely.Count -eq 1) {
+      if ($out.status -eq 'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' -and $stampRoute) {
+        Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+      } elseif ($likely.Count -eq 1) {
         $out.url = $likely[0].url
         $versionMatch=[regex]::Match(([string]$out.url).Split('?')[0],'(?i)(?:^|[-/])V([1-9][0-9]?)(?=[-/]|$)')
         if($versionMatch.Success){$out.observed_url_version='V'+$versionMatch.Groups[1].Value}
@@ -961,7 +986,7 @@ try {
         # independently re-check the product id and collector number.
         $preReverseCode=if ([string]$case.drucktyp -match '(?i)^reverse$') {'Y'} elseif([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') {'N'} else {'0'}
         $preFirstCode=if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') {'Y'} elseif([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') {'N'} else {'0'}
-        if($priceNeeded -and $preReverseCode -ne '0' -and
+        if($priceNeeded -and !$stampRoute -and !$vintageRoute -and $preReverseCode -ne '0' -and
            [string]$case.foil -eq '' -and [string]$case.sonderdruck -eq '' -and
            [string]$case.stempel -in @('','[]','null') -and
            [string]$case.drucktyp -match '(?i)^(normal|reverse|nonholo|common)$' -and
@@ -1048,6 +1073,22 @@ try {
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+        } elseif($vintageRoute){
+          $vintageIds=@([string]$case.vintage_card_candidate_ids -split ',')
+          $observedVintageUrl=[string](Js-CardmarketProduct 'location.href')
+          $vintageRank=Resolve-CardmarketSearchCandidates -Links @(@{url=$observedVintageUrl}) -PrintedNumber $number -SetSlug $guard -SetId $case.set_id -Language $Language -PreferBasePage
+          if($vintageRank.uniquePageCandidate -and $candidateId -in $vintageIds){
+            $out.url=$vintageRank.uniquePageCandidate.url
+            $out.card_number_url_verified=$true
+            $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+            $out.error='VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED'
+            $out.reference_page_evidence=$out.error
+            $out.exact_print_verified=$false
+          }else{
+            $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
+            $out.error='VINTAGE_MAIN_SET_PAGE_UNVERIFIED'
+          }
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif([string]$out.score_matching_status -eq 'SET_NOT_INDEPENDENTLY_VERIFIED'){
           # A perfect-looking number and title still cannot prove the set.
           $out.status='PRODUCT_ID_NOT_VERIFIED_FOR_CARD'
@@ -1080,7 +1121,8 @@ try {
           }
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($setSlugGuards.ContainsKey([string]$case.set_id) -and
-                  ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'(?:/|-)'))) {
+                  ([string]$out.url -notmatch ('/Products/Singles/'+[regex]::Escape($setSlugGuards[[string]$case.set_id])+'/')) -and
+                  -not ($out.trusted_print_route -eq $true -and $candidateId -in $allowed)) {
           $out.status='PRODUCT_SET_SLUG_MISMATCH'
           $out.error='PRODUCT_IS_IN_DIFFERENT_CARDMARKET_EXPANSION'
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
@@ -1144,7 +1186,7 @@ try {
             # A provider filter cannot distinguish ©1999–2000, special
             # cosmo foil patterns or collection stamps; never claim the
             # filtered result proves that physical special print.
-            $out.exact_print_filter_supported=(@($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
+            $out.exact_print_filter_supported=(!$stampRoute -and !$vintageRoute -and @($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
             $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
             $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
             $filterOk=$false
@@ -1451,7 +1493,7 @@ try {
   # --- Qualitaetskontroll-Bericht (Punkt 7) --------------------------------
   $currentStatus=(Get-Content $progressPath -Raw | ConvertFrom-Json).status
   if ($currentStatus -notin @('LOGIN_REQUIRED','BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST')) {
-    if ($deferredCount -gt 0) { Save-Progress $processed.Count $runTotal 'COMPLETED_WITH_DEFERRED' '' }
+    if ($deferredCount -gt 0 -or (!$selected.Count -and $processed.Count -lt $runTotal)) { Save-Progress $processed.Count $runTotal 'COMPLETED_WITH_DEFERRED' '' }
     elseif ($processed.Count -ge $runTotal) { Save-Progress $processed.Count $runTotal 'COMPLETED' '' }
     else { Save-Progress $processed.Count $runTotal 'BATCH_COMPLETE_MORE_PENDING' '' }
   }

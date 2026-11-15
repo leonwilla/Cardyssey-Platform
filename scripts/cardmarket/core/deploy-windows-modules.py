@@ -21,8 +21,9 @@ def manifest():
         result[p.name]=p
     for p in ADMIN.glob('*.ps1'):
         if p.name.startswith(('Cardmarket-','cardmarket-')):result[p.name]=p
-    for n in ('cardmarket-game-profile.json','cardmarket-comment-rules.json'):
+    for n in ('cardmarket-game-profile.json','cardmarket-comment-rules.json','cardmarket-stamp-routes.json'):
         result[n]=REPO/'config'/n
+    result['verified-set-url-guards.json']=REPO/'config/cardmarket-set-url-guards.json'
     for src in result.values():
         if not src.is_file():raise RuntimeError('Missing source: '+str(src))
     return result

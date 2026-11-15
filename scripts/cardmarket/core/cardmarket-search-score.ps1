@@ -6,6 +6,73 @@ if(!(Get-Command Get-CardmarketGameProfile -ErrorAction SilentlyContinue)){
  . $gameModule
 }
 
+
+$stampRulesFile=Join-Path $PSScriptRoot 'cardmarket-stamp-routes.json'
+if(!(Test-Path -LiteralPath $stampRulesFile)){
+  $stampRulesFile=Join-Path $PSScriptRoot '../../../config/cardmarket-stamp-routes.json'
+}
+$cardmarketStampRules=Get-Content -Raw -Encoding UTF8 -LiteralPath $stampRulesFile | ConvertFrom-Json
+
+function Get-CardmarketStampRoute {
+  param([string]$SetId,[string]$Stamp)
+  if(!$Stamp){return ''}
+  try {
+    $values=if($Stamp.TrimStart().StartsWith('[')){ConvertFrom-Json -InputObject $Stamp}else{$Stamp}
+  } catch {return ''}
+  $tokens=@($values | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() -replace '[\s_]+','-' })
+  $routes=@()
+  if('trick-or-trade' -in $tokens -or 'pumpkin-pikachu' -in $tokens){$routes+='TRICK_OR_TRADE'}
+  if('professorenprogramm' -in $tokens -or 'professor-program' -in $tokens){$routes+='PROFESSOR_PROGRAM'}
+  if($SetId -match '^(?:sv|me)(?:[0-9]|[ep]$)' -and
+     ('player-rewards-program' -in $tokens -or 'set-logo' -in $tokens)){$routes+='PRIZE_PACK'}
+  if($SetId -match '^(?:base|ecard|ex|dp|pl|hgss|bw)' -and
+     @($tokens | Where-Object { $_ -in $cardmarketStampRules.worldChampionshipStamps }).Count -gt 0){
+    $routes+='WORLD_CHAMPIONSHIPS'
+  }
+  if($routes.Count -gt 1){return 'AMBIGUOUS_STAMP_ROUTE'}
+  if($routes.Count -eq 1){return $routes[0]}
+  return ''
+}
+
+function Get-CardmarketSubsetPriority {
+  param([string]$Route,[string]$SetId,[string]$SetSlug,[string]$ActualSet,
+        [string]$ProductSlug,[string]$PrintedNumber)
+  if(!$SetId){return 0}
+  $codeProperty=$cardmarketStampRules.setCodes.PSObject.Properties[$SetId]
+  if(!$codeProperty -or $PrintedNumber -notmatch '^(?:[A-Za-z]{1,12})?(\d{1,4})$'){return 0}
+  $number=[int]$Matches[1]
+  $code=[regex]::Escape([string]$codeProperty.Value)
+  $prefix=''
+  $priority=2
+  switch($Route){
+    'TRICK_OR_TRADE' {
+      if($ActualSet -match '^Trick-or-Trade-20(\d\d)$'){$prefix='BOO'+$Matches[1]+$code}
+    }
+    'PROFESSOR_PROGRAM' {
+      if($ActualSet -eq 'Professor-Program'){$prefix='PPP'+$code}
+    }
+    'PRIZE_PACK' {
+      if($ActualSet -match '^Play-Pokemon-Prize-Pack-Series-[A-Za-z0-9-]+$'){$prefix='PPS\d{1,2}'+$code}
+      elseif($SetSlug -and $ActualSet -eq ($SetSlug+'-Additionals')){$prefix='x'+$code;$priority=1}
+    }
+    'WORLD_CHAMPIONSHIPS' {
+      if($ActualSet -match '^WCD-20(\d\d)$'){$prefix='WCD'+$Matches[1]+$code}
+    }
+  }
+  if($prefix -and $ProductSlug -match ('(?:^|-)'+$prefix+'-?(\d{1,4})$') -and [int]$Matches[1] -eq $number){
+    return $priority
+  }
+  return 0
+}
+
+function Test-CardmarketVintageSubtype {
+  param([string]$SetId,[string]$Subtype)
+  if($SetId -notin @('base1','base2','base3')){return $false}
+  $token=$Subtype.Trim().ToLowerInvariant() -replace '[\s_]+','-'
+  return $token -in @('1999-2000-copyright','copyright-1999-2000','missing-expansion-symbol',
+                      'fehlendes-erweiterungssymbol','shadowless','schattenlos')
+}
+
 function Resolve-CardmarketSearchCandidates {
  param(
    [object[]]$Links,
@@ -15,22 +82,39 @@ function Resolve-CardmarketSearchCandidates {
    [string]$Stamp = '',
    [string]$Foil = '',
    [string]$PrintType = '',
-   [string[]]$AllowedProductIds = @()
+   [string[]]$AllowedProductIds = @(),
+   [string]$SetId = '',
+   [string]$Language = '',
+   [switch]$PreferBasePage
  )
  $gamePath=[string](Get-CardmarketGameProfile).game_path
  $ranked=[Collections.Generic.List[object]]::new()
  $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
  $expected=$PrintedNumber.Trim()
+ $stampRoute=Get-CardmarketStampRoute -SetId $SetId -Stamp $Stamp
  foreach($link in @($Links)){
    $uri=$null
    try{$uri=[uri]([string]$link.url)}catch{continue}
    if(!$uri -or $uri.Scheme -ne 'https' -or $uri.Host -ne 'www.cardmarket.com') {continue}
    if($uri.AbsolutePath -notmatch ('^/(de|en)/'+$gamePath+'/Products/Singles/([A-Za-z0-9-]+)/([A-Za-z0-9-]+)$')){continue}
+   if($Language -and [string]$Matches[1] -ne $Language){continue}
    $actualSet=[string]$Matches[2];$productSlug=[string]$Matches[3]
    $path=$uri.GetLeftPart([UriPartial]::Path)
    if(!$seen.Add($path)){continue}
-   # A verified expansion guard is a hard requirement, not a score bonus.
+   if($stampRoute){
+     $subsetPriority=Get-CardmarketSubsetPriority -Route $stampRoute -SetId $SetId -SetSlug $SetSlug -ActualSet $actualSet -ProductSlug $productSlug -PrintedNumber $expected
+     if(!$subsetPriority){continue}
+     $ranked.Add([pscustomobject]@{url=$path;text=[string]$link.text;setSlug=$actualSet;
+       printedNumber=$expected;score=$subsetPriority;productSlug=$productSlug})
+     continue
+   }
+   # A verified expansion guard is a hard requirement for the main print.
    if($SetSlug -and $actualSet -cne $SetSlug){continue}
+   if($PreferBasePage){
+     if(!$SetSlug -or $productSlug -match '(?:^|-)V(?:[2-9]|[1-9]\d+)(?:-|$)'){continue}
+     $codeProperty=$cardmarketStampRules.setCodes.PSObject.Properties[$SetId]
+     if(!$codeProperty -or $productSlug -notmatch ('-'+[regex]::Escape([string]$codeProperty.Value)+'\d{1,4}$')){continue}
+   }
    # The final collector token is the ONLY part allowed to satisfy the
    # printed number. A title like '113' never matches collector #13.
    $tail=[regex]::Match($productSlug,'(?i)(?:^|-)([A-Za-z]{0,12})([0-9]{1,4})$')
@@ -46,6 +130,7 @@ function Resolve-CardmarketSearchCandidates {
    $title=[string]$link.text
    $searchText=($title+' '+$productSlug).ToLowerInvariant()
    $score=100
+   if($PreferBasePage -and $productSlug -match '(?:^|-)V1(?:-|$)'){$score+=20}
    if($SetSlug){$score+=40}
    if($Stamp.Trim()){
      $stampText=$Stamp -replace '^[\[\]"\s]+|[\[\]"\s]+$',''
@@ -64,7 +149,10 @@ function Resolve-CardmarketSearchCandidates {
  $ordered=@($ranked | Sort-Object @{Expression='score';Descending=$true}, @{Expression='url';Descending=$false})
  $winner=$null
  $reason='NO_NUMBER_MATCH'
- if($ordered.Count -gt 0) {
+ if($stampRoute){
+   $reason=if($ordered.Count -gt 0){'SUBSET_PAGE_CANDIDATES_PRINT_UNVERIFIED'}else{'SUBSET_PAGE_NOT_FOUND'}
+   if($ordered.Count -eq 1){$winner=$ordered[0]}
+ } elseif($ordered.Count -gt 0) {
    if(!$SetSlug){$reason='SET_NOT_INDEPENDENTLY_VERIFIED'}
    elseif($ordered.Count -eq 1){$winner=$ordered[0];$reason='UNIQUE_SET_NUMBER_PAGE_CANDIDATE'}
    elseif([int]$ordered[0].score -ge [int]$ordered[1].score+10){
@@ -74,6 +162,6 @@ function Resolve-CardmarketSearchCandidates {
  }
  return [pscustomobject]@{
     candidates=$ordered;uniquePageCandidate=$winner;reason=$reason;
-    candidateCount=$ordered.Count;exactPrintVerified=$false;priceVerified=$false
+    candidateCount=$ordered.Count;exactPrintVerified=$false;priceVerified=$false;stampRoute=$stampRoute
  }
 }

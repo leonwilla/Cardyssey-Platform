@@ -38,7 +38,7 @@ function Update-CrossLanguagePageCache {
   finally{if($proc){$proc.Dispose()}}
 }
 if(!(Test-Path $collector)){throw 'Updated language collector missing'}
-$selectedLanguages=if($Languages -eq 'both'){@('de','en')}else{@($Languages)}
+$selectedLanguages=@(Get-CardmarketLanguageOrder -Base $base -Languages $Languages)
 $done=@{}
 foreach($l in $selectedLanguages){$done[$l]=$false}
 $deadline=[DateTime]::UtcNow.AddMinutes($RunMinutes)
@@ -55,7 +55,9 @@ do {
     # Durable streak is updated ONCE per completed language run.
     # Provider/connection errors keep prior streak; verified normal batches
     # reset it. Neither queue nor observation files are modified here.
-    Update-CardmarketBlockedStreak -Base $base -Status ([string]$progress.status) -Language $language -ProgressAt ([string]$progress.updated_at) -RunId $runnerId
+    if($progress.provider_attempted -ne $false -or $progress.status -eq 'BLOCKED'){
+      Update-CardmarketBlockedStreak -Base $base -Status ([string]$progress.status) -Language $language -ProgressAt ([string]$progress.updated_at) -RunId $runnerId
+    }
     if($progress.status -eq 'BATCH_COMPLETE_MORE_PENDING' -and $selectedLanguages.Count -gt 1){
       Update-CrossLanguagePageCache
     }

@@ -18,6 +18,7 @@ import re
 from collections import Counter
 from datetime import datetime,timezone
 from pathlib import Path
+from cardmarket_print_routes import SUBSET_EVIDENCE, VINTAGE_EVIDENCE, read_list
 
 ROOT=Path('/home/tv/cardshop')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
@@ -56,7 +57,11 @@ def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
     # A user-supplied URL is a useful lookup hint, not a reason to require
     # manual set assignment. One catalog product in the independently
     # verified set must first go through automatic print/language checking.
-    if 'CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED' in row.get('classification','') and ids:
+    classification=row.get('classification','')
+    if classification in (SUBSET_EVIDENCE,VINTAGE_EVIDENCE):
+        category='MANUAL_COMPARISON_READY'
+        reason='Kartenreferenz vorhanden. Druckmerkmal und passendes Angebot manuell prüfen.'
+    elif 'CARD_IN_VERIFIED_SET_PRINT_NOT_IDENTIFIED' in classification and ids:
         category='AUTO_PRINT_VERIFICATION'
         reason='Kartennummer und Cardmarket-Set sind bekannt; Produktkandidaten sind noch keiner physischen Druckvariante zugewiesen.'
     elif not ids or 'SET_NOT_VERIFIED' in row.get('classification','') or 'NO_MATCH' in row.get('classification','') or 'INFERRED_SET' in row.get('classification',''):
@@ -84,6 +89,8 @@ def candidate_audit(row,products,obs,supplemental=None,user_reference_url=None):
             'sameMetacard':len(ids)>1 and len(meta_ids)==1,
             'printVerified':False,'priceApproved':False,
             'versionPages':version_pages if user_version_compare else [],
+            'referencePageUrl':row.get('reference_product_url') or '',
+            'referenceCandidateUrls':read_list(row.get('reference_candidate_urls')),
             'lastScanStatus':obs.get('status') if obs else 'NOT_SCANNED'}
 
 def run(lang,root=ROOT,base=BASE,feeds=FEEDS):

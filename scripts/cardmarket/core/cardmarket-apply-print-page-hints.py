@@ -12,25 +12,47 @@ for _cm_import in (_cm_root, _cm_root/'cardmarket/core', _cm_root/'cardmarket/ad
     if str(_cm_import) not in _cm_sys.path:
         _cm_sys.path.insert(0,str(_cm_import))
 import argparse,csv,json,os,tempfile
+from cardmarket_print_routes import load_evidence, read_queue, VINTAGE_EVIDENCE
 from pathlib import Path
 from urllib.parse import urlparse
 ROOT=Path('/home/tv/cardshop')
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 
-def apply(language,base=BASE,root=ROOT):
+def apply(language,base=BASE,root=ROOT,products=None):
     if language not in ('de','en'):raise ValueError('invalid language')
     rules=json.loads((root/'config/cardmarket-known-print-page-hints.json').read_text())
     path=base/f'queue-{language}.csv'
     with path.open(encoding='utf-8-sig',newline='') as f:
         r=csv.DictReader(f);fields=list(r.fieldnames or []);rows=list(r)
-    for col in ('reference_product_url','reference_print_verified','reference_evidence','reference_standard_filter_supported','catalog_singleton_id','catalog_expansion_id'):
+    queues={language:rows}
+    other='en' if language=='de' else 'de'
+    other_path=base/f'queue-{other}.csv'
+    if other_path.exists():
+        queues[other]=read_queue(other_path)
+    routed=load_evidence(base,queues,products)[language]
+    for col in ('reference_product_url','reference_print_verified','reference_evidence',
+                'reference_standard_filter_supported','catalog_singleton_id','catalog_expansion_id',
+                'stamp_route','reference_candidate_urls','reference_product_id',
+                'vintage_card_candidate_ids','exact_print_filter_supported'):
         if col not in fields:fields.append(col)
-    counts={'language':language,'rows':len(rows),'knownPages':0,'printConfirmedByReference':0,'standardOfferFilterCandidates':0}
+    counts={'language':language,'rows':len(rows),'knownPages':0,'printConfirmedByReference':0,
+            'standardOfferFilterCandidates':0,'vintagePages':0,'subsetCandidates':0}
     seen=set()
     for row in rows:
         row['reference_product_url']='';row['reference_print_verified']='NO';row['reference_evidence']='';row['reference_standard_filter_supported']='NO'
         card=row['cardyssey_karte'];var=row['variante_id']
-        if card not in rules:continue
+        route=routed.get((card,var),{})
+        for col in ('stamp_route','reference_candidate_urls','reference_product_id',
+                    'vintage_card_candidate_ids','exact_print_filter_supported'):
+            row[col]=route.get(col,'')
+        if route.get('reference_candidate_urls'):
+            counts['subsetCandidates']+=1
+        if route.get('reference_product_url'):
+            row['reference_product_url']=route['reference_product_url']
+            row['reference_evidence']=VINTAGE_EVIDENCE
+            counts['vintagePages']+=1
+            counts['knownPages']+=1
+        if card not in rules or row['reference_evidence']==VINTAGE_EVIDENCE:continue
         rule=rules[card];choice=rule['variants'].get(var)
         if choice is None:continue
         assert card not in ('',None) and row.get('set_id')==card.rsplit('-',1)[0],(card,row.get('set_id'))
