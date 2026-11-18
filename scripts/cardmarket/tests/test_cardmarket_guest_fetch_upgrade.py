@@ -34,8 +34,10 @@ class GuestFetchUpgradeTests(unittest.TestCase):
         launcher = LAUNCHER.read_text(encoding="utf-8-sig")
         watchdog = WATCHDOG.read_text(encoding="utf-8-sig")
         start = s.index("if ($pageMarker -or $blockedHttp) {")
-        end = s.index("$expectedQuery",start)
+        end = s.index("function Append-Observation",start)
         block = s[start:end]
+        self.assertIn("$deadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds)",block)
+        self.assertIn("while ([DateTime]::UtcNow -lt $deadline)",block)
         self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",block)
         self.assertIn("httpStatus=[int]$s.httpStatus",block)
         self.assertIn("'HTTP_STATUS'",block)

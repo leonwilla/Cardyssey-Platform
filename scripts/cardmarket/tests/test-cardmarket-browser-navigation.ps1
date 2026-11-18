@@ -46,7 +46,9 @@ function Send-Cdp([string]$Method,[hashtable]$Arguments) {
   $script:document.href=$Arguments.url
   $script:document.path=([uri]$Arguments.url).AbsolutePath
 }
+$script:responseStatuses=[Collections.Generic.Queue[int]]::new()
 function Js([string]$Expression,[int]$TimeoutSec) {
+  if($script:responseStatuses.Count){$script:document.httpStatus=$script:responseStatuses.Dequeue()}
   return $script:document | ConvertTo-Json -Compress
 }
 
@@ -67,6 +69,15 @@ $LangCfg=@{PathPrefix='/en/Pokemon'}
 $en=New-CardmarketOfferFilterUrl -ProductUrl 'https://www.cardmarket.com/en/Pokemon/Products/Singles/Base-Set/Pikachu-V1-BS58?old=1' -LanguageId 1 -ReverseCode Y -FirstEditionCode N
 Assert-Equal ([uri]$en).Query '?language=1&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=Y&isFirstEd=N' 'EN filter URL'
 Assert-Equal (Move-To $en) $true 'EN filtered product navigation'
+
+$ChallengeWaitSeconds=240
+$script:responseStatuses.Enqueue(403)
+$script:responseStatuses.Enqueue(200)
+$before=@($script:events | Where-Object {$_ -like 'navigate:*'}).Count
+Assert-Equal (Move-To $en) $true 'the current document clears its own challenge'
+$after=@($script:events | Where-Object {$_ -like 'navigate:*'}).Count
+Assert-Equal ($after-$before) 1 'no new navigation during a challenge'
+$ChallengeWaitSeconds=0
 
 $script:document.httpStatus=403
 try {

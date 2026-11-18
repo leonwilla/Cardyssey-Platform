@@ -10,7 +10,7 @@ param(
   [int]$DelaySeconds = 13,
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 13,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
-  [ValidateRange(5,180)][int]$ChallengeWaitSeconds = 90,
+  [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 240,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [switch]$ForcePublicMode,  # diagnostic: use public behavior even if signed in
   [switch]$RequireLogin  # production: pause instead of scraping as guest
@@ -273,13 +273,14 @@ function Move-To([string]$url) {
   Wait-CardmarketRequestBudget
   Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
   $desired = [uri]$url
-  $attemptStart=[DateTime]::UtcNow
-  $challengeStart=$null
+  $deadline=[DateTime]::UtcNow.AddSeconds(45)
+  $sawChallenge=$false
+  $block=$null
   # The same persistent browser profile retains lawful session data.
   # Only WAIT for Cardmarket to finish its own challenge; do not click,
   # forge clearance cookies, replay private tokens, or bypass a challenge.
-  for ($i = 0; $i -lt 380; $i++) {
-    Start-Sleep -Milliseconds 400
+  do {
+    Start-Sleep -Milliseconds $(if($sawChallenge){1000}else{400})
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,httpStatus:performance.getEntriesByType("navigation")[0]?.responseStatus||0,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
@@ -288,27 +289,29 @@ function Move-To([string]$url) {
     $pageMarker = Is-CardmarketChallenge ([string]$s.title) ([bool]$s.challenge)
     $blockedHttp = ($sameOrigin -and $s.path -eq $desired.AbsolutePath -and [int]$s.httpStatus -in @(403,429,503))
     if ($pageMarker -or $blockedHttp) {
-      if($null -eq $challengeStart){
-        $challengeStart=[DateTime]::UtcNow
+      if(!$sawChallenge){
+        $sawChallenge=$true
+        $deadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds)
         Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
       }
-      if (([DateTime]::UtcNow-$challengeStart).TotalSeconds -ge $ChallengeWaitSeconds) {
-        $stage=if($desired.AbsolutePath.EndsWith('/Products/Search')){'SEARCH_PAGE'}else{'PRODUCT_PAGE'}
-        $signal=if($pageMarker){'PAGE_MARKER'}else{'HTTP_STATUS'}
-        $script:providerBlock=@{stage=$stage;signal=$signal}
-        if($blockedHttp){$script:providerBlock.httpStatus=[int]$s.httpStatus}
-        throw 'CARDMARKET_PROVIDER_CHALLENGE'
-      }
+      $stage=if($desired.AbsolutePath.EndsWith('/Products/Search')){'SEARCH_PAGE'}else{'PRODUCT_PAGE'}
+      $signal=if($pageMarker){'PAGE_MARKER'}else{'HTTP_STATUS'}
+      $block=@{stage=$stage;signal=$signal}
+      if($blockedHttp){$block.httpStatus=[int]$s.httpStatus}
       continue
     }
+    $block=$null
     $expectedQuery = [uri]::UnescapeDataString($desired.Query.TrimStart('?').Replace('+',' '))
     $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
     $sameQuery = ($expectedQuery -eq $actualQuery) -or ($desired.AbsolutePath -ne ($LangCfg.PathPrefix + '/Products/Search'))
     if ($sameOrigin -and $s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) {
-      if ($null -ne $challengeStart) { Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card' }
+      if ($sawChallenge) { Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card' }
       return $true
     }
-    if (([DateTime]::UtcNow-$attemptStart).TotalSeconds -gt 45 -and $null -eq $challengeStart){return $false}
+  } while ([DateTime]::UtcNow -lt $deadline)
+  if($block){
+    $script:providerBlock=$block
+    throw 'CARDMARKET_PROVIDER_CHALLENGE'
   }
   return $false
 }
