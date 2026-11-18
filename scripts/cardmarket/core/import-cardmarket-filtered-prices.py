@@ -162,11 +162,25 @@ WITH rows AS (
  SELECT * FROM routed
  WHERE (verification_state='VERIFIED_PRODUCT_ID' AND matches_route AND source_evidence LIKE 'Human confirmed exact%')
     OR (automatic_standard AND (verification_state IS DISTINCT FROM 'VERIFIED_PRODUCT_ID' OR matches_route))
+), compatible AS (
+ SELECT r.*, COALESCE(cached.legacy_variant, print.legacy_variant) AS legacy_variant
+ FROM approved r
+ LEFT JOIN tcg_price_cache cached
+   ON cached.language_code=r.lang AND cached.card_id=r.card AND cached.variant_id=r.variant
+ LEFT JOIN catalog_cards_mirror c
+   ON c.language_code=r.lang AND c.card_id=r.card AND cached.card_id IS NULL
+ LEFT JOIN LATERAL (
+   SELECT value->>'legacyVariant' AS legacy_variant
+   FROM jsonb_array_elements(c.variants) AS value
+   WHERE value->>'id'=r.variant
+   LIMIT 1
+ ) print ON TRUE
 )
-INSERT INTO tcg_price_cache(card_id,language_code,variant_id,source,base_eur,updated_at,resolution_status)
-SELECT card,lang,variant,
+INSERT INTO tcg_price_cache(card_id,language_code,variant_id,legacy_variant,source,base_eur,updated_at,resolution_status)
+SELECT card,lang,variant,legacy_variant,
  CASE WHEN lang='de' THEN 'CARDMARKET_DE_NM_WEB' ELSE 'CARDMARKET_EN_NM_WEB' END,
- price,observed,'PRICE_FOUND' FROM approved
+ price,observed,'PRICE_FOUND' FROM compatible
+WHERE legacy_variant IN ('NORMAL','HOLO','REVERSE')
 ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET
  source=EXCLUDED.source,base_eur=EXCLUDED.base_eur,
  updated_at=EXCLUDED.updated_at,resolution_status='PRICE_FOUND',failure_detail=NULL

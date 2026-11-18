@@ -163,6 +163,8 @@ class FilteredImportTests(unittest.TestCase):
     def test_sql_protects_human_routes_and_preserves_single_cache_price(self):
         self.assertIn("verification_state='VERIFIED_PRODUCT_ID' AND matches_route AND source_evidence LIKE 'Human confirmed exact%'", m.SQL)
         self.assertIn("automatic_standard AND (verification_state IS DISTINCT FROM 'VERIFIED_PRODUCT_ID' OR matches_route)", m.SQL)
+        self.assertIn("INSERT INTO tcg_price_cache(card_id,language_code,variant_id,legacy_variant,", m.SQL)
+        self.assertIn("COALESCE(cached.legacy_variant, print.legacy_variant)", m.SQL)
         self.assertIn("ON CONFLICT(card_id,language_code,variant_id) DO UPDATE", m.SQL)
 
 
