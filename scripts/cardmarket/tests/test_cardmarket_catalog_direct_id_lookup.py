@@ -33,18 +33,17 @@ class CatalogIdTests(unittest.TestCase):
   self.assertIn('$catalogIdLookupUnsupported=$true',s)
   self.assertNotIn('$catalogIdLookupUnsupported=$false',s)
   self.assertIn('if(!$savedUrl -and !$catalogIdLookupUnsupported -and',s)
-  self.assertIn("Search-CardmarketSameOrigin -SearchPath",s)
-  self.assertIn("'SAME_ORIGIN_SEARCH_HTML'",s)
+  self.assertIn("if (!(Move-To $searchUrl))",s)
+  self.assertIn("$out.search_load_mode='BROWSER_NAVIGATION'",s)
   self.assertIn('catalog_singleton_id',s)
   self.assertIn('if ($pageProductId -eq [string]$case.catalog_singleton_id',s)
-  self.assertIn('Js-CardmarketProduct',s)
+  self.assertIn("$candidateId = [string](Js 'document.querySelector",s)
  def test_direct_id_never_auto_proves_physical_print_or_price(self):
   branch=s.split("} elseif ($out.catalog_direct_id_verified -eq $true -and",1)[1].split('} elseif (',1)[0]
   self.assertIn('PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED',branch)
   self.assertNotIn('identity_confirmed = $true',branch)
   self.assertNotIn('median_all_offers_eur',branch)
   self.assertIn('exact_print_verified=$false',s)
-  self.assertIn('if (-not $priceNeeded)',s)
   self.assertIn('expected_reverse_holo',s)
  def test_print_review_requires_both_catalog_and_live_evidence(self):
   row={'catalog_singleton_id':'275420','catalog_expansion_id':'1607'}

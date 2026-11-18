@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Export complete Cardmarket DE/EN variant queues from Cardyssey PostgreSQL.
 
-Read only. Product IDs from catalog candidates or TCGdex are *unverified* hints.
+Read only. Export current price eligibility inputs along with all catalog
+variants. Product IDs from catalog candidates or TCGdex are unverified hints.
 """
 # Import helper modules from the repository scripts root and Cardmarket tree.
 import sys as _cm_sys
@@ -79,12 +80,17 @@ SELECT
          THEN c.provider_product_ids ELSE '[]'::jsonb END) AS id
    ) x), '') AS set_card_candidate_ids,
  CASE WHEN lower(coalesce(v.value->>'type','')) IN ('normal','nonholo','common') THEN '4' ELSE '2' END AS scan_tier,
- 'YES' AS needs_price
+ CASE WHEN p.resolution_status='PRICE_FOUND' AND p.base_eur>0 THEN 'NO' ELSE 'YES' END AS needs_price,
+ CASE WHEN p.resolution_status='PRICE_FOUND' AND p.base_eur>0 THEN p.base_eur::text ELSE '' END AS existing_price_eur,
+ COALESCE(p.source,'') AS existing_source
 FROM source c
 CROSS JOIN LATERAL jsonb_array_elements(COALESCE(c.variants,'[]'::jsonb)) AS v(value)
 LEFT JOIN price_source_routing r
  ON r.language_code=c.language_code AND r.card_id=c.card_id
  AND r.variant_id=v.value->>'id'
+LEFT JOIN tcg_price_cache p
+ ON p.language_code=c.language_code AND p.card_id=c.card_id
+ AND p.variant_id=v.value->>'id'
 ORDER BY c.set_id,c.local_id,c.card_id,v.value->>'id'
 ) TO STDOUT WITH (FORMAT csv, HEADER, ENCODING 'UTF8');
 """

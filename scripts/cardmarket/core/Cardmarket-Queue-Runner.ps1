@@ -3,8 +3,8 @@
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
   [ValidateRange(1,1000)][int]$BatchLimit = 16,
-  [ValidateRange(4,120)][int]$DelaySeconds = 10,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 10,
+  [ValidateRange(4,120)][int]$DelaySeconds = 13,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 13,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
@@ -75,7 +75,7 @@ do {
       $stop=$true;break
     }
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -lt $deadline){
-      Start-Sleep -Seconds 12
+      Start-Sleep -Seconds $MinRequestGapSeconds
     }
   }
   if($stop -or $RunMinutes -eq 0 -or [DateTime]::UtcNow -ge $deadline){break}

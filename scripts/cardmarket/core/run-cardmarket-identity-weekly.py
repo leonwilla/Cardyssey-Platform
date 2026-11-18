@@ -107,8 +107,8 @@ def main():
         report[lang]=json.loads(result)
         report[lang]['manualRequestCarryForward']=preserve_manual_scan_requests(
             BASE/f'queue-{lang}.csv',earlier_manual[lang])
-        # Critical: exporter emits needs_price=YES as a placeholder. Never
-        # feed that unprioritized raw CSV to the browser scanner again.
+        # Rank the latest price gaps, high-value cards and confirmed prints
+        # before enriching the queue with offline identity evidence.
         report[lang]['prioritization']=json.loads(run(
             ROOT/'scripts/cardmarket/core/prioritize-cardmarket-scan-queue.py',
             '--language',lang,'--queue',BASE/f'queue-{lang}.csv',

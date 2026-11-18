@@ -7,8 +7,8 @@ param(
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
-  [int]$DelaySeconds = 10,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 10,
+  [int]$DelaySeconds = 13,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 13,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,180)][int]$ChallengeWaitSeconds = 90,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
@@ -67,10 +67,6 @@ if(!(Test-Path $filterModule)){throw 'CARDMARKET_FILTER_URL_MODULE_MISSING'}
 $commentModule=Join-Path $PSScriptRoot 'cardmarket-offer-comments.ps1'
 if(!(Test-Path $commentModule)){throw 'CARDMARKET_OFFER_COMMENT_MODULE_MISSING'}
 . $commentModule
-# Optional safe search acceleration. No clearance workarounds, no cookie export.
-$lightSearchModule=Join-Path $PSScriptRoot 'cardmarket-lightweight-search.ps1'
-if(!(Test-Path $lightSearchModule)){throw 'CARDMARKET_LIGHTWEIGHT_SEARCH_MODULE_MISSING'}
-. $lightSearchModule
 # Exported from human-confirmed Cardyssey review decisions only; candidate
 # version pages are stored separately and never auto-promote a print.
 $verifiedPrintMappings=@{}
@@ -245,15 +241,6 @@ function Js([string]$expression, [int]$TimeoutSec = 20) {
   return $reply.result.result.value
 }
 
-# Read-only context switch: DOMParser results remain in an inert in-memory Document.
-# All identity and offer-row queries use this source until a genuine browser-only
-# operation (form submission or authenticated pagination) is necessary.
-$script:cmFetchedProductActive=$false
-function Js-CardmarketProduct([string]$expression, [int]$TimeoutSec=20) {
-  if(-not $script:cmFetchedProductActive){return Js $expression $TimeoutSec}
-  $wrapped='(()=>{const snap=window.__cardysseyFetchedProduct;if(!snap||!snap.doc)throw Error("FETCH_SNAPSHOT_MISSING");const document=snap.doc;const location=new URL(snap.url);return ('+$expression+');})()'
-  return Js $wrapped $TimeoutSec
-}
 function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
   return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests')
 }
@@ -282,30 +269,6 @@ function Assert-CardmarketAuthenticated {
   if($read.loggedIn){return}
   throw 'CARDMARKET_LOGIN_REQUIRED'
 }
-# Same-origin read-only product request. This does not navigate the Edge tab,
-# execute challenge scripts or modify cookies. The caller must validate all
-# product, filter and offer evidence before accepting the returned HTML.
-function Get-CardmarketProductFetch([string]$url) {
-  $uri=[uri]$url
-  if($uri.Scheme -ne 'https' -or $uri.Host -ne 'www.cardmarket.com' -or
-     $uri.AbsolutePath -notmatch '^/(de|en)/Pokemon/Products/Singles/'){
-    throw 'CARDMARKET_FETCH_URL_REJECTED'
-  }
-  Wait-CardmarketRequestBudget
-  $jsonUrl=ConvertTo-Json -InputObject $url -Compress
-  $expr='(async()=>{window.__cardysseyFetchedProduct=null;const target='+$jsonUrl+';const expected=new URL(target);if(location.origin!==expected.origin)return {status:"WRONG_ORIGIN"};try{const response=await fetch(target,{credentials:"include",redirect:"follow"});const html=await response.text();const doc=new DOMParser().parseFromString(html,"text/html");const body=(doc.body?.textContent||"").slice(0,2400);const challenge=!!doc.querySelector("#challenge-running,#cf-challenge-running")||/(you have been blocked|you are unable to access|access denied|error 1020|too many requests|just a moment|checking your browser)/i.test((doc.title||"")+" "+body);const blocked=challenge||[403,429,503].includes(response.status);const got=new URL(response.url);const validPath=got.origin===expected.origin&&got.pathname===expected.pathname;const id=doc.querySelector("input[name=idProduct]")?.value||"";const forms=[...doc.forms].filter(f=>(f.getAttribute("action")||"").includes("Product_Filter_FilterProduct"));const result={status:blocked?"BLOCKED":!response.ok?"HTTP_ERROR":!validPath?"REDIRECT_OTHER_PATH":"OK",httpStatus:response.status,challengeMarker:challenge,finalUrl:response.url,title:doc.title,productId:id,hasMore:!!doc.querySelector("#loadMoreButton"),offerRows:doc.querySelectorAll(".article-row").length,login:!!doc.querySelector("a[href*=User_Logout],form[action*=User_Logout]"),filterForm:forms.length>0};if(result.status==="OK"&&/^[0-9]{4,12}$/.test(id)&&result.filterForm){window.__cardysseyFetchedProduct={doc,url:response.url};result.snapshotReady=true;}return result;}catch(e){return {status:"NETWORK_ERROR",message:String(e).slice(0,150)}}})()'
-
-  $result=Js $expr 45
-  if($result -is [string]){$result=$result | ConvertFrom-Json}
-  if($result.status -eq 'BLOCKED'){
-    $script:providerBlock=@{
-      stage='PRODUCT_FETCH';httpStatus=[int]$result.httpStatus
-      signal=if($result.challengeMarker){'RESPONSE_MARKER'}else{'HTTP_STATUS'}
-    }
-    throw 'CARDMARKET_PROVIDER_CHALLENGE'
-  }
-  return $result
-}
 function Move-To([string]$url) {
   Wait-CardmarketRequestBudget
   Send-Cdp 'Page.navigate' @{url=$url} | Out-Null
@@ -317,26 +280,31 @@ function Move-To([string]$url) {
   # forge clearance cookies, replay private tokens, or bypass a challenge.
   for ($i = 0; $i -lt 380; $i++) {
     Start-Sleep -Milliseconds 400
-    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
+    $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,httpStatus:performance.getEntriesByType("navigation")[0]?.responseStatus||0,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
-    if (Is-CardmarketChallenge ([string]$s.title) ([bool]$s.challenge)) {
+    $actual = [uri]$s.href
+    $sameOrigin = ($actual.Scheme -eq $desired.Scheme -and $actual.Authority -eq $desired.Authority)
+    $pageMarker = Is-CardmarketChallenge ([string]$s.title) ([bool]$s.challenge)
+    $blockedHttp = ($sameOrigin -and $s.path -eq $desired.AbsolutePath -and [int]$s.httpStatus -in @(403,429,503))
+    if ($pageMarker -or $blockedHttp) {
       if($null -eq $challengeStart){
         $challengeStart=[DateTime]::UtcNow
         Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
       }
       if (([DateTime]::UtcNow-$challengeStart).TotalSeconds -ge $ChallengeWaitSeconds) {
         $stage=if($desired.AbsolutePath.EndsWith('/Products/Search')){'SEARCH_PAGE'}else{'PRODUCT_PAGE'}
-        $script:providerBlock=@{stage=$stage;signal='PAGE_MARKER'}
+        $signal=if($pageMarker){'PAGE_MARKER'}else{'HTTP_STATUS'}
+        $script:providerBlock=@{stage=$stage;signal=$signal}
+        if($blockedHttp){$script:providerBlock.httpStatus=[int]$s.httpStatus}
         throw 'CARDMARKET_PROVIDER_CHALLENGE'
       }
       continue
     }
-    $actual = [uri]$s.href
     $expectedQuery = [uri]::UnescapeDataString($desired.Query.TrimStart('?').Replace('+',' '))
     $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
     $sameQuery = ($expectedQuery -eq $actualQuery) -or ($desired.AbsolutePath -ne ($LangCfg.PathPrefix + '/Products/Search'))
-    if ($s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) {
+    if ($sameOrigin -and $s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) {
       if ($null -ne $challengeStart) { Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card' }
       return $true
     }
@@ -370,27 +338,30 @@ function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) 
 }
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------
-$allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
-# All rows remain in the durable CSV (and remain available to the offline
-# catalog/price-feed pipeline). Do not send common/uncommon ordinary variants
-# which ALREADY have a positive fallback price to the browser for another URL
-# identity lookup. The nine missing-price bulk variants remain eligible.
-# Manual refresh requests always override the feed-only exclusion.
-$bulkFeedOnlyRows=@($allCases | Where-Object {
-  [string]$_.scan_tier -eq '4' -and [string]$_.needs_price -eq 'NO' -and
-  [string]$_.manual_scan_requested_at -eq '' -and
-  [string]$_.foil -eq '' -and [string]$_.sonderdruck -eq '' -and
-  [string]$_.stempel -in @('','[]','null') -and
-  [string]$_.existing_price_eur -match '^(?:0*[1-9][0-9]*|0*\.[0-9]*[1-9][0-9]*)' -and
-  [string]$_.existing_source -ne ''
-})
-$bulkFeedOnly=$bulkFeedOnlyRows.Count
-$feedOnlyKeys=[Collections.Generic.HashSet[string]]::new()
-foreach($feedCase in $bulkFeedOnlyRows){
-  [void]$feedOnlyKeys.Add(('{0}|{1}' -f $feedCase.cardyssey_karte,$feedCase.variante_id))
+function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
+  if ([string]$Case.needs_price -eq 'YES') { return 0 }
+  [decimal]$price = 0
+  if ([decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
+      [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture,
+      [ref]$price) -and $price -ge 10) { return 1 }
+  $type = ([string]$Case.drucktyp).Trim()
+  $special = ([string]$Case.foil).Trim() -or ([string]$Case.sonderdruck).Trim() -or
+      ([string]$Case.stempel).Trim() -notin @('','[]','null') -or
+      $type -notin @('','normal','nonholo','common','holo','reverse')
+  if ($special -and ($HumanConfirmed -or [string]$Case.routing_state -in @('VERIFIED_PRODUCT_ID','HUMAN_CONFIRMED'))) { return 2 }
+  if (([string]$Case.manual_scan_requested_at).Trim()) { return 3 }
+  return 4
 }
-$browserCases=@($allCases | Where-Object {
-  -not $feedOnlyKeys.Contains(('{0}|{1}' -f $_.cardyssey_karte,$_.variante_id)) -and
+
+$allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
+# Keep the catalog CSV intact for feeds and admin reviews. Re-evaluate live
+# eligibility so a manual request or a confirmed mapping is effective immediately.
+$focusedCases = @(foreach ($row in $allCases) {
+  $mapKey = '{0}|{1}|{2}' -f $Language,$row.cardyssey_karte,$row.variante_id
+  if ((Get-CardmarketBrowserQueueTier $row ($verifiedPrintMappings.ContainsKey($mapKey))) -lt 4) { $row }
+})
+$feedOnly = $allCases.Count - $focusedCases.Count
+$browserCases=@($focusedCases | Where-Object {
   -not ([string]$_.delta_browser_skip -eq 'YES' -and
      [string]$_.delta_reason -eq 'GUIDE_STABLE_STANDARD_LAST_VERIFIED_WITHIN_28D' -and
      [string]$_.needs_price -eq 'NO' -and
@@ -399,9 +370,9 @@ $browserCases=@($allCases | Where-Object {
      [string]$_.stempel -in @('','[]','null') -and
      [string]$_.drucktyp -match '(?i)^(normal|nonholo|common)$')
 })
-$cases = if ($ScanMode -eq 'missing') {
-  @($browserCases | Where-Object { [string]$_.needs_price -eq 'YES' })
-} else { $browserCases }
+$cases = @(if ($ScanMode -eq 'missing') {
+  $browserCases | Where-Object { [string]$_.needs_price -eq 'YES' }
+} else { $browserCases })
 $runTotal = if ($MaxCases -gt 0) { [Math]::Min($cases.Count, $MaxCases) } else { $cases.Count }
 
 $candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCases) } else { $cases }
@@ -527,16 +498,12 @@ try {
   $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
   Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
-    $script:cmFetchedProductActive=$false
     $script:providerBlock=$null
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
     # Diagnostics only: measure actual elapsed work before tuning delays.
     $caseTimer=[Diagnostics.Stopwatch]::StartNew()
 
-    # Unpriced bulk variants stay in the browser queue for review. Already
-    # priced, ordinary bulk is feed-only and never enters this loop.
-    $priceNeeded = [string]$case.scan_tier -ne '4' -or [string]$case.needs_price -eq 'YES' -or !!([string]$case.manual_scan_requested_at)
 
     $out = [ordered]@{
       key=$key;card_id=$case.cardyssey_karte;variant_id=$case.variante_id;number=$case.kartennummer;
@@ -857,25 +824,7 @@ try {
             $links=@($searchCache[$searchUrl]);$out.search_cache_hit=$true;$searchCacheHits++
           } else {
             $searchCacheMisses++
-            $lightSearch=$null
-            try {
-              $lightSearch=Search-CardmarketSameOrigin -SearchPath ($searchPath+'?searchString='+$encoded) -Authenticated ([bool]$auth)
-            }catch{
-              # An explicit provider challenge is a terminal condition;
-              # never hide it behind a slower full-page navigation.
-              if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}
-              $out.lightweight_search_fallback='REQUEST_OR_CDP_UNAVAILABLE'
-            }
-            if($lightSearch -and @($lightSearch.links).Count -gt 0){
-              $links=@($lightSearch.links)
-              $out.search_load_mode='SAME_ORIGIN_SEARCH_HTML'
-              $consecutiveProviderTimeouts=0
-              if($searchCache.Count -ge 250){$searchCache.Clear()}
-              $searchCache[$searchUrl]=$links
-            } else {
-            # Search results dynamically injected by Cardmarket require the
-            # existing validated full-page DOM flow; no false zero results.
-            $out.search_load_mode='FULL_PAGE_SEARCH_FALLBACK'
+            $out.search_load_mode='BROWSER_NAVIGATION'
             if (!(Move-To $searchUrl)) {
               $out.status='DEFERRED_PROVIDER_TIMEOUT'
               $out.error='SEARCH_PAGE_TIMEOUT'
@@ -918,7 +867,6 @@ try {
               if ($searchCache.Count -ge 250) { $searchCache.Clear() }
               $searchCache[$searchUrl] = $links
             }
-            } # End same-origin fallback to full-page search
           }
           $out.search_hits = $links.Count
           $out.query=[string]$queryText
@@ -996,10 +944,9 @@ try {
         # independently re-check the product id and collector number.
         $preReverseCode=if ([string]$case.drucktyp -match '(?i)^reverse$') {'Y'} elseif([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') {'N'} else {'0'}
         $preFirstCode=if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') {'Y'} elseif([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') {'N'} else {'0'}
-        if($priceNeeded -and !$stampRoute -and !$vintageRoute -and $preReverseCode -ne '0' -and
+        if(!$stampRoute -and !$vintageRoute -and $preReverseCode -ne '0' -and
            [string]$case.foil -eq '' -and [string]$case.sonderdruck -eq '' -and
            [string]$case.stempel -in @('','[]','null') -and
-           [string]$case.drucktyp -match '(?i)^(normal|reverse|nonholo|common)$' -and
            $directUrlFilterSupported){
           try{
             $preFilteredUrl=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $preReverseCode -FirstEditionCode $preFirstCode
@@ -1008,38 +955,16 @@ try {
           }catch{$preFilteredUrl=''}
         }
         $initialUrl=if($preFilteredUrl){$preFilteredUrl}else{[string]$out.url}
-        # One same-origin fetch: retain its inert parsed DOM in the browser.
-        # No Page.navigate for products with valid snapshot + verified filter.
-        # If Cardmarket requires runtime hydration, fail closed into the
-        # legacy single-page navigation path instead of guessing prices.
-        $preflight=$null
-        if(([string](Js 'location.origin' 6)) -eq 'https://www.cardmarket.com'){
-          try{
-            $preflight=Get-CardmarketProductFetch $initialUrl
-            $out.product_fetch_status=[string]$preflight.status
-            if($preflight.status -eq 'OK' -and $preflight.snapshotReady -eq $true){
-              $script:cmFetchedProductActive=$true
-              $out.product_fetch_domparser_checked=$true
-              $out.product_load_mode='SAME_ORIGIN_FETCH_DOMPARSER'
-            }
-          }catch{
-            if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}
-            $out.product_fetch_status='FALLBACK_TO_BROWSER_NAVIGATION'
-          }
-        }
-        if(-not $script:cmFetchedProductActive){
-          if (!(Move-To $initialUrl)) { throw 'PRODUCT_PAGE_TIMEOUT' }
-          $out.product_load_mode='BROWSER_NAVIGATION_FALLBACK'
-        }
-        # Session status is read from the real Edge tab, not from a detached
-        # document. A response without the login marker is treated as guest.
+        # Product HTML is loaded as a genuine Edge document, with the offer
+        # filters on the first visit whenever the print allows it.
+        if (!(Move-To $initialUrl)) { throw 'PRODUCT_PAGE_TIMEOUT' }
+        $out.product_load_mode='BROWSER_NAVIGATION'
         $auth = (Js '!!document.querySelector("a[href*=User_Logout],form[action*=User_Logout]")') -and (-not $ForcePublicMode)
-        if($script:cmFetchedProductActive -and $preflight.login -ne $true){$auth=$false}
         $out.access_mode = if ($auth) {'AUTHENTICATED'} else {'PUBLIC_LIMITED'}
         if ($RequireLogin -and -not $auth) { Assert-CardmarketAuthenticated }
         $candidateId = ''
-        for ($pi = 0; $pi -lt $(if($script:cmFetchedProductActive){1}else{20}); $pi++) {
-          $candidateId = [string](Js-CardmarketProduct 'document.querySelector("input[name=idProduct]")?.value||""')
+        for ($pi = 0; $pi -lt 20; $pi++) {
+          $candidateId = [string](Js 'document.querySelector("input[name=idProduct]")?.value||""')
           if ($candidateId -match '^[0-9]+$') { break }
           Start-Sleep -Milliseconds 500
         }
@@ -1060,7 +985,7 @@ try {
         # the family URL for later independent version-page checks. This adds
         # no Cardmarket navigation and NEVER verifies a foil or price.
         if($candidateId -match '^[0-9]{4,12}$'){
-          $familyLink=[string](Js-CardmarketProduct '(()=>{const a=[...document.querySelectorAll("a[href]")].find(x=>{try{const u=new URL(x.getAttribute("href"),location.href);return u.origin==="https://www.cardmarket.com"&&/^\/(de|en)\/Pokemon\/Cards\/[^/]+\/Versions$/.test(u.pathname)}catch{return false}});return a?new URL(a.getAttribute("href"),location.href).href.split("?")[0]:""})()')
+          $familyLink=[string](Js '(()=>{const a=[...document.querySelectorAll("a[href]")].find(x=>{try{const u=new URL(x.getAttribute("href"),location.href);return u.origin==="https://www.cardmarket.com"&&/^\/(de|en)\/Pokemon\/Cards\/[^/]+\/Versions$/.test(u.pathname)}catch{return false}});return a?new URL(a.getAttribute("href"),location.href).href.split("?")[0]:""})()')
           if($familyLink -match '^https://www[.]cardmarket[.]com/(de|en)/Pokemon/Cards/[^/]+/Versions$'){
             $out.version_page_url=$familyLink
             $out.version_family_status='PAGE_LINK_FOUND_PRINT_UNVERIFIED'
@@ -1085,7 +1010,7 @@ try {
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif($vintageRoute){
           $vintageIds=@([string]$case.vintage_card_candidate_ids -split ',')
-          $observedVintageUrl=[string](Js-CardmarketProduct 'location.href')
+          $observedVintageUrl=[string](Js 'location.href')
           $vintageRank=Resolve-CardmarketSearchCandidates -Links @(@{url=$observedVintageUrl}) -PrintedNumber $number -SetSlug $guard -SetId $case.set_id -Language $Language -PreferBasePage
           if($vintageRank.uniquePageCandidate -and $candidateId -in $vintageIds){
             $out.url=$vintageRank.uniquePageCandidate.url
@@ -1185,250 +1110,219 @@ try {
           if($out.reference_page_used -eq $true -and [string]$case.reference_standard_filter_supported -eq 'YES'){
             $out.standard_offer_filter_candidate=$true
           }
-          if (-not $priceNeeded) {
-            $out.status = 'MAPPED_NO_PRICE_REQUIRED'
-          } else {
-            $out.status = 'PRODUCT_PAGE_MATCH_REVIEW'
-            $reverseCode = if ([string]$case.drucktyp -match '(?i)^reverse$') { 'Y' } elseif ([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') { 'N' } else { '0' }
-            $firstCode = if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') { 'Y' } elseif ([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') { 'N' } else { '0' }
-            $out.expected_reverse_holo = $reverseCode
-            $out.expected_first_edition = $firstCode
-            # A provider filter cannot distinguish ©1999–2000, special
-            # cosmo foil patterns or collection stamps; never claim the
-            # filtered result proves that physical special print.
-            $out.exact_print_filter_supported=(!$stampRoute -and !$vintageRoute -and @($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
-            $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
-            $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
-            $filterOk=$false
-            # Prefer canonical server-side parameters; verify the returned
-            # language, condition and print flags before trusting any rows.
-            # If the provider does not honor these parameters, restore the
-            # product page and use the existing validated form as fallback.
-            if($reverseCode -ne '0' -and $directUrlFilterSupported){
-              try {
-                $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
-                $out.direct_filter_attempted=$true
-                $preFilterAlreadyOpen=($preFilteredRequested -and $initialUrl -eq $targetFilter)
-                if($script:cmFetchedProductActive -and -not $preFilterAlreadyOpen){
-                  $filteredFetch=Get-CardmarketProductFetch $targetFilter
-                  if($filteredFetch.status -eq 'OK' -and $filteredFetch.snapshotReady -eq $true -and
-                     [string]$filteredFetch.productId -eq $candidateId){
-                    $preFilterAlreadyOpen=$true
-                    $out.product_load_mode='SAME_ORIGIN_FETCH_FILTERED_DOMPARSER'
-                  }else{
-                    $script:cmFetchedProductActive=$false
-                  }
-                }
-                if(($script:cmFetchedProductActive -and $preFilterAlreadyOpen) -or
-                   ((-not $script:cmFetchedProductActive) -and ($preFilterAlreadyOpen -or (Move-To $targetFilter)))){
-                  $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
-                  $filterValid=Js-CardmarketProduct ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+$firstCheck+'})()')
-                  if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
-                }
-              } catch {
-                if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED'){throw}
-                $out.direct_filter_fallback='PARAMETERS_NOT_VERIFIED'
-                $directUrlFilterSupported=$false
+          $out.status = 'PRODUCT_PAGE_MATCH_REVIEW'
+          $reverseCode = if ([string]$case.drucktyp -match '(?i)^reverse$') { 'Y' } elseif ([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') { 'N' } else { '0' }
+          $firstCode = if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') { 'Y' } elseif ([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') { 'N' } else { '0' }
+          $out.expected_reverse_holo = $reverseCode
+          $out.expected_first_edition = $firstCode
+          # A provider filter cannot distinguish ©1999–2000, special
+          # cosmo foil patterns or collection stamps; never claim the
+          # filtered result proves that physical special print.
+          $out.exact_print_filter_supported=(!$stampRoute -and !$vintageRoute -and @($out.non_filterable_print_attributes).Count -eq 0 -and $reverseCode -ne '0' -and $firstCode -ne '0')
+          $filterName = 'input[name=\"language[' + $LangCfg.LanguageId + ']\"]'
+          $langNames = ($LangCfg.LanguageNames | ForEach-Object { '"'+$_+'"' }) -join ','
+          $filterOk=$false
+          # Prefer canonical server-side parameters; verify the returned
+          # language, condition and print flags before trusting any rows.
+          # If the provider does not honor these parameters, restore the
+          # product page and use the existing validated form as fallback.
+          if($reverseCode -ne '0' -and $directUrlFilterSupported){
+            try {
+              $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
+              $out.direct_filter_attempted=$true
+              $preFilterAlreadyOpen=($preFilteredRequested -and $initialUrl -eq $targetFilter)
+              if($preFilterAlreadyOpen -or (Move-To $targetFilter)){
+                $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
+                $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+$firstCheck+'})()')
+                if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
               }
+            } catch {
+              if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED'){throw}
+              $out.direct_filter_fallback='PARAMETERS_NOT_VERIFIED'
+              $directUrlFilterSupported=$false
             }
-            if(!$filterOk){
-              if($script:cmFetchedProductActive){
-                $script:cmFetchedProductActive=$false
-                if(-not (Move-To (([string]$out.url).Split('?')[0]))){throw 'FILTER_FALLBACK_PRODUCT_FAILED'}
-                $out.product_load_mode='BROWSER_FALLBACK_FILTER_FORM'
-              } elseif($out.direct_filter_attempted){
-                $restoreUrl=([string]$out.url).Split('?')[0]
-                if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
-              }
-              Wait-CardmarketRequestBudget
-              $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
-              if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
+          }
+          if(!$filterOk){
+            if($out.direct_filter_attempted){
+              $restoreUrl=([string]$out.url).Split('?')[0]
+              if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
             }
-            if ($filterOk) {
-              # A deliberately bounded but larger collector window.
-              # Never mark a market as complete if the provider still exposes
-              # more offers at this limit.
-              $offerCap=1200
-              $maxOfferPages=3 # At most three AJAX loads; incomplete lists remain unpublishable.
-              $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.textContent?.trim(),comment:r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]")?.textContent?.trim()||null,commentVisible:!!r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]"),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
-              $data = $null
-              for ($fi = 0; $fi -lt 12; $fi++) {
-                Start-Sleep -Milliseconds 500
-                $data = Js-CardmarketProduct $rowsExpr | ConvertFrom-Json
-                if ($data -and $data.filtered) { break }
-              }
-              if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
-              $out.offer_pages_attempted=0
-              $out.pagination_failure=''
-              # Public mode collects visible rows, without assuming that a
-              # public session can paginate or that its sample is exhaustive.
-              if (-not $auth -and $data.hasMore) { $out.pagination_failure='DEFERRED_LOGIN_REQUIRED' }
-              # Only authenticated, real live pages may invoke AJAX pagination.
-              # A parsed DOM is inert and cannot safely click provider controls.
-              if($data.filtered -and $data.hasMore -and $auth -and $script:cmFetchedProductActive){
-                $script:cmFetchedProductActive=$false
-                if(-not (Move-To $targetFilter)){throw 'PAGINATION_PRODUCT_LOAD_FAILED'}
-                $liveData=Js $rowsExpr | ConvertFrom-Json
-                if(-not $liveData.filtered -or [int]$liveData.totalRows -lt [int]$data.totalRows){
-                  throw 'PAGINATION_LIVE_FILTER_NOT_VERIFIED'
+            Wait-CardmarketRequestBudget
+            $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
+            if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
+          }
+          if ($filterOk) {
+            # A deliberately bounded but larger collector window.
+            # Never mark a market as complete if the provider still exposes
+            # more offers at this limit.
+            $offerCap=1200
+            $maxOfferPages=3 # At most three AJAX loads; incomplete lists remain unpublishable.
+            $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.textContent?.trim(),comment:r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]")?.textContent?.trim()||null,commentVisible:!!r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]"),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
+            $data = $null
+            for ($fi = 0; $fi -lt 12; $fi++) {
+              Start-Sleep -Milliseconds 500
+              $data = Js $rowsExpr | ConvertFrom-Json
+              if ($data -and $data.filtered) { break }
+            }
+            if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
+            $out.offer_pages_attempted=0
+            $out.pagination_failure=''
+            # Public mode collects visible rows, without assuming that a
+            # public session can paginate or that its sample is exhaustive.
+            if (-not $auth -and $data.hasMore) { $out.pagination_failure='DEFERRED_LOGIN_REQUIRED' }
+            # Logged-in mode progressively appends offer blocks (provider cap unknown).
+            if ($data.filtered -and $auth) {
+              for ($pageAttempt=0; $pageAttempt -lt $maxOfferPages -and $data.hasMore; $pageAttempt++) {
+                $beforeRows=[int]$data.totalRows
+                if ($beforeRows -ge $offerCap) { $out.pagination_failure='CARDMARKET_COLLECTOR_CAP';break }
+                $out.offer_pages_attempted++
+                # Do not mistake a hidden/disabled load-more button for a successful click.
+                Wait-CardmarketRequestBudget
+                $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
+                if ($clicked -ne 'CLICKED') {
+                  $out.pagination_failure=if($clicked -eq 'DISABLED') {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_BUTTON_LOST'}
+                  break
                 }
-                $data=$liveData
-                $out.product_load_mode='FETCH_THEN_AUTHENTICATED_PAGINATION'
-              }
-              # Logged-in mode progressively appends offer blocks (provider cap unknown).
-              if ($data.filtered -and $auth) {
-                for ($pageAttempt=0; $pageAttempt -lt $maxOfferPages -and $data.hasMore; $pageAttempt++) {
-                  $beforeRows=[int]$data.totalRows
-                  if ($beforeRows -ge $offerCap) { $out.pagination_failure='CARDMARKET_COLLECTOR_CAP';break }
-                  $out.offer_pages_attempted++
-                  # Do not mistake a hidden/disabled load-more button for a successful click.
-                  Wait-CardmarketRequestBudget
-                  $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
-                  if ($clicked -ne 'CLICKED') {
-                    $out.pagination_failure=if($clicked -eq 'DISABLED') {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_BUTTON_LOST'}
+                $progressed=$false
+                for ($wait=0; $wait -lt 18; $wait++) {
+                  Start-Sleep -Milliseconds 500
+                  $next=Js $rowsExpr | ConvertFrom-Json
+                  if (!$next.filtered) { $out.pagination_failure='FILTER_CHANGED_DURING_PAGINATION';break }
+                  if ([int]$next.totalRows -gt $beforeRows) {
+                    $progressed=$true
+                    $data=$next
                     break
                   }
-                  $progressed=$false
-                  for ($wait=0; $wait -lt 18; $wait++) {
-                    Start-Sleep -Milliseconds 500
-                    $next=Js $rowsExpr | ConvertFrom-Json
-                    if (!$next.filtered) { $out.pagination_failure='FILTER_CHANGED_DURING_PAGINATION';break }
-                    if ([int]$next.totalRows -gt $beforeRows) {
-                      $progressed=$true
-                      $data=$next
-                      break
-                    }
+                }
+                if (!$progressed) {
+                  if (!$out.pagination_failure) {
+                    $disabled=Js '(()=>{const b=document.querySelector("#loadMoreButton");return !!b&&(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")})()'
+                    $out.pagination_failure=if ($disabled) {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_NO_NEW_OFFERS'}
                   }
-                  if (!$progressed) {
-                    if (!$out.pagination_failure) {
-                      $disabled=Js '(()=>{const b=document.querySelector("#loadMoreButton");return !!b&&(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")})()'
-                      $out.pagination_failure=if ($disabled) {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_NO_NEW_OFFERS'}
-                    }
-                    break
-                  }
-                  Start-Sleep -Milliseconds 800
+                  break
                 }
+                Start-Sleep -Milliseconds 800
               }
-              # A bounded iteration count is not proof of the end.
-              if([int]$data.totalRows -ge $offerCap -and !$out.pagination_failure){
-                $out.pagination_failure='CARDMARKET_COLLECTOR_CAP'
+            }
+            # A bounded iteration count is not proof of the end.
+            if([int]$data.totalRows -ge $offerCap -and !$out.pagination_failure){
+              $out.pagination_failure='CARDMARKET_COLLECTOR_CAP'
+            }
+            if($data.hasMore -and !$out.pagination_failure){
+              $out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'
+            }
+            # Login may expire while fetching pages; a public result is
+            # never promoted into a full-market price on that transition.
+            $stillSignedIn = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
+            if (-not $stillSignedIn) {
+              $auth=$false
+              $out.access_mode='PUBLIC_LIMITED'
+              if($data.hasMore){$out.pagination_failure='DEFERRED_LOGIN_REQUIRED'}
+            }
+            # Re-read the actual final DOM after AJAX pagination: an old
+            # `hasMore` snapshot can remain true after the last successful
+            # batch, while the load-more element has disappeared. Require
+            # a stable, strictly matching row count + final missing button;
+            # a hidden/disabled button alone never proves completeness.
+            if($auth -and $data.filtered -and [int]$data.totalRows -gt 0 -and
+               [int]$data.totalRows -lt $offerCap -and $out.pagination_failure -in
+                 @('LOAD_MORE_DISABLED_OR_LIMIT_REACHED','LOAD_MORE_BUTTON_LOST','LOAD_MORE_NO_NEW_OFFERS')) {
+              $stableEnd=$false
+              $finalCount=[int]$data.totalRows
+              for($settle=0;$settle -lt 4;$settle++){
+                Start-Sleep -Milliseconds 700
+                $last=Js $rowsExpr | ConvertFrom-Json
+                if(!$last -or !$last.filtered -or [int]$last.totalRows -ne $finalCount){break}
+                # The end of Cardmarket's AJAX list is indicated by removal
+                # of #loadMoreButton, not just a disabled element.
+                $lastButton=Js '(()=>{const b=document.querySelector("#loadMoreButton");return b?"PRESENT":"ABSENT"})()'
+                if($lastButton -ne 'ABSENT'){break}
+                if($settle -eq 3){$stableEnd=$true;$data=$last}
               }
-              if($data.hasMore -and !$out.pagination_failure){
-                $out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'
+              if($stableEnd){$out.pagination_failure='';$out.pagination_end_evidence='BUTTON_REMOVED_STABLE_4_CHECKS'}
+            }
+            if(-not $auth -and [int]$data.totalRows -gt 25 -and !$out.pagination_failure){
+              $out.pagination_failure='GUEST_MORE_THAN_25_ROWS_UNVERIFIED'
+            }
+            $out.all_pages_complete=($data.filtered -and
+              -not $data.hasMore -and [int]$data.totalRows -gt 0 -and
+              [int]$data.totalRows -lt $offerCap -and
+              ($auth -or [int]$data.totalRows -le 25) -and
+              -not $out.pagination_failure)
+            if($out.all_pages_complete -and -not $auth){
+              $out.pagination_end_evidence='PUBLIC_NO_LOAD_MORE_BUTTON_MAX_25_OFFERS'
+            }
+            # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
+            # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
+            $out.offers_seen = @($data.rows).Count
+            $accepted = @($data.rows | Where-Object {
+              $_.language -in $LangCfg.LanguageNames -and
+              $_.condition -in $LangCfg.ConditionNames -and
+              ($_.condition -notmatch 'Played|Poor|Damaged') -and
+              $_.price -match '[0-9]' -and
+              ($reverseCode -eq '0' -or
+                (($reverseCode -eq 'Y') -eq ('Reverse Holo' -in @($_.flags)))) -and
+              ($firstCode -eq '0' -or
+                (($firstCode -eq 'Y') -eq ('First Edition' -in @($_.flags))))
+            })
+            # Seller comments can reject explicitly mislabeled special
+            # prints but cannot automatically prove an unlabeled foil.
+            $targetPrint=''
+            $f=[string]$case.foil
+            if($f -match '(?i)meisterball|masterball'){$targetPrint='masterball'}
+            elseif($f -match '(?i)pok[eé]ball|poke.?ball'){$targetPrint='pokeball'}
+            elseif([string]$case.stempel -match '(?i)professorenprogramm|professor.program'){$targetPrint='stamp:professor-program'}
+            elseif([string]$case.stempel -match '(?i)play.?pokemon'){$targetPrint='stamp:play-pokemon'}
+            elseif([string]$case.stempel -match '(?i)prerelease'){$targetPrint='stamp:prerelease'}
+            if($targetPrint){
+              $counts=@{positive=0;shorthand_hint=0;contradiction=0;ambiguous=0;missing=0;not_applicable=0;comment_fields_visible=0}
+              foreach($row in $accepted){
+                if($row.commentVisible){$counts.comment_fields_visible++}
+                $verdict=Get-CardmarketOfferCommentClassification -Comment ([string]$row.comment) -TargetPrint $targetPrint
+                $keyName=$verdict.ToLowerInvariant()
+                $counts[$keyName]++
               }
-              # Login may expire while fetching pages; a public result is
-              # never promoted into a full-market price on that transition.
-              $stillSignedIn = (Js '!!document.querySelector("a[href*=User_Logout]")') -and (-not $ForcePublicMode)
-              if (-not $stillSignedIn) {
-                $auth=$false
-                $out.access_mode='PUBLIC_LIMITED'
-                if($data.hasMore){$out.pagination_failure='DEFERRED_LOGIN_REQUIRED'}
+              $out.special_print_comment_evidence=@{
+                  target=$targetPrint;counts=$counts;source='VISIBLE_SELLER_COMMENTS_ONLY';
+                  unlabeled_offers_not_verified=$true;not_print_proof=$true;
+                  all_pages_complete=[bool]$out.all_pages_complete
               }
-              # Re-read the actual final DOM after AJAX pagination: an old
-              # `hasMore` snapshot can remain true after the last successful
-              # batch, while the load-more element has disappeared. Require
-              # a stable, strictly matching row count + final missing button;
-              # a hidden/disabled button alone never proves completeness.
-              if($auth -and $data.filtered -and [int]$data.totalRows -gt 0 -and
-                 [int]$data.totalRows -lt $offerCap -and $out.pagination_failure -in
-                   @('LOAD_MORE_DISABLED_OR_LIMIT_REACHED','LOAD_MORE_BUTTON_LOST','LOAD_MORE_NO_NEW_OFFERS')) {
-                $stableEnd=$false
-                $finalCount=[int]$data.totalRows
-                for($settle=0;$settle -lt 4;$settle++){
-                  Start-Sleep -Milliseconds 700
-                  $last=Js $rowsExpr | ConvertFrom-Json
-                  if(!$last -or !$last.filtered -or [int]$last.totalRows -ne $finalCount){break}
-                  # The end of Cardmarket's AJAX list is indicated by removal
-                  # of #loadMoreButton, not just a disabled element.
-                  $lastButton=Js '(()=>{const b=document.querySelector("#loadMoreButton");return b?"PRESENT":"ABSENT"})()'
-                  if($lastButton -ne 'ABSENT'){break}
-                  if($settle -eq 3){$stableEnd=$true;$data=$last}
-                }
-                if($stableEnd){$out.pagination_failure='';$out.pagination_end_evidence='BUTTON_REMOVED_STABLE_4_CHECKS'}
-              }
-              if(-not $auth -and [int]$data.totalRows -gt 25 -and !$out.pagination_failure){
-                $out.pagination_failure='GUEST_MORE_THAN_25_ROWS_UNVERIFIED'
-              }
-              $out.all_pages_complete=($data.filtered -and
-                -not $data.hasMore -and [int]$data.totalRows -gt 0 -and
-                [int]$data.totalRows -lt $offerCap -and
-                ($auth -or [int]$data.totalRows -le 25) -and
-                -not $out.pagination_failure)
-              if($out.all_pages_complete -and -not $auth){
-                $out.pagination_end_evidence='PUBLIC_NO_LOAD_MORE_BUTTON_MAX_25_OFFERS'
-              }
-              # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
-              # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
-              $out.offers_seen = @($data.rows).Count
-              $accepted = @($data.rows | Where-Object {
-                $_.language -in $LangCfg.LanguageNames -and
-                $_.condition -in $LangCfg.ConditionNames -and
-                ($_.condition -notmatch 'Played|Poor|Damaged') -and
-                $_.price -match '[0-9]' -and
-                ($reverseCode -eq '0' -or
-                  (($reverseCode -eq 'Y') -eq ('Reverse Holo' -in @($_.flags)))) -and
-                ($firstCode -eq '0' -or
-                  (($firstCode -eq 'Y') -eq ('First Edition' -in @($_.flags))))
-              })
-              # Seller comments can reject explicitly mislabeled special
-              # prints but cannot automatically prove an unlabeled foil.
-              $targetPrint=''
-              $f=[string]$case.foil
-              if($f -match '(?i)meisterball|masterball'){$targetPrint='masterball'}
-              elseif($f -match '(?i)pok[eé]ball|poke.?ball'){$targetPrint='pokeball'}
-              elseif([string]$case.stempel -match '(?i)professorenprogramm|professor.program'){$targetPrint='stamp:professor-program'}
-              elseif([string]$case.stempel -match '(?i)play.?pokemon'){$targetPrint='stamp:play-pokemon'}
-              elseif([string]$case.stempel -match '(?i)prerelease'){$targetPrint='stamp:prerelease'}
-              if($targetPrint){
-                $counts=@{positive=0;shorthand_hint=0;contradiction=0;ambiguous=0;missing=0;not_applicable=0;comment_fields_visible=0}
-                foreach($row in $accepted){
-                  if($row.commentVisible){$counts.comment_fields_visible++}
-                  $verdict=Get-CardmarketOfferCommentClassification -Comment ([string]$row.comment) -TargetPrint $targetPrint
-                  $keyName=$verdict.ToLowerInvariant()
-                  $counts[$keyName]++
-                }
-                $out.special_print_comment_evidence=@{
-                    target=$targetPrint;counts=$counts;source='VISIBLE_SELLER_COMMENTS_ONLY';
-                    unlabeled_offers_not_verified=$true;not_print_proof=$true;
-                    all_pages_complete=[bool]$out.all_pages_complete
-                }
-              }
-              $out.verified_lang_nm_offers = $accepted.Count
-              $out.language_offers_observed=($accepted.Count -gt 0)
-              $seenOfferIds=@($data.rows | ForEach-Object { [string]$_.id })
-              $uniqueOfferIds=@($seenOfferIds | Sort-Object -Unique)
-              if ($uniqueOfferIds.Count -ne [int]$data.totalRows -or $seenOfferIds -contains '') {
-                $out.all_pages_complete=$false
-                $out.pagination_failure='DUPLICATE_OR_MISSING_OFFER_ID'
-              }
-              if ($accepted.Count -ne [int]$data.totalRows) {
-                $out.all_pages_complete=$false
-                if (!$out.pagination_failure) { $out.pagination_failure='MISMATCHED_OFFER_FILTER_FLAGS' }
-              }
+            }
+            $out.verified_lang_nm_offers = $accepted.Count
+            $out.language_offers_observed=($accepted.Count -gt 0)
+            $seenOfferIds=@($data.rows | ForEach-Object { [string]$_.id })
+            $uniqueOfferIds=@($seenOfferIds | Sort-Object -Unique)
+            if ($uniqueOfferIds.Count -ne [int]$data.totalRows -or $seenOfferIds -contains '') {
+              $out.all_pages_complete=$false
+              $out.pagination_failure='DUPLICATE_OR_MISSING_OFFER_ID'
+            }
+            if ($accepted.Count -ne [int]$data.totalRows) {
+              $out.all_pages_complete=$false
+              if (!$out.pagination_failure) { $out.pagination_failure='MISMATCHED_OFFER_FILTER_FLAGS' }
+            }
 
-              if ($data.filtered -and $accepted.Count -ge 1) {
-                $nums = @($accepted | ForEach-Object {
-                  Parse-Cardmarket-Euro ([string]$_.price)
-                } | Where-Object { $_ -ne $null } | Sort-Object)
-                if ($nums.Count -gt 0) {
-                  $out.lowest_ask_eur=$nums[0]
-                  $cheapest=@($nums | Select-Object -First 5)
-                  $out.entry_five_median_eur=if($cheapest.Count%2) {$cheapest[[int][Math]::Floor($cheapest.Count/2)]}else{[Math]::Round(($cheapest[$cheapest.Count/2-1]+$cheapest[$cheapest.Count/2])/2,2)}
-                  $mid = [int][Math]::Floor($nums.Count/2)
-                  $out.sample_median_eur = if ($nums.Count % 2) { $nums[$mid] } else { [math]::Round(($nums[$mid-1]+$nums[$mid])/2, 2) }
-                }
-                $out.median_all_offers_eur=if($out.all_pages_complete) {$out.sample_median_eur} else {$null}
-                $out.status=if($out.all_pages_complete) {'COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED'} elseif($out.pagination_failure -eq 'DEFERRED_LOGIN_REQUIRED') {'DEFERRED_LOGIN_REQUIRED'} else {'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
-              } elseif ($data.filtered -and $out.pagination_failure -eq 'DEFERRED_LOGIN_REQUIRED') {
-                $out.status='DEFERRED_LOGIN_REQUIRED'
-              } elseif ($data.filtered) {
-                $out.status = 'FILTER_UNVERIFIED_EMPTY'
-              } else {
-                $out.status = 'FILTER_NOT_APPLIED'
+            if ($data.filtered -and $accepted.Count -ge 1) {
+              $nums = @($accepted | ForEach-Object {
+                Parse-Cardmarket-Euro ([string]$_.price)
+              } | Where-Object { $_ -ne $null } | Sort-Object)
+              if ($nums.Count -gt 0) {
+                $out.lowest_ask_eur=$nums[0]
+                $cheapest=@($nums | Select-Object -First 5)
+                $out.entry_five_median_eur=if($cheapest.Count%2) {$cheapest[[int][Math]::Floor($cheapest.Count/2)]}else{[Math]::Round(($cheapest[$cheapest.Count/2-1]+$cheapest[$cheapest.Count/2])/2,2)}
+                $mid = [int][Math]::Floor($nums.Count/2)
+                $out.sample_median_eur = if ($nums.Count % 2) { $nums[$mid] } else { [math]::Round(($nums[$mid-1]+$nums[$mid])/2, 2) }
               }
+              $out.median_all_offers_eur=if($out.all_pages_complete) {$out.sample_median_eur} else {$null}
+              $out.status=if($out.all_pages_complete) {'COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED'} elseif($out.pagination_failure -eq 'DEFERRED_LOGIN_REQUIRED') {'DEFERRED_LOGIN_REQUIRED'} else {'FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE'}
+            } elseif ($data.filtered -and $out.pagination_failure -eq 'DEFERRED_LOGIN_REQUIRED') {
+              $out.status='DEFERRED_LOGIN_REQUIRED'
+            } elseif ($data.filtered) {
+              $out.status = 'FILTER_UNVERIFIED_EMPTY'
             } else {
-              $out.status = 'FILTER_UNAVAILABLE'
+              $out.status = 'FILTER_NOT_APPLIED'
             }
+          } else {
+            $out.status = 'FILTER_UNAVAILABLE'
           }
           if ($out.identity_confirmed -and $out.product_id -match '^[0-9]+$') {
             $knownProductPages["$($case.cardyssey_karte)|$($out.product_id)"] = $out.url.Split('?')[0]
@@ -1536,7 +1430,7 @@ try {
   $report = [ordered]@{
     language               = $Language
     expected_variants      = $runTotal
-    bulk_feed_only_variants = $bulkFeedOnly
+    feed_only_variants     = $feedOnly
     search_cache_hits = $searchCacheHits
     search_cache_misses = $searchCacheMisses
     progress_status        = (Get-Content $progressPath -Raw | ConvertFrom-Json).status

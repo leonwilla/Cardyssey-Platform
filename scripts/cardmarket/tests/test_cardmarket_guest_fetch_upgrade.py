@@ -19,26 +19,25 @@ def load_resolver():
 
 
 class GuestFetchUpgradeTests(unittest.TestCase):
-    def test_product_fetch_persists_inert_dom_and_reads_no_second_navigation(self):
+    def test_product_uses_live_document_and_reuses_open_filtered_url(self):
         s = P.read_text(encoding="utf-8-sig")
-        self.assertIn('fetch(target,{credentials:"include",redirect:"follow"})', s)
-        self.assertIn('new DOMParser().parseFromString(html,"text/html")', s)
-        self.assertIn('window.__cardysseyFetchedProduct={doc,url:response.url}', s)
-        self.assertIn("function Js-CardmarketProduct", s)
-        self.assertIn("$out.product_load_mode='SAME_ORIGIN_FETCH_DOMPARSER'", s)
-        self.assertIn("$out.product_load_mode='SAME_ORIGIN_FETCH_FILTERED_DOMPARSER'", s)
-        self.assertIn("if(-not $script:cmFetchedProductActive){", s)
-        self.assertIn("if($data.filtered -and $data.hasMore -and $auth -and $script:cmFetchedProductActive)", s)
+        self.assertNotIn("Get-CardmarketProductFetch", s)
+        self.assertNotIn("DOMParser", s)
+        self.assertIn("if (!(Move-To $initialUrl))", s)
+        self.assertIn("$out.product_load_mode='BROWSER_NAVIGATION'", s)
+        self.assertIn("if($preFilterAlreadyOpen -or (Move-To $targetFilter))", s)
+        self.assertIn("CANONICAL_URL_DOM_VERIFIED", s)
+        self.assertIn("Js $rowsExpr | ConvertFrom-Json", s)
 
     def test_guest_waits_only_when_provider_blocks_and_never_paginates(self):
         s = P.read_text(encoding="utf-8-sig")
         launcher = LAUNCHER.read_text(encoding="utf-8-sig")
         watchdog = WATCHDOG.read_text(encoding="utf-8-sig")
-        start = s.index("if($result.status -eq 'BLOCKED'){")
-        end = s.index("return $result",start)
+        start = s.index("if ($pageMarker -or $blockedHttp) {")
+        end = s.index("$expectedQuery",start)
         block = s[start:end]
         self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",block)
-        self.assertIn("httpStatus=[int]$result.httpStatus",block)
+        self.assertIn("httpStatus=[int]$s.httpStatus",block)
         self.assertIn("'HTTP_STATUS'",block)
         self.assertIn("if (-not $auth -and $data.hasMore) { $out.pagination_failure='DEFERRED_LOGIN_REQUIRED' }", s)
         self.assertIn("if ($data.filtered -and $auth) {", s)
@@ -89,12 +88,13 @@ class GuestFetchUpgradeTests(unittest.TestCase):
             "status": "OFFLINE_UNIQUE_V1_PAGE_CANDIDATE",
             "reference_product_url_candidate": en_link,
         }
-        result, counts = m.build_updates([base], [candidate], guard, "en", "2026-11-13T12:00:00Z")
+        result, counts = m.build_updates([base], [candidate], guard, "en")
         self.assertEqual(counts["new_hints"], 1)
         self.assertEqual(result[0]["reference_product_url"], en_link)
         self.assertEqual(result[0]["reference_print_verified"], "NO")
         self.assertEqual(result[0]["reference_standard_filter_supported"], "NO")
         self.assertEqual(result[0]["needs_price"], base["needs_price"])
+        self.assertEqual(result[0]["manual_scan_requested_at"], "")
         self.assertEqual(result[0]["existing_price_eur"], base["existing_price_eur"])
 
     def test_holo_reverse_can_use_standard_filter_but_never_auto_price(self):
@@ -111,7 +111,7 @@ class GuestFetchUpgradeTests(unittest.TestCase):
         }
         candidate = {"key": "sv01-015|reverse", "status": "OFFLINE_UNIQUE_V1_PAGE_CANDIDATE",
                      "reference_product_url_candidate": url}
-        out, counts = m.build_updates([r], [candidate], guard, "de", "2026-11-13T12:00:00Z")
+        out, counts = m.build_updates([r], [candidate], guard, "de")
         self.assertEqual(out[0]["reference_standard_filter_supported"], "YES")
         self.assertEqual(out[0]["reference_print_verified"], "NO")
         self.assertEqual(counts["filter_supported"], 1)
@@ -128,7 +128,7 @@ class GuestFetchUpgradeTests(unittest.TestCase):
              "known_url": "https://other.example", "manual_scan_requested_at": ""}
         candidate = {"key": "sv01-015|normal", "status": "OFFLINE_UNIQUE_V1_PAGE_CANDIDATE",
                      "reference_product_url_candidate": "https://www.cardmarket.com/de/Pokemon/Products/Singles/Scarlet-Violet/Meowscarada-V1-SVI015"}
-        out, counts = m.build_updates([r], [candidate], {"sv01": "Scarlet-Violet"}, "de", "2026-11-13T12:00:00Z")
+        out, counts = m.build_updates([r], [candidate], {"sv01": "Scarlet-Violet"}, "de")
         self.assertEqual(out[0], r)
         self.assertEqual(counts["rejected_existing_reference"], 1)
 

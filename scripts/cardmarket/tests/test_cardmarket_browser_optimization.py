@@ -13,34 +13,29 @@ BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 class BrowserOptimizationTests(unittest.TestCase):
     def source(self,name):
         return (source_path(name)).read_text(encoding='utf-8-sig')
-    def test_bulk_stays_in_csv_not_browser_if_covered(self):
+    def test_feed_only_variants_remain_in_durable_queue(self):
         s=self.source('cardmarket-language-browser-collector.ps1')
-        self.assertIn('$bulkFeedOnlyRows=@($allCases | Where-Object',s)
-        self.assertIn("[string]$_.needs_price -eq 'NO'",s)
-        self.assertIn("[string]$_.manual_scan_requested_at -eq ''",s)
-        self.assertIn("[string]$_.existing_source -ne ''",s)
-        self.assertIn('$browserCases=@($allCases | Where-Object',s)
-        self.assertIn('-not $feedOnlyKeys.Contains(',s)
-        self.assertIn('bulk_feed_only_variants = $bulkFeedOnly',s)
+        self.assertIn('Get-CardmarketBrowserQueueTier $row',s)
+        self.assertIn('$browserCases=@($focusedCases | Where-Object',s)
+        self.assertIn('feed_only_variants     = $feedOnly',s)
         for lang in ('de','en'):
             p=BASE/f'queue-{lang}.csv'
             if not p.exists():continue
             with p.open(encoding='utf-8-sig',newline='') as f:rows=list(csv.DictReader(f))
             self.assertGreater(len(rows),30000)
-            self.assertTrue(any(r.get('scan_tier')=='4' and r.get('needs_price')=='YES' for r in rows))
+            self.assertTrue(any(r.get('needs_price')=='YES' for r in rows))
             self.assertEqual(len({(r['cardyssey_karte'],r['variante_id']) for r in rows}),len(rows))
-    def test_light_search_falls_back_and_challenge_is_terminal(self):
+
+    def test_search_navigates_with_cache_and_waits_for_rendered_results(self):
         s=self.source('cardmarket-language-browser-collector.ps1')
-        x=self.source('cardmarket-lightweight-search.ps1')
-        self.assertIn('Search-CardmarketSameOrigin',s)
+        self.assertNotIn('Search-CardmarketSameOrigin',s)
         self.assertIn('if (!(Move-To $searchUrl))',s)
-        self.assertIn('FULL_PAGE_SEARCH_FALLBACK',s)
-        self.assertIn('SAME_ORIGIN_SEARCH_HTML',s)
-        self.assertIn("if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE'){throw}",s)
-        self.assertIn('credentials:"same-origin"',x)
-        self.assertIn('new DOMParser().parseFromString(html,"text/html")',x)
-        self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",x)
-        self.assertIn('if($links.Count -eq 0){return $null}',x)
+        self.assertIn("$out.search_load_mode='BROWSER_NAVIGATION'",s)
+        self.assertIn('$searchCache[$searchUrl] = $links',s)
+        self.assertIn('for($loadTry=0;',s)
+        self.assertIn("if ($searchResult.blocked)",s)
+        self.assertIn("throw 'CARDMARKET_PROVIDER_CHALLENGE'",s)
+
     def test_crosslanguage_only_as_lead_with_live_product_recheck(self):
         s=self.source('cardmarket-language-browser-collector.ps1')
         x=self.source('cardmarket-build-cross-language-page-cache.py')

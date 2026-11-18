@@ -75,9 +75,9 @@ class CheckVariants(unittest.TestCase):
         self.assertIn('extra[isReverseHolo]',s)
     def test_priced_bulk_is_routed_to_feed_not_browser(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
-        self.assertIn("$bulkFeedOnlyRows=@($allCases | Where-Object {",s)
-        self.assertIn("$priceNeeded = [string]$case.scan_tier -ne '4'",s)
-        self.assertIn("bulk_feed_only_variants = $bulkFeedOnly",s)
+        self.assertIn("$feedOnly = $allCases.Count - $focusedCases.Count",s)
+        self.assertIn("if ([string]$Case.needs_price -eq 'YES') { return 0 }",s)
+        self.assertIn("feed_only_variants     = $feedOnly",s)
     def test_batch_has_pending_limit_and_resume(self):
         s=SCRIPT.read_text(encoding="utf-8-sig")
         for token in ("[int]$BatchLimit = 0", "Get-CardmarketDueCases", "Select-Object -First $BatchLimit", "BATCH_COMPLETE_MORE_PENDING"):

@@ -11,10 +11,11 @@ import argparse
 import csv
 import json
 import importlib.util
-from decimal import Decimal,InvalidOperation
 from datetime import datetime,timezone
 from collections import Counter
 from pathlib import Path
+
+from cardmarket_browser_queue import browser_scan_tier, human_confirmed_print_keys
 
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
 PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
@@ -85,24 +86,17 @@ def cooldown_info(base,now=None):
         'languageCooldowns':per_language}
 
 
-def feed_only_covered(row):
-    """Mirror the non-destructive browser gate in the Windows collector."""
-    if row.get('scan_tier')!='4' or row.get('needs_price')!='NO':return False
-    if str(row.get('manual_scan_requested_at') or ''):return False
-    if str(row.get('foil') or '') or str(row.get('sonderdruck') or ''):return False
-    if str(row.get('stempel') or '') not in ('','[]','null'):return False
-    if not row.get('existing_source'):return False
-    try:return Decimal(str(row.get('existing_price_eur') or '0'))>0
-    except InvalidOperation:return False
-
 def snapshot(base:Path,language:str):
     if language not in ('de','en'):raise ValueError('unsupported language')
     queue=base/f'queue-{language}.csv'
     with queue.open(encoding='utf-8-sig',newline='') as f:rows=list(csv.DictReader(f))
     expected={(r['cardyssey_karte'],r['variante_id']) for r in rows}
-    # Same eligibility policy as the live scanner: the 31k priced ordinary
-    # bulk cards remain in the catalog and price feeds, not browser work.
-    feed_only={(r['cardyssey_karte'],r['variante_id']) for r in rows if feed_only_covered(r)}
+    confirmed_keys=human_confirmed_print_keys(base,language)
+    feed_only=set()
+    for row in rows:
+        key=(row['cardyssey_karte'],row['variante_id'])
+        if browser_scan_tier(row,key in confirmed_keys)==4:
+            feed_only.add(key)
     delta_skipped={(r['cardyssey_karte'],r['variante_id']) for r in rows
         if r.get('delta_browser_skip')=='YES'
         and r.get('delta_reason')=='GUIDE_STABLE_STANDARD_LAST_VERIFIED_WITHIN_28D'
@@ -113,6 +107,8 @@ def snapshot(base:Path,language:str):
         and str(r.get('drucktyp') or '').casefold() in ('normal','nonholo','common')}
     browser=expected-feed_only-delta_skipped
     completed={}
+    last_block=None
+    last_block_at=datetime.min.replace(tzinfo=timezone.utc)
     events=base/f'browser-observations-{language}.jsonl'
     if events.exists():
         with events.open(encoding='utf-8-sig') as f:
@@ -121,6 +117,11 @@ def snapshot(base:Path,language:str):
                 except (ValueError,TypeError):continue
                 k=(x.get('card_id'),x.get('variant_id'))
                 if k in browser:completed[k]=x
+                if x.get('status')=='BLOCKED':
+                    seen=timestamp(x.get('seen_at')) or last_block_at
+                    if seen>=last_block_at:
+                        last_block=x
+                        last_block_at=seen
     # Observations are appended to JSONL, but replacing an existing key in a
     # dict does NOT move it to the end. Sort by seen_at for the actual latest.
     chronological=sorted(completed.values(),key=lambda r:timestamp(r.get('seen_at')) or datetime.min.replace(tzinfo=timezone.utc),reverse=True)
@@ -155,8 +156,6 @@ def snapshot(base:Path,language:str):
     search_misses=sum(r.get('status')=='NO_EXACT_NUMBER_SEARCH_HIT' for r in completed.values())
     priced=sum(r.get('needs_price')=='NO' and r.get('existing_price_eur') not in ('',None) for r in rows)
     missing=sum(r.get('needs_price')=='YES' for r in rows)
-    eligible_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))!='4' for r in rows)
-    bulk_missing=sum(r.get('needs_price')=='YES' and str(r.get('scan_tier'))=='4' for r in rows)
     raw_status=str(progress.get('status') or 'NOT_STARTED')
     stalled=False
     if raw_status=='RUNNING' and progress.get('updated_at'):
@@ -190,7 +189,7 @@ def snapshot(base:Path,language:str):
     if raw_status=='BLOCKED' and progress.get('provider_block_stage')=='SESSION_BOOTSTRAP':
         last_incident={'at':progress.get('updated_at'),'kind':'SESSION_BOOTSTRAP'}
     elif raw_status=='BLOCKED':
-        blocked = next((x for x in chronological if x.get('status')=='BLOCKED'), None)
+        blocked=last_block
         if blocked is not None:
             last_incident={
               'at':blocked.get('seen_at'),
@@ -225,7 +224,7 @@ def snapshot(base:Path,language:str):
        'deltaPreviewCheckedAt':preview.get('checkedAt'),
        'browserObserved':len(completed),
        'browserProcessed':done,'productMapped':matched,'noExactSearchMatch':search_misses,
-       'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':eligible_missing,'feedMissingPriority':bulk_missing,
+       'pricedVariants':priced,'missingVariants':missing,'browserMissingPriority':missing,'feedMissingPriority':0,
        'browserRemaining':max(0,len(browser)-done),
        'missingFilterInputs':missing_filter_inputs,'nonfilterableSpecialPrints':nonfilterable_specials,
        'progressPercent':round(done/len(browser)*100,2) if browser else 100,

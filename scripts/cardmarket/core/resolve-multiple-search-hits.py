@@ -93,7 +93,7 @@ def safe_standard_filter(row: dict) -> bool:
 
 
 def build_updates(rows: list[dict], candidates: list[dict],
-                  guards: dict, language: str, now: str) -> tuple[list[dict], dict]:
+                  guards: dict, language: str) -> tuple[list[dict], dict]:
     by_key = {r["key"]: r for r in candidates
               if r.get("status") in ("OFFLINE_UNIQUE_V1_PAGE_CANDIDATE",
                                       "OFFLINE_UNIQUE_PLAIN_CANDIDATE_REVIEW")
@@ -114,6 +114,7 @@ def build_updates(rows: list[dict], candidates: list[dict],
             output.append(row)
             continue
         if row.get('stamp_route') or row.get('reference_evidence') == 'VINTAGE_MAIN_SET_PAGE_PRINT_UNVERIFIED':
+            output.append(row)
             continue
         current = str(row.get("reference_product_url") or "").split("?")[0]
         if (current and current != url) or str(row.get("reference_print_verified") or "") == "YES":
@@ -129,10 +130,9 @@ def build_updates(rows: list[dict], candidates: list[dict],
         row["reference_print_verified"] = "NO"
         row["reference_evidence"] = "OFFLINE_VERIFIED_SET_UNIQUE_V1_PAGE_PRINT_UNVERIFIED"
         row["reference_standard_filter_supported"] = "YES" if supported else "NO"
-        # A new manual request is required even when the previous ambiguous
-        # observation is recent. All old evidence remains in the JSONL log.
+        # A newly discovered URL is a lead for eligible browser work;
+        # only the explicit review workflow can request a manual scan.
         if current != url:
-            row["manual_scan_requested_at"] = now
             counters["new_hints"] += 1
         else:
             counters["existing_hints"] += 1
@@ -166,7 +166,6 @@ def main() -> None:
     base = args.base
     guards = json.loads((base / "verified-set-url-guards.json").read_text(encoding="utf-8-sig"))
     pending = {}
-    now = datetime.now(timezone.utc).isoformat()
     for lang in ("de", "en"):
         source = base / f"browser-observations-{lang}.jsonl"
         observations = []
@@ -182,7 +181,7 @@ def main() -> None:
             reader = csv.DictReader(file)
             fields = reader.fieldnames
             rows = list(reader)
-        updated, counts = build_updates(rows, candidates, guards, lang, now)
+        updated, counts = build_updates(rows, candidates, guards, lang)
         pending[lang] = (updated, fields, queue_path, output_path, candidates, counts)
     if args.apply:
         # Detect an executing Windows scanner before touching either queue.
