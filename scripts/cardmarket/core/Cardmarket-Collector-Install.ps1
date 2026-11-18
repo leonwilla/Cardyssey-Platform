@@ -26,4 +26,7 @@ $trigger = New-ScheduledTaskTrigger -Daily -At '04:35'
 $principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -StartWhenAvailable
 Register-ScheduledTask -TaskName 'Cardyssey Cardmarket Daily Refresh' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+if(Get-ScheduledTask -TaskName 'Cardyssey Cardmarket Resume Watchdog' -ErrorAction SilentlyContinue){
+  & (Join-Path $base 'Cardmarket-Watchdog-Interval.ps1')
+}
 Write-Output "startup_installed=$shortcutPath daily_refresh_installed=true"

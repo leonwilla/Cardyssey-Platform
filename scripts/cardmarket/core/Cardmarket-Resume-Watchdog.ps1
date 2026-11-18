@@ -1,5 +1,6 @@
 ﻿# Read-only watch of the existing Cardmarket Edge session.
 # Never solve a challenge; resume only when Cardmarket has cleared it itself.
+param([switch]$ReportBlocked)
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
 $backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
@@ -11,6 +12,11 @@ function Note($value) {
 }
 
 function Send-CardmarketTelegramAlert([string]$Incident,[string]$Message,[bool]$Active) {
+  $alertLock=[Threading.Mutex]::new($false,'Local\CardysseyCardmarketAlerts')
+  $ownsLock=$false
+  try {
+  try {$ownsLock=$alertLock.WaitOne(15000)} catch [Threading.AbandonedMutexException] {$ownsLock=$true}
+  if(!$ownsLock){return}
   $token=[Environment]::GetEnvironmentVariable('CARDMARKET_TELEGRAM_BOT_TOKEN','User')
   $chat=[Environment]::GetEnvironmentVariable('CARDMARKET_TELEGRAM_CHAT_ID','User')
   $tokenFile=Join-Path $base 'telegram-bot-token.dpapi'
@@ -36,25 +42,21 @@ function Send-CardmarketTelegramAlert([string]$Incident,[string]$Message,[bool]$
   $now=[DateTime]::Now
   # Quiet hours (local clock): hold the incident until the next watchdog
   # pass after 07:30; do not mark it sent during the night.
-  if($now.TimeOfDay -ge [TimeSpan]::Parse('23:00') -or $now.TimeOfDay -lt [TimeSpan]::Parse('07:30')){return}
+  if($Incident -ne 'BLOCKED' -and ($now.TimeOfDay -ge [TimeSpan]::Parse('23:00') -or $now.TimeOfDay -lt [TimeSpan]::Parse('07:30'))){return}
   try{
     $uri='https://api.telegram.org/bot'+$token+'/sendMessage'
     $reply=Invoke-RestMethod -Method Post -Uri $uri -Body @{chat_id=$chat;text=$Message} -TimeoutSec 12
     if($reply.ok){$state[$Incident]=[DateTime]::UtcNow.ToString('o');$state|ConvertTo-Json|Set-Content -Encoding UTF8 $path;Note ('TELEGRAM_SENT '+$Incident)}
   }catch{Note ('TELEGRAM_FAILED '+$Incident)}
-}
-function Get-DeferredLoginCount {
-  $count=0
-  foreach($language in @('de','en')){
-    $file=Join-Path $base ("browser-observations-$language.jsonl")
-    if(!(Test-Path $file)){continue}
-    $latest=@{}
-    foreach($line in [System.IO.File]::ReadLines($file)){
-      try{$r=$line|ConvertFrom-Json;if($r.card_id -and $r.variant_id){$latest[([string]$r.card_id+'|'+[string]$r.variant_id)]=[string]$r.status}}catch{}
-    }
-    $count+=@($latest.Values|Where-Object{$_ -eq 'DEFERRED_LOGIN_REQUIRED'}).Count
+  } finally {
+    if($ownsLock){$alertLock.ReleaseMutex()}
+    $alertLock.Dispose()
   }
-  return $count
+}
+$blockMessage='Cardyssey: Cardmarket zeigt eine Cloudflare-Schutzseite. Bitte in Edge bestätigen. Der Scanner startet nach der Freigabe automatisch.'
+if($ReportBlocked){
+  Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $true
+  return
 }
 
 try {
@@ -63,7 +65,9 @@ try {
   $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
   if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}
   $diag=& $checker | ConvertFrom-Json
-  Send-CardmarketTelegramAlert 'BLOCKED' 'Cardyssey: Cardmarket Cloudflare-Challenge aktiv. Scanner bleibt in Schutzpause.' ([string]$diag.status -eq 'BLOCKED')
+  if($diag.status -in @('AVAILABLE','BLOCKED')){
+    Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage ($diag.status -eq 'BLOCKED')
+  }
   if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
   # Login is an incident in itself; do not wait until 50 cards have been
   # marked deferred (the entire queue stops before they are counted).
@@ -99,15 +103,7 @@ try {
   if($states.Count -eq 0){return}
   $remaining=@($states | Where-Object { $_.status -notin @('COMPLETED','COMPLETE') })
   if($remaining.Count -eq 0){return}
-  # Do not restart a blocked provider immediately just because a static page
-  # or cached logout link can still be read. Only read-only probes are allowed
-  # before the full backoff expires. After normal batches use shorter breaks.
-  foreach($s in $remaining){
-    $minutes=Get-CardmarketCooldownMinutes -Status $s.status -Base $base -ProviderStatus ([string]$diag.status)
-    if($minutes -gt 0 -and [DateTime]::UtcNow -lt $s.last.AddMinutes($minutes)){
-      return
-    }
-  }
+  if(Get-CardmarketActiveCooldown $remaining $base ([string]$diag.status)){return}
   $launcher=Join-Path $base 'Cardmarket-Collector-Launcher.ps1'
   if(!(Test-Path $launcher)){Note 'COLLECTOR_LAUNCHER_MISSING';return}
   if($browserNeedsBootstrap){
@@ -118,15 +114,7 @@ try {
     & $launcher -ResumeAfterClearance
     return
   }
-  $pages=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 5
-  $active=$pages | Where-Object { $_.type -eq 'page' -and ([string]$_.url).StartsWith('https://www.cardmarket.com/') } | Select-Object -First 1
-  if(!$active){Note 'NO_CARDMARKET_TAB';return}
-  if([string]$active.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests'){
-    Note 'CHALLENGE_STILL_PRESENT';return
-  }
-  # Title alone cannot prove a valid product page, but after a prior block
-  # it can trigger one cautious attempt. Collector rechecks every response.
-  Note 'PAGE_VISIBLE_ATTEMPT_RESUME'
+  Note 'PAGE_AVAILABLE_ATTEMPT_RESUME'
   & $launcher -ResumeAfterClearance
 } catch {
   Note ('WATCH_ERROR '+$_.Exception.Message.Substring(0,[Math]::Min(130,$_.Exception.Message.Length)))

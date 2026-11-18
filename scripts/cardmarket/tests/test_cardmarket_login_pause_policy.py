@@ -33,12 +33,12 @@ class LoginPausePolicyTests(unittest.TestCase):
   for name in ('Cardmarket-Collector-Launcher.ps1','Cardmarket-Resume-Watchdog.ps1'):
    text=(source_path(name)).read_text(encoding='utf-8-sig')
    self.assertIn('Cardmarket-Backoff-Policy.ps1',text)
-   self.assertIn('Get-CardmarketCooldownMinutes',text)
+   self.assertIn('Get-CardmarketActiveCooldown',text)
   runner=(source_path('Cardmarket-Queue-Runner.ps1')).read_text(encoding='utf-8-sig')
   self.assertIn('Update-CardmarketBlockedStreak',runner)
   self.assertIn('cardmarket-blocked-streak.json',policy)
-  self.assertIn("$streak -eq 1 -and $ProviderStatus -eq 'AVAILABLE'",policy)
-  self.assertIn('return 30',policy)
+  self.assertIn("if($ProviderStatus -eq 'AVAILABLE'){return 0}",policy)
+  self.assertIn('return 20',policy)
   self.assertIn('return 240',policy)
  def test_manual_resume_does_not_override_access_gate(self):
   wrapper=(source_path('Cardmarket-Manual-Resume.ps1')).read_text(encoding='utf-8-sig')

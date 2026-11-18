@@ -5,6 +5,11 @@ $ErrorActionPreference="Stop"
 $base=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketCollector"
 $profile=Join-Path $env:LOCALAPPDATA "Cardyssey\CardmarketEdgeProfile"
 $runner=Join-Path $base "Cardmarket-Queue-Runner.ps1"
+$launchLock=[Threading.Mutex]::new($false,'Local\CardysseyCardmarketLaunch')
+$ownsLock=$false
+try {
+try {$ownsLock=$launchLock.WaitOne(0)} catch [Threading.AbandonedMutexException] {$ownsLock=$true}
+if(!$ownsLock){return}
 New-Item -ItemType Directory -Force -Path $base | Out-Null
 if (!(Test-Path $runner)) {throw "Cardmarket queue runner missing"}
 $already=Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -match "-File.*Cardmarket-Queue-Runner[.]ps1" -and $_.Name -eq "powershell.exe"}
@@ -12,41 +17,27 @@ if ($already) {return}
 $backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
 if(!(Test-Path $backoffScript)){Write-Output 'CARDMARKET_BACKOFF_POLICY_MISSING';return}
 . $backoffScript
-# Query the saved Cardmarket tab read-only for a first-block retry.
-# The normal homepage can be available while product redirects remain blocked.
-# A failed check gives the full 240-minute fallback; never assume clearance.
-$firstBlocked=(Get-CardmarketBlockedStreak $base) -eq 1
-$providerStatusForBackoff='UNKNOWN'
-if($firstBlocked){
+$diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
+if(!(Test-Path $diagnose)){Write-Output 'CARDMARKET_SESSION_DIAGNOSTICS_MISSING';return}
+$health=& $diagnose | ConvertFrom-Json
+if($health.status -eq 'BLOCKED'){Write-Output 'CARDMARKET_PAUSED BLOCKED';return}
+$states=@(foreach($lang in @('de','en')){
+  $progressFile=Join-Path $base ("progress-$lang.json")
+  if(!(Test-Path $progressFile)){continue}
   try {
-    $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
-    if(Test-Path $checker){
-      $sessionResult=& $checker | ConvertFrom-Json
-      $providerStatusForBackoff=[string]$sessionResult.status
-    }
-  } catch {$providerStatusForBackoff='UNKNOWN'}
-}
-# Durable provider-specific cooldown across Windows Task Scheduler launches.
-# Never assume that a persistent login or cf_clearance guarantees access.
-# The provider cooldown is mandatory even for the dashboard's manual
-# resume button. A working homepage is not proof the product-ID endpoint
-# has recovered; repeated manual restarts previously retriggered BLOCKED.
-foreach($lang in @('de','en')){
-    $progressFile=Join-Path $base ("progress-$lang.json")
-    if(-not (Test-Path $progressFile)){continue}
-    try{
-      $x=Get-Content -Raw -Encoding UTF8 $progressFile | ConvertFrom-Json
-      $last=[datetime]::Parse([string]$x.updated_at).ToUniversalTime()
-      $cooldown=Get-CardmarketCooldownMinutes -Status ([string]$x.status) -Base $base -ProviderStatus $providerStatusForBackoff
-      if($cooldown -gt 0 -and [DateTime]::UtcNow -lt $last.AddMinutes($cooldown)){
-        Write-Output ('CARDMARKET_COOLDOWN '+$lang+' '+$x.status+' until '+$last.AddMinutes($cooldown).ToString('o'))
-        return
-      }
-    }catch{
-      Write-Output ('CARDMARKET_PROGRESS_UNREADABLE '+$lang)
-      return
-    }
+    $x=Get-Content -Raw -Encoding UTF8 $progressFile | ConvertFrom-Json
+    [pscustomobject]@{language=$lang;status=[string]$x.status;
+      last=[DateTimeOffset]::Parse([string]$x.updated_at).UtcDateTime}
+  } catch {
+    Write-Output ('CARDMARKET_PROGRESS_UNREADABLE '+$lang)
+    return
   }
+})
+$cooldown=Get-CardmarketActiveCooldown $states $base ([string]$health.status)
+if($cooldown){
+  Write-Output ('CARDMARKET_COOLDOWN '+$cooldown.language+' '+$cooldown.status+' until '+$cooldown.until.ToString('o'))
+  return
+}
 
 $ready=$false
 $browserNewlyStarted=$false
@@ -89,9 +80,7 @@ if($browserNewlyStarted){
 # Auth is optional when the provider explicitly reports AVAILABLE.
 # Cloudflare / unreadable provider access still fail closed. Guest rows must
 # validate their own language/condition/variant filters and offer completeness.
-$diagnose=Join-Path $base 'Cardmarket-Session-Status.ps1'
-if(!(Test-Path $diagnose)){Write-Output 'CARDMARKET_SESSION_DIAGNOSTICS_MISSING';return}
-$health=& $diagnose | ConvertFrom-Json
+if($browserNewlyStarted){$health=& $diagnose | ConvertFrom-Json}
 if([string]$health.status -ne 'AVAILABLE'){
   # Looking at an existing challenge is not a new failed request. Only a
   # block after a fresh bootstrap navigation gets a new cooldown timestamp.
@@ -111,4 +100,8 @@ if([string]$health.status -ne 'AVAILABLE'){
 if([string]$health.login -ne 'AUTHENTICATED'){
   Write-Output 'CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE'
 }
-Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","16","-DelaySeconds","13","-MinRequestGapSeconds","13","-Languages","both","-RunMinutes","40","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","10","-DelaySeconds","16","-MinRequestGapSeconds","16","-Languages","both","-SingleBatch","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+} finally {
+  if($ownsLock){$launchLock.ReleaseMutex()}
+  $launchLock.Dispose()
+}

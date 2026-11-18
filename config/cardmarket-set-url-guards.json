@@ -1,6 +1,14 @@
 {
+  "2012bw": "McDonalds-Collection-2012",
+  "2014xy": "McDonalds-Collection-2014",
+  "2015xy": "McDonalds-Collection-2015",
+  "2016xy": "McDonalds-Collection-2016",
+  "2017sm": "McDonalds-Collection-2017",
+  "2018sm": "McDonalds-Collection-2018",
   "2019sm": "McDonalds-Collection-2019",
+  "2021swsh": "McDonalds-Collection-25th-Anniversary",
   "30th": "30th-Celebration",
+  "30th-c": "30th-Celebration",
   "base1": "Base-Set",
   "base2": "Jungle",
   "base3": "Fossil",
@@ -68,5 +76,7 @@
   "swsh2": "Rebel-Clash",
   "swsh4": "Vivid-Voltage",
   "swsh7": "Evolving-Skies",
+  "tk-xy-b": "XY-Trainer-Kit-Bisharp-Wigglytuff",
+  "tk-xy-w": "XY-Trainer-Kit-Bisharp-Wigglytuff",
   "xy7": "Ancient-Origins"
 }

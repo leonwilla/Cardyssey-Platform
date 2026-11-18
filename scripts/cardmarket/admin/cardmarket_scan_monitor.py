@@ -22,7 +22,7 @@ PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULT
 # Mirrors the Windows launcher/watchdog. The timestamp is the earliest safe
 # resume time, NOT a guarantee that a scheduled task starts exactly then.
 COOLDOWN_MINUTES={'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
-    'BATCH_COMPLETE_MORE_PENDING':45,'COMPLETED_WITH_DEFERRED':90}
+    'BATCH_COMPLETE_MORE_PENDING':20,'COMPLETED_WITH_DEFERRED':90}
 # LOGIN_REQUIRED and LOGIN_UNVERIFIED must not cause a cooldown while the
 # public provider remains AVAILABLE (the Windows runner uses guest mode).
 
@@ -58,16 +58,27 @@ def cooldown_info(base,now=None):
     blocking=None
     triggers=[]
     per_language={}
+    checked_at=timestamp(session.get('checkedAt'))
+    live_available=bool(provider_status=='AVAILABLE' and checked_at and
+                        timedelta(0)<=now-checked_at<=timedelta(minutes=3))
+    states=[]
     for lang in ('de','en'):
         p=base/f'progress-{lang}.json'
         if not p.exists():continue
         try:x=json.loads(p.read_text(encoding='utf-8-sig'))
         except (ValueError,OSError):continue
-        status=str(x.get('status') or '')
         last=timestamp(x.get('updated_at'))
-        minutes=(30 if status=='BLOCKED' and streak==1 and provider_status=='AVAILABLE'
-                 else 240 if status=='BLOCKED' else COOLDOWN_MINUTES.get(status,0))
-        if not last or minutes<=0:continue
+        if last:states.append((last, lang, str(x.get('status') or '')))
+    latest=max(states, default=None)
+    resume_block=bool(latest and latest[2]=='BLOCKED' and live_available and checked_at>=latest[0])
+    for last,lang,status in states:
+        if status=='BLOCKED':
+            minutes=0 if live_available and checked_at>=last else 240
+        elif resume_block and status=='BATCH_COMPLETE_MORE_PENDING':
+            minutes=0
+        else:
+            minutes=COOLDOWN_MINUTES.get(status,0)
+        if minutes<=0:continue
         safe=last+timedelta(minutes=minutes)
         active=safe>now
         per_language[lang]={'until':safe.isoformat(),'active':active,

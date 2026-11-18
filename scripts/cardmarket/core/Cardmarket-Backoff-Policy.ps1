@@ -1,8 +1,6 @@
 # Persistent provider backoff for both language queues.
 # This file is sourced by the Windows launcher, watchdog and queue runner.
-# A first failed scan run can retry after 30m ONLY when a fresh, read-only
-# Cardmarket session check reports AVAILABLE. The second consecutive BLOCKED
-# run restores the full 240m provider backoff, as do unreadable states.
+# Only a fresh check of the collector tab can release an active provider block.
 function Get-CardmarketBlockedStreak([string]$Base) {
   $path=Join-Path $Base 'cardmarket-blocked-streak.json'
   if(!(Test-Path -LiteralPath $path)){return 2}  # unknown = conservative
@@ -18,17 +16,34 @@ function Get-CardmarketBlockedStreak([string]$Base) {
 function Get-CardmarketCooldownMinutes([string]$Status,[string]$Base,[string]$ProviderStatus) {
   switch($Status) {
     'BLOCKED' {
-      $streak=Get-CardmarketBlockedStreak $Base
-      if($streak -eq 1 -and $ProviderStatus -eq 'AVAILABLE'){return 30}
+      if($ProviderStatus -eq 'AVAILABLE'){return 0}
       return 240
     }
     'PROVIDER_TIMEOUT' {return 90}
     'CONNECTION_LOST' {return 60}
-    'BATCH_COMPLETE_MORE_PENDING' {return 45}
+    'BATCH_COMPLETE_MORE_PENDING' {return 20}
     'COMPLETED_WITH_DEFERRED' {return 90}
     default {return 0}
   }
 }
+function Get-CardmarketActiveCooldown($States,[string]$Base,[string]$ProviderStatus) {
+  $latest=$States | Sort-Object last -Descending | Select-Object -First 1
+  $resumeBlock=($ProviderStatus -eq 'AVAILABLE' -and $latest.status -eq 'BLOCKED')
+  $now=[DateTime]::UtcNow
+  $active=foreach($entry in $States){
+    # A recent cleared block takes precedence over the preceding routine batch pause.
+    if($resumeBlock -and $entry.status -eq 'BATCH_COMPLETE_MORE_PENDING'){continue}
+    $minutes=Get-CardmarketCooldownMinutes $entry.status $Base $ProviderStatus
+    if($minutes -gt 0){
+      $until=$entry.last.AddMinutes($minutes)
+      if($now -lt $until){
+        [pscustomobject]@{language=$entry.language;status=$entry.status;until=$until}
+      }
+    }
+  }
+  return $active | Sort-Object until -Descending | Select-Object -First 1
+}
+
 function Update-CardmarketBlockedStreak([string]$Base,[string]$Status,
                                        [string]$Language,[string]$ProgressAt,
                                        [string]$RunId) {
@@ -130,10 +145,16 @@ function Get-CardmarketDueCases {
 function Get-CardmarketLanguageOrder {
   param([string]$Base, [string]$Languages)
   if($Languages -ne 'both'){return $Languages}
-  return @('de','en') | Sort-Object -Property @{Expression={
+  $states=foreach($language in @('de','en')){
     try {
-      $progress=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $Base "progress-$_.json") | ConvertFrom-Json
-      [DateTimeOffset]::Parse([string]$progress.updated_at).UtcDateTime
-    } catch {[datetime]::MinValue}
-  }}, @{Expression={$_}}
+      $progress=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $Base "progress-$language.json") | ConvertFrom-Json
+      [pscustomobject]@{language=$language;status=[string]$progress.status;
+        last=[DateTimeOffset]::Parse([string]$progress.updated_at).UtcDateTime}
+    } catch {
+      [pscustomobject]@{language=$language;status='';last=[datetime]::MinValue}
+    }
+  }
+  $ordered=@($states | Sort-Object -Property last,language)
+  if($ordered[-1].status -eq 'BLOCKED'){[array]::Reverse($ordered)}
+  return $ordered.language
 }

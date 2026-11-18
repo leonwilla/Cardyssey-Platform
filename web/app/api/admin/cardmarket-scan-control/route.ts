@@ -13,6 +13,11 @@ export async function POST(request:Request){
  try{
   const action=String((body as {action?:string}).action);
   if(action==='resume'){
+   const {stdout:live}=await exec('/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe',
+    ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File','C:/Users/TV/AppData/Local/Cardyssey/CardmarketCollector/Cardmarket-Session-Status.ps1'],
+    {timeout:15000,maxBuffer:14000});
+   const health=JSON.parse(live.replace(/^\uFEFF/,'')) as {status?:string};
+   if(health.status==='BLOCKED')return Response.json({error:'challenge_active'},{status:409,headers:{'Cache-Control':'no-store'}});
    const {stdout}=await exec('python3',['/home/tv/cardshop/scripts/cardmarket/admin/cardmarket_scan_monitor.py','--language','de'],{timeout:15000,maxBuffer:160000});
    const scan=JSON.parse(stdout) as {cooldownActive?:boolean;nextAllowedAt?:string;cooldownBlockingLanguage?:string};
    if(scan.cooldownActive)return Response.json({error:'cooldown_active',nextAllowedAt:scan.nextAllowedAt,blockingLanguage:scan.cooldownBlockingLanguage},{status:409,headers:{'Cache-Control':'no-store'}});

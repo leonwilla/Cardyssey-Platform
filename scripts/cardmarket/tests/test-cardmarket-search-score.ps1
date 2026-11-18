@@ -95,8 +95,12 @@ try{
   @{status='BLOCKED';updated_at=$now.ToString('o')} | ConvertTo-Json | Set-Content (Join-Path $temps 'progress-de.json')
   @{status='BATCH_COMPLETE_MORE_PENDING';updated_at=$now.AddDays(-2).ToString('o')} | ConvertTo-Json | Set-Content (Join-Path $temps 'progress-en.json')
   $langs=@(Get-CardmarketLanguageOrder -Base $temps -Languages both)
-  Check (($langs -join ',') -eq 'en,de') 'after DE block, resume with EN after shared backoff'
+  Check (($langs -join ',') -eq 'de,en') 'resume the most recent cleared DE block'
 } finally {
   Remove-Item -Recurse -LiteralPath $temps
 }
+Check (Test-CardmarketPrintedNumber 'Pikachu-MCD145' '5' '2014xy') 'McDonalds year stays in the set code'
+Check (!(Test-CardmarketPrintedNumber 'Pikachu-MCD145' '45' '2014xy')) 'McDonalds year is not card number'
+Check (Test-CardmarketPrintedNumber 'Wigglytuff-TK730W' '30' 'tk-xy-w') 'Wigglytuff deck number matches'
+Check (!(Test-CardmarketPrintedNumber 'Wigglytuff-TK730W' '30' 'tk-xy-b')) 'The other trainer deck stays distinct'
 Write-Output 'CARDMARKET_SCORE_FILTER_QUEUE_TESTS_OK'

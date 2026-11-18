@@ -81,6 +81,41 @@ def resolve(observations: list[dict], guards: dict, language: str = "de") -> lis
     return result
 
 
+
+def resolve_set_version_candidates(observations, queue, guards, language):
+    """Return historical main-set and Additionals pages as print leads."""
+    from cardmarket_print_routes import CONFIG, product_path
+
+    matches = {}
+    for entry in observations:
+        key = (entry.get("card_id"), entry.get("variant_id"))
+        row = queue.get(key)
+        sid = entry.get("set_id")
+        if not row or sid != row.get("set_id") or sid not in {"sv08.5", "sv10.5w", "sv10.5b"}:
+            continue
+        number = str(row.get("kartennummer") or "")
+        code = CONFIG["setCodes"].get(sid)
+        guard = guards.get(sid)
+        if not code or not guard or not number.isdecimal():
+            continue
+        urls = entry.get("score_top_candidate_urls") or []
+        if not isinstance(urls, list):
+            continue
+        for url in [entry.get("url"), *urls]:
+            path = product_path(url)
+            if not path or path[1] != language:
+                continue
+            slug, sku = path[2], path[3]
+            if slug not in (guard, guard + "-Additionals"):
+                continue
+            extra = "x" if slug.endswith("-Additionals") else ""
+            printed = re.search(r"-" + extra + re.escape(code) + r"-?([0-9]{1,4})$", sku, re.I)
+            version = re.search(r"(?:^|-)V([0-9]+)(?:-|$)", sku, re.I)
+            if not printed or int(printed[1]) != int(number) or (version and version[1] not in ("1", "2")):
+                continue
+            matches.setdefault(key, set()).add(f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/{slug}/{sku}")
+    return {key: sorted(urls) for key, urls in matches.items()}
+
 def safe_standard_filter(row: dict) -> bool:
     # Holo & reverse in this specific set have a standard Reverse Holo
     # provider control; unsupported special finishes must not pass this gate.

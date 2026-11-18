@@ -1,5 +1,15 @@
 {
   "setCodes": {
+    "2012bw": "MCD12",
+    "2014xy": "MCD14",
+    "2015xy": "MCD15",
+    "2016xy": "MCD16",
+    "2017sm": "MCD17",
+    "2018sm": "MCD18",
+    "2019sm": "MCD19",
+    "2021swsh": "MCD25",
+    "tk-xy-b": "TK7",
+    "tk-xy-w": "TK7",
     "base1": "BS",
     "base2": "JU",
     "base3": "FO",

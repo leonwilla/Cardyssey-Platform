@@ -52,7 +52,7 @@ function Js([string]$Expression,[int]$TimeoutSec) {
   return $script:document | ConvertTo-Json -Compress
 }
 
-$MinRequestGapSeconds=13
+$MinRequestGapSeconds=16
 $ChallengeWaitSeconds=0
 $script:lastProviderRequestUtc=[datetime]::MinValue
 $LangCfg=@{PathPrefix='/de/Pokemon'}
@@ -70,7 +70,7 @@ $en=New-CardmarketOfferFilterUrl -ProductUrl 'https://www.cardmarket.com/en/Poke
 Assert-Equal ([uri]$en).Query '?language=1&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=Y&isFirstEd=N' 'EN filter URL'
 Assert-Equal (Move-To $en) $true 'EN filtered product navigation'
 
-$ChallengeWaitSeconds=240
+$ChallengeWaitSeconds=15
 $script:responseStatuses.Enqueue(403)
 $script:responseStatuses.Enqueue(200)
 $before=@($script:events | Where-Object {$_ -like 'navigate:*'}).Count

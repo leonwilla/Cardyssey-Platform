@@ -10,7 +10,8 @@ function Assert-Test([bool]$ok,[string]$message) {
 }
 function Get-CimInstance { }
 function Invoke-RestMethod {
-    param($TimeoutSec,$Uri)
+    param($TimeoutSec,$Uri,$Method,$Body)
+    if($Method -eq "Post"){return @{ok=$true}}
     $fixture.connectionProbes++
     if($fixture.coldBrowser -and $fixture.connectionProbes -eq 1){throw 'Fixture browser unavailable'}
     return @()
@@ -59,8 +60,15 @@ Get-Content -Raw (Join-Path $env:LOCALAPPDATA 'fixture-session.json')
     @{status='BLOCKED';updated_at=[DateTime]::UtcNow.AddMinutes(-10).ToString('o')} | ConvertTo-Json | Set-Content $progress
     Set-Content $session '{"status":"AVAILABLE","login":"AUTHENTICATED"}'
     $fixture.connectionProbes=0
+    $cleared=@(& $launcher -ManualResume)
+    Assert-Test ($fixture.launches.Count -eq 1 -and $fixture.launches[0].args -contains '-SingleBatch') 'Fresh clearance should resume immediately'
+    Assert-Test (!(Test-Path $warmupLog)) 'A cleared tab must remain on its current page'
+    $fixture.launches.Clear()
+    @{status='BATCH_COMPLETE_MORE_PENDING';updated_at=[DateTime]::UtcNow.AddMinutes(-10).ToString('o')} | ConvertTo-Json | Set-Content $progress
+    $fixture.connectionProbes=0
     $waiting=@(& $launcher -ManualResume)
-    Assert-Test ($waiting[0] -like 'CARDMARKET_COOLDOWN*' -and $fixture.connectionProbes -eq 0) 'Active cooldown must gate the normal resume'
+    Assert-Test ($waiting[0] -like 'CARDMARKET_COOLDOWN*' -and $fixture.connectionProbes -eq 0) 'Regular batch pause must gate the normal resume'
+    Assert-Test ($fixture.launches.Count -eq 0) 'Batch launched early'
 
     Remove-Item -LiteralPath $progress
     $fixture.coldBrowser=$true
@@ -69,6 +77,27 @@ Get-Content -Raw (Join-Path $env:LOCALAPPDATA 'fixture-session.json')
     Assert-Test ($cold -contains 'CARDMARKET_WARMUP_DONE_6S') 'Fresh browser still needs its bootstrap page'
     Assert-Test ($fixture.launches.Count -eq 2 -and $fixture.launches[1].file -eq 'powershell.exe') 'Expected Edge followed by scanner'
     Assert-Test (@(Get-Content $warmupLog).Count -eq 1) 'Expected exactly one cold-start navigation'
+    Copy-Item (Join-Path $PSScriptRoot '../core/Cardmarket-Resume-Watchdog.ps1') $base
+    Copy-Item $launcher $base
+    $watchdog=Join-Path $base 'Cardmarket-Resume-Watchdog.ps1'
+    @{status='BLOCKED';updated_at=[DateTime]::UtcNow.AddMinutes(-1).ToString('o')} | ConvertTo-Json | Set-Content $progress
+    $fixture.coldBrowser=$false
+    Set-Content $session '{"status":"BLOCKED","login":"UNKNOWN"}'
+    $fixture.launches.Clear()
+    $null=@(& $watchdog)
+    Assert-Test ($fixture.launches.Count -eq 0) 'Watchdog must wait while the challenge is visible'
+    Set-Content $session '{"status":"AVAILABLE","login":"AUTHENTICATED"}'
+    $null=@(& $watchdog)
+    Assert-Test ($fixture.launches.Count -eq 1) 'Watchdog should resume immediately once available'
+
+    Set-Content (Join-Path $base 'cardmarket-language-browser-collector.ps1') @'
+param($Language,$OutputDir)
+@{status='BATCH_COMPLETE_MORE_PENDING';updated_at=[DateTime]::UtcNow.ToString('o');done=1;total=10;provider_attempted=$false} |
+    ConvertTo-Json | Set-Content (Join-Path $OutputDir "progress-$Language.json")
+'@
+    $runner=Join-Path $PSScriptRoot '../core/Cardmarket-Queue-Runner.ps1'
+    $scan=@(& $runner -Languages both -SingleBatch)
+    Assert-Test (@($scan | Where-Object {$_ -like 'LANGUAGE_BEGIN*'}).Count -eq 1) 'One normal scheduled run must stop after one batch'
     Write-Output 'CARDMARKET_LAUNCHER_TESTS_OK'
 } finally {
     $env:LOCALAPPDATA=$savedLocalAppData

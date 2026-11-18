@@ -136,6 +136,15 @@ def resolved_after_scan(observation,decision):
         return reviewed>=seen
     except (TypeError,ValueError):return False
 
+def offline_links(base, language):
+    try:
+        data=json.loads((base/'cardmarket-offline-review-evidence.json').read_text(encoding='utf-8'))
+        return data['languages'][language] if data.get('schema')==1 else {}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
+
 def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten',decisions=None,*,for_export=False):
     if language not in ('de','en'):raise ValueError('invalid_language')
     if scope not in ('current','all'):raise ValueError('invalid_scope')
@@ -166,17 +175,24 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
         for r in csv.DictReader(f):queue[(r.get('cardyssey_karte'),r.get('variante_id'))]=r
     if decisions is None:decisions=reviewed_decisions(language) if base==BASE else {}
     output=[]
+    links=offline_links(base,language)
     for key,entry in rows.items():
         if resolved_after_scan(entry,decisions.get(key)):continue
         status=str(entry.get('status') or '')
         q=queue.get(key,{})
         references=reference_urls(q,language)
+        proof=links.get('|'.join(key),{})
+        if (proof.get('kind')=='singleton_stamp' and q.get('set_id')==entry.get('set_id')
+            and str(entry.get('product_id') or '') in ('',str(proof.get('product') or ''))):
+            references=list(dict.fromkeys([proof['url'],*references]))
+        elif proof.get('kind')=='version_candidates':
+            references=list(dict.fromkeys([*references,*proof.get('urls',[])]))
         group=classify(status,entry,q,references)
         if not group:continue
         card,var=key
         readiness=filter_readiness.analyze(q) if q else {'missing':[],'unsupported':[]}
         item={'printStamp':str(q.get('stempel') or '[]'),'printFoil':str(q.get('foil') or ''),
-          'referenceUrl':str(q.get('reference_product_url') or ''),
+          'referenceUrl':str((proof.get('url') if proof.get('kind')=='singleton_stamp' and proof.get('url') in references else None) or q.get('reference_product_url') or ''),
           'missingFields':entry.get('missing_fields') or readiness['missing'],
           'unfilterablePrintFeatures':readiness['unsupported'],
           'cardId':card,'variantId':var,'setId':q.get('set_id') or entry.get('set_id') or card.rsplit('-',1)[0],

@@ -2,12 +2,13 @@
 # Rotate German/English batches so neither backlog can starve the other.
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
-  [ValidateRange(1,1000)][int]$BatchLimit = 16,
-  [ValidateRange(4,120)][int]$DelaySeconds = 13,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 13,
+  [ValidateRange(1,1000)][int]$BatchLimit = 10,
+  [ValidateRange(4,120)][int]$DelaySeconds = 16,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 16,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
+  [switch]$SingleBatch,
   [switch]$RequireLogin  # optional diagnostics only; production launcher omits it
 )
 $ErrorActionPreference='Stop'
@@ -46,6 +47,13 @@ $stop=$false
 do {
   foreach($language in $selectedLanguages){
     if($done[$language]){continue}
+    if($SingleBatch -and $Languages -eq 'both'){
+      $saved=Join-Path $base "progress-$language.json"
+      if(Test-Path $saved){
+        $savedState=Get-Content -Raw -Encoding UTF8 $saved | ConvertFrom-Json
+        if($savedState.status -in @('COMPLETED','COMPLETE')){$done[$language]=$true;continue}
+      }
+    }
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -ge $deadline){break}
     Write-Output ('LANGUAGE_BEGIN '+$language+' '+[DateTime]::UtcNow.ToString('o'))
     & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -MinRequestGapSeconds $MinRequestGapSeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
@@ -64,6 +72,10 @@ do {
     if($progress.status -in @('BLOCKED','PROVIDER_TIMEOUT','CONNECTION_LOST','LOGIN_REQUIRED','LOGIN_UNVERIFIED')){
       # A provider challenge/login failure may affect both language sessions.
       # Do not hammer the other queue. The Windows task safely resumes later.
+      if($progress.status -eq 'BLOCKED'){
+        $watchdog=Join-Path $base 'Cardmarket-Resume-Watchdog.ps1'
+        & $watchdog -ReportBlocked
+      }
       Write-Output 'STOP_ON_PROVIDER_OR_CONNECTION_ERROR'
       $stop=$true;break
     }
@@ -74,11 +86,12 @@ do {
       Write-Output ('UNEXPECTED_PROGRESS_STATE '+$language+' '+$progress.status)
       $stop=$true;break
     }
+    if($SingleBatch){break}
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -lt $deadline){
       Start-Sleep -Seconds $MinRequestGapSeconds
     }
   }
-  if($stop -or $RunMinutes -eq 0 -or [DateTime]::UtcNow -ge $deadline){break}
+  if($stop -or $SingleBatch -or $RunMinutes -eq 0 -or [DateTime]::UtcNow -ge $deadline){break}
   $pending=@($selectedLanguages | Where-Object {-not $done[$_]})
   if($pending.Count -eq 0){break}
   Start-Sleep -Seconds 25

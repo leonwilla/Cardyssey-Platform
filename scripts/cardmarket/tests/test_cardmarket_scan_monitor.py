@@ -34,7 +34,7 @@ class ScanMonitorTests(unittest.TestCase):
       'updated_at':(now-timedelta(minutes=minutes)).isoformat()}))
    x=cooldown_info(base,now)
    self.assertTrue(x['cooldownActive'])
-   self.assertEqual(x['secondsUntilAllowed'],1800) # EN last batch controls both
+   self.assertEqual(x['secondsUntilAllowed'],300) # EN last batch controls both
    self.assertEqual(len(x['cooldownTriggers']),2)
  def test_login_required_does_not_extend_cooldown_for_guest_mode(self):
   from datetime import datetime,timezone
@@ -92,37 +92,28 @@ class ScanMonitorTests(unittest.TestCase):
    result=snapshot(root,'de')
    self.assertEqual(result['lastIncident'],{'kind':'SESSION_BOOTSTRAP','at':'2026-11-13T19:23:00Z'})
 
- def test_staged_backoff_requires_first_block_and_provider_available(self):
-  from datetime import datetime,timezone
+ def test_fresh_available_releases_latest_block_but_not_batch_pause(self):
+  from datetime import datetime, timezone
   from scripts.cardmarket.admin.cardmarket_scan_monitor import cooldown_info
   with tempfile.TemporaryDirectory() as path:
    b=Path(path)
    now=datetime(2026,11,13,14,49,tzinfo=timezone.utc)
-   (b/'progress-de.json').write_text(json.dumps({
-    'status':'BLOCKED','updated_at':'2026-11-13T14:43:00Z'}))
-   (b/'browser-session-status.json').write_text(json.dumps({'status':'AVAILABLE',
-    'login':'AUTHENTICATED','checkedAt':'2026-11-13T14:48:00Z'}))
-   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
-    'count':1,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'one'}))
-   first=cooldown_info(b,now)
-   self.assertTrue(first['cooldownActive'])
-   self.assertEqual(first['blocking']['minutes'],30)
-   self.assertEqual(first['blocking']['until'],'2026-11-13T15:13:00+00:00')
-   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
-    'count':2,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'two'}))
-   second=cooldown_info(b,now)
-   self.assertEqual(second['blocking']['minutes'],240)
-   (b/'cardmarket-blocked-streak.json').unlink()
-   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],240)
-   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
-    'count':1,'lastStatus':'BLOCKED','lastLanguage':'de','lastRunId':'one'}))
-   (b/'browser-session-status.json').write_text(json.dumps({'status':'BLOCKED'}))
-   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],240)
-   (b/'progress-de.json').write_text(json.dumps({
-    'status':'BATCH_COMPLETE_MORE_PENDING','updated_at':'2026-11-13T14:43:00Z'}))
-   (b/'cardmarket-blocked-streak.json').write_text(json.dumps({
-    'count':0,'lastStatus':'BATCH_COMPLETE_MORE_PENDING','lastLanguage':'de','lastRunId':'ok'}))
-   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],45)
+   def progress(language,status,minute):
+    (b/f'progress-{language}.json').write_text(json.dumps({
+     'status':status,'updated_at':f'2026-11-13T14:{minute}:00Z'}))
+   def session(status,minute):
+    (b/'browser-session-status.json').write_text(json.dumps({
+     'status':status,'checkedAt':f'2026-11-13T14:{minute}:00Z'}))
+   progress('de','BLOCKED',43)
+   progress('en','BATCH_COMPLETE_MORE_PENDING',41)
+   for status,minute in [('AVAILABLE',42),('AVAILABLE',45),('BLOCKED',48),('BROWSER_UNAVAILABLE',48)]:
+    session(status,minute)
+    result=cooldown_info(b,now)
+    self.assertEqual(result['blocking']['minutes'],240)
+   session('AVAILABLE',48)
+   self.assertFalse(cooldown_info(b,now)['cooldownActive'])
+   progress('en','BATCH_COMPLETE_MORE_PENDING',46)
+   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],20)
  def test_last_card_is_most_recent_even_if_key_was_replaced(self):
   with tempfile.TemporaryDirectory() as d:
    base=Path(d)

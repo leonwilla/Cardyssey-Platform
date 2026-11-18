@@ -1,0 +1,118 @@
+{
+  "24": {
+    "productId": "273719",
+    "sku": "Charmeleon-V1-BS24"
+  },
+  "49": {
+    "productId": "273744",
+    "sku": "Drowzee-V1-BS49"
+  },
+  "54": {
+    "productId": "273749",
+    "sku": "Metapod-V1-BS54"
+  },
+  "55": {
+    "productId": "273750",
+    "sku": "Nidoran-M-V1-BS55"
+  },
+  "59": {
+    "productId": "273754",
+    "sku": "Poliwag-V1-BS59"
+  },
+  "60": {
+    "productId": "273755",
+    "sku": "Ponyta-V1-BS60"
+  },
+  "61": {
+    "productId": "273756",
+    "sku": "Rattata-V1-BS61"
+  },
+  "62": {
+    "productId": "273757",
+    "sku": "Sandshrew-V1-BS62"
+  },
+  "64": {
+    "productId": "273759",
+    "sku": "Starmie-V1-BS64"
+  },
+  "66": {
+    "productId": "273761",
+    "sku": "Tangela-V1-BS66"
+  },
+  "67": {
+    "productId": "273762",
+    "sku": "Voltorb-V1-BS67"
+  },
+  "68": {
+    "productId": "273763",
+    "sku": "Vulpix-V1-BS68"
+  },
+  "69": {
+    "productId": "273764",
+    "sku": "Weedle-V1-BS69"
+  },
+  "71": {
+    "productId": "273766",
+    "sku": "Computer-Search-V1-BS71"
+  },
+  "73": {
+    "productId": "273768",
+    "sku": "Imposter-Professor-Oak-V1-BS73"
+  },
+  "75": {
+    "productId": "273770",
+    "sku": "Lass-V1-BS75"
+  },
+  "84": {
+    "productId": "273779",
+    "sku": "PlusPower-V1-BS84"
+  },
+  "86": {
+    "productId": "273781",
+    "sku": "Pokemon-Flute-V1-BS86"
+  },
+  "87": {
+    "productId": "273782",
+    "sku": "Pokedex-BS87"
+  },
+  "89": {
+    "productId": "273784",
+    "sku": "Revive-V1-BS89"
+  },
+  "91": {
+    "productId": "273786",
+    "sku": "Bill-V1-BS91"
+  },
+  "92": {
+    "productId": "273787",
+    "sku": "Energy-Removal-V1-BS92"
+  },
+  "94": {
+    "productId": "273789",
+    "sku": "Potion-V1-BS94"
+  },
+  "97": {
+    "productId": "273792",
+    "sku": "Fighting-Energy-V1-BS97"
+  },
+  "98": {
+    "productId": "273793",
+    "sku": "Fire-Energy-V1-BS98"
+  },
+  "99": {
+    "productId": "273794",
+    "sku": "Grass-Energy-V1-BS99"
+  },
+  "100": {
+    "productId": "273795",
+    "sku": "Lightning-Energy-V1-BS100"
+  },
+  "101": {
+    "productId": "273796",
+    "sku": "Psychic-Energy-V1-BS101"
+  },
+  "102": {
+    "productId": "273797",
+    "sku": "Water-Energy-V1-BS102"
+  }
+}

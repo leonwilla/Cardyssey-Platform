@@ -73,6 +73,29 @@ function Test-CardmarketVintageSubtype {
                       'fehlendes-erweiterungssymbol','shadowless','schattenlos')
 }
 
+function Test-CardmarketPrintedNumber {
+ param([string]$ProductSlug,[string]$PrintedNumber,[string]$SetId)
+ $expected=$PrintedNumber.Trim()
+ $code=[string]$cardmarketStampRules.setCodes.$SetId
+ if($SetId -in @('tk-xy-w','tk-xy-b')){
+   $suffix=$SetId.Substring($SetId.Length-1).ToUpperInvariant()
+   $wanted=[regex]::Match($expected,'(?i)^(\d{1,4})([WB]?)$')
+   $actual=[regex]::Match($ProductSlug,('(?i)-TK7-?(\d{1,4})'+$suffix+'$'))
+   return ($wanted.Success -and $actual.Success -and (!$wanted.Groups[2].Value -or
+           $wanted.Groups[2].Value -eq $suffix) -and [int]$wanted.Groups[1].Value -eq [int]$actual.Groups[1].Value)
+ }
+ if($code -match '^MCD\d{2}$'){
+   $actual=[regex]::Match($ProductSlug,('(?i)-'+[regex]::Escape($code)+'-?(\d{1,4})$'))
+   return ($actual.Success -and $expected -match '^\d{1,4}$' -and [int]$expected -eq [int]$actual.Groups[1].Value)
+ }
+ $tail=[regex]::Match($ProductSlug,'(?i)(?:^|-)([A-Za-z]{0,12})([0-9]{1,4})$')
+ if(!$tail.Success){return $false}
+ $num=[string]$tail.Groups[2].Value
+ if($expected -match '^\d{1,4}$'){return [int]$expected -eq [int]$num}
+ if($expected -match '^[A-Za-z]{1,12}0*[0-9]{1,4}$'){return ($tail.Groups[1].Value+$num) -eq $expected}
+ return $false
+}
+
 function Resolve-CardmarketSearchCandidates {
  param(
    [object[]]$Links,
@@ -117,16 +140,7 @@ function Resolve-CardmarketSearchCandidates {
    }
    # The final collector token is the ONLY part allowed to satisfy the
    # printed number. A title like '113' never matches collector #13.
-   $tail=[regex]::Match($productSlug,'(?i)(?:^|-)([A-Za-z]{0,12})([0-9]{1,4})$')
-   if(!$tail.Success){continue}
-   $num=[string]$tail.Groups[2].Value
-   if($expected -match '^\d{1,4}$'){
-     if([int]$expected -ne [int]$num){continue}
-   } elseif($expected -match '^[A-Za-z]{1,12}0*[0-9]{1,4}$'){
-     # Promo-style printed identifiers e.g. DP05 or SVP099.
-     $expectedCode=$expected.ToUpperInvariant().TrimStart()
-     if(($tail.Groups[1].Value+$num).ToUpperInvariant() -cne $expectedCode){continue}
-   } else {continue}
+   if(!(Test-CardmarketPrintedNumber $productSlug $expected $SetId)){continue}
    $title=[string]$link.text
    $searchText=($title+' '+$productSlug).ToLowerInvariant()
    $score=100
@@ -144,7 +158,7 @@ function Resolve-CardmarketSearchCandidates {
    if($Name.Trim() -and $title.ToLowerInvariant().Contains($Name.ToLowerInvariant())){$score+=2}
    # V2 and bracketed attack names are NOT evidence of a stamp.
    $ranked.Add([pscustomobject]@{url=$path;text=$title;setSlug=$actualSet;
-      printedNumber=$num;score=$score;productSlug=$productSlug})
+      printedNumber=$expected;score=$score;productSlug=$productSlug})
  }
  $ordered=@($ranked | Sort-Object @{Expression='score';Descending=$true}, @{Expression='url';Descending=$false})
  $winner=$null

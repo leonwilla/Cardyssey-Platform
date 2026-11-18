@@ -7,10 +7,10 @@ param(
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
-  [int]$DelaySeconds = 13,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 13,
+  [int]$DelaySeconds = 16,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 16,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
-  [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 240,
+  [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 15,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [switch]$ForcePublicMode,  # diagnostic: use public behavior even if signed in
   [switch]$RequireLogin  # production: pause instead of scraping as guest
@@ -999,14 +999,8 @@ try {
         # already known in the independently matched Cardmarket expansion.
         # These are card candidates, NOT verified physical-print identities.
         $cardCandidates=@([string]$case.set_card_candidate_ids -split ',' | Where-Object {$_ -match '^[0-9]+$'})
-        $numberEvidence=$false
-        $observedPath=([string]$out.url).Split('?')[0]
-        # Only the FINAL slug suffix is a candidate collector number.
-        # Never accidentally parse -V1 as card #1 in -V1-BS13.
-        $numberTail=[regex]::Match($observedPath,'(?i)-[A-Z]{1,8}([0-9]{1,4})$')
-        if($numberTail.Success){
-          try{$numberEvidence=([int]$numberTail.Groups[1].Value -eq [int]([string]$case.kartennummer))}catch{}
-        }
+        $productSlug=(([string]$out.url).Split('?')[0]).Split('/')[-1]
+        $numberEvidence=Test-CardmarketPrintedNumber $productSlug ([string]$case.kartennummer) ([string]$case.set_id)
         $out.card_number_url_verified=$numberEvidence
         if (!$candidateId) {
           $out.status = 'NO_PRODUCT_ID'

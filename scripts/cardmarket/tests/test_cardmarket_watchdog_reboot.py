@@ -7,11 +7,11 @@ class RebootRecoveryPolicyTests(unittest.TestCase):
     def test_unavailable_edge_bootstraps_only_after_cooldown(self):
         s=(SRC/"Cardmarket-Resume-Watchdog.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("$browserNeedsBootstrap=([string]$diag.status -eq 'BROWSER_UNAVAILABLE')",s)
-        self.assertLess(s.index("foreach($s in $remaining)"),s.index("if($browserNeedsBootstrap){"))
+        self.assertLess(s.index("if(Get-CardmarketActiveCooldown"),s.index("if($browserNeedsBootstrap){"))
         self.assertIn("Note 'BROWSER_COLD_START_AFTER_COOLDOWN'",s)
         self.assertIn("& $launcher -ResumeAfterClearance",s)
-        self.assertIn("Get-CardmarketCooldownMinutes",s)
-        self.assertIn("Get-CardmarketCooldownMinutes",s)
+        self.assertIn("Get-CardmarketActiveCooldown",s)
+        self.assertIn("Get-CardmarketActiveCooldown",s)
     def test_blocked_login_required_unknown_state_fail_closed(self):
         s=(SRC/"Cardmarket-Resume-Watchdog.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}",s)
@@ -25,7 +25,7 @@ class RebootRecoveryPolicyTests(unittest.TestCase):
         self.assertIn("Cardmarket-Session-Warmup.ps1",s)
         self.assertIn("if([string]$health.status -ne 'AVAILABLE')",s)
         self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)
-        self.assertIn('"-BatchLimit","16"',s)
-        self.assertIn('"-MinRequestGapSeconds","13"',s)
+        self.assertIn('"-BatchLimit","10"',s)
+        self.assertIn('"-MinRequestGapSeconds","16"',s)
 
 if __name__=="__main__":unittest.main()
