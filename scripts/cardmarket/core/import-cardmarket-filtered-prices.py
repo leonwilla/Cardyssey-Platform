@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Promote COMPLETE filtered asking medians only for a human-confirmed print.
+"""Publish one filtered asking median per card variant and language.
 
-The browser samples are NOT sold prices. Unverified catalog mappings or
-incomplete pagination never write a card price.
+Verified standard prints may use a sample that reached the paging limit.
+Other prints require complete offers and a matching human-confirmed route.
 """
 # Import helper modules from the repository scripts root and Cardmarket tree.
 import sys as _cm_sys
@@ -11,10 +11,75 @@ _cm_root=_cm_Path(__file__).resolve().parents[2]
 for _cm_import in (_cm_root, _cm_root/'cardmarket/core', _cm_root/'cardmarket/admin', _cm_root/'cardmarket/archive'):
     if str(_cm_import) not in _cm_sys.path:
         _cm_sys.path.insert(0,str(_cm_import))
-import argparse,json,math,subprocess
+import argparse,csv,json,math,re,subprocess
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
-from urllib.parse import urlsplit,parse_qs
+from urllib.parse import parse_qs, unquote, urlsplit
+
+STANDARD_REVERSE_FILTER = {"normal":"N", "nonholo":"N", "common":"N", "holo":"N", "reverse":"Y"}
+VERSIONED_PRODUCT = re.compile(r"(?:^|-)V[1-9][0-9]?(?:-|$)", re.IGNORECASE)
+FIRST_EDITION = re.compile(r"\b(?:1st[ ._-]*edition|first[ ._-]*edition|1\.?\s*auflage)\b", re.IGNORECASE)
+VERIFIED_FILTER_MODES = {"CANONICAL_URL_DOM_VERIFIED", "FORM_SUBMISSION_DOM_VERIFIED"}
+
+
+def standard_catalog(directory, language):
+    """Read the same verified-set and per-variant evidence used by the collector."""
+    guards = {}
+    observed = directory / "observed-set-url-guards.json"
+    if observed.is_file():
+        evidence = json.loads(observed.read_text(encoding="utf-8-sig"))
+        if evidence.get("minimumDistinctCards", 0) >= 5:
+            guards.update({
+                key: item["setSlug"] for key, item in evidence.get("setSlugs", {}).items()
+                if item.get("distinctLiveCards", 0) >= 5
+                and item.get("proof") == "OFFICIAL_PRODUCT_ID_AND_LIVE_NUMBER_AND_UNIQUE_SET_PATH"
+                and re.fullmatch(r"[A-Za-z0-9-]{2,90}", item.get("setSlug") or "")
+            })
+    verified = directory / "verified-set-url-guards.json"
+    if verified.is_file():
+        guards.update(json.loads(verified.read_text(encoding="utf-8-sig")))
+
+    rows = {}
+    first_edition_sets = set()
+    for queue_language in ("de", "en"):
+        queue = directory / f"queue-{queue_language}.csv"
+        if not queue.is_file():
+            continue
+        with queue.open(encoding="utf-8-sig", newline="") as stream:
+            for row in csv.DictReader(stream):
+                if queue_language == language:
+                    rows[(row["cardyssey_karte"], row["variante_id"])] = row
+                if FIRST_EDITION.search(f"{row.get('stempel') or ''} {row.get('sonderdruck') or ''}"):
+                    first_edition_sets.add(row.get("set_id"))
+    return rows, guards, first_edition_sets
+
+
+def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):
+    if not row or not set_slug or len(path_parts) != 7 or path_parts[-2].casefold() != set_slug.casefold():
+        return False
+    if (row.get("set_id") != x.get("set_id") or row.get("kartennummer") != x.get("number")
+        or not row.get("kartennummer") or x.get("card_number_url_verified") is not True
+        or row.get("catalog_singleton_id") != product_id
+        or not str(row.get("catalog_expansion_id") or "").isdecimal()
+        or row.get("candidate_status") == "SET_EXPANSION_AMBIGUOUS"):
+        return False
+    if (not {"foil", "stempel", "sonderdruck"}.issubset(row)
+        or (row.get("foil") or "").strip() or (row.get("sonderdruck") or "").strip()
+        or (row.get("stempel") or "").strip().lower() not in ("", "[]", "null")
+        or x.get("observed_url_version") or VERSIONED_PRODUCT.search(path_parts[-1])
+        or x.get("version_family_candidate_used") or x.get("stamp_route")
+        or x.get("non_filterable_print_attributes")):
+        return False
+    reverse = STANDARD_REVERSE_FILTER.get((row.get("drucktyp") or "").strip().lower())
+    if reverse is None or reverse != x.get("expected_reverse_holo"):
+        return False
+    first = x.get("expected_first_edition")
+    if first == "0":
+        # Either language's catalog can establish that the expansion has a
+        # separate First Edition print and therefore needs an explicit filter.
+        return row["set_id"] not in first_edition_sets
+    return first == "N" and x.get("exact_print_filter_supported") is not False
+
 
 def collect(path,language,now=None):
     if language not in ('de','en'):raise ValueError('language')
@@ -27,51 +92,76 @@ def collect(path,language,now=None):
                 if x.get('card_id') and x.get('variant_id'):
                     latest[(x['card_id'],x['variant_id'])]=x
             except (ValueError,TypeError):continue
+    catalog, set_slugs, first_edition_sets = standard_catalog(path.parent, language)
     results=[]
     for (card,variant),x in latest.items():
-        if (x.get('language')!=language or x.get('identity_confirmed') is not True or
-            x.get('status')!='COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED' or x.get('all_pages_complete') is not True):
+        if x.get("language") != language or x.get("identity_confirmed") is not True:
             continue
-        median=x.get('median_all_offers_eur')
+        complete = (x.get("status") == "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED"
+                    and x.get("all_pages_complete") is True)
+        sampled = (x.get("status") == "FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE"
+                   and x.get("all_pages_complete") is False
+                   and x.get("pagination_failure") == "MORE_OFFERS_STILL_VISIBLE"
+                   and type(x.get("offer_pages_attempted")) is int and x["offer_pages_attempted"] >= 3)
+        if not complete and not sampled:
+            continue
+        median = x.get("median_all_offers_eur" if complete else "sample_median_eur")
         if isinstance(median,bool) or not isinstance(median,(float,int)) or not math.isfinite(median) or not 0<median<1e6:continue
-        if not isinstance(x.get('verified_lang_nm_offers'),int) or x['verified_lang_nm_offers']<1:continue
+        verified_offers = x.get("verified_lang_nm_offers")
+        if type(verified_offers) is not int or verified_offers < 1:
+            continue
+        if sampled and (verified_offers < 20 or type(x.get("offers_seen")) is not int
+                        or x["offers_seen"] != verified_offers or x.get("access_mode") != "AUTHENTICATED"):
+            continue
+
         url=str(x.get('url') or '')
         u=urlsplit(url)
         if u.scheme!='https' or u.netloc!='www.cardmarket.com' or not u.path.startswith('/'+language+'/Pokemon/Products/Singles/'):
             continue
-        q=parse_qs(u.query)
-        if q.get('language')!=(['3'] if language=='de' else ['1']) or q.get('minCondition')!=['2']:
-            continue
-        # Only publish if edition/foil filters are explicit, not broad mixed offers.
+        pid=str(x.get('product_id') or '')
+        if not pid.isdecimal():continue
         reverse=x.get('expected_reverse_holo')
         first=x.get('expected_first_edition')
-        if reverse not in ('Y','N') or first not in ('Y','N'):continue
-        # Do not import a mixed print's median under the guise of an exact
-        # copyright, textured foil, promo stamp, or other unsupported print.
-        if x.get('non_filterable_print_attributes') or x.get('exact_print_filter_supported') is False:continue
-        if q.get('isReverseHolo')!=[reverse] or q.get('isFirstEd')!=[first]:continue
+        q=parse_qs(u.query, keep_blank_values=True)
+        url_filtered = (q.get("language") == (["3"] if language == "de" else ["1"])
+                        and q.get("minCondition") == ["2"] and q.get("isReverseHolo") == [reverse]
+                        and q.get("isFirstEd") in ((None, ["0"]) if first == "0" else ([first],)))
+        # Current collectors store the canonical product URL and separately
+        # attest that the offer DOM and filters were verified.
+        dom_filtered = not u.query and x.get("filter_mode") in VERIFIED_FILTER_MODES
+        automatic = ((url_filtered or dom_filtered)
+                     and is_standard(x, catalog.get((card, variant)), set_slugs.get(x.get("set_id")),
+                                     first_edition_sets, unquote(u.path).split("/"), pid))
+        if not automatic:
+            # Keep the original explicit filter requirements for human routes.
+            if (not complete or not url_filtered or reverse not in ("Y", "N") or first not in ("Y", "N")
+                or x.get("non_filterable_print_attributes") or x.get("exact_print_filter_supported") is False):
+                continue
         try:seen=datetime.fromisoformat(str(x.get('seen_at') or '').replace('Z','+00:00')).astimezone(timezone.utc)
         except (ValueError,TypeError):continue
         if seen<now-timedelta(days=8) or seen>now+timedelta(hours=1):continue
-        pid=str(x.get('product_id') or '')
-        if not pid.isdecimal():continue
         results.append({'language':language,'card':card,'variant':variant,
-            'product_id':pid,'url':url.split('?')[0],'price':round(median,4),'observed_at':seen.isoformat()})
+            'product_id':pid,'url':url.split('?')[0],'price':round(median,4),'observed_at':seen.isoformat(),
+            'automatic_standard':automatic,'page_limited_sample':sampled})
     return results
 
 SQL="""
 WITH rows AS (
  SELECT item->>'language' AS lang,item->>'card' AS card,item->>'variant' AS variant,
  item->>'product_id' AS pid,item->>'url' AS url,(item->>'price')::numeric AS price,
- (item->>'observed_at')::timestamptz AS observed
+ (item->>'observed_at')::timestamptz AS observed,
+ item->>'automatic_standard'='true' AS automatic_standard
  FROM jsonb_array_elements({payload}::jsonb) item
-), approved AS (
- SELECT r.* FROM rows r JOIN price_source_routing p
+), routed AS (
+ SELECT r.*,p.verification_state,p.source_evidence,
+   (p.primary_provider='CARDMARKET' AND p.provider_product_id=r.pid
+    AND (p.provider_product_url IS NULL OR p.provider_product_url='' OR split_part(p.provider_product_url,'?',1)=r.url)) AS matches_route
+ FROM rows r LEFT JOIN price_source_routing p
  ON p.language_code=r.lang AND p.card_id=r.card AND p.variant_id=r.variant
- WHERE p.primary_provider='CARDMARKET' AND p.verification_state='VERIFIED_PRODUCT_ID'
- AND p.provider_product_id=r.pid
- AND (p.provider_product_url IS NULL OR p.provider_product_url='' OR split_part(p.provider_product_url,'?',1)=r.url)
- AND p.source_evidence LIKE 'Human confirmed exact%'
+), approved AS (
+ SELECT * FROM routed
+ WHERE (verification_state='VERIFIED_PRODUCT_ID' AND matches_route AND source_evidence LIKE 'Human confirmed exact%')
+    OR (automatic_standard AND (verification_state IS DISTINCT FROM 'VERIFIED_PRODUCT_ID' OR matches_route))
 )
 INSERT INTO tcg_price_cache(card_id,language_code,variant_id,source,base_eur,updated_at,resolution_status)
 SELECT card,lang,variant,
@@ -94,5 +184,8 @@ if __name__=='__main__':
     p.add_argument('--results',type=Path,required=True);p.add_argument('--apply',action='store_true');a=p.parse_args()
     rows=collect(a.results,a.language)
     if a.apply and rows:apply(rows)
-    print(json.dumps({'language':a.language,'full_filtered_candidates':len(rows),
-       'applied_with_human_print_verification_only':a.apply,'basis':'complete_active_asking_median_not_sold'}))
+    print(json.dumps({'language':a.language,
+       'full_filtered_candidates':sum(not row['page_limited_sample'] for row in rows),
+       'page_limited_standard_candidates':sum(row['page_limited_sample'] for row in rows),
+       'automatic_standard_candidates':sum(row['automatic_standard'] for row in rows),
+       'apply':a.apply,'basis':'filtered_active_asking_median_not_sold'}))
