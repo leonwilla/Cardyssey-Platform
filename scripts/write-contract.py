@@ -1426,6 +1426,9 @@ schemas = {
                     string(),
 
                 "imageBase":
+                    string(nullable=True),
+
+                "rarity":
                     string(nullable=True)
             },
             [

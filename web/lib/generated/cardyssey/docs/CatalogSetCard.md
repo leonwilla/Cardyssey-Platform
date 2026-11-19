@@ -10,6 +10,7 @@ Name | Type
 `localId` | string
 `name` | string
 `imageBase` | string
+`rarity` | string
 
 ## Example
 
@@ -22,6 +23,7 @@ const example = {
   "localId": null,
   "name": null,
   "imageBase": null,
+  "rarity": null,
 } satisfies CatalogSetCard
 
 console.log(example)

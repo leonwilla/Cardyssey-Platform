@@ -43,6 +43,12 @@ export interface CatalogSetCard {
      * @memberof CatalogSetCard
      */
     imageBase: string | null;
+    /**
+     *
+     * @type {string}
+     * @memberof CatalogSetCard
+     */
+    rarity?: string | null;
 }
 
 /**
@@ -70,6 +76,7 @@ export function CatalogSetCardFromJSONTyped(json: any, ignoreDiscriminator: bool
         'localId': json['localId'],
         'name': json['name'],
         'imageBase': json['imageBase'],
+        'rarity': json['rarity'] === undefined ? undefined : json['rarity'] === null ? null : json['rarity'],
     };
 }
 
@@ -88,6 +95,7 @@ export function CatalogSetCardToJSONTyped(value?: CatalogSetCard | null, ignoreD
         'localId': value['localId'],
         'name': value['name'],
         'imageBase': value['imageBase'],
+        'rarity': value['rarity'],
     };
 }
 

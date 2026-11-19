@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { compareCardRarity } from "@/lib/card-rarity";
 import type { PortfolioItem, User } from "@/lib/types";
 
 type SetCard = {
@@ -10,7 +11,10 @@ type SetCard = {
   localId: string;
   name: string;
   imageBase?: string | null;
+  rarity?: string | null;
 };
+
+type CardSort = "NUMBER_ASC" | "NUMBER_DESC" | "NAME_ASC" | "NAME_DESC" | "RARITY_DESC" | "RARITY_ASC";
 
 type SetDetails = {
   id: string;
@@ -39,6 +43,7 @@ export default function SetDetailsPage() {
   const [fallback, setFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
+  const [sort, setSort] = useState<CardSort>("NUMBER_ASC");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -104,6 +109,15 @@ export default function SetDetailsPage() {
     [items, language]
   );
 
+  const sortedCards = useMemo(() => {
+    const cards = [...(set?.cards ?? [])];
+    return cards.sort((a, b) => {
+      if (sort === "RARITY_DESC" || sort === "RARITY_ASC") return compareCardRarity(a, b, sort === "RARITY_DESC");
+      if (sort === "NAME_ASC" || sort === "NAME_DESC") return a.name.localeCompare(b.name, language) * (sort === "NAME_ASC" ? 1 : -1);
+      return a.localId.localeCompare(b.localId, "de", { numeric: true }) * (sort === "NUMBER_ASC" ? 1 : -1);
+    });
+  }, [set, sort, language]);
+
   if (loading) {
     return (
       <AppShell active="/sets" user={user}>
@@ -162,8 +176,22 @@ export default function SetDetailsPage() {
         </div>
       )}
 
+      <div className="setCardToolbar">
+        <label className="setCardSortControl">
+          <span>Sortieren</span>
+          <select value={sort} onChange={event => setSort(event.target.value as CardSort)}>
+            <option value="NUMBER_ASC">Nummer aufsteigend</option>
+            <option value="NUMBER_DESC">Nummer absteigend</option>
+            <option value="RARITY_DESC">Seltenste zuerst</option>
+            <option value="RARITY_ASC">Häufigste zuerst</option>
+            <option value="NAME_ASC">Name A–Z</option>
+            <option value="NAME_DESC">Name Z–A</option>
+          </select>
+        </label>
+      </div>
+
       <div className="cardGrid">
-        {set.cards.map((card) => {
+        {sortedCards.map((card) => {
           const isOwned = owned.has(card.id);
 
           const image = card.imageBase
@@ -202,7 +230,7 @@ export default function SetDetailsPage() {
                 <strong>{card.name}</strong>
 
                 <div className="muted">
-                  #{card.localId || "—"}
+                  #{card.localId || "—"}{card.rarity ? ` · ${card.rarity}` : ""}
                 </div>
 
                 <div className="chips">

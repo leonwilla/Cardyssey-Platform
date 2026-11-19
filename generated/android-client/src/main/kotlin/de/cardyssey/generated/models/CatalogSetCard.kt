@@ -34,6 +34,7 @@ import com.squareup.moshi.JsonClass
  * @param localId 
  * @param name 
  * @param imageBase 
+ * @param rarity
  */
 
 
@@ -49,7 +50,10 @@ data class CatalogSetCard (
     val name: kotlin.String,
 
     @Json(name = "imageBase")
-    val imageBase: kotlin.String?
+    val imageBase: kotlin.String?,
+
+    @Json(name = "rarity")
+    val rarity: kotlin.String? = null
 
 ) {
 

@@ -8,6 +8,7 @@
 | **localId** | **kotlin.String** |  |  |
 | **name** | **kotlin.String** |  |  |
 | **imageBase** | **kotlin.String** |  |  |
+| **rarity** | **kotlin.String** |  |  [optional] |
 
 
 

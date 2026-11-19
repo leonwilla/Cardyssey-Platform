@@ -82,6 +82,37 @@ class PermanentCatalogRepository(
         }
     }
 
+    /** One local catalog query for an entire set, with English metadata as fallback. */
+    fun cardRarities(language: String, cardIds: List<String>): Map<String, String> {
+        if (cardIds.isEmpty()) return emptyMap()
+        return dataSource.connection.use { connection ->
+            val ids = connection.createArrayOf("text", cardIds.distinct().toTypedArray())
+            try {
+                connection.prepareStatement(
+                    """
+                    SELECT DISTINCT ON (card_id) card_id, rarity
+                    FROM catalog_cards_mirror
+                    WHERE language_code IN (?, 'en') AND card_id = ANY(?)
+                      AND NULLIF(TRIM(rarity), '') IS NOT NULL
+                      AND LOWER(TRIM(rarity)) NOT IN ('none', 'keine')
+                    ORDER BY card_id, CASE WHEN language_code = ? THEN 0 ELSE 1 END
+                    """.trimIndent()
+                ).use { statement ->
+                    statement.setString(1, language)
+                    statement.setArray(2, ids)
+                    statement.setString(3, language)
+                    statement.executeQuery().use { result ->
+                        buildMap {
+                            while (result.next()) put(result.getString("card_id"), result.getString("rarity"))
+                        }
+                    }
+                }
+            } finally {
+                ids.free()
+            }
+        }
+    }
+
     fun upsertSet(
         language: String,
         set: CatalogSetSummary,

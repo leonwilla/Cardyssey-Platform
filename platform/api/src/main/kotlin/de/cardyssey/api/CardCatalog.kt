@@ -90,7 +90,8 @@ data class CatalogSetCard(
     val id: String,
     val localId: String,
     val name: String,
-    val imageBase: String? = null
+    val imageBase: String? = null,
+    val rarity: String? = null
 )
 
 @Serializable
@@ -355,6 +356,16 @@ class CardCatalogService(
     }
 
     suspend fun setDetails(setId: String, language: String): CatalogSetDetails? {
+        val details = setDetailsWithImages(setId, language) ?: return null
+        val rarities = withContext(Dispatchers.IO) {
+            mirror?.cardRarities(language, details.cards.map { it.id }).orEmpty()
+        }
+        return details.copy(cards = details.cards.map { card ->
+            card.copy(rarity = rarities[card.id] ?: card.rarity)
+        })
+    }
+
+    private suspend fun setDetailsWithImages(setId: String, language: String): CatalogSetDetails? {
         if (isDigitalPocketSetId(setId)) return null
         val curated = anniversaryCards(language)
         if (setId == AnniversaryPromos.SET_ID) {
