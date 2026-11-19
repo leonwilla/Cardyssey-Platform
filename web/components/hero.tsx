@@ -19,7 +19,7 @@ export function Hero() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
             <a
-              href="/login?design=preview"
+              href="/collection"
               className="rounded-full bg-primary px-7 py-3.5 text-base font-medium text-primary-foreground transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-12px_rgba(224,82,44,0.7)] motion-reduce:hover:translate-y-0"
             >
               Zur Sammlung

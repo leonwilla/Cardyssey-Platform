@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 
-import {applyBrightness,cachedBrightness,type BrightnessMode} from "./PreviewThemeSync";
+import {applyBrightness,cachedBrightness,type BrightnessMode} from "./ThemeSync";
 
 import {
   appearanceThemes,
@@ -21,7 +21,7 @@ export function AppearanceSettingsPanel() {
       "OBSIDIAN_GOLD"
     );
 
-  const [brightness,setBrightness]=useState<BrightnessMode>("dark");
+  const [brightness,setBrightness]=useState<BrightnessMode>("light");
 
   const [saving, setSaving] =
     useState(false);
@@ -122,7 +122,7 @@ export function AppearanceSettingsPanel() {
       </p>
 
       <div className="brightnessChooser" aria-label="Helligkeit auswählen">
-        <div><strong>Helligkeit</strong><small>Wähle Hell oder Dunkel – deine Farbvariante bleibt erhalten.</small></div>
+        <div><strong>Helligkeit</strong><small>Wähle die Helligkeit für das Cardyssey-Layout.</small></div>
         <div className="brightnessChoices" role="group" aria-label="Helligkeit">
           <button type="button" aria-pressed={brightness==="light"} onClick={()=>{setBrightness("light");applyBrightness("light")}}>☀ Hell</button>
           <button type="button" aria-pressed={brightness==="dark"} onClick={()=>{setBrightness("dark");applyBrightness("dark")}}>☾ Dunkel</button>

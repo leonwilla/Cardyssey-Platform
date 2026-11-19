@@ -60,7 +60,7 @@ export default async function RegisterPage({
         <div className="statusPanel" role="status">
           <strong>Registrierung während der privaten Testphase geschlossen.</strong>
           <p>Cardyssey ist aktuell nur für freigeschaltete Testaccounts verfügbar. Sobald die öffentliche Registrierung startet, kannst du hier deinen Account erstellen.</p>
-          <a className="primaryButton inline" href="/login?design=preview">Zur Anmeldung</a>
+          <a className="primaryButton inline" href="/login">Zur Anmeldung</a>
         </div>
       </section>
     </main>

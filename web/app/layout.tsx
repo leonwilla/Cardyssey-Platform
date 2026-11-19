@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeSync } from "@/components/ThemeSync";
-import { PreviewThemeSync } from "@/components/PreviewThemeSync";
-import "./app-preview.css";
+import "./app.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cardyssey.de"),
@@ -28,5 +27,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="de"><body><ThemeSync /><PreviewThemeSync />{children}</body></html>;
+  const appearanceBootstrap = `try {
+    const themes = ['OBSIDIAN_GOLD', 'MIDNIGHT_CYAN', 'ROYAL_VIOLET', 'EMERALD_MINT'];
+    const theme = localStorage.getItem('cardyssey.appearance.theme');
+    document.documentElement.dataset.theme = themes.includes(theme) ? theme : 'OBSIDIAN_GOLD';
+    document.documentElement.dataset.brightness = localStorage.getItem('cardyssey.appearance.brightness') === 'dark' ? 'dark' : 'light';
+  } catch {}`;
+  return (
+    <html lang="de" data-theme="OBSIDIAN_GOLD" data-brightness="light" suppressHydrationWarning>
+      <head><script id="cardyssey-appearance" dangerouslySetInnerHTML={{__html:appearanceBootstrap}} /></head>
+      <body className="cardysseyApp"><ThemeSync />{children}</body>
+    </html>
+  );
 }

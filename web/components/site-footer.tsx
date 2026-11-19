@@ -1,8 +1,8 @@
 import { Logo } from '@/components/logo'
 
 const columns = [
-  { title: 'Plattform', links: [{label:'Sammlung',href:'/collection?design=preview'}, {label:'Kartenscanner',href:'/scan?design=preview'}, {label:'Marktpreise',href:'/collection?design=preview'}, {label:'Wunschliste',href:'/wishlist?design=preview'}] },
-  { title: 'Entdecken', links: [{label:'Community',href:'/friends?design=preview'}, {label:'Shop',href:'https://shop.cardyssey.de/'}] },
+  { title: 'Plattform', links: [{label:'Sammlung',href:'/collection'}, {label:'Kartenscanner',href:'/scan'}, {label:'Marktpreise',href:'/collection'}, {label:'Wunschliste',href:'/wishlist'}] },
+  { title: 'Entdecken', links: [{label:'Community',href:'/friends'}, {label:'Shop',href:'https://shop.cardyssey.de/'}] },
   { title: 'Rechtliches', links: [{label:'Impressum',href:'/impressum'}, {label:'Datenschutz',href:'/datenschutz'}] },
 ]
 

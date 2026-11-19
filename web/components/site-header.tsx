@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { Logo } from '@/components/logo'
 
 const nav = [
-  { href: '/preview-redesign#scannen', label: 'Scanner' },
-  { href: '/preview-redesign#sammeln', label: 'Sammlung' },
-  { href: '/preview-redesign#marktpreise', label: 'Marktpreise' },
-  { href: '/preview-redesign#community', label: 'Community' },
-  { href: '/preview-redesign#shop', label: 'Shop' },
+  { href: '/#scannen', label: 'Scanner' },
+  { href: '/#sammeln', label: 'Sammlung' },
+  { href: '/#marktpreise', label: 'Marktpreise' },
+  { href: '/#community', label: 'Community' },
+  { href: '/#shop', label: 'Shop' },
 ]
 
 export function SiteHeader() {
@@ -31,7 +31,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-5 md:px-8">
-        <Link href="/preview-redesign" aria-label="CARDYSSEY Vorschau-Startseite" className="rounded-md">
+        <Link href="/" aria-label="CARDYSSEY Startseite" className="rounded-md">
           <Logo />
         </Link>
 
@@ -48,11 +48,11 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-5 lg:flex">
-          <a href="/login?design=preview" className="text-sm text-foreground/75 hover:text-foreground">
+          <a href="/login" className="text-sm text-foreground/75 hover:text-foreground">
             Anmelden
           </a>
           <a
-            href="/login?design=preview"
+            href="/collection"
             className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-primary"
           >
             Zur Sammlung
@@ -87,14 +87,14 @@ export function SiteHeader() {
             ))}
             <li className="grid grid-cols-2 gap-2 pt-3 pb-2">
               <a
-                href="/login?design=preview"
+                href="/login"
                 onClick={() => setOpen(false)}
                 className="block rounded-full border border-foreground/20 px-3 py-2.5 text-center text-xs font-medium sm:text-sm"
               >
                 Anmelden
               </a>
               <a
-                href="/login?design=preview"
+                href="/collection"
                 onClick={() => setOpen(false)}
                 className="block rounded-full bg-foreground px-3 py-2.5 text-center text-xs font-medium sm:text-sm text-background"
               >

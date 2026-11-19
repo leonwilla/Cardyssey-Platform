@@ -63,10 +63,7 @@ export function applyAppearanceTheme(
   document.documentElement.dataset.theme =
     theme;
 
-  window.localStorage.setItem(
-    storageKey,
-    theme
-  );
+  try { window.localStorage.setItem(storageKey, theme); } catch { /* Browser storage is optional. */ }
 
   window.dispatchEvent(
     new CustomEvent(
@@ -78,20 +75,40 @@ export function applyAppearanceTheme(
 
 export function cachedAppearanceTheme():
   AppearanceTheme {
-  const cached =
-    window.localStorage.getItem(
-      storageKey
-    );
+  let cached: string | null = null;
+  try { cached = window.localStorage.getItem(storageKey); } catch { /* Use the default palette. */ }
 
   return isAppearanceTheme(cached)
     ? cached
     : "OBSIDIAN_GOLD";
 }
 
+export type BrightnessMode = "light" | "dark";
+const brightnessKey = "cardyssey.appearance.brightness";
+
+export function cachedBrightness(): BrightnessMode {
+  try { return window.localStorage.getItem(brightnessKey) === "dark" ? "dark" : "light"; }
+  catch { return "light"; }
+}
+
+export function applyBrightness(mode: BrightnessMode) {
+  document.documentElement.dataset.brightness = mode;
+  try { window.localStorage.setItem(brightnessKey, mode); } catch { /* Keep the active choice for this page. */ }
+  window.dispatchEvent(new Event("cardyssey-brightness-change"));
+}
+
 export function ThemeSync() {
   const pathname = usePathname();
 
   useEffect(() => {
+    applyBrightness(cachedBrightness());
+    // Stored choices from the retired storefront cannot reactivate its layout.
+    try { window.localStorage.removeItem("cardyssey.businessShop.design"); } catch { /* No persisted layout to migrate. */ }
+    const sync = () => {
+      document.documentElement.dataset.brightness = cachedBrightness();
+      document.documentElement.dataset.theme = cachedAppearanceTheme();
+    };
+    window.addEventListener("storage", sync);
     applyAppearanceTheme(
       cachedAppearanceTheme()
     );
@@ -116,9 +133,9 @@ export function ThemeSync() {
         }
       })
       .catch(() => {
-        // Der lokale Stand bleibt aktiv,
-        // wenn Tiny kurz nicht erreichbar ist.
+        // Keep the locally selected palette while the API is unavailable.
       });
+    return () => window.removeEventListener("storage", sync);
   }, [pathname]);
 
   return null;

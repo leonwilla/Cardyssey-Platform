@@ -57,41 +57,41 @@
 }
 
 .cardysseyRedesign {
-  color-scheme: light;
-  --background: #f4eee4;
-  --paper-deep: #e9dfcf;
-  --foreground: #1d2924;
+  color-scheme: var(--appearance-color-scheme);
+  --background: var(--appearance-page);
+  --paper-deep: var(--appearance-soft);
+  --foreground: var(--appearance-ink);
   --sky: #c6dbe9;
   --sage: #cfd9c1;
-  --card: #fbf7f0;
-  --card-foreground: #1d2924;
-  --popover: #fbf7f0;
-  --popover-foreground: #1d2924;
+  --card: var(--appearance-panel);
+  --card-foreground: var(--appearance-ink);
+  --popover: var(--appearance-panel);
+  --popover-foreground: var(--appearance-ink);
   --primary: #e0522c;
   --primary-foreground: #fff8ef;
-  --secondary: #e9dfcf;
-  --secondary-foreground: #1d2924;
+  --secondary: var(--appearance-soft);
+  --secondary-foreground: var(--appearance-ink);
   --muted: #ebe3d6;
-  --muted-foreground: #58635d;
+  --muted-foreground: var(--appearance-muted);
   --accent: #c6dbe9;
-  --accent-foreground: #1d2924;
+  --accent-foreground: var(--appearance-ink);
   --destructive: #c23a1e;
-  --border: #d9cdbb;
-  --input: #d9cdbb;
+  --border: var(--appearance-outline);
+  --input: var(--appearance-outline);
   --ring: #e0522c;
   --chart-1: #e0522c;
-  --chart-2: #1d2924;
+  --chart-2: var(--appearance-ink);
   --chart-3: #c6dbe9;
   --chart-4: #cfd9c1;
-  --chart-5: #58635d;
+  --chart-5: var(--appearance-muted);
   --radius: 0.75rem;
-  --sidebar: #fbf7f0;
-  --sidebar-foreground: #1d2924;
+  --sidebar: var(--appearance-panel);
+  --sidebar-foreground: var(--appearance-ink);
   --sidebar-primary: #e0522c;
   --sidebar-primary-foreground: #fff8ef;
   --sidebar-accent: #ebe3d6;
-  --sidebar-accent-foreground: #1d2924;
-  --sidebar-border: #d9cdbb;
+  --sidebar-accent-foreground: var(--appearance-ink);
+  --sidebar-border: var(--appearance-outline);
   --sidebar-ring: #e0522c;
 }
 
