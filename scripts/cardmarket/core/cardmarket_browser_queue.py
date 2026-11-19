@@ -13,7 +13,7 @@ def browser_scan_tier(row, human_confirmed=False):
         price = Decimal(str(row.get("existing_price_eur") or "0"))
     except InvalidOperation:
         price = Decimal(0)
-    if price.is_finite() and price >= 10:
+    if price.is_finite() and price >= 15:
         return 1
     print_type = str(row.get("drucktyp") or "").strip().casefold()
     stamp = str(row.get("stempel") or "").strip().casefold()

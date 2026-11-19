@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   if (
     !['de', 'en'].includes(language) ||
     !['all', 'current'].includes(scope) ||
-    !['karten', 'preise', 'technik', 'drucke', 'alle'].includes(kind) ||
+    !['karten', 'preise', 'technik', 'drucke', 'verknuepft', 'alle'].includes(kind) ||
     !['json', 'csv'].includes(format) ||
     !Number.isInteger(page) || page < 0 || page > 2000
   ) {

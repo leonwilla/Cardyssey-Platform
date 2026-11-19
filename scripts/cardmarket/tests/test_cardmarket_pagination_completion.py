@@ -12,7 +12,8 @@ class PaginationTests(unittest.TestCase):
  def test_at_most_three_load_more_pages_without_false_completeness(self):
   self.assertIn('$offerCap=1200',SRC)
   self.assertIn('$maxOfferPages=3',SRC)
-  self.assertIn('.slice(0,1200)',SRC)
+  helper=source_path('cardmarket-language-browser-collector.ps1').with_name('cardmarket-combined-offers.ps1').read_text(encoding='utf-8-sig')
+  self.assertIn('.slice(0,1200)',helper)
   self.assertIn('if($data.hasMore -and !$out.pagination_failure)',SRC)
   self.assertIn("$out.pagination_failure='MORE_OFFERS_STILL_VISIBLE'",SRC)
   self.assertNotIn('CARDMARKET_300_CAP',SRC)

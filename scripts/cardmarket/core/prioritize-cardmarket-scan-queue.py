@@ -9,6 +9,7 @@ for _cm_import in (_cm_root, _cm_root/'cardmarket/core', _cm_root/'cardmarket/ad
         _cm_sys.path.insert(0,str(_cm_import))
 import argparse
 import csv
+import fcntl
 import json
 import os
 import subprocess
@@ -54,26 +55,29 @@ def main():
     parser.add_argument("--output",type=Path,required=True)
     parser.add_argument('--language',choices=('de','en'),default='de')
     args=parser.parse_args()
-    with args.queue.open(encoding="utf-8-sig",newline="") as f:
-        rows=list(csv.DictReader(f))
-    confirmed_keys=human_confirmed_print_keys(args.queue.parent,args.language)
-    prioritized=prioritize(rows,db_rows(args.language),confirmed_keys)
-    if len(prioritized)!=len(rows):raise ValueError("lost queue rows")
-    unique={(r["cardyssey_karte"],r["variante_id"]) for r in prioritized}
-    if len(unique)!=len(rows):raise ValueError("duplicate variant key")
     args.output.parent.mkdir(parents=True,exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8-sig", newline="", dir=args.output.parent, delete=False
-    ) as f:
-        tmp = Path(f.name)
-        try:
-            writer = csv.DictWriter(f, fieldnames=prioritized[0].keys())
-            writer.writeheader()
-            writer.writerows(prioritized)
-            f.close()
-            os.replace(tmp, args.output)
-        finally:
-            tmp.unlink(missing_ok=True)
+    with args.output.with_suffix('.review.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        with args.queue.open(encoding="utf-8-sig",newline="") as f:
+            rows=list(csv.DictReader(f))
+        confirmed_keys=human_confirmed_print_keys(args.queue.parent,args.language)
+        prioritized=prioritize(rows,db_rows(args.language),confirmed_keys)
+        if len(prioritized)!=len(rows):raise ValueError("lost queue rows")
+        unique={(r["cardyssey_karte"],r["variante_id"]) for r in prioritized}
+        if len(unique)!=len(rows):raise ValueError("duplicate variant key")
+        args.output.parent.mkdir(parents=True,exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8-sig", newline="", dir=args.output.parent, delete=False
+        ) as f:
+            tmp = Path(f.name)
+            try:
+                writer = csv.DictWriter(f, fieldnames=prioritized[0].keys())
+                writer.writeheader()
+                writer.writerows(prioritized)
+                f.close()
+                os.replace(tmp, args.output)
+            finally:
+                tmp.unlink(missing_ok=True)
     print(json.dumps({"rows":len(prioritized),
                       "missing_first":sum(x["needs_price"]=="YES" for x in prioritized),
                       "browser_eligible":sum(x["scan_tier"]!=4 for x in prioritized),

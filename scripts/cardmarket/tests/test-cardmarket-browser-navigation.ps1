@@ -21,8 +21,8 @@ function Assert-Equal($Actual,$Expected,[string]$Message){
 
 $fixtures=@(
   @{Row=@{needs_price='YES';scan_tier='4'};Tier=0},
-  @{Row=@{needs_price='NO';existing_price_eur='9.99995';drucktyp='normal'};Tier=4},
-  @{Row=@{needs_price='NO';existing_price_eur='10.00';drucktyp='normal'};Tier=1},
+  @{Row=@{needs_price='NO';existing_price_eur='14.99995';drucktyp='normal'};Tier=4},
+  @{Row=@{needs_price='NO';existing_price_eur='15.00';drucktyp='normal'};Tier=1},
   @{Row=@{needs_price='NO';existing_price_eur='1';stempel='["staff"]';routing_state='VERIFIED_PRODUCT_ID'};Tier=2},
   @{Row=@{needs_price='NO';existing_price_eur='1';foil='cosmos'};HumanConfirmed=$true;Tier=2},
   @{Row=@{needs_price='NO';existing_price_eur='1';foil='cosmos';routing_state='HUMAN_CONFIRMED'};Tier=2},
@@ -47,12 +47,13 @@ function Send-Cdp([string]$Method,[hashtable]$Arguments) {
   $script:document.path=([uri]$Arguments.url).AbsolutePath
 }
 $script:responseStatuses=[Collections.Generic.Queue[int]]::new()
+function Set-CardmarketMediaBlocking([bool]$Enabled) { }
 function Js([string]$Expression,[int]$TimeoutSec) {
   if($script:responseStatuses.Count){$script:document.httpStatus=$script:responseStatuses.Dequeue()}
   return $script:document | ConvertTo-Json -Compress
 }
 
-$MinRequestGapSeconds=16
+$MinRequestGapSeconds=11
 $ChallengeWaitSeconds=0
 $script:lastProviderRequestUtc=[datetime]::MinValue
 $LangCfg=@{PathPrefix='/de/Pokemon'}
@@ -62,7 +63,7 @@ Assert-Equal (Move-To $deSearch) $true 'DE search navigation'
 Assert-Equal (Move-To $de) $true 'DE filtered product navigation'
 Assert-Equal $script:events[0] "navigate:$deSearch" 'search is a document request'
 Assert-Equal $script:events[3] "navigate:$de" 'product is a document request'
-if($script:events[2] -notmatch '^sleep:(\d+)$' -or [int]$Matches[1] -lt 12000){throw 'Missing request pacing'}
+if($script:events[2] -notmatch '^sleep:(\d+)$' -or [int]$Matches[1] -lt 9000){throw 'Missing request pacing'}
 Assert-Equal ([uri]$de).Query '?language=3&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=N' 'DE filter URL'
 
 $LangCfg=@{PathPrefix='/en/Pokemon'}

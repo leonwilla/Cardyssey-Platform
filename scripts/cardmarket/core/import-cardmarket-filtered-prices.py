@@ -128,7 +128,22 @@ def collect(path,language,now=None):
                         and q.get("isFirstEd") in ((None, ["0"]) if first == "0" else ([first],)))
         # Current collectors store the canonical product URL and separately
         # attest that the offer DOM and filters were verified.
-        dom_filtered = not u.query and x.get("filter_mode") in VERIFIED_FILTER_MODES
+        combined = x.get("filter_mode") == "COMBINED_URL_DOM_VERIFIED"
+        combined_verified = False
+        if combined:
+            source = urlsplit(str(x.get("source_product_url") or ""))
+            combined_verified = (
+                x.get("source_filter_language_ids") == "1,3"
+                and str(x.get("combined_product_id_verified") or "") == pid
+                and source.scheme == "https" and source.netloc == "www.cardmarket.com"
+                and source.path.startswith(("/de/Pokemon/Products/Singles/", "/en/Pokemon/Products/Singles/"))
+                and source.path[3:] == u.path[3:] and not source.query
+                and type(x.get("combined_offers_seen")) is int
+                and x["combined_offers_seen"] >= x.get("offers_seen", 0)
+            )
+            if not combined_verified:
+                continue
+        dom_filtered = not u.query and (x.get("filter_mode") in VERIFIED_FILTER_MODES or combined_verified)
         automatic = ((url_filtered or dom_filtered)
                      and is_standard(x, catalog.get((card, variant)), set_slugs.get(x.get("set_id")),
                                      first_edition_sets, unquote(u.path).split("/"), pid))

@@ -160,6 +160,33 @@ class FilteredImportTests(unittest.TestCase):
         full["non_filterable_print_attributes"] = ["foil:Pokéball"]
         self.assertEqual(self.collect(**full), [])
 
+    def test_combined_observations_keep_independent_language_prices(self):
+        evidence = {
+            "filter_mode": "COMBINED_URL_DOM_VERIFIED",
+            "source_filter_language_ids": "1,3",
+            "combined_product_id_verified": "751539", "combined_offers_seen": 50,
+            "source_product_url": self.observation["url"],
+        }
+        for language, price in (("de", 1.25), ("en", 2.50)):
+            self.write_queue(language)
+            rows = self.collect(language, **{
+                **evidence, "language": language, "sample_median_eur": price,
+                "url": self.observation["url"].replace("/de/", f"/{language}/"),
+            })
+            self.assertEqual([(r["language"], r["price"]) for r in rows], [(language, price)])
+        for bad in (
+            {"source_filter_language_ids": "1"}, {"combined_product_id_verified": "999999"},
+            {"combined_offers_seen": 19}, {"combined_offers_seen": None},
+            {"source_product_url": "https://evil.example/de/Pokemon/Products/Singles/Paldean-Fates/Heat-Rotom-PAF013"},
+            {"source_product_url": self.observation["url"].replace("PAF013", "PAF014")},
+            {"status": "SINGLE_LANGUAGE_FALLBACK_REQUIRED"},
+        ):
+            with self.subTest(bad=bad):
+                self.assertEqual(self.collect(**{**evidence, **bad}), [])
+        for special in ({"foil": "Pokéball"}, {"stempel": '["staff"]'}, {"sonderdruck": "shadowless"}):
+            self.write_queue("de", **special)
+            self.assertEqual(self.collect(**evidence), [])
+
     def test_sql_protects_human_routes_and_preserves_single_cache_price(self):
         self.assertIn("verification_state='VERIFIED_PRODUCT_ID' AND matches_route AND source_evidence LIKE 'Human confirmed exact%'", m.SQL)
         self.assertIn("automatic_standard AND (verification_state IS DISTINCT FROM 'VERIFIED_PRODUCT_ID' OR matches_route)", m.SQL)

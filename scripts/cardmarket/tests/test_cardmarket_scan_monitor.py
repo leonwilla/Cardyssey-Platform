@@ -28,7 +28,7 @@ class ScanMonitorTests(unittest.TestCase):
   from scripts.cardmarket.admin.cardmarket_scan_monitor import cooldown_info
   with tempfile.TemporaryDirectory() as d:
    base=Path(d);now=datetime(2026,11,11,13,20,tzinfo=timezone.utc)
-   for lang,minutes in [('de',35),('en',15)]:
+   for lang,minutes in [('de',15),('en',3)]:
     (base/f'progress-{lang}.json').write_text(json.dumps({
       'status':'BATCH_COMPLETE_MORE_PENDING',
       'updated_at':(now-timedelta(minutes=minutes)).isoformat()}))
@@ -113,7 +113,7 @@ class ScanMonitorTests(unittest.TestCase):
    session('AVAILABLE',48)
    self.assertFalse(cooldown_info(b,now)['cooldownActive'])
    progress('en','BATCH_COMPLETE_MORE_PENDING',46)
-   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],20)
+   self.assertEqual(cooldown_info(b,now)['blocking']['minutes'],8)
  def test_last_card_is_most_recent_even_if_key_was_replaced(self):
   with tempfile.TemporaryDirectory() as d:
    base=Path(d)

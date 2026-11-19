@@ -8,7 +8,8 @@ if(!(Get-Command Get-CardmarketGameProfile -ErrorAction SilentlyContinue)){
 function New-CardmarketOfferFilterUrl {
  param([string]$ProductUrl,[ValidateSet(1,3)][int]$LanguageId,
        [ValidateSet('Y','N','0')][string]$ReverseCode='0',
-       [ValidateSet('Y','N','0')][string]$FirstEditionCode='0')
+       [ValidateSet('Y','N','0')][string]$FirstEditionCode='0',
+       [switch]$CombinedLanguages)
  $game=Get-CardmarketGameProfile
  $gamePath=[string]$game.game_path
  $u=$null
@@ -19,7 +20,8 @@ function New-CardmarketOfferFilterUrl {
  }
  $country=if($LanguageId -eq 3){'de'}else{'en'}
  if($u.AbsolutePath -notmatch ('^/'+$country+'/'+$gamePath+'/')){throw 'FILTER_LANGUAGE_PATH_MISMATCH'}
- $q='language='+$LanguageId+'&minCondition=2&isSigned=N&isAltered=N'
+ $languages=if($CombinedLanguages){'1,3'}else{[string]$LanguageId}
+ $q='language='+$languages+'&minCondition=2&isSigned=N&isAltered=N'
  if($ReverseCode -ne '0'){$q+='&isReverseHolo='+$ReverseCode}
  if($FirstEditionCode -ne '0'){$q+='&isFirstEd='+$FirstEditionCode}
  return $u.GetLeftPart([UriPartial]::Path)+'?'+$q

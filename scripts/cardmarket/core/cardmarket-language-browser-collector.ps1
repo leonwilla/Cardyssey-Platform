@@ -7,8 +7,8 @@ param(
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
-  [int]$DelaySeconds = 16,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 16,
+  [int]$DelaySeconds = 11,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 15,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
@@ -29,7 +29,7 @@ $LangCfg = if ($Language -eq 'de') {
     UrlSegment     = 'de'
     PathPrefix     = '/de/'+[string]$gameProfile.game_path
     LanguageId     = 3                      # language[3] = Deutsch
-    LanguageNames  = @('Deutsch')
+    LanguageNames  = @('Deutsch','German')
     ConditionNames = @('Near Mint','Mint')
   }
 } else {
@@ -64,6 +64,7 @@ if(!(Test-Path $scoreModule)){throw 'CARDMARKET_SCORE_MODULE_MISSING'}
 $filterModule=Join-Path $PSScriptRoot 'cardmarket-filter-url.ps1'
 if(!(Test-Path $filterModule)){throw 'CARDMARKET_FILTER_URL_MODULE_MISSING'}
 . $filterModule
+. (Join-Path $PSScriptRoot 'cardmarket-combined-offers.ps1')
 $commentModule=Join-Path $PSScriptRoot 'cardmarket-offer-comments.ps1'
 if(!(Test-Path $commentModule)){throw 'CARDMARKET_OFFER_COMMENT_MODULE_MISSING'}
 . $commentModule
@@ -188,6 +189,8 @@ function Connect-Cdp {
   $script:rxCts   = [System.Threading.CancellationTokenSource]::new()
   [CdpPump]::Start($script:ws, $script:rxQueue, $script:rxAvail, $script:rxCts.Token)
   $script:cdpRequestId = 0
+  Send-Cdp 'Network.enable' @{} | Out-Null
+  Set-CardmarketMediaBlocking $true
 }
 
 function Send-Cdp([string]$method, [hashtable]$parameters, [int]$TimeoutSec = 20) {
@@ -212,6 +215,21 @@ function Send-Cdp([string]$method, [hashtable]$parameters, [int]$TimeoutSec = 20
   }
   Write-Host ('CDP_NO_RESPONSE '+$method+' id='+$currentId+' ws='+$script:ws.State)
   throw 'CDP_TIMEOUT'   # Nur die Frist laeuft ab; der Socket bleibt unangetastet.
+}
+
+function Set-CardmarketMediaBlocking([bool]$Enabled) {
+  # Restrict media only on provider asset hosts. Challenge resources on other
+  # origins and all JavaScript, CSS and document requests remain available.
+  $urls=@()
+  if($Enabled){
+    $urls=@(foreach($hostPattern in @('https://*.cardmarket.com/','https://*.cmcdn.com/')){
+      foreach($extension in @('png','jpg','jpeg','webp','gif','woff2')){
+        $hostPattern+'*.'+$extension
+        $hostPattern+'*.'+$extension+'?*'
+      }
+    })
+  }
+  Send-Cdp 'Network.setBlockedURLs' @{urls=$urls} | Out-Null
 }
 
 function Parse-Cardmarket-Euro([string]$text) {
@@ -291,6 +309,7 @@ function Move-To([string]$url) {
     if ($pageMarker -or $blockedHttp) {
       if(!$sawChallenge){
         $sawChallenge=$true
+        Set-CardmarketMediaBlocking $false
         $deadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds)
         Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
       }
@@ -305,7 +324,10 @@ function Move-To([string]$url) {
     $actualQuery   = [uri]::UnescapeDataString($actual.Query.TrimStart('?').Replace('+',' '))
     $sameQuery = ($expectedQuery -eq $actualQuery) -or ($desired.AbsolutePath -ne ($LangCfg.PathPrefix + '/Products/Search'))
     if ($sameOrigin -and $s.path -eq $desired.AbsolutePath -and $sameQuery -and $s.ready -eq 'complete' -and $s.body -gt 300) {
-      if ($sawChallenge) { Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card' }
+      if ($sawChallenge) {
+        Write-Host 'CARDMARKET_CHALLENGE_CLEARED: continuing current card'
+        Set-CardmarketMediaBlocking $true
+      }
       return $true
     }
   } while ([DateTime]::UtcNow -lt $deadline)
@@ -346,7 +368,7 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   [decimal]$price = 0
   if ([decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
       [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture,
-      [ref]$price) -and $price -ge 10) { return 1 }
+      [ref]$price) -and $price -ge 15) { return 1 }
   $type = ([string]$Case.drucktyp).Trim()
   $special = ([string]$Case.foil).Trim() -or ([string]$Case.sonderdruck).Trim() -or
       ([string]$Case.stempel).Trim() -notin @('','[]','null') -or
@@ -475,16 +497,36 @@ foreach ($case in $candidateCases) {
     try {
       $seen=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
       $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and
-        [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET') -and
+        [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET','SINGLE_LANGUAGE_FALLBACK_REQUIRED') -and
         -not ([string]$prev.status -like 'DEFERRED*'))
     } catch {}
   }
   if (($null -ne $fullRecheckAfter -and $processedThisEpoch) -or
-      ($null -eq $fullRecheckAfter -and $prev.status -ne 'ERROR' -and $prev.status -notlike 'DEFERRED*' -and
+      ($null -eq $fullRecheckAfter -and $prev.status -notin @('ERROR','SINGLE_LANGUAGE_FALLBACK_REQUIRED') -and $prev.status -notlike 'DEFERRED*' -and
        -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
+
+$peerLanguage=if($Language -eq 'de'){'en'}else{'de'}
+$peerCases=@{}
+$peerLatest=@{}
+$peerQueuePath=Join-Path $OutputDir "queue-$peerLanguage.csv"
+$peerResultsPath=Join-Path $OutputDir "browser-observations-$peerLanguage.jsonl"
+if(Test-Path $peerQueuePath){
+  foreach($peer in @(Import-Csv -Encoding UTF8 -Path $peerQueuePath)){
+    $card=[string]$peer.cardyssey_karte
+    if(!$peerCases.ContainsKey($card)){$peerCases[$card]=[Collections.Generic.List[object]]::new()}
+    $peerCases[$card].Add($peer)
+  }
+}
+if(Test-Path $peerResultsPath){
+  foreach($line in [IO.File]::ReadLines($peerResultsPath)){
+    try{$record=$line | ConvertFrom-Json;if($record.key){$peerLatest[[string]$record.key]=$record}}catch{}
+  }
+}
+$pairedVariants=0
+$singleLanguageFallbacks=0
 
 $deferredCount = 0
 $searchCache=@{}
@@ -502,6 +544,8 @@ try {
   Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
     $script:providerBlock=$null
+    $combinedTarget=$null
+    $offerLanguageIds=@([int]$LangCfg.LanguageId)
     $key = '{0}|{1}' -f $case.cardyssey_karte, $case.variante_id
     if ($processed.Contains($key)) { continue }
     # Diagnostics only: measure actual elapsed work before tuning delays.
@@ -948,11 +992,16 @@ try {
         $preReverseCode=if ([string]$case.drucktyp -match '(?i)^reverse$') {'Y'} elseif([string]$case.drucktyp -match '(?i)^(normal|nonholo|common|holo)$') {'N'} else {'0'}
         $preFirstCode=if ([string]$case.stempel -match '(?i)1\. auflage|1st.edition|first.edition') {'Y'} elseif([string]$case.sonderdruck -match '(?i)^(unbegrenzt|unlimited|copyright 1999-2000|1999-2000-copyright)$') {'N'} else {'0'}
         if(!$stampRoute -and !$vintageRoute -and $preReverseCode -ne '0' -and
+           [string]$latest[$key].status -ne 'SINGLE_LANGUAGE_FALLBACK_REQUIRED'){
+          $combinedTarget=Find-CardmarketCombinedTarget -Case $case -ProductUrl ([string]$out.url) -PeerCases $peerCases -PeerLatest $peerLatest -SetGuards $setSlugGuards -Epoch $fullRecheckAfter -NowUtc ([datetime]::UtcNow)
+          if($combinedTarget){$offerLanguageIds=@(1,3)}
+        }
+        if(!$stampRoute -and !$vintageRoute -and $preReverseCode -ne '0' -and
            [string]$case.foil -eq '' -and [string]$case.sonderdruck -eq '' -and
            [string]$case.stempel -in @('','[]','null') -and
            $directUrlFilterSupported){
           try{
-            $preFilteredUrl=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $preReverseCode -FirstEditionCode $preFirstCode
+            $preFilteredUrl=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $preReverseCode -FirstEditionCode $preFirstCode -CombinedLanguages:([bool]$combinedTarget)
             $preFilteredRequested=$true
             $out.pre_filtered_product_first=$true
           }catch{$preFilteredUrl=''}
@@ -1068,6 +1117,7 @@ try {
           # offer filter price for a hidden physical variant.
           $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
           $out.error='CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED'
+          $out.exact_print_filter_supported=$false
           Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
         } elseif ($out.reference_page_used -eq $true -and [string]$case.reference_print_verified -eq 'NO' -and [string]$case.reference_standard_filter_supported -ne 'YES') {
           # Direct URL proves the page/print family, not the special edition.
@@ -1125,12 +1175,13 @@ try {
           # product page and use the existing validated form as fallback.
           if($reverseCode -ne '0' -and $directUrlFilterSupported){
             try {
-              $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
+              $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode -CombinedLanguages:([bool]$combinedTarget)
               $out.direct_filter_attempted=$true
               $preFilterAlreadyOpen=($preFilteredRequested -and $initialUrl -eq $targetFilter)
               if($preFilterAlreadyOpen -or (Move-To $targetFilter)){
                 $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
-                $filterValid=Js ('(()=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const l=f?.querySelector("' + $filterName + '");const lang=[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked);return !!f&&!!l&&l.checked&&lang.length===1&&u.searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&u.searchParams.get("minCondition")==="2"&&u.searchParams.get("isSigned")==="N"&&u.searchParams.get("isAltered")==="N"&&f.elements.namedItem("extra[isSigned]")?.value==="N"&&f.elements.namedItem("extra[isAltered]")?.value==="N"&&u.searchParams.get("isReverseHolo")==="'+$reverseCode+'"&&'+$firstCheck+'})()')
+                $filterState=Js (New-CardmarketOfferRowsExpression -LanguageIds $offerLanguageIds -ReverseCode $reverseCode -FirstCode $firstCode) | ConvertFrom-Json
+                $filterValid=($filterState.filtered -and [string]$filterState.productId -eq $candidateId)
                 if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
               }
             } catch {
@@ -1140,6 +1191,8 @@ try {
             }
           }
           if(!$filterOk){
+            $combinedTarget=$null
+            $offerLanguageIds=@([int]$LangCfg.LanguageId)
             if($out.direct_filter_attempted){
               $restoreUrl=([string]$out.url).Split('?')[0]
               if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
@@ -1149,12 +1202,14 @@ try {
             if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
           }
           if ($filterOk) {
+            do {
+            $retrySingleLanguage=$false
             # A deliberately bounded but larger collector window.
             # Never mark a market as complete if the provider still exposes
             # more offers at this limit.
             $offerCap=1200
             $maxOfferPages=3 # At most three AJAX loads; incomplete lists remain unpublishable.
-            $rowsExpr = 'JSON.stringify({filtered:document.querySelector("' + $filterName + '")?.checked===true&&[...document.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")&&x.checked).length===1&&new URL(location.href).searchParams.get("language")==="'+$LangCfg.LanguageId+'"&&new URL(location.href).searchParams.get("minCondition")==="2"&&document.querySelector("[name=minCondition]")?.value==="2"&&new URL(location.href).searchParams.get("isSigned")==="N"&&new URL(location.href).searchParams.get("isAltered")==="N"&&[["isReverseHolo","'+$reverseCode+'"],["isFirstEd","'+$firstCode+'"]].every(([k,v])=>{const u=new URL(location.href);const f=[...document.forms].find(x=>x.action.includes("Product_Filter_FilterProduct"));const e=f?.elements.namedItem("extra["+k+"]");return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)))}),rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),language:[...r.querySelectorAll("[data-bs-original-title],[title]")].map(n=>n.getAttribute("data-bs-original-title")||n.getAttribute("title")).find(t=>[' + $langNames + '].includes(t)),price:r.querySelector(".price-container")?.textContent?.trim(),comment:r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]")?.textContent?.trim()||null,commentVisible:!!r.querySelector(".article-comment,.article-remarks,.article-comment-text,[data-testid=article-comment]"),flags:[...r.querySelectorAll("[title],[data-bs-original-title]")].map(x=>x.getAttribute("data-bs-original-title")||x.getAttribute("title")).filter(x=>x==="Reverse Holo"||x==="First Edition")})),hasMore:!!document.querySelector("#loadMoreButton"),page:Number(document.querySelector("#articlePage")?.value||0),totalRows:document.querySelectorAll(".article-row").length})'
+            $rowsExpr = New-CardmarketOfferRowsExpression -LanguageIds $offerLanguageIds -ReverseCode $reverseCode -FirstCode $firstCode
             $data = $null
             for ($fi = 0; $fi -lt 12; $fi++) {
               Start-Sleep -Milliseconds 500
@@ -1162,6 +1217,7 @@ try {
               if ($data -and $data.filtered) { break }
             }
             if (!$data) { throw 'FILTER_STATE_UNREADABLE' }
+            if([string]$data.productId -ne $candidateId){throw 'FILTER_PRODUCT_ID_CHANGED'}
             $out.offer_pages_attempted=0
             $out.pagination_failure=''
             # Public mode collects visible rows, without assuming that a
@@ -1249,6 +1305,45 @@ try {
             if($out.all_pages_complete -and -not $auth){
               $out.pagination_end_evidence='PUBLIC_NO_LOAD_MORE_BUTTON_MAX_25_OFFERS'
             }
+            if($combinedTarget -and $data.filtered){
+              try {
+                $buckets=Split-CardmarketCombinedOffers -Data $data -ProductId $candidateId -ReverseCode $reverseCode -FirstCode $firstCode
+                $peerRows=@($buckets[$peerLanguage+'_offers'])
+                $ownRows=@($buckets[$Language+'_offers'])
+                $out.offers_seen=[int]$data.totalRows
+                $peerFallback=Test-CardmarketCombinedFallback $out $peerRows
+                $peerObservation=New-CardmarketPeerObservation -Source $out -Peer $combinedTarget -Language $peerLanguage -Rows $peerRows -Fallback $peerFallback
+                Append-Observation $peerResultsPath ($peerObservation | ConvertTo-Json -Depth 6 -Compress)
+                $peerLatest[[string]$peerObservation.key]=[pscustomobject]$peerObservation
+                if($peerFallback){$singleLanguageFallbacks++}else{$pairedVariants++}
+                if(Test-CardmarketCombinedFallback $out $ownRows){
+                  # The less represented source language is fetched separately.
+                  # A pending peer marker likewise forces its next run to use
+                  # one language and is never counted as processed.
+                  $combinedTarget=$null
+                  $offerLanguageIds=@([int]$LangCfg.LanguageId)
+                  $targetFilter=New-CardmarketOfferFilterUrl -ProductUrl ([string]$out.url) -LanguageId ([int]$LangCfg.LanguageId) -ReverseCode $reverseCode -FirstEditionCode $firstCode
+                  if(!(Move-To $targetFilter)){throw 'SINGLE_LANGUAGE_FALLBACK_TIMEOUT'}
+                  $out.combined_fallback_reason='MIXED_LANGUAGE_SAMPLE_INCOMPLETE'
+                  $singleLanguageFallbacks++
+                  $out.filter_mode='CANONICAL_URL_DOM_VERIFIED'
+                  $retrySingleLanguage=$true
+                  continue
+                }
+                $out.filter_mode='COMBINED_URL_DOM_VERIFIED'
+                $out.source_filter_language_ids='1,3'
+                $out.source_product_url=([string]$out.url).Split('?')[0]
+                $out.combined_product_id_verified=$candidateId
+                $out.combined_offers_seen=[int]$data.totalRows
+                $data=New-CardmarketLanguageBucket $data $ownRows
+              } catch {
+                if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED|TIMEOUT'){throw}
+                $out.all_pages_complete=$false
+                $out.pagination_failure='COMBINED_OFFER_EVIDENCE_UNVERIFIED'
+                $data.filtered=$false
+              }
+            }
+            } while($retrySingleLanguage)
             # Qualitaetskontrolle (Punkt 5): nur Zeilen, die Sprach- UND
             # Zustandskriterium einzeln erfuellen, zaehlen als Filtertreffer.
             $out.offers_seen = @($data.rows).Count
@@ -1428,6 +1523,8 @@ try {
     language               = $Language
     expected_variants      = $runTotal
     feed_only_variants     = $feedOnly
+    paired_language_variants = $pairedVariants
+    single_language_fallbacks = $singleLanguageFallbacks
     search_cache_hits = $searchCacheHits
     search_cache_misses = $searchCacheMisses
     progress_status        = (Get-Content $progressPath -Raw | ConvertFrom-Json).status
@@ -1447,6 +1544,7 @@ try {
   ($report | ConvertTo-Json -Depth 4) | Set-Content -Encoding UTF8 -Path (Join-Path $OutputDir "qc-report-$Language.json")
   Write-Host ($report | ConvertTo-Json -Depth 4)
 } finally {
+  try {if($ws.State -eq [Net.WebSockets.WebSocketState]::Open){Set-CardmarketMediaBlocking $false}} catch {}
   try { $script:rxCts.Cancel() } catch {}
   try { $ws.Dispose() } catch {}
 }

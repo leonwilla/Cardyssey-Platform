@@ -105,7 +105,7 @@ class CheckVariants(unittest.TestCase):
         self.assertIn("$out.product_id = $candidateId",s)
         self.assertIn("PRODUCT_ID_NOT_IN_VERIFIED_SET",s)
     def test_live_script_independent_filters_and_query_verification(self):
-        s=SCRIPT.read_text(encoding="utf-8-sig")
+        s=SCRIPT.read_text(encoding="utf-8-sig") + SCRIPT.with_name("cardmarket-combined-offers.ps1").read_text(encoding="utf-8-sig")
         for token in ("expected_reverse_holo","expected_first_edition","extra[isReverseHolo]","extra[isFirstEd]","searchParams.get(k)","all_pages_complete=$false"):
             self.assertIn(token,s)
 if __name__=="__main__":

@@ -11,6 +11,8 @@ _cm_root=_cm_Path(__file__).resolve().parents[2]
 for _cm_import in (_cm_root, _cm_root/'cardmarket/core', _cm_root/'cardmarket/admin', _cm_root/'cardmarket/archive'):
     if str(_cm_import) not in _cm_sys.path:
         _cm_sys.path.insert(0,str(_cm_import))
+from cardmarket_browser_queue import browser_scan_tier
+
 import argparse
 import csv
 import json
@@ -116,6 +118,13 @@ def main():
     if len(keys)!=len(data):
         tmp.unlink(missing_ok=True)
         raise RuntimeError("Duplicate variant identities in queue")
+    # Export the same live browser tiers used by prioritization and monitoring.
+    for row in data:
+        row["scan_tier"] = browser_scan_tier(row)
+    with tmp.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=data[0].keys())
+        writer.writeheader()
+        writer.writerows(data)
     os.replace(tmp,args.output)
     result={"language":args.language,"variants":len(data),
             "candidate_rows":sum(bool(r["cardmarket_ids"]) for r in data),

@@ -64,7 +64,7 @@ Get-Content -Raw (Join-Path $env:LOCALAPPDATA 'fixture-session.json')
     Assert-Test ($fixture.launches.Count -eq 1 -and $fixture.launches[0].args -contains '-SingleBatch') 'Fresh clearance should resume immediately'
     Assert-Test (!(Test-Path $warmupLog)) 'A cleared tab must remain on its current page'
     $fixture.launches.Clear()
-    @{status='BATCH_COMPLETE_MORE_PENDING';updated_at=[DateTime]::UtcNow.AddMinutes(-10).ToString('o')} | ConvertTo-Json | Set-Content $progress
+    @{status='BATCH_COMPLETE_MORE_PENDING';updated_at=[DateTime]::UtcNow.AddMinutes(-3).ToString('o')} | ConvertTo-Json | Set-Content $progress
     $fixture.connectionProbes=0
     $waiting=@(& $launcher -ManualResume)
     Assert-Test ($waiting[0] -like 'CARDMARKET_COOLDOWN*' -and $fixture.connectionProbes -eq 0) 'Regular batch pause must gate the normal resume'

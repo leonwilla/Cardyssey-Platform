@@ -18,11 +18,11 @@ from pathlib import Path
 from cardmarket_browser_queue import browser_scan_tier, human_confirmed_print_keys
 
 BASE=Path('/mnt/c/Users/TV/AppData/Local/Cardyssey/CardmarketCollector')
-PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS'}
+PROBLEMS={'ERROR','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_SET_SLUG_MISMATCH','MULTIPLE_SEARCH_HITS','NO_PRODUCT_ID','PRODUCT_ID_NOT_IN_VERIFIED_SET','FILTER_UNAVAILABLE','FILTER_NOT_APPLIED','FILTER_UNVERIFIED_EMPTY','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','NO_CONFIRMED_FILTERED_OFFERS','SINGLE_LANGUAGE_FALLBACK_REQUIRED'}
 # Mirrors the Windows launcher/watchdog. The timestamp is the earliest safe
 # resume time, NOT a guarantee that a scheduled task starts exactly then.
 COOLDOWN_MINUTES={'PROVIDER_TIMEOUT':90,'CONNECTION_LOST':60,
-    'BATCH_COMPLETE_MORE_PENDING':20,'COMPLETED_WITH_DEFERRED':90}
+    'BATCH_COMPLETE_MORE_PENDING':8,'COMPLETED_WITH_DEFERRED':90}
 # LOGIN_REQUIRED and LOGIN_UNVERIFIED must not cause a cooldown while the
 # public provider remains AVAILABLE (the Windows runner uses guest mode).
 
@@ -136,7 +136,7 @@ def snapshot(base:Path,language:str):
     # Observations are appended to JSONL, but replacing an existing key in a
     # dict does NOT move it to the end. Sort by seen_at for the actual latest.
     chronological=sorted(completed.values(),key=lambda r:timestamp(r.get('seen_at')) or datetime.min.replace(tzinfo=timezone.utc),reverse=True)
-    scanned={key:r for key,r in completed.items() if r.get('status') not in ('STARTED','ERROR','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT')}
+    scanned={key:r for key,r in completed.items() if r.get('status') not in ('STARTED','ERROR','DEFERRED_SOCKET','DEFERRED_PROVIDER_TIMEOUT','SINGLE_LANGUAGE_FALLBACK_REQUIRED')}
     pending=[x for x in completed.values() if x.get('status') in PROBLEMS or str(x.get('status','')).startswith('DEFERRED')]
     progress_path=base/f'progress-{language}.json'
     progress={}
@@ -159,7 +159,7 @@ def snapshot(base:Path,language:str):
             rescan_epoch=datetime.fromisoformat(epoch['requestedAt'].replace('Z','+00:00'))
             if rescan_epoch.tzinfo is None:rescan_epoch=rescan_epoch.replace(tzinfo=timezone.utc)
             rescan_done=sum(bool(x.get('seen_at')) and datetime.fromisoformat(str(x['seen_at']).replace('Z','+00:00'))>=rescan_epoch
-                and str(x.get('status','')) not in ('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR')
+                and str(x.get('status','')) not in ('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','SINGLE_LANGUAGE_FALLBACK_REQUIRED')
                 and not str(x.get('status','')).startswith('DEFERRED') for x in completed.values())
         except (OSError,ValueError,TypeError):rescan_epoch=None;rescan_done=None
     total=len(expected);done=len(scanned)

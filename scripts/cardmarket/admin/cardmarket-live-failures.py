@@ -51,6 +51,22 @@ CSV_COLUMNS = (
 )
 
 def classify(status,entry=None,queue=None,references=()):
+    if (entry and queue and
+        'CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED' in
+            (entry.get('error'), entry.get('reason')) and
+        str(queue.get('stempel') or '').strip().casefold() not in ('', '[]', 'null') and
+        entry.get('catalog_direct_id_verified') is True and
+        entry.get('card_number_url_verified') is True and
+        entry.get('exact_print_filter_supported') is not True and
+        str(entry.get('product_id') or '').isdigit() and
+        str(entry.get('product_id')) == str(queue.get('catalog_singleton_id') or '') and
+        str(queue.get('catalog_expansion_id') or '').isdigit() and
+        queue.get('candidate_status') != 'SET_EXPANSION_AMBIGUOUS' and
+        entry.get('set_id') == queue.get('set_id') and
+        str(entry.get('number') or '') == str(queue.get('kartennummer') or '')):
+        return 'ID_VERKNUEPFT_STEMPEL'
+    if status == 'SINGLE_LANGUAGE_FALLBACK_REQUIRED':
+        return 'TECHNISCH'
     if status in PRINT_PAGE_REVIEW_STATUSES and references:
         return 'DRUCKPRUEFUNG'
     if (status == 'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED' and entry
@@ -148,7 +164,7 @@ def offline_links(base, language):
 def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind='karten',decisions=None,*,for_export=False):
     if language not in ('de','en'):raise ValueError('invalid_language')
     if scope not in ('current','all'):raise ValueError('invalid_scope')
-    if kind not in ('karten','preise','technik','drucke','alle'):raise ValueError('invalid_kind')
+    if kind not in ('karten','preise','technik','drucke','verknuepft','alle'):raise ValueError('invalid_kind')
     if not 0<=page<=2000:raise ValueError('invalid_page')
     epoch=None
     ep=base/'full-rescan-epoch.json'
@@ -221,12 +237,14 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
     output.sort(key=lambda e:e['seenAt'],reverse=True)
     full_counts={'assignment':sum(x['type']=='ZUORDNUNG' for x in output),
             'technical':sum(x['type']=='TECHNISCH' for x in output),
+            'linkedStamps':sum(x['type']=='ID_VERKNUEPFT_STEMPEL' for x in output),
             'printChecks':sum(x['type']=='DRUCKPRUEFUNG' for x in output),
             'priceChecks':sum(x['type']=='PREISPRUEFUNG' for x in output),
             'missingData':sum(x['type']=='DATEN_FEHLEN' for x in output)}
     if kind=='karten':output=[x for x in output if x['type'] in ('ZUORDNUNG','DATEN_FEHLEN')]
     elif kind=='preise':output=[x for x in output if x['type']=='PREISPRUEFUNG']
     elif kind=='technik':output=[x for x in output if x['type']=='TECHNISCH']
+    elif kind=='verknuepft':output=[x for x in output if x['type']=='ID_VERKNUEPFT_STEMPEL']
     elif kind=='drucke':output=[x for x in output if x['type']=='DRUCKPRUEFUNG']
     return {'language':language,'scope':scope,'kind':kind,'total':len(output),'page':page,'pageSize':50,
             **full_counts,
@@ -261,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--scope', choices=['all', 'current'], default='current')
     parser.add_argument('--page', type=int, default=0)
     parser.add_argument('--search', default='')
-    parser.add_argument('--kind', choices=['karten', 'preise', 'technik', 'drucke', 'alle'], default='karten')
+    parser.add_argument('--kind', choices=['karten', 'preise', 'technik', 'drucke', 'verknuepft', 'alle'], default='karten')
     parser.add_argument('--format', choices=['json', 'csv'], default='json')
     args = parser.parse_args()
     exporting = args.format == 'csv'

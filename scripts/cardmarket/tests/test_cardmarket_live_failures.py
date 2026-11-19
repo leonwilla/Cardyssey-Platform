@@ -21,6 +21,30 @@ class Tests(unittest.TestCase):
     w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
     for card in ('hgss3-5','2019sm-1'):w.writerow({'cardyssey_karte':card,'variante_id':'v1','set_id':card.rsplit('-',1)[0],'kartenname_suche':card})
   return base
+ def test_catalog_linked_stamp_has_own_filter_and_never_assignment(self):
+  queue={'cardyssey_karte':'svp-1','variante_id':'staff','set_id':'svp','kartennummer':'1',
+   'stempel':'["staff"]','catalog_singleton_id':'751539','catalog_expansion_id':'5546'}
+  entry={'card_id':'svp-1','variant_id':'staff','set_id':'svp','number':'1',
+   'status':'PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED','product_id':'751539',
+   'catalog_direct_id_verified':True,'card_number_url_verified':True,
+   'error':'CATALOG_ID_AND_CARD_NUMBER_VERIFIED_EXACT_PRINT_UNVERIFIED',
+   'seen_at':datetime.now(timezone.utc).isoformat()}
+  self.assertEqual(fail.classify(entry['status'],entry,queue),'ID_VERKNUEPFT_STEMPEL')
+  for changes in ({'product_id':'999999'},{'catalog_direct_id_verified':False},
+                  {'card_number_url_verified':False},{'exact_print_filter_supported':True}):
+   with self.subTest(changes=changes):
+    self.assertNotEqual(fail.classify(entry['status'],{**entry,**changes},queue),'ID_VERKNUEPFT_STEMPEL')
+  with tempfile.TemporaryDirectory() as td:
+   base=Path(td)
+   with (base/'queue-de.csv').open('w',newline='') as stream:
+    w=csv.DictWriter(stream,fieldnames=queue);w.writeheader();w.writerow(queue)
+   (base/'browser-observations-de.jsonl').write_text(json.dumps(entry))
+   self.assertEqual(fail.list_failures(base,'de',kind='karten')['total'],0)
+   result=fail.list_failures(base,'de',kind='verknuepft',for_export=True)
+   self.assertEqual((result['total'],result['linkedStamps'],result['assignment']),(1,1,0))
+   self.assertEqual(result['items'][0]['type'],'ID_VERKNUEPFT_STEMPEL')
+   self.assertEqual(fail.list_failures(base,'de',kind='alle')['total'],1)
+
  def test_current_failures_paged_and_historical_hidden(self):
   with tempfile.TemporaryDirectory() as td:
    b=self.setup(td);start=datetime.now(timezone.utc);(b/'full-rescan-epoch.json').write_text(json.dumps({'requestedAt':start.isoformat()}))

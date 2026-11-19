@@ -14,7 +14,7 @@ class RescanEpochTests(unittest.TestCase):
    p=Path(td);keys=[('a','v1'),('a','v2')]
    with (p/'queue-de.csv').open('w',newline='') as f:
     w=csv.DictWriter(f,fieldnames=['cardyssey_karte','variante_id','scan_tier','needs_price','existing_price_eur']);w.writeheader()
-    for card,variant in keys:w.writerow({'cardyssey_karte':card,'variante_id':variant,'scan_tier':'1','needs_price':'NO','existing_price_eur':'10'})
+    for card,variant in keys:w.writerow({'cardyssey_karte':card,'variante_id':variant,'scan_tier':'1','needs_price':'NO','existing_price_eur':'15'})
    start=datetime(2026,11,9,13,0,tzinfo=timezone.utc)
    (p/'full-rescan-epoch.json').write_text(json.dumps({'requestedAt':start.isoformat()}))
    with (p/'browser-observations-de.jsonl').open('w') as f:

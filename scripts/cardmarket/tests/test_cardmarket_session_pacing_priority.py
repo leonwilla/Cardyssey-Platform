@@ -21,7 +21,7 @@ class SessionPacingPolicyTests(unittest.TestCase):
   self.assertNotIn('$cookies=',launcher)
  def test_per_request_budget_including_ajax(self):
   scanner=self.source('cardmarket-language-browser-collector.ps1')
-  self.assertIn('[int]$MinRequestGapSeconds = 16',scanner)
+  self.assertIn('[int]$MinRequestGapSeconds = 11',scanner)
   self.assertIn('function Wait-CardmarketRequestBudget',scanner)
   self.assertIn("$script:lastProviderRequestUtc=[DateTime]::MinValue",scanner)
   self.assertIn("Wait-CardmarketRequestBudget\n  Send-Cdp 'Page.navigate'",scanner)
@@ -31,15 +31,15 @@ class SessionPacingPolicyTests(unittest.TestCase):
  def test_runner_shares_gap_with_both_languages(self):
   runner=self.source('Cardmarket-Queue-Runner.ps1')
   self.assertIn('MinRequestGapSeconds $MinRequestGapSeconds',runner)
-  self.assertIn('BatchLimit = 10',runner)
+  self.assertIn('BatchLimit = 25',runner)
   self.assertIn('RunMinutes = 40',runner)
   self.assertIn('Start-Sleep -Seconds $MinRequestGapSeconds',runner)
   launcher=self.source('Cardmarket-Collector-Launcher.ps1')
-  self.assertIn('"-BatchLimit","10"',launcher)
-  self.assertIn('"-MinRequestGapSeconds","16"',launcher)
+  self.assertIn('"-BatchLimit","25"',launcher)
+  self.assertIn('"-MinRequestGapSeconds","11"',launcher)
   self.assertIn('"-Languages","both","-SingleBatch"',launcher)
   self.assertIn('[int]$ChallengeWaitSeconds = 15',self.source('cardmarket-language-browser-collector.ps1'))
-  self.assertIn('return 20',self.source('Cardmarket-Backoff-Policy.ps1'))
+  self.assertIn('return 8',self.source('Cardmarket-Backoff-Policy.ps1'))
   self.assertIn('& $watchdog -ReportBlocked',runner)
  def test_backoff_persists_between_runner_invocations(self):
   for name in ('Cardmarket-Collector-Launcher.ps1','Cardmarket-Resume-Watchdog.ps1'):

@@ -2,9 +2,9 @@
 # Rotate German/English batches so neither backlog can starve the other.
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
-  [ValidateRange(1,1000)][int]$BatchLimit = 10,
-  [ValidateRange(4,120)][int]$DelaySeconds = 16,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 16,
+  [ValidateRange(1,1000)][int]$BatchLimit = 25,
+  [ValidateRange(4,120)][int]$DelaySeconds = 11,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',

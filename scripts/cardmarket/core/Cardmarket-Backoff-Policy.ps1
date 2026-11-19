@@ -21,7 +21,7 @@ function Get-CardmarketCooldownMinutes([string]$Status,[string]$Base,[string]$Pr
     }
     'PROVIDER_TIMEOUT' {return 90}
     'CONNECTION_LOST' {return 60}
-    'BATCH_COMPLETE_MORE_PENDING' {return 20}
+    'BATCH_COMPLETE_MORE_PENDING' {return 8}
     'COMPLETED_WITH_DEFERRED' {return 90}
     default {return 0}
   }
@@ -129,7 +129,7 @@ function Get-CardmarketDueCases {
         $manualRequested=($null -eq $seen -or $requested -gt $seen)
       } catch {}
     }
-    if($manualRequested){$priority.Add($item)}
+    if($manualRequested -or [string]$prior.status -eq 'SINGLE_LANGUAGE_FALLBACK_REQUIRED'){$priority.Add($item)}
     elseif($prior -and $prior.status -like 'DEFERRED*'){
       if($null -ne $seen -and $seen -le $NowUtc.AddHours(-2)){$retry.Add($item)}
     }
