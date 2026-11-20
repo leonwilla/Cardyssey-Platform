@@ -9,7 +9,6 @@ import {
 
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
-import type { User } from "@/lib/types";
 import { mergeScanCandidates, withAbort } from "@/lib/scan-candidates";
 
 const scanLanguages = [
@@ -63,8 +62,6 @@ function scanLanguageLabel(
 
 export default function ScanPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const canManageScanner = user?.canAdmin === true || user?.role === "ADMIN" || user?.role === "FOUNDER";
 
   const videoRef =
     useRef<HTMLVideoElement | null>(null);
@@ -99,16 +96,7 @@ export default function ScanPage() {
     useState<ScanLanguage["api"]>("de");
 
   const [automaticLanguage, setAutomaticLanguage] =
-    useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/auth/me", { cache: "no-store", signal: controller.signal })
-      .then(response => response.ok ? response.json() : null)
-      .then(profile => { if (!controller.signal.aborted) setUser(profile); })
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
+    useState(true);
 
   const selectedLanguage = useMemo(
     () =>
@@ -378,7 +366,7 @@ export default function ScanPage() {
   }, []);
 
   return (
-    <AppShell active="/scan" user={user}>
+    <AppShell active="/scan">
       <section className="pageIntro scannerPageIntro">
         <div>
           <span className="eyebrowText">
@@ -459,6 +447,47 @@ export default function ScanPage() {
 
         </div>
 
+        <div className="scannerModeBlock">
+          <div className="scannerModeLabel">
+            <span>SCAN-MODUS</span>
+            <small>
+              {automaticLanguage
+                ? "Sprache automatisch"
+                : "Sprache manuell"}
+            </small>
+          </div>
+
+          <div className="scannerModeSwitch">
+            <button
+              type="button"
+              className={
+                !automaticLanguage
+                  ? "selected"
+                  : ""
+              }
+              onClick={() =>
+                setAutomaticLanguage(false)
+              }
+            >
+              STANDARD
+            </button>
+
+            <button
+              type="button"
+              className={
+                automaticLanguage
+                  ? "selected"
+                  : ""
+              }
+              onClick={() =>
+                setAutomaticLanguage(true)
+              }
+            >
+              AUTO
+            </button>
+          </div>
+        </div>
+
         {error && (
           <div className="statusPanel errorPanel scannerError">
             {error}
@@ -486,22 +515,6 @@ export default function ScanPage() {
           )}
 
         </div>
-
-        {canManageScanner && (
-          <details className="scannerAdminOptions">
-            <summary>Admin-Optionen</summary>
-            <div className="scannerModeBlock">
-              <div className="scannerModeLabel">
-                <span>SCAN-MODUS</span>
-                <small>{automaticLanguage ? "Sprache automatisch" : "Sprache manuell"}</small>
-              </div>
-              <div className="scannerModeSwitch">
-                <button type="button" className={!automaticLanguage ? "selected" : ""} onClick={() => setAutomaticLanguage(false)}>STANDARD</button>
-                <button type="button" className={automaticLanguage ? "selected" : ""} onClick={() => setAutomaticLanguage(true)}>AUTO · TEST</button>
-              </div>
-            </div>
-          </details>
-        )}
 
         {image && (
           <div className="scannerReviewActions">

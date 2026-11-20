@@ -925,39 +925,3 @@ body.cardysseyApp .legalShell{background:var(--appearance-panel);border-color:va
 body.cardysseyApp .legalPage h1,body.cardysseyApp .legalPage h2,body.cardysseyApp .legalPage h3{color:var(--appearance-ink)}
 body.cardysseyApp .legalPage p,body.cardysseyApp .legalPage li,body.cardysseyApp .legalPage address{color:var(--appearance-muted)}
 body.cardysseyApp .legalWarning{background:var(--appearance-soft);color:var(--appearance-ink);border-color:var(--appearance-outline)}
-
-/* Keep the collection welcome short enough to reveal the actual cards. */
-body.cardysseyApp .collectionWelcome { margin: 0 0 18px; }
-body.cardysseyApp .collectionWelcome h1 {
-  margin: 0 0 10px;
-  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
-  line-height: 1.25;
-  font-weight: 750;
-}
-body.cardysseyApp .collectionOverview { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
-body.cardysseyApp .collectionOverview strong { color: var(--light-accent); font-size: 1.65rem; line-height: 1.2; }
-body.cardysseyApp .collectionOverview span { color: var(--appearance-muted); font-size: .9rem; }
-body.cardysseyApp .collectionMarketDetails { border: 1px solid var(--appearance-outline); border-radius: 14px; padding: 10px 14px; }
-body.cardysseyApp .collectionMarketDetails summary,
-body.cardysseyApp .scannerAdminOptions summary { cursor: pointer; color: var(--appearance-muted); font-size: .9rem; font-weight: 650; }
-body.cardysseyApp .collectionMarketOptions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 10px; }
-body.cardysseyApp .collectionMarketOptions .segmented { position: static; }
-body.cardysseyApp .collectionMarketOptions small { color: var(--appearance-muted); }
-body.cardysseyApp .scannerAdminOptions { padding: 4px 0; }
-body.cardysseyApp .scannerAdminOptions .scannerModeBlock { padding-top: 12px; }
-body.cardysseyApp .setCardToolbar { display: flex; justify-content: flex-end; margin: 0 0 18px; }
-body.cardysseyApp .setCardSortControl { display: flex; align-items: center; gap: 10px; font-size: .9rem; color: var(--appearance-muted); }
-body.cardysseyApp .setCardSortControl select:not([multiple]) {
-  appearance: none;
-  min-height: 44px;
-  border-radius: 12px;
-  padding: 10px 38px 10px 14px;
-  font: inherit;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23898170' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 12px center !important;
-  background-size: 16px !important;
-}
-
-
-body.cardysseyApp .collectionMarketDetails + .collectionSection { margin-top: 18px; }

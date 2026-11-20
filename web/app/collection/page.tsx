@@ -1245,14 +1245,31 @@ export default function CollectionPage() {
       active="/collection"
       user={user}
     >
-      <section className="collectionWelcome">
-        <h1>Willkommen in deiner Sammlung</h1>
-        {!loading && !error && (
-          <div className="collectionOverview">
-            <strong>{market === "EBAY" && ebayLoading && total == null ? "Lädt …" : eur(total)}</strong>
-            <span>{count} Karten · {setCount} Sets</span>
-          </div>
-        )}
+      <section className="pageIntro">
+        <div>
+          <span className="eyebrowText">
+            Meine Sammlung
+          </span>
+
+          <h1>
+            Deine Sammlung
+          </h1>
+
+          <p>
+            Karten, Mengen und Marktwerte
+            zentral und synchron verwalten.
+          </p>
+        </div>
+
+        <button
+          className="primaryButton"
+          onClick={
+            () =>
+              setAdding(true)
+          }
+        >
+          + Karte hinzufügen
+        </button>
       </section>
 
       {loading && (
@@ -1271,19 +1288,95 @@ export default function CollectionPage() {
       {!loading &&
         !error && (
           <>
-            <details className="collectionMarketDetails">
-              <summary>Marktwerte · {market === "TCG" ? "TCG" : "eBay"}</summary>
-              <div className="collectionMarketOptions">
+            <section className="statsGrid collectionStatsGrid">
+              <div className="statCard heroStat">
+                <span>
+                  Sammlungswert
+                </span>
+
+                <strong>
+                  {market === "EBAY" &&
+                  ebayLoading &&
+                  total == null
+                    ? "Lädt …"
+                    : eur(total)}
+                </strong>
+
                 <div className="segmented">
-                  <button type="button" onClick={() => selectMarket("TCG")} className={market === "TCG" ? "selected" : ""}>TCG</button>
-                  <button type="button" onClick={() => selectMarket("EBAY")} className={market === "EBAY" ? "selected" : ""}>eBay</button>
+                  <button
+                    onClick={
+                      () =>
+                        selectMarket(
+                          "TCG"
+                        )
+                    }
+                    className={
+                      market ===
+                      "TCG"
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    TCG
+                  </button>
+
+                  <button
+                    onClick={
+                      () =>
+                        selectMarket(
+                          "EBAY"
+                        )
+                    }
+                    className={
+                      market ===
+                      "EBAY"
+                        ? "selected"
+                        : ""
+                    }
+                  >
+                    eBay
+                  </button>
                 </div>
+
                 {market === "EBAY" && (
-                  <small>{ebayLoading ? `eBay-Werte werden geladen · ${ebayPricedCount}/${items.length} Einträge bewertet` : `${ebayPricedCount}/${items.length} Einträge mit eBay-Marktwert`}</small>
+                  <small>
+                    {ebayLoading
+                      ? `eBay-Werte werden geladen · ${ebayPricedCount}/${items.length} Einträge bewertet`
+                      : `${ebayPricedCount}/${items.length} Einträge mit eBay-Marktwert`}
+                  </small>
                 )}
-                {market === "EBAY" && ebayLoadError && <small>{ebayLoadError}</small>}
+
+                {market === "EBAY" &&
+                  ebayLoadError && (
+                    <small>
+                      {ebayLoadError}
+                    </small>
+                  )}
               </div>
-            </details>
+
+              <div className="statCard">
+                <span>Karten</span>
+                <strong>
+                  {count}
+                </strong>
+                <small>
+                  inklusive Mengen
+                </small>
+              </div>
+
+              <div className="statCard">
+                <span>
+                  Sets begonnen
+                </span>
+                <strong>
+                  {setCount}
+                </strong>
+                <small>
+                  deine Sammlung
+                </small>
+              </div>
+
+            </section>
 
             <section className="sectionBlock collectionSection">
               <div className="sectionTitle">
@@ -1298,7 +1391,6 @@ export default function CollectionPage() {
                 </div>
 
                 <div className="collectionToolbar">
-                  <button type="button" className="ghostButton" onClick={() => setAdding(true)}>+ Karte hinzufügen</button>
                   <label className="collectionSortControl collectionSearchControl">
                     <span>Suche</span>
                     <input
