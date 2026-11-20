@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { BrandMark } from "./BrandMark";
+import { AccountAvatar } from "./AccountAvatar";
 import type { User } from "@/lib/types";
 
 type NavIconName =
@@ -50,18 +51,6 @@ let cachedShellUser:
   | User
   | null
   | undefined;
-
-function initial(user?: User | null) {
-  const source =
-    user?.displayName ||
-    user?.email ||
-    "C";
-
-  return (
-    source.trim().charAt(0).toUpperCase() ||
-    "C"
-  );
-}
 
 function NavGlyph({
   name,
@@ -331,11 +320,11 @@ export function AppShell({
           href="/account"
           className="sidebarFoot"
         >
-          <div className="avatar sidebarAvatar">
-            {accountLoading
-              ? "·"
-              : initial(shellUser)}
-          </div>
+          <AccountAvatar
+            user={shellUser}
+            loading={accountLoading}
+            className="sidebarAvatar"
+          />
 
           <div className="sidebarFootText">
             <div className="sidebarFootTitle">
@@ -405,7 +394,11 @@ export function AppShell({
               className="iconButton topbarAccount"
               aria-label="Account"
             >
-              <NavGlyph name="account" />
+              {shellUser?.avatarUrl ? (
+                <AccountAvatar user={shellUser} className="topbarAvatar" />
+              ) : (
+                <NavGlyph name="account" />
+              )}
             </Link>
           </div>
         </header>

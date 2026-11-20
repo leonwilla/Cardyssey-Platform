@@ -1569,6 +1569,25 @@
   font-size:13px;
 }
 
+.sidebarAvatar,
+.topbarAvatar{
+  overflow:hidden;
+}
+
+.topbarAvatar{
+  width:30px;
+  height:30px;
+}
+
+.sidebarAvatar img,
+.topbarAvatar img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:inherit;
+}
+
 .sidebarFootText{
   min-width:0;
   flex:1;
