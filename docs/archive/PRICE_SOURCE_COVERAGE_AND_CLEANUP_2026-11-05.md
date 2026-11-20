@@ -84,7 +84,7 @@ Datenquelle: **Live-Datenbank** `global_price_policy_sync.summary` (letzter Lauf
 2. Git-Dateien gelöscht: `scripts/capsolver_preflight.py`, `scripts/setup_capsolver_key.py`, `scripts/test_capsolver_preflight.py`, `scripts/diagnose-pricecharting-access.py`, `scripts/test_diagnose_pricecharting_access.py`, `scripts/refresh-pricecharting-exact.py`, `scripts/prepare-pricecharting-review.py`, `config/pricecharting-exact-variants.csv` (enthielt ausschließlich Header), `docs/CAPSOLVER_FREE_TRIAL.md` und `docs/PRICECHARTING_CONNECTOR_STATUS.md`.
 3. Optionale PriceCharting-API-Abfrage und dauerhafte PriceCharting-Suchhinweis-Anreicherung aus `.github/workflows/tcgcsv-price-refresh.yml` entfernt; PriceCharting-Sonden aus der manuellen `.github/workflows/scraper-connectivity-audit.yml` entfernt. Andere Provider-Jobs unangetastet.
 4. PriceCharting-Temporärberichte unter `/tmp` entfernt. Der Testcontainer `cardyssey-test-solverr` und das Solverr-Image waren bereits beim vorherigen Experiment gelöscht und wurden erneut geprüft.
-5. **Erhalten:** `docs/FREE_PRICE_SOURCE_EXPERIMENTS_2026-11-05.md` (Audit-Historie), dieser Bericht, alle live eingesetzten Cardmarket/TCG-/CardTrader/eBay-Skripte und Tabellen. Historische Daten bleiben erhalten; keine Datenbanktabellen oder regulären Preise gelöscht.
+5. **Erhalten:** `docs/archive/FREE_PRICE_SOURCE_EXPERIMENTS_2026-11-05.md` (Audit-Historie), dieser Bericht, alle live eingesetzten Cardmarket/TCG-/CardTrader/eBay-Skripte und Tabellen. Historische Daten bleiben erhalten; keine Datenbanktabellen oder regulären Preise gelöscht.
 
 ## Wiederherstellung oder erneuter Test
 
