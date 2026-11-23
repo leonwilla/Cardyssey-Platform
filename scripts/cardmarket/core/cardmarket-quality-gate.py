@@ -71,7 +71,7 @@ def main():
     report={"checked_at":datetime.now(timezone.utc).isoformat(),"status":status,
             "languages":rows,"issues":issues,
             "caution":"Catalog candidates are not verified language/condition/print identities."}
-    state=Path.home()/".local/state/cardyssey-codex"
+    state=Path.home()/".local/state/cardyssey-quality"
     state.mkdir(parents=True,exist_ok=True)
     output=state/"latest-quality.json"
     tmp=output.with_suffix(".tmp")
