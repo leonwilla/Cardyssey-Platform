@@ -53,3 +53,7 @@ __pycache__/
 
 # Private APK files must never be committed
 web/private-downloads/
+
+# Server-lokale Deploy-Releases und Sicherungen (nie committen)
+/releases/
+/backups/

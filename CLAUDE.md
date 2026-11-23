@@ -62,6 +62,8 @@ make verify                                            # API-Vertrag passt zum C
 - Repos aufgeräumt (PR #24 hier, PR #15 in der App). Server-Bestandsaufnahme gemacht: Server stabil, Deploy läuft.
 - **Aktueller Fokus: TCG-Preise.** Der Inhaber erklärt, wo es bei den Preisen noch hakt. Erst zuhören und verstehen, dann gemeinsam planen.
 - **Bewusst zurückgestellt** (erst auf Ansage angehen): eBay-Preisabfrage (Healthcheck meldet seit 12.11. SERVICE_ERROR, Warnmails unterdrückt) und Shop (kein Warenkorb, keine Zahlung, keine Bestellungen; Live-Shop ist noch WordPress/WooCommerce).
-- Entscheidungen: Alles mit ChatGPT/Codex entfernen. Palworld-Server wird nicht mehr gebraucht, **der Spielstand muss aber gesichert bleiben**. `vinted-ingest` gehört zum separaten Vinted-Projekt, nicht ohne Rückfrage anfassen.
-- Ungeklärt: `web/components/notify-form.tsx` und `games.tsx` liegen nur auf dem Server, nicht in Git, Herkunft unbekannt. Sichern, nicht löschen.
+- Erledigt am 23.11.: ChatGPT/Codex komplett entfernt (Cron-Eintrag, `scripts/codex-quality-repair.sh`, Codex-CLI, `~/.codex`). Tote Einzelaktions-Cronjobs (06.11./12.11.) entfernt, Sicherung der alten Crontab: `/home/tv/crontab-backup-20261123.txt`. Docker-Build-Cache geleert. `releases/` und `backups/` in `.gitignore`.
+- Palworld: Container und Image entfernt. Spielstand gesichert und geprüft in `/home/tv/palworld-spielstand-20261123.tar.gz`; Originaldaten liegen weiter in `/home/tv/palworld-server/palworld-data`. `vinted-ingest` gehört zum separaten Vinted-Projekt, nicht ohne Rückfrage anfassen.
+- Ungeklärt: `web/components/notify-form.tsx` und `games.tsx` (Herkunft unbekannt) sind im Draft-PR `wip/notify-form-games-sichern` gesichert, nicht mergen ohne Klärung.
+- Ungenutzte Skripte (~90, siehe Bestandsaufnahme) noch **nicht** löschen, erst auf Ansage.
 - Später: ~270 fest eingetragene `/home/tv/...`-Pfade; `generated/` und `web/lib/generated/` trotz `.gitignore` eingecheckt; `selenium/standalone-chromium:latest` pinnen; Next.js-Warnung zu Dateizugriff (bläht `releases/` auf); Cardmarket-Scraping auf Nutzungsbedingungen prüfen.
