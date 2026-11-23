@@ -36,6 +36,8 @@ Domains: `cardyssey.de` (Web/API), `shop.cardyssey.de` (neuer Shop).
 5. **Datenbank:** Schemaänderungen nur als neue Flyway-Migration, nie bestehende Migrationen ändern. Vor riskanten Änderungen Backup prüfen.
 6. **Zahlungen:** Nie selbst Kartendaten verarbeiten; externer Zahlungsanbieter mit gehostetem Checkout (siehe `docs/SHOP_WITHOUT_WORDPRESS_ARCHITECTURE.md`).
 7. Bei Unklarheit lieber nachfragen als raten.
+8. **Nur Claude.** ChatGPT/Codex wird nicht mehr verwendet: keine Codex-Automatisierungen, keine ChatGPT-Logins, keine Skripte dafür neu anlegen.
+9. **Mergen:** Claude darf eigene PRs selbst mergen, wenn die CI grün ist und sie nur Doku, Tests oder Aufräumen betreffen. Alles, was live etwas am Verhalten ändert (Web, API, Datenbank, Cron, systemd), erst nach kurzem OK des Inhabers mergen.
 
 ## Prüfen vor einem PR
 
@@ -57,7 +59,9 @@ make verify                                            # API-Vertrag passt zum C
 > Diesen Abschnitt am Ende jeder Arbeitssitzung kurz aktualisieren (per PR).
 
 **Stand 23.11.2026**
-- Repos aufgeräumt (PR #24 hier, PR #15 in der App).
-- **Größte Baustelle:** Shop fertigstellen. Eigener Shop zeigt Angebote, hat aber noch keinen Warenkorb, keine Zahlung, keine Bestellungen; Zahlungsanbieter noch nicht gewählt. Live-Shop ist weiterhin WordPress/WooCommerce.
-- Preis-Pipeline sehr verzweigt (viele Quellen, über 20 Recovery-Runden). Nicht weiter ausbauen, bevor geklärt ist, welche Quellen produktiv gebraucht werden. Cardmarket-Scraping auf Nutzungsbedingungen prüfen.
-- Offen: Server-Bestandsaufnahme (Container, Dienste, Timer, Cronjobs, welche Skripte wirklich laufen); ~270 fest eingetragene `/home/tv/...`-Pfade; `generated/` und `web/lib/generated/` sind trotz `.gitignore` eingecheckt; `selenium/standalone-chromium:latest` pinnen.
+- Repos aufgeräumt (PR #24 hier, PR #15 in der App). Server-Bestandsaufnahme gemacht: Server stabil, Deploy läuft.
+- **Aktueller Fokus: TCG-Preise.** Der Inhaber erklärt, wo es bei den Preisen noch hakt. Erst zuhören und verstehen, dann gemeinsam planen.
+- **Bewusst zurückgestellt** (erst auf Ansage angehen): eBay-Preisabfrage (Healthcheck meldet seit 12.11. SERVICE_ERROR, Warnmails unterdrückt) und Shop (kein Warenkorb, keine Zahlung, keine Bestellungen; Live-Shop ist noch WordPress/WooCommerce).
+- Entscheidungen: Alles mit ChatGPT/Codex entfernen. Palworld-Server wird nicht mehr gebraucht, **der Spielstand muss aber gesichert bleiben**. `vinted-ingest` gehört zum separaten Vinted-Projekt, nicht ohne Rückfrage anfassen.
+- Ungeklärt: `web/components/notify-form.tsx` und `games.tsx` liegen nur auf dem Server, nicht in Git, Herkunft unbekannt. Sichern, nicht löschen.
+- Später: ~270 fest eingetragene `/home/tv/...`-Pfade; `generated/` und `web/lib/generated/` trotz `.gitignore` eingecheckt; `selenium/standalone-chromium:latest` pinnen; Next.js-Warnung zu Dateizugriff (bläht `releases/` auf); Cardmarket-Scraping auf Nutzungsbedingungen prüfen.
