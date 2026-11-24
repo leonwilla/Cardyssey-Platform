@@ -47,8 +47,8 @@ ALTER TABLE ebay_price_cache ADD COLUMN IF NOT EXISTS low_sample BOOLEAN NOT NUL
 
 
 def windows_for(earliest, today):
-    """30, 90, 6 months, 1 year, then each additional year, to oldest sale."""
-    windows = [(30, '30 Tage'), (90, '90 Tage'), (183, '6 Monate'), (365, '1 Jahr')]
+    """30, 60, 90 days, 6 months, 1 year, then each additional year, to oldest sale."""
+    windows = [(30, '30 Tage'), (60, '60 Tage'), (90, '90 Tage'), (183, '6 Monate'), (365, '1 Jahr')]
     age = max(0, (today - earliest).days)
     years = 2
     while windows[-1][0] < age:

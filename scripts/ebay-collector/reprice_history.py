@@ -24,7 +24,7 @@ AND (p.source IS NULL OR p.source='CARDYSSEY_EBAY')
 AND (
  p.updated_at IS NULL OR h.first_collected_at > p.updated_at
  OR EXISTS (
-   SELECT 1 FROM unnest(ARRAY[31,91,184,366]) AS b(days)
+   SELECT 1 FROM unnest(ARRAY[31,61,91,184,366]) AS b(days)
    WHERE h.sold_on+b.days > p.updated_at::date
      AND h.sold_on+b.days <= CURRENT_DATE
  )
