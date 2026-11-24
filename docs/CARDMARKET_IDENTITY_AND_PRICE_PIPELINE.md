@@ -22,3 +22,13 @@ Cardmarket's search page triggered almost all Cloudflare challenges (386 of 393 
 4. The collector opens index URLs directly (`lookup_strategy=EXPANSION_INDEX_DIRECT_V1`) and still requires the live idProduct, printed number and set. At most `MaxSearchCasesPerBatch` (6) cases per batch may still use search.
 5. Refresh by value: >= 20 EUR weekly, >= 5 EUR every two weeks, otherwise monthly. Launcher runs 60-case batches for 50 minutes; the routine pause between launches is 3 minutes.
 6. Telegram block alerts are sent only if the challenge is still present after 15 minutes.
+
+## Cloudflare-Freigabe (stündlich)
+
+Messung 19.–24.11.2026: Die Schutzseite kommt fast genau **60 Minuten** nach der letzten Freigabe, egal wie viele Seiten (25 bis 100) in der Stunde geladen wurden. Das Cookie `cf_clearance` wird gespeichert (Ablaufdatum 1 Jahr), aber Cardmarket lässt die Freigabe serverseitig nach einer Stunde ablaufen. Längere Gültigkeit lässt sich nicht einstellen; Umgehen (Klick-Automatik, Captcha-Löser, Tarn-Browser, Proxys) machen wir bewusst nicht, auch wegen Sperrgefahr für das eingeloggte Konto.
+
+Was der Scanner deshalb tut:
+- **Ruhig warten:** Bei einer Schutzseite bis zu 120 s nichts tun (nur alle 5 s nachsehen). Oft besteht der Browser die Prüfung dann selbst.
+- **Nicht gegen die Wand laufen:** Der Session-Check liest nur einen 16-stelligen Fingerabdruck von `cf_clearance` (kein Wert wird gespeichert). Nach einem Block startet der Watchdog erst wieder, wenn eine **neue** Freigabe da ist (oder nach 30 min wie früher).
+- **Telegram nach 5 min** (statt 15): „Seite neu laden (F5) und Kästchen anklicken“. Geht auch aus der Ferne per Remote-Desktop-App.
+- **Login bleibt über Neustarts:** Der Launcher setzt im Scanner-Profil „Vorherige Sitzung fortsetzen“, bevor er Edge startet (Sicherung `Preferences.cardyssey-backup`).

@@ -10,7 +10,7 @@ param(
   [int]$DelaySeconds = 11,
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
-  [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 15,
+  [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 120,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [ValidateRange(0,1000)][int]$MaxSearchCasesPerBatch = 6, # cases that still need Cardmarket search
   [switch]$ForcePublicMode,  # diagnostic: use public behavior even if signed in
@@ -312,7 +312,9 @@ function Move-To([string]$url) {
   # Only WAIT for Cardmarket to finish its own challenge; do not click,
   # forge clearance cookies, replay private tokens, or bypass a challenge.
   do {
-    Start-Sleep -Milliseconds $(if($sawChallenge){1000}else{400})
+    # Cardmarket's clearance lasts ~60 min; the renewal check often passes by
+    # itself if the page is left alone, so look only every 5 s while waiting.
+    Start-Sleep -Milliseconds $(if($sawChallenge){5000}else{400})
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,httpStatus:performance.getEntriesByType("navigation")[0]?.responseStatus||0,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
     if (!$state) { continue }
     $s = $state | ConvertFrom-Json
@@ -885,7 +887,7 @@ try {
                [DateTime]::UtcNow -lt $lookupDeadline;$attempt++) {
             # Observe only the existing browser page; do not send repeat
             # provider requests or try to complete a security challenge.
-            Start-Sleep -Milliseconds $(if($challengeSeen){1000}else{300})
+            Start-Sleep -Milliseconds $(if($challengeSeen){5000}else{300})
             $state=Js 'JSON.stringify({url:location.href,title:document.title,id:document.querySelector("input[name=idProduct]")?.value||"",ready:document.readyState,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 8 | ConvertFrom-Json
             if(Is-CardmarketChallenge ([string]$state.title) ([bool]$state.challenge)) {
               if(-not $challengeSeen){

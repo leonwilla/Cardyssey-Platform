@@ -48,6 +48,24 @@ if (!$ready) {
     $p=Get-Process -Id $existing.ProcessId -ErrorAction SilentlyContinue
     if ($p) {$null=$p.CloseMainWindow();Start-Sleep -Seconds 3}
   }
+  # Keep the Cardmarket login across Edge/Windows restarts: the login lives in
+  # browser-session data, which Edge only keeps with "continue where you left
+  # off". Set that profile preference while Edge is closed; never touch cookies.
+  $prefs=Join-Path $profile 'Default\Preferences'
+  if(Test-Path $prefs){
+    try{
+      Add-Type -AssemblyName System.Web.Extensions
+      $ser=New-Object System.Web.Script.Serialization.JavaScriptSerializer
+      $ser.MaxJsonLength=[int]::MaxValue
+      $data=$ser.DeserializeObject([IO.File]::ReadAllText($prefs))
+      if(!$data.ContainsKey('session') -or $data['session'] -isnot [Collections.IDictionary]){$data['session']=@{}}
+      if([string]$data['session']['restore_on_startup'] -ne '1'){
+        Copy-Item -Force $prefs ($prefs+'.cardyssey-backup')
+        $data['session']['restore_on_startup']=1
+        [IO.File]::WriteAllText($prefs,$ser.Serialize($data))
+      }
+    }catch{}
+  }
   $chrome="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
   Start-Process $chrome -ArgumentList @("--user-data-dir=$profile", "--remote-debugging-port=9223", "--remote-allow-origins=http://localhost", "--no-first-run", "about:blank")
   $browserNewlyStarted=$true
