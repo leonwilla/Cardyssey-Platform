@@ -38,7 +38,7 @@ class LoginPausePolicyTests(unittest.TestCase):
   self.assertIn('Update-CardmarketBlockedStreak',runner)
   self.assertIn('cardmarket-blocked-streak.json',policy)
   self.assertIn("if($ProviderStatus -eq 'AVAILABLE'){return 0}",policy)
-  self.assertIn('return 8',policy)
+  self.assertIn('return 3',policy)
   self.assertIn('return 240',policy)
  def test_manual_resume_does_not_override_access_gate(self):
   wrapper=(source_path('Cardmarket-Manual-Resume.ps1')).read_text(encoding='utf-8-sig')

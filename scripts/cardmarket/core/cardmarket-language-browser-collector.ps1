@@ -12,6 +12,7 @@ param(
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 15,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
+  [ValidateRange(0,1000)][int]$MaxSearchCasesPerBatch = 6, # cases that still need Cardmarket search
   [switch]$ForcePublicMode,  # diagnostic: use public behavior even if signed in
   [switch]$RequireLogin  # production: pause instead of scraping as guest
 )
@@ -119,6 +120,19 @@ if(Test-Path $observedGuardFile){
    }
   }
  }catch{throw 'INVALID_OBSERVED_SET_SLUGS'}
+}
+# Expansion-list index: set slug proven by official product IDs on the
+# expansion's own list pages (Cardmarket-Expansion-Index.ps1). Same trust
+# level as observed slugs: only for standard prints, never special ones.
+$indexGuardFile=Join-Path $OutputDir 'index-set-url-guards.json'
+if(Test-Path $indexGuardFile){
+ try{
+  $ig=Get-Content -Raw -Encoding UTF8 $indexGuardFile | ConvertFrom-Json
+  if([int]$ig.schema -ne 1 -or [string]$ig.source -ne 'CARDMARKET_EXPANSION_LIST_OFFICIAL_PRODUCT_IDS'){throw 'schema'}
+  foreach($e in $ig.setSlugs.PSObject.Properties){
+   if(!$derivedSetSlugs.ContainsKey($e.Name) -and [string]$e.Value -match '^[A-Za-z0-9-]{2,90}$'){$derivedSetSlugs[$e.Name]=[string]$e.Value}
+  }
+ }catch{throw 'INVALID_INDEX_SET_SLUGS'}
 }
 $setSlugGuards = @{}
 $setGuardFile=Join-Path $OutputDir 'verified-set-url-guards.json'
@@ -368,7 +382,7 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   [decimal]$price = 0
   if ([decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
       [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture,
-      [ref]$price) -and $price -ge 15) { return 1 }
+      [ref]$price) -and $price -ge 2) { return 1 }
   $type = ([string]$Case.drucktyp).Trim()
   $special = ([string]$Case.foil).Trim() -or ([string]$Case.sonderdruck).Trim() -or
       ([string]$Case.stempel).Trim() -notin @('','[]','null') -or
@@ -376,6 +390,25 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   if ($special -and ($HumanConfirmed -or [string]$Case.routing_state -in @('VERIFIED_PRODUCT_ID','HUMAN_CONFIRMED'))) { return 2 }
   if (([string]$Case.manual_scan_requested_at).Trim()) { return 3 }
   return 4
+}
+
+# Value-based refresh: >=20 EUR weekly, >=5 EUR every two weeks, else monthly.
+function Get-CardmarketRefreshDays($Case, [string]$Tier) {
+  if ([string]$Case.needs_price -eq 'YES' -or $Tier -eq '0') { return 7 }
+  [decimal]$price = 0
+  [void][decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
+      [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture, [ref]$price)
+  if ($price -ge 20) { return 7 }
+  if ($price -ge 5 -or $Tier -eq '2') { return 14 }
+  return 30
+}
+# A case can reach its product page without Cardmarket search (the step that
+# triggers almost all provider challenges) when a direct URL is known.
+function Test-CardmarketNeedsSearch($Case, $Previous) {
+  if ([string]$Case.index_product_url -or [string]$Case.index_status -like 'REVIEW_*') { return $false }
+  if ([string]$Case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and [string]$Case.known_url) { return $false }
+  if ($Previous -and $Previous.identity_confirmed -eq $true -and [string]$Previous.url) { return $false }
+  return $true
 }
 
 $allCases = @(Import-Csv -Path $InputCsv -Encoding UTF8)
@@ -467,7 +500,7 @@ foreach ($case in $candidateCases) {
   if (!$latest.ContainsKey($key)) { continue }
   $prev = $latest[$key]
   $tier = [string]$case.scan_tier
-  $refreshDays = if ($tier -in @('0','1')) { 7 } elseif ($tier -eq '2') { 14 } else { 30 }
+  $refreshDays = Get-CardmarketRefreshDays $case $tier
   $isRecent = $false
   try { $isRecent = ([datetime]::Parse($prev.seen_at).ToUniversalTime() -gt $nowUtc.AddDays(-$refreshDays)) } catch {}
   # The previous translated-name search was frequently a false negative.
@@ -540,6 +573,14 @@ $catalogIdLookupUnsupported=$true
 $directUrlFilterSupported=$true
 try {
   $ordered=@(Get-CardmarketDueCases -Cases $candidateCases -Latest $latest -Processed $processed -NowUtc $nowUtc -Epoch $fullRecheckAfter)
+  # Direct-URL cases first; only a few cases per batch may still use search.
+  $direct=[Collections.Generic.List[object]]::new()
+  $needsSearch=[Collections.Generic.List[object]]::new()
+  foreach($c in $ordered){
+    $k='{0}|{1}' -f $c.cardyssey_karte,$c.variante_id
+    if(Test-CardmarketNeedsSearch $c $latest[$k]){$needsSearch.Add($c)}else{$direct.Add($c)}
+  }
+  $ordered=@($direct)+@($needsSearch | Select-Object -First $MaxSearchCasesPerBatch)
   $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
   Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
@@ -640,6 +681,33 @@ try {
           }
         }
       }
+      # Expansion-list index: special prints (pattern foils, stamps, holo and
+      # non-holo of the same card) only get candidate product pages for human
+      # review. No provider request; never a price or print confirmation.
+      if([string]$case.routing_state -ne 'VERIFIED_PRODUCT_ID' -and !$verifiedPrintMappings.ContainsKey($cacheKey) -and
+         [string]$case.index_status -like 'REVIEW_*' -and [string]$case.index_candidate_urls){
+        $indexLinks=@()
+        try{$indexLinks=@((ConvertFrom-Json -InputObject ([string]$case.index_candidate_urls)) | Where-Object {
+          [string]$_ -match ('^https://www[.]cardmarket[.]com/'+$LangCfg.UrlSegment+'/'+$gamePath+'/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+$')})}catch{}
+        if($indexLinks.Count){
+          $out.status='PRODUCT_IN_VERIFIED_SET_PRINT_UNVERIFIED'
+          $out.error='EXPANSION_INDEX_'+([string]$case.index_status)
+          $out.reference_page_evidence=$out.error
+          $out.variant_class=[string]$case.variant_class
+          $out.score_top_candidate_urls=@($indexLinks | Select-Object -First 5)
+          $out.score_matching_status='EXPANSION_LIST_NUMBER_CANDIDATES'
+          $out.score_candidate_count=$indexLinks.Count
+          $out.score_page_candidate_only=$true
+          $out.exact_print_verified=$false
+          if($indexLinks.Count -eq 1){$out.url=[string]$indexLinks[0]}
+          $out.elapsed_ms=[int]$caseTimer.ElapsedMilliseconds
+          Append-Observation $unverifyPath ($out | ConvertTo-Json -Depth 6 -Compress)
+          Append-Observation $resultsPath ($out | ConvertTo-Json -Depth 6 -Compress)
+          [void]$processed.Add($key)
+          Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
+          continue
+        }
+      }
       if(!$ws){Connect-Cdp}
       $providerAttempted=$true
       # Fail closed when full Cardmarket session is required. Guest pages
@@ -729,6 +797,24 @@ try {
               $candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) {
             $savedUrl = $candidate.AbsoluteUri
             $out.trusted_print_route=$true
+          }
+        } catch {}
+      }
+
+      # Expansion-list index: Cardmarket's own list page showed this idProduct
+      # with this printed number. Open the product page directly; the page
+      # must still show the same idProduct and number (checked below).
+      if(!$savedUrl -and !$stampRoute -and !$vintageRoute -and
+         [string]$case.index_product_id -match '^[0-9]{4,12}$' -and
+         [string]$case.index_product_id -eq [string]$case.catalog_singleton_id -and
+         [string]$case.index_product_url) {
+        try {
+          $candidate=[uri]([string]$case.index_product_url)
+          if($candidate.Scheme -eq 'https' -and $candidate.Host -eq 'www.cardmarket.com' -and !$candidate.Query -and
+             $candidate.AbsolutePath.StartsWith($LangCfg.PathPrefix + '/Products/Singles/')) {
+            $savedUrl=$candidate.AbsoluteUri
+            $out.expansion_index_used=$true
+            $out.lookup_strategy='EXPANSION_INDEX_DIRECT_V1'
           }
         } catch {}
       }

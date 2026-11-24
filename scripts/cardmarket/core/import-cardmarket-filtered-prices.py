@@ -35,6 +35,13 @@ def standard_catalog(directory, language):
                 and item.get("proof") == "OFFICIAL_PRODUCT_ID_AND_LIVE_NUMBER_AND_UNIQUE_SET_PATH"
                 and re.fullmatch(r"[A-Za-z0-9-]{2,90}", item.get("setSlug") or "")
             })
+    indexed = directory / "index-set-url-guards.json"
+    if indexed.is_file():
+        evidence = json.loads(indexed.read_text(encoding="utf-8-sig"))
+        if evidence.get("schema") == 1 and evidence.get("source") == "CARDMARKET_EXPANSION_LIST_OFFICIAL_PRODUCT_IDS":
+            for key, slug in (evidence.get("setSlugs") or {}).items():
+                if key not in guards and re.fullmatch(r"[A-Za-z0-9-]{2,90}", slug or ""):
+                    guards[key] = slug
     verified = directory / "verified-set-url-guards.json"
     if verified.is_file():
         guards.update(json.loads(verified.read_text(encoding="utf-8-sig")))

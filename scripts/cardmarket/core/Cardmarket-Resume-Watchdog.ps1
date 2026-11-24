@@ -1,6 +1,6 @@
 ﻿# Read-only watch of the existing Cardmarket Edge session.
 # Never solve a challenge; resume only when Cardmarket has cleared it itself.
-param([switch]$ReportBlocked)
+param([switch]$ReportBlocked,[ValidateRange(0,240)][int]$BlockedAlertGraceMinutes=15)
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
 $backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
@@ -53,9 +53,24 @@ function Send-CardmarketTelegramAlert([string]$Incident,[string]$Message,[bool]$
     $alertLock.Dispose()
   }
 }
-$blockMessage='Cardyssey: Cardmarket zeigt eine Cloudflare-Schutzseite. Bitte in Edge bestätigen. Der Scanner startet nach der Freigabe automatisch.'
+$blockMessage='Cardyssey: Cardmarket zeigt seit über '+$BlockedAlertGraceMinutes+' Minuten eine Cloudflare-Schutzseite. Bitte in Edge bestätigen. Der Scanner startet nach der Freigabe automatisch.'
+# Many challenges clear by themselves within minutes. Remember when a block
+# was first seen and alert only if it is still present after the grace time.
+$blockSeenFile=Join-Path $base 'telegram-block-first-seen.json'
+function Register-CardmarketBlockSeen {
+  if(Test-Path $blockSeenFile){return}
+  @{firstSeen=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockSeenFile
+}
+function Clear-CardmarketBlockSeen { if(Test-Path $blockSeenFile){Remove-Item -Force $blockSeenFile} }
+function Test-CardmarketBlockGraceElapsed {
+  if(!(Test-Path $blockSeenFile)){return $false}
+  try{$first=[DateTime]::Parse([string]((Get-Content -Raw -Encoding UTF8 $blockSeenFile | ConvertFrom-Json).firstSeen)).ToUniversalTime()}
+  catch{return $true}
+  return ([DateTime]::UtcNow - $first).TotalMinutes -ge $BlockedAlertGraceMinutes
+}
 if($ReportBlocked){
-  Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $true
+  Register-CardmarketBlockSeen
+  Note 'BLOCK_SEEN_ALERT_AFTER_GRACE'
   return
 }
 
@@ -65,8 +80,12 @@ try {
   $checker=Join-Path $base 'Cardmarket-Session-Status.ps1'
   if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}
   $diag=& $checker | ConvertFrom-Json
-  if($diag.status -in @('AVAILABLE','BLOCKED')){
-    Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage ($diag.status -eq 'BLOCKED')
+  if($diag.status -eq 'BLOCKED'){
+    Register-CardmarketBlockSeen
+    if(Test-CardmarketBlockGraceElapsed){Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $true}
+  } elseif($diag.status -eq 'AVAILABLE'){
+    Clear-CardmarketBlockSeen
+    Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $false
   }
   if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
   # Login is an incident in itself; do not wait until 50 cards have been

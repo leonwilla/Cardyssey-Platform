@@ -1,4 +1,4 @@
-# Persistent provider backoff for both language queues.
+﻿# Persistent provider backoff for both language queues.
 # This file is sourced by the Windows launcher, watchdog and queue runner.
 # Only a fresh check of the collector tab can release an active provider block.
 function Get-CardmarketBlockedStreak([string]$Base) {
@@ -21,7 +21,7 @@ function Get-CardmarketCooldownMinutes([string]$Status,[string]$Base,[string]$Pr
     }
     'PROVIDER_TIMEOUT' {return 90}
     'CONNECTION_LOST' {return 60}
-    'BATCH_COMPLETE_MORE_PENDING' {return 8}
+    'BATCH_COMPLETE_MORE_PENDING' {return 3}
     'COMPLETED_WITH_DEFERRED' {return 90}
     default {return 0}
   }

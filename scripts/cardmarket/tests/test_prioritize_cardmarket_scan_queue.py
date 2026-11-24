@@ -49,7 +49,7 @@ class PriorityTests(unittest.TestCase):
         self.assertEqual(out['needs_price'],'YES')
 
     def test_price_boundary_preserves_cents_and_precision(self):
-        for amount, tier in [("9.99",4), ("10.00",4), ("14.99995",4), ("15.00",1), ("15.01",1)]:
+        for amount, tier in [("1.50",4), ("1.99",4), ("1.99995",4), ("2.00",1), ("2.01",1), ("15.00",1)]:
             with self.subTest(amount=amount):
                 row={"cardyssey_karte":"a","variante_id":"1","drucktyp":"normal"}
                 cached={"card_id":"a","variant_id":"1","status":"PRICE_FOUND","price":amount}
@@ -57,7 +57,7 @@ class PriorityTests(unittest.TestCase):
                 self.assertEqual((item["scan_tier"],item["existing_price_eur"]),(tier,amount))
 
     def test_confirmed_special_and_manual_eligibility(self):
-        priced={"needs_price":"NO","existing_price_eur":"2","drucktyp":"normal"}
+        priced={"needs_price":"NO","existing_price_eur":"1.5","drucktyp":"normal"}
         cases=[
             ({"sonderdruck":"Staff","routing_state":"VERIFIED_PRODUCT_ID"},False,2),
             ({"stempel":'["Staff"]',"routing_state":"HUMAN_CONFIRMED"},False,2),
