@@ -7,7 +7,7 @@ param(
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 50,
-  [ValidateRange(0,500)][int]$IndexRequestsPerRun = 40,
+  [ValidateRange(0,500)][int]$IndexRequestsPerRun = 100,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
   [switch]$SingleBatch,
   [switch]$RequireLogin  # optional diagnostics only; production launcher omits it

@@ -228,14 +228,16 @@ def candidate_ids(row, language, tcgdex_ids):
 
 
 def build_plan(queues, tcgdex_ids, catalog, overview, set_names, guards, minimum=MIN_BROWSER_SCAN_EUR):
-    """Which expansions to crawl, in priority order, with slug candidates."""
+    """Which expansions to crawl, with slug candidates. ALL expansions with a
+    queued card are planned (every card gets its ID/URL); expansions with
+    variants worth a browser scan (>= minimum) come first."""
     set_exp = set_expansions(tcgdex_ids, catalog)
     targets = Counter()
+    every = Counter()
     exp_sets = defaultdict(set)
     for language, rows in queues.items():
         for row in rows:
-            if not needs_browser_scan(row, minimum):
-                continue
+            scan = needs_browser_scan(row, minimum)
             exps = set()
             if row["set_id"] in set_exp:
                 exps.add(set_exp[row["set_id"]])
@@ -244,14 +246,17 @@ def build_plan(queues, tcgdex_ids, catalog, overview, set_names, guards, minimum
                 if product:
                     exps.add(product["idExpansion"])
             for exp in exps:
-                targets[exp] += 1
+                every[exp] += 1
+                if scan:
+                    targets[exp] += 1
                 exp_sets[exp].add(row["set_id"])
     products_by_exp = defaultdict(list)
     for pid, product in catalog.items():
         products_by_exp[product["idExpansion"]].append(pid)
     overview = [x for x in overview or [] if PRODUCT_PATH.fullmatch(str(x.get("slug") or ""))]
     plan = []
-    for exp, count in targets.most_common():
+    for exp in sorted(every, key=lambda e: (-targets[e], -every[e], e)):
+        count = targets[exp]
         slugs = []
         for set_id in sorted(exp_sets[exp]):
             if set_exp.get(set_id) == exp and guards.get(set_id):
@@ -262,7 +267,7 @@ def build_plan(queues, tcgdex_ids, catalog, overview, set_names, guards, minimum
         slugs += [slug for score, slug in scored[:4] if score >= 0.34]
         slugs = list(dict.fromkeys(slugs))
         ids = sorted(products_by_exp.get(exp, []))
-        plan.append({"idExpansion": exp, "targets": count, "sets": sorted(exp_sets[exp]),
+        plan.append({"idExpansion": exp, "targets": count, "allVariants": every[exp], "sets": sorted(exp_sets[exp]),
                      "slugCandidates": slugs, "expectedProducts": len(ids),
                      "maxPages": max(1, math.ceil(len(ids) / TILES_PER_PAGE)) + 1,
                      "expectedProductIds": ids})
@@ -308,7 +313,21 @@ def index_set_guards(expansions, set_exp):
 
 
 INDEX_COLUMNS = ("variant_class", "index_status", "index_product_id", "index_product_url", "index_candidate_urls",
-                 "index_previous_id", "index_review_group")
+                 "index_previous_id", "index_review_group", "index_match")
+
+
+def _finish(row, status, below, stats):
+    """Below the browser threshold the official guide price stays the price
+    source; the resolved product ID/URL is kept as information only."""
+    if below:
+        row["index_match"] = status
+        row["index_review_group"] = ""
+        row["index_previous_id"] = ""
+        status = "GUIDE_PRICE_BELOW_THRESHOLD"
+        if row.get("index_product_url"):
+            stats["GUIDE_PRICE_BELOW_THRESHOLD_WITH_URL"] += 1
+    row["index_status"] = status
+    stats[status] += 1
 
 KIND_SYNONYMS = {
     "meisterball": "masterball", "pokéball": "pokeball", "poke-ball": "pokeball", "energie": "energy",
@@ -410,18 +429,14 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
         elif collision:
             cls = "COLLISION_" + ("PLAIN" if not kind else "SPECIAL")
         row["variant_class"] = cls
-        if not needs_browser_scan(row, minimum):
-            row["index_status"] = "GUIDE_PRICE_BELOW_THRESHOLD"
-            stats[row["index_status"]] += 1
-            continue
+        below = not needs_browser_scan(row, minimum)
         primary = guards.get(row["set_id"])
         slugs = [verified_slug[str(e)] for e in related.get(row["set_id"], [set_exp.get(row["set_id"])])
                  if str(e) in verified_slug]
         if primary and primary not in slugs:
             slugs.insert(0, primary)
         if not slugs:
-            row["index_status"] = "SET_NOT_INDEXED"
-            stats[row["index_status"]] += 1
+            _finish(row, "SET_NOT_INDEXED", below, stats)
             continue
         code = str(set_codes.get(row["set_id"]) or "")
         matches = sorted((pid, item) for slug in slugs for pid, item in by_slug.get(slug, [])
@@ -477,9 +492,10 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             if not corrected and earlier_previous and earlier_previous != pid:
                 corrected, current = True, earlier_previous
             product = catalog.get(int(pid))
-            row["catalog_singleton_id"] = pid
-            if product:
-                row["catalog_expansion_id"] = str(product["idExpansion"])
+            if not below:
+                row["catalog_singleton_id"] = pid
+                if product:
+                    row["catalog_expansion_id"] = str(product["idExpansion"])
             row["index_product_id"] = pid
             row["index_product_url"] = (f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/"
                                         f"{item['slug']}/{item['product']}")
@@ -487,6 +503,5 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
                 status = "DIRECT_PRODUCT_URL_ID_CORRECTED" if corrected else "DIRECT_PRODUCT_URL"
             if corrected:
                 row["index_previous_id"] = current
-        row["index_status"] = status
-        stats[status] += 1
+        _finish(row, status, below, stats)
     return stats

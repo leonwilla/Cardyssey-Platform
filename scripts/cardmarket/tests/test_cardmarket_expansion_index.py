@@ -153,6 +153,24 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(rows[0]['catalog_singleton_id'], '1')
         self.assertEqual(rows[1]['index_status'], 'GUIDE_PRICE_BELOW_THRESHOLD')
 
+    def test_cheap_card_gets_url_but_keeps_guide_price_route(self):
+        rows = [row('ecard3-103', '103', existing_price_eur='0.50', catalog_singleton_id='275361')]
+        apply(rows)
+        self.assertEqual(rows[0]['index_status'], 'GUIDE_PRICE_BELOW_THRESHOLD')
+        self.assertEqual(rows[0]['index_match'], 'DIRECT_PRODUCT_URL_ID_CORRECTED')
+        self.assertTrue(rows[0]['index_product_url'].endswith('/Staryu-SK103'))
+        self.assertEqual(rows[0]['catalog_singleton_id'], '275361')
+        self.assertEqual(rows[0]['index_previous_id'], '')
+
+    def test_plan_includes_cheap_only_expansions_last(self):
+        q = {'de': [row('ecard3-103', '103', existing_price_eur='9'), row('base1-1', '1', existing_price_eur='0.5'),
+                    row('base1-2', '2', existing_price_eur='0.5')]}
+        cat = {275362: {'idProduct': 275362, 'idExpansion': 1538}, 1: {'idProduct': 1, 'idExpansion': 1523}}
+        tcg = {('de', 'ecard3-103'): '275362', ('de', 'base1-1'): '1', ('de', 'base1-2'): '1'}
+        plan = idx.build_plan(q, tcg, cat, [], {}, {})
+        self.assertEqual([e['idExpansion'] for e in plan['expansions']], [1538, 1523])
+        self.assertEqual(plan['expansions'][1]['targets'], 0)
+
     def test_unverified_slug_is_ignored(self):
         expansions = {'1538': {'slug': 'Skyridge', 'slugVerified': False}}
         exps, products = idx.load_index({'schema': 1, 'expansions': expansions},
