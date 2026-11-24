@@ -694,6 +694,7 @@ try {
           $out.error='EXPANSION_INDEX_'+([string]$case.index_status)
           $out.reference_page_evidence=$out.error
           $out.variant_class=[string]$case.variant_class
+          $out.review_group=[string]$case.index_review_group
           $out.score_top_candidate_urls=@($indexLinks | Select-Object -First 5)
           $out.score_matching_status='EXPANSION_LIST_NUMBER_CANDIDATES'
           $out.score_candidate_count=$indexLinks.Count

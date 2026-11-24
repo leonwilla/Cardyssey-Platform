@@ -71,6 +71,9 @@ def main():
     related = idx.related_expansions(tcgdex, catalog, votes)
     set_codes = json.loads((ROOT / 'config/cardmarket-stamp-routes.json').read_text(encoding='utf-8')).get('setCodes') or {}
     guards = idx.index_set_guards(expansions, set_exp)
+    rules_file = ROOT / 'config/cardmarket-variant-version-rules.json'
+    rules = idx.load_rules(json.loads(rules_file.read_text(encoding='utf-8'))) if rules_file.is_file() else {}
+    review = {}
     report = {'checkedAt': datetime.now(timezone.utc).isoformat(), 'indexedProducts': len(products),
               'verifiedExpansions': sum(1 for e in expansions.values() if e.get('slugVerified') is True),
               'setGuards': len(guards)}
@@ -78,7 +81,16 @@ def main():
         path = args.base / f'queue-{language}.csv'
 
         def mutate(rows, language=language):
-            return idx.apply_index(rows, language, products, expansions, tcgdex, catalog, set_exp, set_codes, related=related)
+            stats = idx.apply_index(rows, language, products, expansions, tcgdex, catalog, set_exp, set_codes,
+                                    related=related, rules=rules)
+            for r in rows:
+                if r.get('index_status') == 'REVIEW_GROUP' and r.get('index_review_group'):
+                    g = review.setdefault(r['index_review_group'], {'de': 0, 'en': 0, 'examples': [], 'urls': set()})
+                    g[language] += 1
+                    if len(g['examples']) < 5:
+                        g['examples'].append(f"{r['cardyssey_karte']} {r['kartenname_suche']} ({r['drucktyp']})")
+                    g['urls'].update(json.loads(r['index_candidate_urls'] or '[]')[:3])
+            return stats
         if args.dry_run:
             with path.open(encoding='utf-8-sig', newline='') as stream:
                 report[language] = dict(mutate(list(csv.DictReader(stream))))
@@ -91,6 +103,16 @@ def main():
                                    'setSlugs': guards}, ensure_ascii=False, indent=1), encoding='utf-8')
         os.replace(tmp, out)
         (ROOT / 'reports').mkdir(exist_ok=True)
+        with (ROOT / 'reports/cardmarket-variant-review-groups.csv').open('w', encoding='utf-8-sig', newline='') as f:
+            w = csv.writer(f, delimiter=';')
+            w.writerow(['gruppe', 'set', 'variantenart', 'varianten_de', 'varianten_en', 'beispiele',
+                        'cardmarket_kandidaten', 'regel_vorlage'])
+            for key, g in sorted(review.items(), key=lambda kv: -(kv[1]['de'] + kv[1]['en'])):
+                set_id, kind = key.split('|')[:2]
+                w.writerow([key, set_id, kind, g['de'], g['en'], ' | '.join(g['examples']),
+                            ' '.join(sorted(g['urls'])[:6]),
+                            json.dumps({'set': set_id, 'kind': kind, 'action': 'version', 'version': 'V?'})])
+        report['reviewGroups'] = len(review)
         (ROOT / 'reports/cardmarket-expansion-index-apply.json').write_text(json.dumps(report, indent=1))
     print(json.dumps(report))
 

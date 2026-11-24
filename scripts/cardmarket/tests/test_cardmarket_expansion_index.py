@@ -26,12 +26,13 @@ SKYRIDGE = {
     '275300': {'slug': 'Skyridge', 'product': 'Charizard-V1-SK146', 'idExpansion': '1538'},
     '275301': {'slug': 'Skyridge', 'product': 'Celebi-SK145', 'idExpansion': '1538'},
 }
-EXPANSIONS = {'1538': {'slug': 'Skyridge', 'slugVerified': True}}
+EXPANSIONS = {'1538': {'slug': 'Skyridge', 'slugVerified': True, 'crawledAt': '2026-11-24'}}
 CATALOG = {int(k): {'idProduct': int(k), 'idExpansion': 1538} for k in SKYRIDGE}
 
 
-def apply(rows, minimum=idx.MIN_BROWSER_SCAN_EUR):
-    return idx.apply_index(rows, 'de', SKYRIDGE, EXPANSIONS, {}, CATALOG, {'ecard3': 1538}, minimum=minimum)
+def apply(rows, minimum=idx.MIN_BROWSER_SCAN_EUR, rules=None):
+    return idx.apply_index(rows, 'de', SKYRIDGE, EXPANSIONS, {}, CATALOG, {'ecard3': 1538}, minimum=minimum,
+                           rules=rules)
 
 
 class VariantClassTests(unittest.TestCase):
@@ -82,18 +83,49 @@ class ApplyTests(unittest.TestCase):
         self.assertTrue(rows[0]['index_product_url'].endswith('/Gengar-V2-SK10'))
         self.assertTrue(rows[1]['index_product_url'].endswith('/Gyarados-V1-SKH10'))
 
-    def test_special_print_goes_to_review_without_direct_url(self):
+    def test_unique_special_is_priced_automatically(self):
         rows = [row('ecard3-146', '146', 'Holo', foil='cracked-ice')]
         apply(rows)
-        self.assertEqual(rows[0]['index_status'], 'REVIEW_SPECIAL')
-        self.assertEqual(rows[0]['index_product_url'], '')
-        self.assertEqual(json.loads(rows[0]['index_candidate_urls']),
-                         ['https://www.cardmarket.com/de/Pokemon/Products/Singles/Skyridge/Charizard-V1-SK146'])
+        self.assertEqual(rows[0]['variant_class'], 'SPECIAL_UNIQUE_FILTER')
+        self.assertTrue(rows[0]['index_product_url'].endswith('/Charizard-V1-SK146'))
 
-    def test_holo_and_normal_of_same_card_are_reviewed(self):
+    def test_colliding_special_goes_to_group_plain_stays_direct(self):
+        rows = [row('ecard3-146', '146', 'Holo'), row('ecard3-146', '146', 'Holo', foil='cracked-ice')]
+        apply(rows)
+        self.assertEqual(rows[0]['index_status'], 'DIRECT_PRODUCT_URL')
+        self.assertEqual(rows[1]['index_status'], 'REVIEW_GROUP')
+        self.assertEqual(rows[1]['index_review_group'], 'ecard3|cracked-ice')
+        self.assertIn('Charizard-V1-SK146', rows[1]['index_candidate_urls'])
+
+    def test_reverse_pattern_without_plain_reverse_is_the_reverse(self):
+        rows = [row('ecard3-145', '145', 'Normal'), row('ecard3-145', '145', 'Reverse', foil='Energie')]
+        apply(rows)
+        self.assertEqual([r['index_status'] for r in rows], ['DIRECT_PRODUCT_URL', 'DIRECT_PRODUCT_URL'])
+
+    def test_holo_and_normal_of_same_card_are_one_group(self):
         rows = [row('ecard3-145', '145', 'Normal'), row('ecard3-145', '145', 'Holo')]
         apply(rows)
-        self.assertEqual({r['index_status'] for r in rows}, {'REVIEW_HOLO_NORMAL_SAME_CARD'})
+        self.assertEqual({r['index_review_group'] for r in rows}, {'ecard3|holo-vs-normal'})
+
+    def test_version_rules_resolve_whole_group(self):
+        products = {'1': {'slug': 'Base-Set', 'product': 'Abra-V1-BS43', 'idExpansion': '1523'},
+                    '2': {'slug': 'Base-Set', 'product': 'Abra-V2-BS43', 'idExpansion': '1523'}}
+        exps = {'1523': {'slug': 'Base-Set', 'slugVerified': True, 'crawledAt': 'x'}}
+        cat = {1: {'idExpansion': 1523}, 2: {'idExpansion': 1523}}
+        rows = [row('base1-43', '43'), row('base1-43', '43', sonderdruck='schattenlos')]
+        idx.apply_index(rows, 'de', products, exps, {}, cat, {'base1': 1523})
+        self.assertEqual({r['index_review_group'] for r in rows}, {'base1|plain|several-versions', 'base1|shadowless'})
+        rules = idx.load_rules({'schema': 1, 'rules': [{'set': 'base1', 'kind': 'shadowless', 'action': 'version', 'version': 'V2'},
+                                                       {'set': 'base1', 'kind': 'plain', 'action': 'version', 'version': 'V1'}]})
+        idx.apply_index(rows, 'de', products, exps, {}, cat, {'base1': 1523}, rules=rules)
+        self.assertEqual([r['index_product_id'] for r in rows], ['1', '2'])
+        self.assertEqual({r['index_status'] for r in rows}, {'DIRECT_PRODUCT_URL_RULE'})
+
+    def test_incomplete_expansion_is_not_used(self):
+        rows = [row('ecard3-103', '103')]
+        idx.apply_index(rows, 'de', SKYRIDGE, {'1538': {'slug': 'Skyridge', 'slugVerified': True}}, {}, CATALOG,
+                        {'ecard3': 1538})
+        self.assertEqual(rows[0]['index_status'], 'SET_NOT_INDEXED')
 
     def test_human_route_and_cheap_cards_untouched(self):
         rows = [row('ecard3-145', '145', routing_state='VERIFIED_PRODUCT_ID', catalog_singleton_id='1'),
@@ -118,6 +150,7 @@ class CollectorWiringTests(unittest.TestCase):
         self.assertIn("$out.lookup_strategy='EXPANSION_INDEX_DIRECT_V1'", src)
         self.assertIn('@($needsSearch | Select-Object -First $MaxSearchCasesPerBatch)', src)
         self.assertIn("$out.error='EXPANSION_INDEX_'+([string]$case.index_status)", src)
+        self.assertIn("$out.review_group=[string]$case.index_review_group", src)
         crawler = (ROOT / 'cardmarket/core/Cardmarket-Expansion-Index.ps1').read_text(encoding='utf-8-sig')
         self.assertIn("Finish 'BLOCKED'", crawler)
         self.assertIn('Wait-RequestGap', crawler)

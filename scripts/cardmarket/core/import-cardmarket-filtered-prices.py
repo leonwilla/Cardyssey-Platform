@@ -61,21 +61,33 @@ def standard_catalog(directory, language):
     return rows, guards, first_edition_sets
 
 
+INDEX_DIRECT = ("DIRECT_PRODUCT_URL", "DIRECT_PRODUCT_URL_ID_CORRECTED", "DIRECT_PRODUCT_URL_RULE")
+
+
 def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):
     if not row or not set_slug or len(path_parts) != 7 or path_parts[-2].casefold() != set_slug.casefold():
         return False
+    # Expansion-list index: Cardmarket's own list proved this product for this
+    # printed number, and the variant is distinguishable by the offer filters
+    # (or mapped by a per-set version rule). Foil/stamp names and V1/V2
+    # versions are then not a reason to hold the price back.
+    indexed = (row.get("index_status") in INDEX_DIRECT and row.get("index_product_id") == product_id
+               and row.get("catalog_singleton_id") == product_id
+               and "/".join(path_parts[-2:]) == "/".join(str(row.get("index_product_url") or "").split("/")[-2:]))
     if (row.get("set_id") != x.get("set_id") or row.get("kartennummer") != x.get("number")
         or not row.get("kartennummer") or x.get("card_number_url_verified") is not True
         or row.get("catalog_singleton_id") != product_id
         or not str(row.get("catalog_expansion_id") or "").isdecimal()
         or row.get("candidate_status") == "SET_EXPANSION_AMBIGUOUS"):
         return False
-    if (not {"foil", "stempel", "sonderdruck"}.issubset(row)
+    if not indexed and (not {"foil", "stempel", "sonderdruck"}.issubset(row)
         or (row.get("foil") or "").strip() or (row.get("sonderdruck") or "").strip()
         or (row.get("stempel") or "").strip().lower() not in ("", "[]", "null")
         or x.get("observed_url_version") or VERSIONED_PRODUCT.search(path_parts[-1])
         or x.get("version_family_candidate_used") or x.get("stamp_route")
         or x.get("non_filterable_print_attributes")):
+        return False
+    if indexed and (x.get("stamp_route") or x.get("version_family_candidate_used")):
         return False
     reverse = STANDARD_REVERSE_FILTER.get((row.get("drucktyp") or "").strip().lower())
     if reverse is None or reverse != x.get("expected_reverse_holo"):
@@ -85,6 +97,9 @@ def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):
         # Either language's catalog can establish that the expansion has a
         # separate First Edition print and therefore needs an explicit filter.
         return row["set_id"] not in first_edition_sets
+    if indexed:
+        # 1st edition and unlimited are explicit Cardmarket offer filters.
+        return first in ("Y", "N")
     return first == "N" and x.get("exact_print_filter_supported") is not False
 
 

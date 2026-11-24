@@ -308,37 +308,104 @@ def index_set_guards(expansions, set_exp):
 
 
 INDEX_COLUMNS = ("variant_class", "index_status", "index_product_id", "index_product_url", "index_candidate_urls",
-                 "index_previous_id")
+                 "index_previous_id", "index_review_group")
+
+KIND_SYNONYMS = {
+    "meisterball": "masterball", "pokéball": "pokeball", "poke-ball": "pokeball", "energie": "energy",
+    "kosmos": "cosmos", "galaxie": "galaxy", "schattenlos": "shadowless", "unbegrenzt": "unlimited",
+    "copyright-1999-2000": "1999-2000-copyright", "mitarbeiter": "staff", "pokémon-center": "pokemon-center",
+    "25.-jubiläum": "25th-celebration", "liga": "league",
+}
+
+
+def _norm_kind(value):
+    text = re.sub(r"\s+", "-", str(value or "").strip().lower())
+    return KIND_SYNONYMS.get(text, text)
+
+
+def kind_key(row):
+    """Language-independent special attributes of a variant ('' = plain)."""
+    stamps = [] if _is_empty_stamp(row.get("stempel")) else _stamp_list(str(row.get("stempel")))
+    parts = [_norm_kind(row.get("foil")), _norm_kind(row.get("sonderdruck"))]
+    parts += sorted(_norm_kind(x) for x in stamps if not FIRST_EDITION.search(x))
+    return "+".join(x for x in parts if x and x != "unlimited")
+
+
+def filter_key(row):
+    """What Cardmarket's offer filters can tell apart: reverse and 1st edition."""
+    reverse = "Y" if str(row.get("drucktyp") or "").strip().lower() == "reverse" else "N"
+    stamps = "" if _is_empty_stamp(row.get("stempel")) else str(row.get("stempel"))
+    return reverse, "Y" if FIRST_EDITION.search(stamps) else "N"
+
+
+def load_rules(data):
+    """{(set_id or '*', kind): rule} from config/cardmarket-variant-version-rules.json."""
+    rules = {}
+    if not data or data.get("schema") != 1:
+        return rules
+    for rule in data.get("rules") or []:
+        action = rule.get("action")
+        version = str(rule.get("version") or "")
+        if action not in ("version", "plain") or (action == "version" and not re.fullmatch(r"V[1-9][0-9]?", version)):
+            continue
+        rules[(str(rule.get("set") or "*"), _norm_kind(rule.get("kind")))] = {"action": action, "version": version}
+    return rules
+
+
+def _pick_plain(main, row, language, tcgdex_ids):
+    if len(main) == 1:
+        return main[0]
+    plain = [m for m in main if not VERSIONED.search(m[1]["product"])]
+    if len(plain) == 1:
+        return plain[0]
+    ids = candidate_ids(row, language, tcgdex_ids)
+    chosen = [m for m in main if m[0] in ids[:2]]
+    return chosen[0] if len(chosen) == 1 else None
 
 
 def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_exp, set_codes=None,
-                minimum=MIN_BROWSER_SCAN_EUR, related=None):
-    """Add index hints to one language queue in place. Returns status counts."""
+                minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None):
+    """Add index hints to one language queue in place. Returns status counts.
+
+    A variant is priced automatically when Cardmarket can tell it apart: it is
+    the only variant of its card with its (reverse, 1st edition) filter key,
+    or it is the single plain variant in such a group, or a per-set rule in
+    config/cardmarket-variant-version-rules.json maps its kind to a version
+    (V1/V2/...). Everything else goes to review as a GROUP (set + kind), so a
+    single human rule resolves all cards of that kind in the set.
+    """
     set_codes = set_codes or {}
     related = related or {}
+    rules = rules or {}
     prefixes = main_prefixes(products)
     by_slug = defaultdict(list)
     for pid, item in products.items():
         by_slug[item["slug"]].append((pid, item))
+    # Only fully crawled expansions: a half-read list could make a version
+    # look unique although its sibling is on a page not yet read.
+    expansions = {k: v for k, v in expansions.items() if v.get("crawledAt")}
     verified_slug = {exp: info["slug"] for exp, info in expansions.items()
                      if info.get("slugVerified") is True and PRODUCT_PATH.fullmatch(str(info.get("slug") or ""))}
     guards = index_set_guards(expansions, set_exp)
-    standard_types = defaultdict(set)
+    siblings = defaultdict(list)
     for row in rows:
-        if variant_class(row) == "STANDARD":
-            standard_types[row["cardyssey_karte"]].add(str(row.get("drucktyp") or "").strip().lower())
+        siblings[(row["cardyssey_karte"], filter_key(row))].append(row)
     stats = Counter()
     for row in rows:
         for column in INDEX_COLUMNS:
             row[column] = ""
         cls = variant_class(row)
-        kind = str(row.get("drucktyp") or "").strip().lower()
-        kinds = standard_types[row["cardyssey_karte"]]
-        if (cls == "STANDARD" and kind in ("normal", "nonholo", "common", "holo")
-                and "holo" in kinds and kinds & {"normal", "nonholo", "common"}):
-            # Cardmarket has no holo/non-holo offer filter; the same product
-            # would give both variants the same price. Human review decides.
-            cls = "HOLO_NORMAL_SAME_CARD"
+        kind = kind_key(row)
+        group = siblings[(row["cardyssey_karte"], filter_key(row))]
+        collision = len(group) > 1
+        plain_rows = [r for r in group if not kind_key(r)]
+        if collision and not kind and len(plain_rows) > 1:
+            # e.g. normal and holo of the same card: no Cardmarket filter.
+            kind = "holo-vs-normal"
+        if not collision and cls == "SPECIAL":
+            cls = "SPECIAL_UNIQUE_FILTER"
+        elif collision:
+            cls = "COLLISION_" + ("PLAIN" if not kind else "SPECIAL")
         row["variant_class"] = cls
         if not needs_browser_scan(row, minimum):
             row["index_status"] = "GUIDE_PRICE_BELOW_THRESHOLD"
@@ -360,48 +427,54 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
         urls = [f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/{item['slug']}/{item['product']}"
                 for _, item in matches]
         main = [m for m in matches if m[1]["slug"] == primary]
+        pick, status = None, ""
+        rule_kind = kind or "plain"
+        rule = rules.get((row["set_id"], rule_kind)) or rules.get(("*", rule_kind))
         if not matches:
-            row["index_status"] = "NO_NUMBER_MATCH_IN_SET"
-        elif cls in ("SPECIAL", "HOLO_NORMAL_SAME_CARD"):
-            row["index_status"] = "REVIEW_" + cls
-            row["index_candidate_urls"] = json.dumps(urls[:6])
+            status = "NO_NUMBER_MATCH_IN_SET"
         elif str(row.get("routing_state") or "") == "VERIFIED_PRODUCT_ID":
-            row["index_status"] = "HUMAN_ROUTE_KEPT"
+            status = "HUMAN_ROUTE_KEPT"
         elif not main:
             # Only a secondary expansion (e.g. "Additionals") has this number.
-            row["index_status"] = "REVIEW_SECONDARY_EXPANSION_ONLY"
-            row["index_candidate_urls"] = json.dumps(urls[:6])
-        else:
-            pick = None
-            plain = [m for m in main if not VERSIONED.search(m[1]["product"])]
-            if len(main) == 1:
-                pick = main[0]
-            elif len(plain) == 1:
-                pick = plain[0]
+            status = "REVIEW_GROUP"
+            row["index_review_group"] = f"{row['set_id']}|{kind or 'plain'}|secondary-expansion"
+        elif (collision or len(main) > 1) and rule:
+            if rule["action"] == "plain":
+                pick = _pick_plain(main, row, language, tcgdex_ids)
             else:
-                ids = candidate_ids(row, language, tcgdex_ids)
-                chosen = [m for m in main if m[0] in ids[:2]]
-                if len(chosen) == 1:
-                    pick = chosen[0]
-            current = str(row.get("catalog_singleton_id") or "")
+                tagged = [m for m in main if re.search(r"(?:^|-)" + rule["version"] + r"(?:-|$)", m[1]["product"], re.I)]
+                pick = tagged[0] if len(tagged) == 1 else None
+            status = "DIRECT_PRODUCT_URL_RULE" if pick else "REVIEW_GROUP"
             if not pick:
-                row["index_status"] = "AMBIGUOUS_NUMBER_IN_SET"
-                row["index_candidate_urls"] = json.dumps(urls[:6])
-            else:
-                pid, item = pick
-                # Cardmarket's own list (image idProduct + slug number) beats a
-                # name-based catalog singleton or a TCGdex ID: same-name cards
-                # such as Skyridge Staryu 103/104 were swapped there.
-                corrected = bool(current and current != pid)
-                product = catalog.get(int(pid))
-                row["catalog_singleton_id"] = pid
-                if product:
-                    row["catalog_expansion_id"] = str(product["idExpansion"])
-                row["index_product_id"] = pid
-                row["index_product_url"] = (f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/"
-                                            f"{item['slug']}/{item['product']}")
-                row["index_status"] = "DIRECT_PRODUCT_URL_ID_CORRECTED" if corrected else "DIRECT_PRODUCT_URL"
-                if corrected:
-                    row["index_previous_id"] = current
-        stats[row["index_status"]] += 1
+                row["index_review_group"] = f"{row['set_id']}|{rule_kind}|rule-version-not-found"
+        elif collision and (kind or len(plain_rows) != 1):
+            status = "REVIEW_GROUP"
+            row["index_review_group"] = f"{row['set_id']}|{kind}"
+        else:
+            pick = _pick_plain(main, row, language, tcgdex_ids)
+            if not pick:
+                status = "REVIEW_GROUP"
+                row["index_review_group"] = f"{row['set_id']}|{rule_kind}|several-versions"
+        if status == "REVIEW_GROUP" or status == "NO_NUMBER_MATCH_IN_SET":
+            row["index_candidate_urls"] = json.dumps(urls[:6]) if urls else ""
+        if pick:
+            pid, item = pick
+            current = str(row.get("catalog_singleton_id") or "")
+            # Cardmarket's own list (image idProduct + slug number) beats a
+            # name-based catalog singleton or a TCGdex ID: same-name cards
+            # such as Skyridge Staryu 103/104 were swapped there.
+            corrected = bool(current and current != pid)
+            product = catalog.get(int(pid))
+            row["catalog_singleton_id"] = pid
+            if product:
+                row["catalog_expansion_id"] = str(product["idExpansion"])
+            row["index_product_id"] = pid
+            row["index_product_url"] = (f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/"
+                                        f"{item['slug']}/{item['product']}")
+            if not status:
+                status = "DIRECT_PRODUCT_URL_ID_CORRECTED" if corrected else "DIRECT_PRODUCT_URL"
+            if corrected:
+                row["index_previous_id"] = current
+        row["index_status"] = status
+        stats[status] += 1
     return stats

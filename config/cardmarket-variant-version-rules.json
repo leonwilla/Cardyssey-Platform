@@ -1,0 +1,5 @@
+{
+  "schema": 1,
+  "_doc": "Eine Zeile löst alle Karten einer Variantenart in einem Set. set: Cardyssey-Set-ID oder '*'. kind: wie in reports/cardmarket-variant-review-groups.csv (z.B. masterball, pokeball, set-logo, shadowless, holo-vs-normal). action 'version' = Cardmarket-Produkt mit dieser Version (V1, V2, ...); action 'plain' = dasselbe Produkt wie die normale Karte (Cardmarket trennt diese Variante nicht).",
+  "rules": []
+}
