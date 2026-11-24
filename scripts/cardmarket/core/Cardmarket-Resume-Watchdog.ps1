@@ -1,6 +1,6 @@
 ﻿# Read-only watch of the existing Cardmarket Edge session.
 # Never solve a challenge; resume only when Cardmarket has cleared it itself.
-param([switch]$ReportBlocked,[ValidateRange(0,240)][int]$BlockedAlertGraceMinutes=15)
+param([switch]$ReportBlocked,[ValidateRange(0,240)][int]$BlockedAlertGraceMinutes=5,[ValidateRange(5,240)][int]$ClearanceWaitMinutes=30)
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
 $backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
@@ -53,13 +53,28 @@ function Send-CardmarketTelegramAlert([string]$Incident,[string]$Message,[bool]$
     $alertLock.Dispose()
   }
 }
-$blockMessage='Cardyssey: Cardmarket zeigt seit über '+$BlockedAlertGraceMinutes+' Minuten eine Cloudflare-Schutzseite. Bitte in Edge bestätigen. Der Scanner startet nach der Freigabe automatisch.'
+$blockMessage='Cardyssey: Cardmarket will seit über '+$BlockedAlertGraceMinutes+' Minuten eine Cloudflare-Bestätigung (Freigabe läuft stündlich ab). Bitte im Scanner-Edge die Seite neu laden (F5) und das Kästchen anklicken. Der Scanner läuft danach von selbst weiter.'
 # Many challenges clear by themselves within minutes. Remember when a block
 # was first seen and alert only if it is still present after the grace time.
 $blockSeenFile=Join-Path $base 'telegram-block-first-seen.json'
-function Register-CardmarketBlockSeen {
+function Register-CardmarketBlockSeen([string]$ClearanceId) {
   if(Test-Path $blockSeenFile){return}
-  @{firstSeen=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockSeenFile
+  # Remember the (expired) clearance fingerprint: resume only once Cardmarket
+  # issued a new one, instead of running into the same challenge every pass.
+  if(!$ClearanceId){
+    try{$ClearanceId=[string]((Get-Content -Raw -Encoding UTF8 (Join-Path $base 'browser-session-status.json') | ConvertFrom-Json).clearanceId)}catch{}
+  }
+  @{firstSeen=[DateTime]::UtcNow.ToString('o');clearanceId=$ClearanceId} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockSeenFile
+}
+function Test-CardmarketClearanceRenewed([string]$CurrentId) {
+  # True when the block is over: a new clearance was issued, the fingerprint is
+  # unknown, or the wait limit passed (then the old resume behaviour applies).
+  if(!(Test-Path $blockSeenFile)){return $true}
+  try{$seen=Get-Content -Raw -Encoding UTF8 $blockSeenFile | ConvertFrom-Json}catch{return $true}
+  $old=[string]$seen.clearanceId
+  if(!$old -or !$CurrentId -or $old -ne $CurrentId){return $true}
+  try{$first=[DateTime]::Parse([string]$seen.firstSeen).ToUniversalTime()}catch{return $true}
+  return ([DateTime]::UtcNow - $first).TotalMinutes -ge $ClearanceWaitMinutes
 }
 function Clear-CardmarketBlockSeen { if(Test-Path $blockSeenFile){Remove-Item -Force $blockSeenFile} }
 function Test-CardmarketBlockGraceElapsed {
@@ -81,8 +96,14 @@ try {
   if(!(Test-Path $checker)){Note 'SESSION_CHECKER_MISSING';return}
   $diag=& $checker | ConvertFrom-Json
   if($diag.status -eq 'BLOCKED'){
-    Register-CardmarketBlockSeen
+    Register-CardmarketBlockSeen ([string]$diag.clearanceId)
     if(Test-CardmarketBlockGraceElapsed){Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $true}
+  } elseif($diag.status -eq 'AVAILABLE' -and !(Test-CardmarketClearanceRenewed ([string]$diag.clearanceId))){
+    # Page looks normal, but the old clearance is still in place: the next
+    # product page would hit the challenge again. Wait for a real renewal.
+    if(Test-CardmarketBlockGraceElapsed){Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $true}
+    Note 'CLEARANCE_NOT_RENEWED_WAITING'
+    return
   } elseif($diag.status -eq 'AVAILABLE'){
     Clear-CardmarketBlockSeen
     Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $false

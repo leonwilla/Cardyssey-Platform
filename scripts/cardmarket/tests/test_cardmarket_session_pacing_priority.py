@@ -38,7 +38,7 @@ class SessionPacingPolicyTests(unittest.TestCase):
   self.assertIn('"-BatchLimit","60"',launcher)
   self.assertIn('"-MinRequestGapSeconds","11"',launcher)
   self.assertIn('"-Languages","both","-RunMinutes","50"',launcher)
-  self.assertIn('[int]$ChallengeWaitSeconds = 15',self.source('cardmarket-language-browser-collector.ps1'))
+  self.assertIn('[int]$ChallengeWaitSeconds = 120',self.source('cardmarket-language-browser-collector.ps1'))
   self.assertIn('return 3',self.source('Cardmarket-Backoff-Policy.ps1'))
   self.assertIn('& $watchdog -ReportBlocked',runner)
  def test_backoff_persists_between_runner_invocations(self):

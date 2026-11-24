@@ -1,15 +1,45 @@
 ﻿# Read-only diagnosis of the SAME persistent Cardmarket Edge profile.
-# Never accesses password manager contents, credentials, cookies or tokens.
+# Never accesses password manager contents or credentials. Of the cookies it
+# reads only a 16-char SHA-256 fingerprint of Cloudflare's clearance cookie,
+# to see whether a challenge was really passed; the value is never stored.
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
 $dest=Join-Path $base 'browser-session-status.json'
 $state=[ordered]@{checkedAt=[DateTime]::UtcNow.ToString('o');provider='CARDMARKET';status='UNKNOWN';reason='';login='UNKNOWN';profileExists=(Test-Path (Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketEdgeProfile'))}
 $ws=$null
+function Get-CardmarketClearanceId([string]$SocketUrl) {
+  # Cardmarket's Cloudflare clearance lasts about one hour. A new fingerprint
+  # means a challenge was passed (by itself or by the owner's click).
+  $sock=[Net.WebSockets.ClientWebSocket]::new()
+  try {
+    $sock.Options.SetRequestHeader('Origin','http://localhost')
+    $c=[Threading.CancellationTokenSource]::new(4000)
+    try{$sock.ConnectAsync([uri]$SocketUrl,$c.Token).GetAwaiter().GetResult()|Out-Null}finally{$c.Dispose()}
+    $pkt=@{id=8;method='Network.getCookies';params=@{urls=@('https://www.cardmarket.com/')}}|ConvertTo-Json -Compress -Depth 5
+    $buf=[Text.Encoding]::UTF8.GetBytes($pkt)
+    $sock.SendAsync([ArraySegment[byte]]::new($buf),[Net.WebSockets.WebSocketMessageType]::Text,$true,[Threading.CancellationToken]::None).GetAwaiter().GetResult()|Out-Null
+    $end=[DateTime]::UtcNow.AddSeconds(5)
+    while([DateTime]::UtcNow -lt $end){
+      $ms=New-Object IO.MemoryStream; $bytes=New-Object byte[] 65536
+      $w=[Threading.CancellationTokenSource]::new(1500)
+      try{ do{$r=$sock.ReceiveAsync([ArraySegment[byte]]::new($bytes),$w.Token).GetAwaiter().GetResult();$ms.Write($bytes,0,$r.Count)}while(!$r.EndOfMessage) }catch{break}finally{$w.Dispose()}
+      $frame=[Text.Encoding]::UTF8.GetString($ms.ToArray())|ConvertFrom-Json
+      if($frame.id -ne 8){continue}
+      $cookie=@($frame.result.cookies | Where-Object {$_.name -eq 'cf_clearance'}) | Select-Object -First 1
+      if(!$cookie){return 'NONE'}
+      $sha=[Security.Cryptography.SHA256]::Create()
+      try{$hash=$sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([string]$cookie.value))}finally{$sha.Dispose()}
+      return (-join ($hash[0..7] | ForEach-Object {$_.ToString('x2')}))
+    }
+  } catch {} finally {$sock.Dispose()}
+  return ''
+}
 try {
   $targets=Invoke-RestMethod -Uri 'http://127.0.0.1:9223/json/list' -TimeoutSec 4
   $page=$targets | Where-Object {$_.type -eq 'page' -and ([string]$_.url) -match '^https://www[.]cardmarket[.]com/'} | Select-Object -First 1
   if(!$page){$state.status='NO_CARDMARKET_TAB';$state.reason='Browser tab unavailable'}
   else {
+    if($page.webSocketDebuggerUrl){$state.clearanceId=Get-CardmarketClearanceId ([string]$page.webSocketDebuggerUrl)}
     if([string]$page.title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests'){
       $state.status='BLOCKED';$state.reason='CLOUDFLARE_CHALLENGE'
     } elseif (!$page.webSocketDebuggerUrl){
