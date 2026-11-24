@@ -47,3 +47,10 @@ Was der Scanner deshalb tut:
 - `next_attempt_at` = jetzt + 3 Tage, damit der Sonntags-Refresh der API die Werte nicht mit TCGdex überschreibt. Läuft der Job nicht mehr, übernimmt nach 3 Tagen wieder der alte Weg.
 - Rücksicherung vor jedem Lauf: `/home/tv/cardyssey-backups/cardmarket-guide-prices/before-<sprache>-<zeit>.jsonl`. Änderungsliste: `reports/cardmarket-guide-price-changes.csv` (Download im Admin-Block).
 - **Browser-Scan nur noch ab 20 €** (vorher 2 €): exakter NM-Preis nach Sprache für wertvolle Karten, darunter gilt der Preis-Trend.
+
+## DE/EN: nur Cardmarket (24.11.2026, Entscheidung Inhaber)
+
+- `publish-cardmarket-guide-prices.py` entfernt bei DE/EN jeden Preis, der nicht von Cardmarket kommt (TCGdex, TCGplayer, CardTrader, PokemonTCG.io), nach Sicherung. Lieber kein Preis als ein fremder.
+- Alle DE/EN-Zeilen bekommen `next_attempt_at` = 2100, damit der Preis-Worker der API (TCGdex & Co.) DE/EN nie mehr füllt.
+- `scripts/sync_global_price_source_policy.py` (App-Anzeige) nimmt für DE/EN nur noch `CARDMARKET%`-Quellen.
+- Preisführer ausgelassen, wo er nicht eindeutig ist: Karten mit 1. Auflage (gehen in den Browser-Scan, unabhängig vom Wert) und zwei Varianten derselben Karte auf demselben Produkt.

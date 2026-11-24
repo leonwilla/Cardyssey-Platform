@@ -171,6 +171,13 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual([e['idExpansion'] for e in plan['expansions']], [1538, 1523])
         self.assertEqual(plan['expansions'][1]['targets'], 0)
 
+    def test_cheap_card_with_first_edition_is_scanned_in_browser(self):
+        rows = [row('ecard3-103', '103', existing_price_eur='0.50'),
+                row('ecard3-103', '103', existing_price_eur='0.50', stempel='["1st-edition"]')]
+        rows[1]['variante_id'] = 'first'
+        apply(rows)
+        self.assertEqual(rows[0]['index_status'], 'DIRECT_PRODUCT_URL')
+
     def test_unverified_slug_is_ignored(self):
         expansions = {'1538': {'slug': 'Skyridge', 'slugVerified': False}}
         exps, products = idx.load_index({'schema': 1, 'expansions': expansions},

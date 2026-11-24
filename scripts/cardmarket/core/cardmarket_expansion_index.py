@@ -409,6 +409,10 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
     siblings = defaultdict(list)
     for row in rows:
         siblings[(row["cardyssey_karte"], filter_key(row))].append(row)
+    # 1st edition and unlimited share one Cardmarket product; the price guide
+    # mixes them, so every variant of such a card is scanned in the browser
+    # (isFirstEd filter) whatever its value.
+    first_edition_cards = {r["cardyssey_karte"] for r in rows if filter_key(r)[1] == "Y"}
     stats = Counter()
     for row in rows:
         # Keep an earlier correction: after the first apply the queue already
@@ -429,7 +433,7 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
         elif collision:
             cls = "COLLISION_" + ("PLAIN" if not kind else "SPECIAL")
         row["variant_class"] = cls
-        below = not needs_browser_scan(row, minimum)
+        below = not needs_browser_scan(row, minimum) and row["cardyssey_karte"] not in first_edition_cards
         primary = guards.get(row["set_id"])
         slugs = [verified_slug[str(e)] for e in related.get(row["set_id"], [set_exp.get(row["set_id"])])
                  if str(e) in verified_slug]

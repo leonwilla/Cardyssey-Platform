@@ -15,6 +15,8 @@ def browser_scan_tier(row, human_confirmed=False):
         price = Decimal(0)
     if price.is_finite() and price >= 20:
         return 1
+    if str(row.get("index_status") or "").startswith("DIRECT_"):
+        return 1
     print_type = str(row.get("drucktyp") or "").strip().casefold()
     stamp = str(row.get("stempel") or "").strip().casefold()
     special = (
