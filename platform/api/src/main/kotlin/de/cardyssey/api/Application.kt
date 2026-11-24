@@ -324,7 +324,8 @@ fun Application.module() {
             "TCG_PRICE_WORKER_ENABLED"
         )
             ?.toBooleanStrictOrNull()
-            ?: true
+            // The worker only fetched TCGdex prices; TCGdex is no price source any more.
+            ?: false
 
     val tcgPricing =
         CachedTcgPricingService(
