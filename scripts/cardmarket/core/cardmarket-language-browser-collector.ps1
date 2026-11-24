@@ -384,7 +384,7 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   [decimal]$price = 0
   if ([decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
       [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture,
-      [ref]$price) -and $price -ge 2) { return 1 }
+      [ref]$price) -and $price -ge 20) { return 1 }
   $type = ([string]$Case.drucktyp).Trim()
   $special = ([string]$Case.foil).Trim() -or ([string]$Case.sonderdruck).Trim() -or
       ([string]$Case.stempel).Trim() -notin @('','[]','null') -or

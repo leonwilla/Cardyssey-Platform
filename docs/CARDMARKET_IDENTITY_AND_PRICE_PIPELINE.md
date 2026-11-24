@@ -39,3 +39,11 @@ Was der Scanner deshalb tut:
 - **Alte Fehlfälle mit neuer direkter Adresse** werden neu gescannt, auch wenn sie im aktuellen Prüfzyklus schon fehlgeschlagen sind (`Test-CardmarketIndexUpgradeDue`). Reihenfolge: manuelle Anfragen → korrigierte IDs / frühere Erfolge mit anderer Seite (evtl. falscher Preis) → alte Fehlfälle → neue Karten.
 - **Nicht mehr in der Prüfliste:** Karten unter 2 € (offizieller Richtwert) und `SPECIAL_NOT_SEPARABLE`: Sonderdrucke, für deren Nummer Cardmarket nur ein Produkt führt (z. B. Meisterball-/Pokéball-Muster in Prismatic Evolutions, Black Bolt, White Flare). Die bekommen keinen Cardmarket-Preis.
 - **Komplett-Neuscan:** Der Block zeigt „jetzt sinnvoll“, sobald alle Set-Listen gelesen und die alten Fehlfälle durch sind. Dann einmal „Komplett neu scannen (DE + EN)“ drücken.
+
+## Preise: offizieller Cardmarket-Preis-Trend für alle, Browser ab 20 € (24.11.2026)
+
+- `scripts/cardmarket/core/publish-cardmarket-guide-prices.py --apply` (Cron alle 2 h): Jede DE/EN-Variante mit **eigener geprüfter Produkt-ID** (Set-Liste oder bestätigte Zuordnung) bekommt den Wert aus Cardmarkets offiziellem Preisführer, **unverändert**: Preis-Trend (Reverse: `trend-holo`), Ersatz avg30 → avg7 → avg → low. Quelle `CARDMARKET_GUIDE`. **Kein Sprach-Multiplikator** (bewusst verworfen: wären keine Cardmarket-Preise).
+- Ersetzt nur indirekte Werte (TCGdex-Kopien mit teils falschen IDs, alte `CARDMARKET_OFFICIAL`). Unangetastet: Browser-Preise jünger als 30 Tage, bestätigte TCGplayer-Routen, CardTrader. Ausgelassen: Sonderdrucke ohne eigenes Produkt und Karten mit 1. Auflage (der Preisführer mischt 1. Auflage und Unlimited).
+- `next_attempt_at` = jetzt + 3 Tage, damit der Sonntags-Refresh der API die Werte nicht mit TCGdex überschreibt. Läuft der Job nicht mehr, übernimmt nach 3 Tagen wieder der alte Weg.
+- Rücksicherung vor jedem Lauf: `/home/tv/cardyssey-backups/cardmarket-guide-prices/before-<sprache>-<zeit>.jsonl`. Änderungsliste: `reports/cardmarket-guide-price-changes.csv` (Download im Admin-Block).
+- **Browser-Scan nur noch ab 20 €** (vorher 2 €): exakter NM-Preis nach Sprache für wertvolle Karten, darunter gilt der Preis-Trend.

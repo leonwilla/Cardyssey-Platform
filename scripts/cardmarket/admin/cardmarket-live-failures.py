@@ -200,7 +200,7 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
         if resolved_after_scan(entry,decisions.get(key)):continue
         status=str(entry.get('status') or '')
         q=queue.get(key,{})
-        # Below 2 EUR the official Cardmarket guide price is used; no browser
+        # Below 20 EUR the official Cardmarket guide price is used; no browser
         # scan and therefore no open check for these variants.
         if q.get('index_status')=='GUIDE_PRICE_BELOW_THRESHOLD':
             guide_priced+=1

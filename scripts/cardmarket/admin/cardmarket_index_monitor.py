@@ -214,15 +214,18 @@ def snapshot(base=BASE, root=ROOT, now=None):
     return {'checkedAt': now.isoformat(), 'baseline': BASELINE, 'speed': speed(obs, now), 'fullRescan': ready,
             'index': index, 'backlog': queued, 'reviewGroups': review_groups(root),
             'apply': read_json(root / 'reports/cardmarket-expansion-index-apply.json'),
+            'guidePrices': read_json(root / 'reports/cardmarket-guide-prices-latest.json'),
             'clearance': clearance(base, obs), 'imports': imports(root)}
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--review-groups-csv', action='store_true')
+    p.add_argument('--guide-changes-csv', action='store_true')
     a = p.parse_args()
-    if a.review_groups_csv:
-        sys.stdout.write((ROOT / 'reports/cardmarket-variant-review-groups.csv').read_text(encoding='utf-8-sig'))
+    if a.review_groups_csv or a.guide_changes_csv:
+        name = 'cardmarket-variant-review-groups.csv' if a.review_groups_csv else 'cardmarket-guide-price-changes.csv'
+        sys.stdout.write((ROOT / 'reports' / name).read_text(encoding='utf-8-sig'))
         return
     print(json.dumps(snapshot(), ensure_ascii=False))
 

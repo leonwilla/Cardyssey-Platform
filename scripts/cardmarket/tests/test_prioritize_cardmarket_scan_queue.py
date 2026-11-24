@@ -49,7 +49,7 @@ class PriorityTests(unittest.TestCase):
         self.assertEqual(out['needs_price'],'YES')
 
     def test_price_boundary_preserves_cents_and_precision(self):
-        for amount, tier in [("1.50",4), ("1.99",4), ("1.99995",4), ("2.00",1), ("2.01",1), ("15.00",1)]:
+        for amount, tier in [("1.50",4), ("19.99",4), ("19.99995",4), ("20.00",1), ("20.01",1), ("150.00",1)]:
             with self.subTest(amount=amount):
                 row={"cardyssey_karte":"a","variante_id":"1","drucktyp":"normal"}
                 cached={"card_id":"a","variant_id":"1","status":"PRICE_FOUND","price":amount}
