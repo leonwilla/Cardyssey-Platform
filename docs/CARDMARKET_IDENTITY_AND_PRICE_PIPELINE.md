@@ -9,3 +9,16 @@
 7. Weekly refresh reuses saved IDs and URLs; unresolved cases receive categorized reasons. Do not promote `NO_EXACT_NUMBER_SEARCH_HIT` to a true negative if search results were still loading. Existing accepted prices stay present during mapping.
 
 Current known Cardmarket set mismatch: the provider candidate `557708` for `base1-8` resolves to `Expansion-Pack/Machamp-EXP`, **not** `Base-Set/Machamp-V1-BS8`. Guard this until the set crosswalk is corrected; do not import it as a match.
+
+## Expansion-list index (since 2026-11-24): product pages without search
+
+Cardmarket's search page triggered almost all Cloudflare challenges (386 of 393 blocks, 19.–23.11.2026). Product URLs now come from Cardmarket's own expansion lists instead:
+
+1. `Cardmarket-Expansion-Index.ps1` (Windows, in the existing Edge tab, same-origin fetch, 11 s gap, stops on any challenge) reads `/en/Pokemon/Expansions` once a month and then the list pages `/Products/Singles/<Expansion>?site=N`. Each tile shows the canonical URL, the printed number (`Staryu (SK 103)`) and the `idProduct` in the image path. A slug only counts as verified when the tiles on its first page belong to the planned official `idExpansion`.
+2. `build-cardmarket-expansion-index-plan.py` plans the crawl: only expansions holding DE/EN variants that need a browser price (no price, or existing price >= 2 EUR; cheaper cards keep the official guide price).
+3. `apply-cardmarket-expansion-index.py` writes `variant_class`, `index_status`, `index_product_id`, `index_product_url`, `index_candidate_urls` into `queue-de/en.csv` and `index-set-url-guards.json`.
+   * Standard and 1st-edition/unlimited prints with a unique printed number in the main expansion get a direct URL. The list beats name-based catalog singletons and TCGdex IDs (Skyridge Staryu 103/104 were swapped there); such rows are `DIRECT_PRODUCT_URL_ID_CORRECTED` with `index_previous_id`.
+   * Special prints (pattern foils, stamps, shadowless, ...), holo+normal variants of the same card and numbers found only in an "Additionals" expansion get `REVIEW_*` with candidate URLs. The collector records them for human review without any provider request.
+4. The collector opens index URLs directly (`lookup_strategy=EXPANSION_INDEX_DIRECT_V1`) and still requires the live idProduct, printed number and set. At most `MaxSearchCasesPerBatch` (6) cases per batch may still use search.
+5. Refresh by value: >= 20 EUR weekly, >= 5 EUR every two weeks, otherwise monthly. Launcher runs 60-case batches for 50 minutes; the routine pause between launches is 3 minutes.
+6. Telegram block alerts are sent only if the challenge is still present after 15 minutes.

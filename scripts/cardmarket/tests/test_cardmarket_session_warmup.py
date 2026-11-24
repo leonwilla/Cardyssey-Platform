@@ -19,7 +19,7 @@ class SessionWarmupTests(unittest.TestCase):
   self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)
   self.assertNotIn('"-RequireLogin"',s)
   self.assertIn("Get-CardmarketActiveCooldown",s)
-  self.assertIn('"-BatchLimit","25"',s)
+  self.assertIn('"-BatchLimit","60"',s)
   self.assertIn('"-MinRequestGapSeconds","11"',s)
  def test_one_normal_navigation_six_seconds_no_challenge_bypass(self):
   s=(source_path('Cardmarket-Session-Warmup.ps1')).read_text(encoding='utf-8-sig')

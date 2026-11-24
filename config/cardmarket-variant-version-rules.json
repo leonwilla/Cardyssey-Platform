@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "_doc": "Eine Zeile löst alle Karten einer Variantenart in einem Set. set: Cardyssey-Set-ID oder '*'. kind: wie in reports/cardmarket-variant-review-groups.csv (z.B. masterball, pokeball, set-logo, shadowless, holo-vs-normal). action 'version' = Cardmarket-Produkt mit dieser Version (V1, V2, ...); action 'plain' = dasselbe Produkt wie die normale Karte (Cardmarket trennt diese Variante nicht).",
+  "rules": [
+    {
+      "set": "base1",
+      "kind": "plain",
+      "action": "version",
+      "version": "V1",
+      "note": "Abgeleitet 24.11.2026: offizieller Preisfuehrer, V2 bei 98 von 101 Base-Set-Karten deutlich teurer (Glurak V1 404 EUR, V2 3096 EUR) = Schattenlos"
+    },
+    {
+      "set": "base1",
+      "kind": "shadowless",
+      "action": "version",
+      "version": "V2",
+      "note": "Abgeleitet 24.11.2026: offizieller Preisfuehrer, V2 bei 98 von 101 Base-Set-Karten deutlich teurer (Glurak V1 404 EUR, V2 3096 EUR) = Schattenlos"
+    },
+    {
+      "set": "base1",
+      "kind": "1999-2000-copyright",
+      "action": "version",
+      "version": "V1",
+      "note": "Spaeterer Unlimited-Druck; Cardmarket trennt ihn nicht von V1"
+    }
+  ]
+}

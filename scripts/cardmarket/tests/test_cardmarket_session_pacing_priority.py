@@ -31,15 +31,15 @@ class SessionPacingPolicyTests(unittest.TestCase):
  def test_runner_shares_gap_with_both_languages(self):
   runner=self.source('Cardmarket-Queue-Runner.ps1')
   self.assertIn('MinRequestGapSeconds $MinRequestGapSeconds',runner)
-  self.assertIn('BatchLimit = 25',runner)
-  self.assertIn('RunMinutes = 40',runner)
+  self.assertIn('BatchLimit = 60',runner)
+  self.assertIn('RunMinutes = 50',runner)
   self.assertIn('Start-Sleep -Seconds $MinRequestGapSeconds',runner)
   launcher=self.source('Cardmarket-Collector-Launcher.ps1')
-  self.assertIn('"-BatchLimit","25"',launcher)
+  self.assertIn('"-BatchLimit","60"',launcher)
   self.assertIn('"-MinRequestGapSeconds","11"',launcher)
-  self.assertIn('"-Languages","both","-SingleBatch"',launcher)
+  self.assertIn('"-Languages","both","-RunMinutes","50"',launcher)
   self.assertIn('[int]$ChallengeWaitSeconds = 15',self.source('cardmarket-language-browser-collector.ps1'))
-  self.assertIn('return 8',self.source('Cardmarket-Backoff-Policy.ps1'))
+  self.assertIn('return 3',self.source('Cardmarket-Backoff-Policy.ps1'))
   self.assertIn('& $watchdog -ReportBlocked',runner)
  def test_backoff_persists_between_runner_invocations(self):
   for name in ('Cardmarket-Collector-Launcher.ps1','Cardmarket-Resume-Watchdog.ps1'):

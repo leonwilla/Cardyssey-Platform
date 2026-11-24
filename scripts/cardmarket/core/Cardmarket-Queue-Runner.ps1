@@ -2,11 +2,12 @@
 # Rotate German/English batches so neither backlog can starve the other.
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
-  [ValidateRange(1,1000)][int]$BatchLimit = 25,
+  [ValidateRange(1,1000)][int]$BatchLimit = 60,
   [ValidateRange(4,120)][int]$DelaySeconds = 11,
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
-  [ValidateRange(0,110)][int]$RunMinutes = 40,
+  [ValidateRange(0,110)][int]$RunMinutes = 50,
+  [ValidateRange(0,500)][int]$IndexRequestsPerRun = 40,
   [ValidateSet('identity','missing')][string]$ScanMode='identity',
   [switch]$SingleBatch,
   [switch]$RequireLogin  # optional diagnostics only; production launcher omits it
@@ -39,6 +40,48 @@ function Update-CrossLanguagePageCache {
   finally{if($proc){$proc.Dispose()}}
 }
 if(!(Test-Path $collector)){throw 'Updated language collector missing'}
+function Invoke-WslPython([string]$Script,[string[]]$Arguments=@(),[int]$TimeoutSec=240) {
+  $wsl='C:\Windows\System32\wsl.exe'
+  if(!(Test-Path $wsl)){return 'NO_WSL'}
+  $proc=$null
+  try {
+    $proc=Start-Process -FilePath $wsl -ArgumentList (@('-d','Ubuntu','-e','python3',$Script)+$Arguments) -WindowStyle Hidden -PassThru
+    if(-not $proc.WaitForExit($TimeoutSec*1000)){try{$proc.Kill()}catch{};return 'TIMEOUT'}
+    return ('EXIT '+$proc.ExitCode)
+  }catch{return ('FAILED '+$_.Exception.GetType().Name)}
+  finally{if($proc){$proc.Dispose()}}
+}
+# Expansion-list index: a bounded slice of Cardmarket's own expansion lists
+# per run gives direct product URLs, so the collector needs no search.
+# Same request gap; a challenge stops everything exactly like a scan block.
+$indexScript=Join-Path $base 'Cardmarket-Expansion-Index.ps1'
+if($IndexRequestsPerRun -gt 0 -and (Test-Path $indexScript)){
+  $linuxCore='/home/tv/cardshop/scripts/cardmarket/core/'
+  & $indexScript -MaxRequests $IndexRequestsPerRun -MinRequestGapSeconds $MinRequestGapSeconds | Out-Null
+  $indexState=Get-Content -Raw -Encoding UTF8 (Join-Path $base 'expansion-index-status.json') | ConvertFrom-Json
+  Write-Output ('EXPANSION_INDEX '+$indexState.status+' requests='+$indexState.requests+' pages='+$indexState.pages)
+  if($indexState.status -eq 'BLOCKED'){
+    $progressFile=Join-Path $base 'progress-de.json'
+    if(Test-Path $progressFile){
+      $x=Get-Content -Raw -Encoding UTF8 $progressFile | ConvertFrom-Json
+      $x.status='BLOCKED'
+      $x.updated_at=[DateTime]::UtcNow.ToString('o')
+      $x | Add-Member NoteProperty provider_block_stage 'EXPANSION_INDEX' -Force
+      $x | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressFile
+      Update-CardmarketBlockedStreak -Base $base -Status 'BLOCKED' -Language 'de' -ProgressAt ([string]$x.updated_at) -RunId $runnerId
+    }
+    & (Join-Path $base 'Cardmarket-Resume-Watchdog.ps1') -ReportBlocked
+    Write-Output 'STOP_ON_PROVIDER_OR_CONNECTION_ERROR'
+    return
+  }
+  if($indexState.status -eq 'OVERVIEW_UPDATED_PLAN_REBUILD_NEEDED'){
+    Write-Output ('EXPANSION_INDEX_PLAN '+(Invoke-WslPython ($linuxCore+'build-cardmarket-expansion-index-plan.py')))
+  }
+  $queueHeader=[string](Get-Content -TotalCount 1 -Encoding UTF8 (Join-Path $base 'queue-de.csv'))
+  if([int]$indexState.pages -gt 0 -or $queueHeader -notmatch 'index_status'){
+    Write-Output ('EXPANSION_INDEX_APPLY '+(Invoke-WslPython ($linuxCore+'apply-cardmarket-expansion-index.py')))
+  }
+}
 $selectedLanguages=@(Get-CardmarketLanguageOrder -Base $base -Languages $Languages)
 $done=@{}
 foreach($l in $selectedLanguages){$done[$l]=$false}

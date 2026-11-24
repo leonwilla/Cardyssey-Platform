@@ -92,7 +92,14 @@ function Test-CardmarketPrintedNumber {
  if(!$tail.Success){return $false}
  $num=[string]$tail.Groups[2].Value
  if($expected -match '^\d{1,4}$'){return [int]$expected -eq [int]$num}
- if($expected -match '^[A-Za-z]{1,12}0*[0-9]{1,4}$'){return ($tail.Groups[1].Value+$num) -eq $expected}
+ if($expected -match '^[A-Za-z]{1,12}0*[0-9]{1,4}$'){
+   if(($tail.Groups[1].Value+$num) -eq $expected){return $true}
+   # Subset numbers inside a set-code slug: printed 'H12' on 'Jolteon-V1-SKH12'.
+   $sub=[regex]::Match($expected,'^([A-Za-z]{1,12})0*([0-9]{1,4})$')
+   return ($tail.Groups[1].Value.Length -gt $sub.Groups[1].Value.Length -and
+           $tail.Groups[1].Value.EndsWith($sub.Groups[1].Value,[StringComparison]::OrdinalIgnoreCase) -and
+           [int]$sub.Groups[2].Value -eq [int]$num)
+ }
  return $false
 }
 

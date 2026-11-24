@@ -175,6 +175,12 @@ def main():
         # exact-print review first again without modifying card/price data.
         report['recovery_priority']=json.loads(run(
             ROOT/'scripts/cardmarket/core/cardmarket-prioritize-recovery-queue.py','--apply'))
+        # The export above rewrote the queues: re-plan the expansion-list
+        # crawl for new targets and re-apply the direct product URLs.
+        report['expansion_index_plan']=json.loads(run(
+            ROOT/'scripts/cardmarket/core/build-cardmarket-expansion-index-plan.py'))
+        report['expansion_index_apply']=json.loads(run(
+            ROOT/'scripts/cardmarket/core/apply-cardmarket-expansion-index.py'))
     report["mode"]="apply" if a.apply else "dry-run"
     (ROOT/"reports/cardmarket-identity-pipeline-latest.json").write_text(
         json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

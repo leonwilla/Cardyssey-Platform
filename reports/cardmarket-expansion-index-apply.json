@@ -1,0 +1,23 @@
+{
+ "checkedAt": "2026-11-24T10:24:59.299589+00:00",
+ "indexedProducts": 487,
+ "verifiedExpansions": 3,
+ "setGuards": 3,
+ "de": {
+  "GUIDE_PRICE_BELOW_THRESHOLD": 20041,
+  "SET_NOT_INDEXED": 11023,
+  "HUMAN_ROUTE_KEPT": 66,
+  "DIRECT_PRODUCT_URL_RULE": 249,
+  "DIRECT_PRODUCT_URL": 305,
+  "REVIEW_GROUP": 26
+ },
+ "en": {
+  "GUIDE_PRICE_BELOW_THRESHOLD": 20871,
+  "HUMAN_ROUTE_KEPT": 65,
+  "SET_NOT_INDEXED": 12687,
+  "DIRECT_PRODUCT_URL": 306,
+  "DIRECT_PRODUCT_URL_RULE": 251,
+  "REVIEW_GROUP": 26
+ },
+ "reviewGroups": 12
+}
