@@ -77,6 +77,13 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(rows[0]['index_product_url'],
                          'https://www.cardmarket.com/de/Pokemon/Products/Singles/Skyridge/Staryu-SK103')
 
+    def test_id_correction_survives_reapply(self):
+        rows = [row('ecard3-103', '103', catalog_singleton_id='275361')]
+        apply(rows)
+        apply(rows)
+        self.assertEqual(rows[0]['index_status'], 'DIRECT_PRODUCT_URL_ID_CORRECTED')
+        self.assertEqual(rows[0]['index_previous_id'], '275361')
+
     def test_plain_number_does_not_pick_holo_subset(self):
         rows = [row('ecard3-10', '10'), row('ecard3-H10', 'H10', 'Holo')]
         apply(rows)
@@ -90,12 +97,23 @@ class ApplyTests(unittest.TestCase):
         self.assertTrue(rows[0]['index_product_url'].endswith('/Charizard-V1-SK146'))
 
     def test_colliding_special_goes_to_group_plain_stays_direct(self):
-        rows = [row('ecard3-146', '146', 'Holo'), row('ecard3-146', '146', 'Holo', foil='cracked-ice')]
-        apply(rows)
+        # Two Cardmarket versions of the number: a human/rule must pick one.
+        products = dict(SKYRIDGE, **{'275400': {'slug': 'Skyridge', 'product': 'Charizard-V2-SK146', 'idExpansion': '1538'}})
+        catalog = {**CATALOG, 275400: {'idProduct': 275400, 'idExpansion': 1538}}
+        rows = [row('ecard3-146', '146', 'Holo', catalog_singleton_id='275300'),
+                row('ecard3-146', '146', 'Holo', foil='cracked-ice')]
+        idx.apply_index(rows, 'de', products, EXPANSIONS, {}, catalog, {'ecard3': 1538})
         self.assertEqual(rows[0]['index_status'], 'DIRECT_PRODUCT_URL')
         self.assertEqual(rows[1]['index_status'], 'REVIEW_GROUP')
         self.assertEqual(rows[1]['index_review_group'], 'ecard3|cracked-ice')
         self.assertIn('Charizard-V1-SK146', rows[1]['index_candidate_urls'])
+
+    def test_pattern_with_single_cardmarket_product_is_not_separable(self):
+        rows = [row('ecard3-145', '145', 'Reverse'), row('ecard3-145', '145', 'Reverse', foil='Meisterball')]
+        apply(rows)
+        self.assertEqual([r['index_status'] for r in rows], ['DIRECT_PRODUCT_URL', 'SPECIAL_NOT_SEPARABLE'])
+        self.assertEqual(rows[1]['index_review_group'], '')
+        self.assertEqual(rows[1]['index_product_url'], '')
 
     def test_reverse_pattern_without_plain_reverse_is_the_reverse(self):
         rows = [row('ecard3-145', '145', 'Normal'), row('ecard3-145', '145', 'Reverse', foil='Energie')]

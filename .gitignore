@@ -57,3 +57,7 @@ web/private-downloads/
 # Server-lokale Deploy-Releases und Sicherungen (nie committen)
 /releases/
 /backups/
+
+# Laufzeit-Berichte der Cardmarket-Pipeline (werden auf dem Server neu geschrieben)
+reports/cardmarket-expansion-index-apply.json
+reports/cardmarket-variant-review-groups.csv

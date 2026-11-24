@@ -47,6 +47,8 @@ CSV_COLUMNS = (
     ('Fehlende Pflichtangaben', 'missingFields'),
     ('Nicht filterbare Druckmerkmale', 'unfilterablePrintFeatures'),
     ('Angebotsfilter', 'filterMode'),
+    ('Index-Status', 'indexStatus'),
+    ('Prüfgruppe', 'reviewGroup'),
     ('Zuletzt geprüft', 'seenAt'),
 )
 
@@ -191,11 +193,22 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
         for r in csv.DictReader(f):queue[(r.get('cardyssey_karte'),r.get('variante_id'))]=r
     if decisions is None:decisions=reviewed_decisions(language) if base==BASE else {}
     output=[]
+    guide_priced=0
+    not_separable=0
     links=offline_links(base,language)
     for key,entry in rows.items():
         if resolved_after_scan(entry,decisions.get(key)):continue
         status=str(entry.get('status') or '')
         q=queue.get(key,{})
+        # Below 2 EUR the official Cardmarket guide price is used; no browser
+        # scan and therefore no open check for these variants.
+        if q.get('index_status')=='GUIDE_PRICE_BELOW_THRESHOLD':
+            guide_priced+=1
+            continue
+        # Cardmarket has no separate product for this special print.
+        if q.get('index_status')=='SPECIAL_NOT_SEPARABLE':
+            not_separable+=1
+            continue
         references=reference_urls(q,language)
         proof=links.get('|'.join(key),{})
         if (proof.get('kind')=='singleton_stamp' and q.get('set_id')==entry.get('set_id')
@@ -221,6 +234,8 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
           'scoreCandidateUrls':[u for u in (references or entry.get('score_top_candidate_urls') or [])[:CANDIDATE_URL_LIMIT]
              if isinstance(u,str) and u.startswith('https://www.cardmarket.com/')],
           'filterMode':str(entry.get('filter_mode') or ''),
+          'indexStatus':str(q.get('index_status') or ''),
+          'reviewGroup':str(q.get('index_review_group') or ''),
           'officialProductGuide':entry.get('official_guide_product_aggregate') or None,
           'specialPrintComments':entry.get('special_print_comment_evidence') or None}
         if search.strip() and search.strip().casefold() not in ' '.join(str(v) for v in item.values()).casefold():continue
@@ -240,7 +255,9 @@ def list_failures(base=BASE,language='de',page=0,search='',scope='current',kind=
             'linkedStamps':sum(x['type']=='ID_VERKNUEPFT_STEMPEL' for x in output),
             'printChecks':sum(x['type']=='DRUCKPRUEFUNG' for x in output),
             'priceChecks':sum(x['type']=='PREISPRUEFUNG' for x in output),
-            'missingData':sum(x['type']=='DATEN_FEHLEN' for x in output)}
+            'missingData':sum(x['type']=='DATEN_FEHLEN' for x in output),
+            'guidePricedBelowThreshold':guide_priced,
+            'notSeparableOnCardmarket':not_separable}
     if kind=='karten':output=[x for x in output if x['type'] in ('ZUORDNUNG','DATEN_FEHLEN')]
     elif kind=='preise':output=[x for x in output if x['type']=='PREISPRUEFUNG']
     elif kind=='technik':output=[x for x in output if x['type']=='TECHNISCH']

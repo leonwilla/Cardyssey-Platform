@@ -392,6 +392,9 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
         siblings[(row["cardyssey_karte"], filter_key(row))].append(row)
     stats = Counter()
     for row in rows:
+        # Keep an earlier correction: after the first apply the queue already
+        # holds the corrected ID, so it would look uncorrected on re-apply.
+        earlier_previous = str(row.get("index_previous_id") or "")
         for column in INDEX_COLUMNS:
             row[column] = ""
         cls = variant_class(row)
@@ -447,6 +450,13 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             status = "DIRECT_PRODUCT_URL_RULE" if pick else "REVIEW_GROUP"
             if not pick:
                 row["index_review_group"] = f"{row['set_id']}|{rule_kind}|rule-version-not-found"
+        elif collision and kind and kind != "holo-vs-normal" and len(main) == 1:
+            # Cardmarket lists ONE product for this number (e.g. Master Ball /
+            # Poke Ball patterns in Prismatic Evolutions, Black Bolt, White
+            # Flare): the special print is not sold separately there, so no
+            # human can pick a product. No Cardmarket price, no review.
+            status = "SPECIAL_NOT_SEPARABLE"
+            row["index_candidate_urls"] = json.dumps(urls[:1])
         elif collision and (kind or len(plain_rows) != 1):
             status = "REVIEW_GROUP"
             row["index_review_group"] = f"{row['set_id']}|{kind}"
@@ -464,6 +474,8 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             # name-based catalog singleton or a TCGdex ID: same-name cards
             # such as Skyridge Staryu 103/104 were swapped there.
             corrected = bool(current and current != pid)
+            if not corrected and earlier_previous and earlier_previous != pid:
+                corrected, current = True, earlier_previous
             product = catalog.get(int(pid))
             row["catalog_singleton_id"] = pid
             if product:

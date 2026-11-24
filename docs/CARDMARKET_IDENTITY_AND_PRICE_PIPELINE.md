@@ -32,3 +32,10 @@ Was der Scanner deshalb tut:
 - **Nicht gegen die Wand laufen:** Der Session-Check liest nur einen 16-stelligen Fingerabdruck von `cf_clearance` (kein Wert wird gespeichert). Nach einem Block startet der Watchdog erst wieder, wenn eine **neue** Freigabe da ist (oder nach 30 min wie früher).
 - **Telegram nach 5 min** (statt 15): „Seite neu laden (F5) und Kästchen anklicken“. Geht auch aus der Ferne per Remote-Desktop-App.
 - **Login bleibt über Neustarts:** Der Launcher setzt im Scanner-Profil „Vorherige Sitzung fortsetzen“, bevor er Edge startet (Sicherung `Preferences.cardyssey-backup`).
+
+## Monitoring und Neu-Scan alter Fehlfälle (24.11.2026)
+
+- **Admin › Scans & offene Prüfungen** zeigt den Block „Set-Listen-Scan“: fertige Preise pro Stunde (Vergleich: alte Suche 2,7/h), Fortschritt der Set-Listen, Warteschlange, Cloudflare-Status, Prüfgruppen mit CSV-Download (`/api/admin/cardmarket-index?download=review-groups`). Daten: `scripts/cardmarket/admin/cardmarket_index_monitor.py` (nur lesend).
+- **Alte Fehlfälle mit neuer direkter Adresse** werden neu gescannt, auch wenn sie im aktuellen Prüfzyklus schon fehlgeschlagen sind (`Test-CardmarketIndexUpgradeDue`). Reihenfolge: manuelle Anfragen → korrigierte IDs / frühere Erfolge mit anderer Seite (evtl. falscher Preis) → alte Fehlfälle → neue Karten.
+- **Nicht mehr in der Prüfliste:** Karten unter 2 € (offizieller Richtwert) und `SPECIAL_NOT_SEPARABLE`: Sonderdrucke, für deren Nummer Cardmarket nur ein Produkt führt (z. B. Meisterball-/Pokéball-Muster in Prismatic Evolutions, Black Bolt, White Flare). Die bekommen keinen Cardmarket-Preis.
+- **Komplett-Neuscan:** Der Block zeigt „jetzt sinnvoll“, sobald alle Set-Listen gelesen und die alten Fehlfälle durch sind. Dann einmal „Komplett neu scannen (DE + EN)“ drücken.
