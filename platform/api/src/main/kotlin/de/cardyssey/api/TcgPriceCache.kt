@@ -8,6 +8,16 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 /** Missing prices fill continuously; existing prices refresh in the Sunday UTC lane. */
+/** DE/EN prices come only from the Cardmarket pipeline, never from this worker. */
+internal val CARDMARKET_ONLY_LANGUAGES = setOf("de", "en")
+
+/** TCGdex is no price source any more (owner decision 24.11.2026). */
+internal fun isRetiredPriceSource(source: String?): Boolean =
+    source?.uppercase()?.startsWith("TCGDEX") == true
+
+internal fun workerPriceLanguages(languages: List<String>): List<String> =
+    languages.filterNot { it.lowercase() in CARDMARKET_ONLY_LANGUAGES }
+
 internal fun weeklyPriceRefreshAllowed(
     now: OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)
 ): Boolean {
@@ -98,6 +108,7 @@ class TcgPriceCacheRepository(
                 WHERE card_id = ?
                   AND language_code = ?
                   AND variant_id = ?
+                  AND (source IS NULL OR source NOT LIKE 'TCGDEX%')
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, cardId)
@@ -164,6 +175,7 @@ class TcgPriceCacheRepository(
                 WHERE card_id = ?
                   AND language_code = ?
                   AND legacy_variant = ?
+                  AND (source IS NULL OR source NOT LIKE 'TCGDEX%')
                 ORDER BY updated_at DESC
                 """.trimIndent()
             ).use {
@@ -806,7 +818,8 @@ class CachedTcgPricingService(
             )
 
         return if (
-            cached != null
+            cached != null &&
+            !isRetiredPriceSource(cached.source)
         ) {
             cached.toResponse(
                 details = details,
@@ -838,7 +851,7 @@ class CachedTcgPricingService(
                 val targets =
                     cache.dueTargets(
                         languages =
-                            languages,
+                            workerPriceLanguages(languages),
                         ttlHours =
                             cacheTtlHours,
                         limit =

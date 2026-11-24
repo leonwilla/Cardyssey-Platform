@@ -36,12 +36,9 @@ WITH catalog AS (
         WHEN c.language_code IN ('de','en') AND p.source LIKE 'CARDMARKET%' THEN 0
         WHEN c.language_code='ja' AND (p.source LIKE 'WEB_%_JP' OR p.source LIKE 'CARDTRADER_JP%') THEN 0
         WHEN c.language_code='ja' AND p.source='TCGCSV_JP_MARKET' THEN 1
-        WHEN c.language_code='ja' AND p.source LIKE 'TCGDEX%' AND p.source NOT LIKE '%TCGPLAYER%' THEN 2
         WHEN c.language_code='ja' AND p.source LIKE 'CARDTRADER%' THEN 3
         WHEN c.language_code='ko' AND (p.source LIKE 'WEB_%_KO' OR p.source LIKE 'CARDTRADER_KO%') THEN 0
-        WHEN c.language_code='ko' AND p.source LIKE 'TCGDEX%' AND p.source NOT LIKE '%TCGPLAYER%' THEN 2
         WHEN c.language_code='zh-tw' AND (p.source LIKE 'WEB_%_HK' OR p.source LIKE 'CARDTRADER%') THEN 0
-        WHEN c.language_code='zh-tw' AND p.source LIKE 'TCGDEX%' AND p.source NOT LIKE '%TCGPLAYER%' THEN 2
         WHEN c.language_code='zh-cn' AND p.source LIKE 'CARDTRADER%' THEN 0
         ELSE 99 END,
         p.updated_at DESC NULLS LAST
@@ -69,8 +66,8 @@ SELECT c.language_code,c.card_id,c.variant_id,c.set_id,c.rarity,c.price_class,
  CASE WHEN c.price_class='BULK' THEN 'TCG'
       WHEN c.price_class='SPECIAL' AND c.language_code IN ('de','en') THEN 'EBAY'
       ELSE 'LOCAL_MARKET' END,
- CASE WHEN c.language_code='de' THEN 'CARDMARKET_TCGDEX_DE'
-      WHEN c.language_code='en' THEN 'CARDMARKET_TCGDEX_TCGPLAYER_EN'
+ CASE WHEN c.language_code='de' THEN 'CARDMARKET_DE'
+      WHEN c.language_code='en' THEN 'CARDMARKET_EN'
       WHEN c.language_code='ja' THEN 'JAPAN_DOMESTIC_CARDTRADER_JP'
       WHEN c.language_code='ko' THEN 'KOREA_DOMESTIC_CARDTRADER_KO'
       WHEN c.language_code='zh-tw' THEN 'TAIWAN_HONG_KONG_CARDTRADER_TW'
