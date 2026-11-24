@@ -50,6 +50,13 @@ class GlobalPolicyTests(unittest.TestCase):
     ON c.card_id=p.card_id AND c.language_code=p.language_code
     WHERE p.card_id='sv01-001' AND p.language_code='de' AND EXISTS(
       SELECT 1 FROM jsonb_array_elements(c.variants) v WHERE v->>'id'=p.variant_id AND v->>'legacyVariant'='NORMAL')""")
-  self.assertEqual(row,'0.0300|TCGDEX_CATALOG|BULK')
+  price,source,cls=row.split('|')
+  self.assertEqual(cls,'BULK')
+  self.assertTrue(source=='' or source.startswith('CARDMARKET'),row)
+ def test_de_en_prices_only_from_cardmarket(self):
+  bad=query("""SELECT count(*) FROM global_price_source_policy
+    WHERE language_code IN ('de','en') AND selected_price_eur IS NOT NULL
+      AND selected_price_source NOT LIKE 'CARDMARKET%'""")
+  self.assertEqual(bad,'0')
 
 if __name__=='__main__':unittest.main()

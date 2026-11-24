@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Idempotent all-set policy for the six supported Cardyssey languages.
 
-Classify exact catalog print IDs; prefer regional exact-language market sources
+Classify exact catalog print IDs; prefer regional exact-language market sources (DE/EN: Cardmarket only)
 and keep missing/locality-uncertain values explicit. Never edits price caches.
 Run daily or after catalog import. Output is suitable for admin coverage reports.
 """
@@ -34,10 +34,6 @@ WITH catalog AS (
       ORDER BY
         CASE
         WHEN c.language_code IN ('de','en') AND p.source LIKE 'CARDMARKET%' THEN 0
-        WHEN c.language_code='en' AND p.source='POKEMONTCGIO_CARDMARKET' THEN 1
-        WHEN c.language_code IN ('de','en') AND p.source IN ('TCGDEX','TCGDEX_CATALOG','TCGDEX_CATALOG_CACHE') THEN 2
-        WHEN c.language_code='en' AND p.source LIKE 'TCGCSV_TCGPLAYER%' THEN 3
-        WHEN c.language_code='en' AND p.source='POKEMONTCGIO_TCGPLAYER' THEN 4
         WHEN c.language_code='ja' AND (p.source LIKE 'WEB_%_JP' OR p.source LIKE 'CARDTRADER_JP%') THEN 0
         WHEN c.language_code='ja' AND p.source='TCGCSV_JP_MARKET' THEN 1
         WHEN c.language_code='ja' AND p.source LIKE 'TCGDEX%' AND p.source NOT LIKE '%TCGPLAYER%' THEN 2
@@ -56,8 +52,8 @@ WITH catalog AS (
   AND p.resolution_status='PRICE_FOUND' AND p.base_eur>0
   AND p.source IS NOT NULL AND p.source NOT ILIKE '%PRICECHARTING%'
   AND (
-      (c.language_code IN ('de','en') AND (p.source LIKE 'CARDMARKET%' OR (p.source LIKE 'TCGDEX%' AND p.source NOT LIKE '%TCGPLAYER%') OR
-         (c.language_code='en' AND (p.source LIKE 'TCGCSV_TCGPLAYER%' OR p.source LIKE 'POKEMONTCGIO_%'))))
+      -- DE/EN: only Cardmarket (owner decision 24.11.2026)
+      (c.language_code IN ('de','en') AND p.source LIKE 'CARDMARKET%')
    OR (c.language_code='ja' AND (p.source LIKE 'WEB_%_JP' OR p.source LIKE 'CARDTRADER%' OR p.source='TCGCSV_JP_MARKET'))
    OR (c.language_code='ko' AND (p.source LIKE 'WEB_%_KO' OR p.source LIKE 'CARDTRADER_KO%'))
    OR (c.language_code='zh-tw' AND (p.source LIKE 'WEB_%_HK' OR p.source LIKE 'CARDTRADER%'))
