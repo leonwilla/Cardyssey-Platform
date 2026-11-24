@@ -135,6 +135,9 @@ def backlog(base, max_age=300):
         for r in rows:
             st = r.get('index_status') or ''
             c['status:' + (st or 'NONE')] += 1
+            c['total'] += 1
+            if r.get('index_product_url') or (r.get('routing_state') == 'VERIFIED_PRODUCT_ID' and r.get('known_url')):
+                c['withUrl'] += 1
             if not st.startswith('DIRECT_'):
                 continue
             p = latest.get(f"{r['cardyssey_karte']}|{r['variante_id']}")
