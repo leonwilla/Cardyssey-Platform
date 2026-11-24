@@ -159,7 +159,21 @@ function Get-CardmarketDueCases {
     }
     else {$fresh.Add($item)}
   }
-  return $priority.ToArray() + $corrected.ToArray() + $upgrade.ToArray() + $fresh.ToArray() + $retry.ToArray() + $unresolved.ToArray()
+  return $priority.ToArray() + $corrected.ToArray() + $upgrade.ToArray() + @(Sort-CardmarketByValue $fresh.ToArray()) + $retry.ToArray() + $unresolved.ToArray()
+}
+
+# Within one tier the most valuable cards first, so the daily refresh of
+# expensive cards is not stuck behind thousands of cheaper ones.
+function Sort-CardmarketByValue([object[]]$Items) {
+  $i=0
+  return @($Items | ForEach-Object {
+    [decimal]$price=0
+    [void][decimal]::TryParse(([string]$_.existing_price_eur).Trim(),
+      [Globalization.NumberStyles]::AllowDecimalPoint,[Globalization.CultureInfo]::InvariantCulture,[ref]$price)
+    $tier=0; [void][int]::TryParse([string]$_.scan_tier,[ref]$tier)
+    [pscustomobject]@{Case=$_;Tier=$tier;Price=$price;Index=$i}
+    $i++
+  } | Sort-Object Tier,@{Expression='Price';Descending=$true},Index | ForEach-Object { $_.Case })
 }
 
 function Get-CardmarketLanguageOrder {

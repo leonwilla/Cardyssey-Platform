@@ -397,15 +397,16 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   return 4
 }
 
-# Value-based refresh: >=20 EUR weekly, >=5 EUR every two weeks, else monthly.
+# Value-based refresh (owner decision 24.11.2026): >=250 EUR daily,
+# >=100 EUR weekly, everything else every four weeks.
 function Get-CardmarketRefreshDays($Case, [string]$Tier) {
-  if ([string]$Case.needs_price -eq 'YES' -or $Tier -eq '0') { return 7 }
   [decimal]$price = 0
   [void][decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
       [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture, [ref]$price)
-  if ($price -ge 20) { return 7 }
-  if ($price -ge 5 -or $Tier -eq '2') { return 14 }
-  return 30
+  if ($price -ge 250) { return 1 }
+  if ($price -ge 100) { return 7 }
+  if ([string]$Case.needs_price -eq 'YES' -or $Tier -eq '0') { return 7 }
+  return 28
 }
 # A case can reach its product page without Cardmarket search (the step that
 # triggers almost all provider challenges) when a direct URL is known.
@@ -535,7 +536,8 @@ foreach ($case in $candidateCases) {
   if($null -ne $fullRecheckAfter){
     try {
       $seen=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
-      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and -not $indexUpgrade -and
+      # The value-based refresh applies inside a full-rescan epoch as well.
+      $processedThisEpoch=($seen -ge $fullRecheckAfter -and $isRecent -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and -not $indexUpgrade -and
         [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET','SINGLE_LANGUAGE_FALLBACK_REQUIRED') -and
         -not ([string]$prev.status -like 'DEFERRED*'))
     } catch {}
