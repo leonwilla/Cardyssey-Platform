@@ -104,9 +104,23 @@ function Test-CardmarketUnresolvedObservation {
   } catch {return $true}
 }
 
+# The expansion index found a direct product URL after an older (search based)
+# observation: scan again, even if that older attempt failed in this epoch.
+# Skip only when the same product page already gave a complete result.
+function Test-CardmarketIndexUpgradeDue($Case, $Prior) {
+  if(!$Prior){return $false}
+  if([string]$Case.index_status -notlike 'DIRECT_*' -or ![string]$Case.index_product_url){return $false}
+  if([string]$Prior.lookup_strategy -eq 'EXPANSION_INDEX_DIRECT_V1'){return $false}
+  $samePath=$false
+  try{$samePath=(([uri][string]$Prior.url).AbsolutePath -eq ([uri][string]$Case.index_product_url).AbsolutePath)}catch{}
+  return -not ($samePath -and [string]$Prior.status -like 'COMPLETE*')
+}
+
 function Get-CardmarketDueCases {
   param([object[]]$Cases, [hashtable]$Latest, $Processed, [datetime]$NowUtc, $Epoch)
   $priority=[Collections.Generic.List[object]]::new()
+  $corrected=[Collections.Generic.List[object]]::new()
+  $upgrade=[Collections.Generic.List[object]]::new()
   $fresh=[Collections.Generic.List[object]]::new()
   $retry=[Collections.Generic.List[object]]::new()
   $unresolved=[Collections.Generic.List[object]]::new()
@@ -117,6 +131,12 @@ function Get-CardmarketDueCases {
     $seen=$null
     if($prior){
       try {$seen=[DateTimeOffset]::Parse([string]$prior.seen_at).UtcDateTime} catch {}
+    }
+    if(Test-CardmarketIndexUpgradeDue $item $prior){
+      # Corrected product IDs first: the old price may belong to another card.
+      if([string]$item.index_status -eq 'DIRECT_PRODUCT_URL_ID_CORRECTED' -or [string]$prior.status -like 'COMPLETE*'){$corrected.Add($item)}
+      else{$upgrade.Add($item)}
+      continue
     }
     if(Test-CardmarketUnresolvedObservation $prior $Epoch){
       if($null -ne $seen -and $seen -le $NowUtc.AddHours(-72)){$unresolved.Add($item)}
@@ -139,7 +159,7 @@ function Get-CardmarketDueCases {
     }
     else {$fresh.Add($item)}
   }
-  return $priority.ToArray() + $fresh.ToArray() + $retry.ToArray() + $unresolved.ToArray()
+  return $priority.ToArray() + $corrected.ToArray() + $upgrade.ToArray() + $fresh.ToArray() + $retry.ToArray() + $unresolved.ToArray()
 }
 
 function Get-CardmarketLanguageOrder {

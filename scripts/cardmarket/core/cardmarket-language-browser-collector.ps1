@@ -527,18 +527,19 @@ foreach ($case in $candidateCases) {
   $routeChanged=([string]$case.routing_state -eq 'VERIFIED_PRODUCT_ID' -and
      [string]$case.known_url -and [string]$prev.url -and
      ([string]$prev.url).Split('?')[0] -ne ([string]$case.known_url).Split('?')[0])
+  $indexUpgrade=Test-CardmarketIndexUpgradeDue $case $prev
   $processedThisEpoch=$false
   if($null -ne $fullRecheckAfter){
     try {
       $seen=[datetime]::Parse([string]$prev.seen_at).ToUniversalTime()
-      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and
+      $processedThisEpoch=($seen -ge $fullRecheckAfter -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and -not $indexUpgrade -and
         [string]$prev.status -notin @('STARTED','BLOCKED','LOGIN_REQUIRED','ERROR','DEFERRED_PROVIDER_TIMEOUT','DEFERRED_SOCKET','SINGLE_LANGUAGE_FALLBACK_REQUIRED') -and
         -not ([string]$prev.status -like 'DEFERRED*'))
     } catch {}
   }
   if (($null -ne $fullRecheckAfter -and $processedThisEpoch) -or
       ($null -eq $fullRecheckAfter -and $prev.status -notin @('ERROR','SINGLE_LANGUAGE_FALLBACK_REQUIRED') -and $prev.status -notlike 'DEFERRED*' -and
-       -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and $isRecent)) {
+       -not $searchNotYetUpgraded -and -not $legacyEmptyResult -and -not $setMappingFixed -and -not $manualRefreshDue -and -not $routeChanged -and -not $indexUpgrade -and $isRecent)) {
     [void]$processed.Add($key)
   }
 }
