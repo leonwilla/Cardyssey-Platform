@@ -217,14 +217,21 @@ def main():
             queue = {f"{r['cardyssey_karte']}|{r['variante_id']}": r for r in csv.DictReader(f)}
         prices = current_prices(language)
         updates, protect, stats = plan(queue, guides, prices, verified_other_routes(language), now)
+        by_key = {f"{u['card']}|{u['variant']}": u for u in updates}
         report[language] = stats
         if a.apply:
             BACKUPS.mkdir(parents=True, exist_ok=True)
-            with open(BACKUPS / f'before-{language}-{stamp}.jsonl', 'w', encoding='utf-8') as f:
-                for u in updates:
-                    old = prices.get(f"{u['card']}|{u['variant']}")
-                    if old:
+            # Only rows whose price or source really changes; keep 14 days.
+            changed = [prices[k] for k in (f"{u['card']}|{u['variant']}" for u in updates) if k in prices
+                       and (prices[k].get('source') != SOURCE[language]
+                            or abs(float(prices[k].get('eur') or 0) - by_key[k]['price']) >= 0.005)]
+            if changed:
+                with open(BACKUPS / f'before-{language}-{stamp}.jsonl', 'w', encoding='utf-8') as f:
+                    for old in changed:
                         f.write(json.dumps(old, ensure_ascii=False, default=str) + '\n')
+            for old_file in BACKUPS.glob(f'before-{language}-*.jsonl'):
+                if old_file.stat().st_mtime < now.timestamp() - 14 * 86400:
+                    old_file.unlink()
             write(language, updates, protect)
         for u in updates:
             old = u['old']
@@ -236,11 +243,14 @@ def main():
                             u['key'], u['url'] or str(u['product'])])
     changes.sort(key=lambda c: -abs(float(c[7]) - float(c[6] or 0)))
     (ROOT / 'reports').mkdir(exist_ok=True)
-    with open(ROOT / 'reports/cardmarket-guide-price-changes.csv', 'w', encoding='utf-8-sig', newline='') as f:
-        w = csv.writer(f, delimiter=';')
-        w.writerow(['sprache', 'set', 'karte', 'variante', 'name', 'alte_quelle', 'alter_preis', 'neuer_preis',
-                    'aenderung_prozent', 'cardmarket_wert', 'cardmarket_produkt'])
-        w.writerows(changes)
+    # Keep the last list that really changed prices (a quiet run must not
+    # replace it with an empty file).
+    if changes:
+        with open(ROOT / 'reports/cardmarket-guide-price-changes.csv', 'w', encoding='utf-8-sig', newline='') as f:
+            w = csv.writer(f, delimiter=';')
+            w.writerow(['sprache', 'set', 'karte', 'variante', 'name', 'alte_quelle', 'alter_preis', 'neuer_preis',
+                        'aenderung_prozent', 'cardmarket_wert', 'cardmarket_produkt'])
+            w.writerows(changes)
     report['changedRows'] = len(changes)
     (ROOT / 'reports/cardmarket-guide-prices-latest.json').write_text(json.dumps(report, indent=1))
     print(json.dumps(report))
