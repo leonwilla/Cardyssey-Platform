@@ -17,6 +17,7 @@ import csv
 import fcntl
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -46,7 +47,15 @@ def rewrite_queue(path, language, mutate):
                 writer = csv.DictWriter(stream, fieldnames=fields)
                 writer.writeheader()
                 writer.writerows(rows)
-            os.replace(tmp, path)
+            # Windows keeps the CSV locked while a collector reads it.
+            for attempt in range(40):
+                try:
+                    os.replace(tmp, path)
+                    break
+                except PermissionError:
+                    if attempt == 39:
+                        raise
+                    time.sleep(15)
         finally:
             tmp.unlink(missing_ok=True)
         return result
