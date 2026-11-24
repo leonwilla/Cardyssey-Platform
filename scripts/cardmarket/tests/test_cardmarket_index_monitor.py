@@ -81,7 +81,7 @@ class RescanWiringTests(unittest.TestCase):
     def test_index_upgrade_is_prioritised_and_not_marked_processed(self):
         policy = (ROOT / 'core/Cardmarket-Backoff-Policy.ps1').read_text(encoding='utf-8-sig')
         self.assertIn('function Test-CardmarketIndexUpgradeDue', policy)
-        self.assertIn('$priority.ToArray() + $corrected.ToArray() + $upgrade.ToArray() + $fresh.ToArray()', policy)
+        self.assertIn('$priority.ToArray() + $corrected.ToArray() + $upgrade.ToArray() + @(Sort-CardmarketByValue $fresh.ToArray())', policy)
         self.assertLess(policy.index('Test-CardmarketIndexUpgradeDue $item $prior'),
                         policy.index('Test-CardmarketUnresolvedObservation $prior $Epoch){'))
         collector = (ROOT / 'core/cardmarket-language-browser-collector.ps1').read_text(encoding='utf-8-sig')
