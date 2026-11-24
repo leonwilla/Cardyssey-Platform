@@ -17,6 +17,13 @@ class RollingEbayPriceTests(unittest.TestCase):
         x=choose_median([self.make(1,15),self.make(35,2),self.make(70,4)],self.today)
         self.assertEqual((x['window_days'],x['median_eur']),(90,4))
 
+    def test_expands_to_60_days_before_90(self):
+        x=choose_median([self.make(1,15),self.make(35,2),self.make(50,4),self.make(80,90)],self.today)
+        self.assertEqual((x['window_days'],x['window_label'],x['median_eur']),(60,'60 Tage',4))
+
+    def test_window_order_30_60_90_6m_1y_then_yearly(self):
+        self.assertEqual([d for d,_ in windows_for(date(2023,1,1),self.today)],[30,60,90,183,365,730,1095,1460])
+
     def test_expands_six_months_and_additional_years(self):
         x=choose_median([self.make(400,1),self.make(401,2),self.make(600,3)],self.today)
         self.assertEqual((x['window_days'],x['median_eur']),(730,2))
