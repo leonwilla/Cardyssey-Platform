@@ -12,7 +12,7 @@ import cardmarket_expansion_index as idx  # noqa: E402
 def row(card, number, kind='Normal', **extra):
     base = {'cardyssey_karte': card, 'variante_id': card + ':' + kind, 'set_id': card.rsplit('-', 1)[0],
             'kartennummer': number, 'drucktyp': kind, 'sonderdruck': '', 'foil': '', 'stempel': '[]',
-            'needs_price': 'NO', 'existing_price_eur': '5.00', 'routing_state': 'SOURCE_ONLY',
+            'needs_price': 'NO', 'existing_price_eur': '25.00', 'routing_state': 'SOURCE_ONLY',
             'catalog_singleton_id': '', 'catalog_expansion_id': '', 'cardmarket_ids': '', 'set_card_candidate_ids': ''}
     base.update(extra)
     return base
@@ -47,8 +47,8 @@ class VariantClassTests(unittest.TestCase):
             self.assertEqual(idx.variant_class(row('a-1', '1', **extra)), 'SPECIAL', extra)
 
     def test_threshold(self):
-        self.assertFalse(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='1.99')))
-        self.assertTrue(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='2.00')))
+        self.assertFalse(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='19.99')))
+        self.assertTrue(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='20.00')))
         self.assertTrue(idx.needs_browser_scan(row('a-1', '1', needs_price='YES', existing_price_eur='')))
 
 
@@ -163,7 +163,7 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(rows[0]['index_previous_id'], '')
 
     def test_plan_includes_cheap_only_expansions_last(self):
-        q = {'de': [row('ecard3-103', '103', existing_price_eur='9'), row('base1-1', '1', existing_price_eur='0.5'),
+        q = {'de': [row('ecard3-103', '103', existing_price_eur='25'), row('base1-1', '1', existing_price_eur='0.5'),
                     row('base1-2', '2', existing_price_eur='0.5')]}
         cat = {275362: {'idProduct': 275362, 'idExpansion': 1538}, 1: {'idProduct': 1, 'idExpansion': 1523}}
         tcg = {('de', 'ecard3-103'): '275362', ('de', 'base1-1'): '1', ('de', 'base1-2'): '1'}

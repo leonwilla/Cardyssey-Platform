@@ -61,3 +61,5 @@ web/private-downloads/
 # Laufzeit-Berichte der Cardmarket-Pipeline (werden auf dem Server neu geschrieben)
 reports/cardmarket-expansion-index-apply.json
 reports/cardmarket-variant-review-groups.csv
+reports/cardmarket-guide-price-changes.csv
+reports/cardmarket-guide-prices-latest.json
