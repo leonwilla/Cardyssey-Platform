@@ -9,10 +9,10 @@ CORE = Path(__file__).resolve().parents[1] / 'core'
 
 @unittest.skipUnless(shutil.which('node'), 'Node is needed to exercise the DOM reader')
 class CombinedOfferDomTests(unittest.TestCase):
-    def read(self, ids=(1, 3), **changes):
+    def read(self, ids=(1, 3), reverse_wanted='Y', **changes):
         source = (CORE/'cardmarket-combined-offers.ps1').read_text(encoding='utf-8-sig')
         expression = source.split("$expression=@'\n", 1)[1].split("\n'@", 1)[0]
-        expression = expression.replace('__IDS__', json.dumps(list(ids))).replace('__REVERSE__', 'Y').replace('__FIRST__', '0')
+        expression = expression.replace('__IDS__', json.dumps(list(ids))).replace('__REVERSE__', reverse_wanted).replace('__FIRST__', '0')
         fixture = {
             'query': 'language='+','.join(map(str, ids))+'&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=Y',
             'checked': list(ids), 'reverse': 'Y', 'signed': 'N', 'altered': 'N',
@@ -24,7 +24,7 @@ const vm=require('node:vm');
 const [fixture, expression]=JSON.parse(require('node:fs').readFileSync(0,'utf8'));
 const f={action:'Product_Filter_FilterProduct',elements:{namedItem(name){
  const fields={minCondition:'2','extra[isSigned]':fixture.signed,'extra[isAltered]':fixture.altered,'extra[isReverseHolo]':fixture.reverse};
- return name in fields?{value:fields[name]}:null;
+ return name in fields&&fields[name]!==null?{value:fields[name]}:null;
 }}};
 const rows=fixture.languages.map((language,i)=>({id:'article-'+i,
  querySelector(s){if(s==='.article-condition')return {getAttribute(){return fixture.conditions[i]}};
@@ -60,6 +60,17 @@ process.stdout.write(vm.runInNewContext(expression,{document,URL,location:{href:
         ):
             with self.subTest(changes=changes):
                 self.assertFalse(self.read(**changes)['filtered'])
+
+    def test_product_without_reverse_field_accepts_reverse_n_in_url(self):
+        # Old sets (e.g. EX Unseen Forces) have no isReverseHolo field at all.
+        for query in ('language=3&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=N',
+                      'language=3&minCondition=2&isSigned=N&isAltered=N'):
+            with self.subTest(query=query):
+                self.assertTrue(self.read(ids=(3,), reverse_wanted='N', reverse=None, query=query,
+                                          checked=[3], languages=['Deutsch'])['filtered'])
+        # A wanted reverse print still needs the field.
+        self.assertFalse(self.read(ids=(3,), reverse=None, checked=[3], languages=['Deutsch'],
+                                   query='language=3&minCondition=2&isSigned=N&isAltered=N&isReverseHolo=Y')['filtered'])
 
 if __name__ == '__main__':
     unittest.main()

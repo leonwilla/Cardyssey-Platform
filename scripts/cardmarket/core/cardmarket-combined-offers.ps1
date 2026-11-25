@@ -64,6 +64,8 @@ function New-CardmarketOfferRowsExpression {
   if($ReverseCode -notin @('Y','N','0') -or $FirstCode -notin @('Y','N','0')){throw 'INVALID_OFFER_FLAGS'}
   # ConvertTo-Json -AsArray is unavailable in Windows PowerShell 5.1.
   $expected='['+($ids -join ',')+']'
+  # A product without a reverse print has no isReverseHolo field; the URL
+  # may still carry isReverseHolo=N (every offer is non-reverse anyway).
   $expression=@'
 JSON.stringify((()=>{
  const wanted=__IDS__, reverse="__REVERSE__", first="__FIRST__";
@@ -76,7 +78,7 @@ JSON.stringify((()=>{
    ["isSigned","isAltered"].every(k=>u.searchParams.get(k)==="N"&&f.elements.namedItem("extra["+k+"]")?.value==="N")&&
    [["isReverseHolo",reverse],["isFirstEd",first]].every(([k,v])=>{
      const e=f.elements.namedItem("extra["+k+"]");
-     return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&!u.searchParams.has(k)));
+     return v==="0"?(!u.searchParams.has(k)||u.searchParams.get(k)==="0"):(e?(u.searchParams.get(k)===v&&e.value===v):(v==="N"&&(!u.searchParams.has(k)||u.searchParams.get(k)==="N")));
    });
  return {filtered,productId:document.querySelector("input[name=idProduct]")?.value||"",rows:[...document.querySelectorAll(".article-row")].slice(0,1200).map(r=>({
    id:r.id,condition:r.querySelector(".article-condition")?.getAttribute("data-bs-original-title")||r.querySelector(".article-condition")?.getAttribute("title"),

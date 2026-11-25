@@ -584,6 +584,9 @@ $consecutiveProviderTimeouts=0
 # followed by exact live idProduct, card number and set validation.
 $catalogIdLookupUnsupported=$true
 $directUrlFilterSupported=$true
+# One unverified URL filter only falls back for that card; the URL path is
+# switched off for the run after 3 failures in a row.
+$directUrlFilterFailures=0
 try {
   $ordered=@(Get-CardmarketDueCases -Cases $candidateCases -Latest $latest -Processed $processed -NowUtc $nowUtc -Epoch $fullRecheckAfter)
   # Direct-URL cases first; only a few cases per batch may still use search.
@@ -1288,12 +1291,13 @@ try {
                 $firstCheck=if($firstCode -eq '0'){'true'}else{'u.searchParams.get("isFirstEd")==="'+$firstCode+'"'}
                 $filterState=Js (New-CardmarketOfferRowsExpression -LanguageIds $offerLanguageIds -ReverseCode $reverseCode -FirstCode $firstCode) | ConvertFrom-Json
                 $filterValid=($filterState.filtered -and [string]$filterState.productId -eq $candidateId)
-                if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED'}else{$directUrlFilterSupported=$false;$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
+                if($filterValid){$filterOk=$true;$out.filter_mode='CANONICAL_URL_DOM_VERIFIED';$directUrlFilterFailures=0}else{$directUrlFilterFailures++;if($directUrlFilterFailures -ge 3){$directUrlFilterSupported=$false};$out.direct_filter_fallback='PROVIDER_URL_FILTER_NOT_VERIFIED'}
               }
             } catch {
               if([string]$_ -match 'CARDMARKET_PROVIDER_CHALLENGE|CARDMARKET_LOGIN_REQUIRED'){throw}
               $out.direct_filter_fallback='PARAMETERS_NOT_VERIFIED'
-              $directUrlFilterSupported=$false
+              $directUrlFilterFailures++
+              if($directUrlFilterFailures -ge 3){$directUrlFilterSupported=$false}
             }
           }
           if(!$filterOk){
