@@ -9,6 +9,8 @@ param(
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
   [int]$DelaySeconds = 11,
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
+  [ValidateRange(1,90)][int]$MinAjaxGapSeconds = 3,
+  [ValidateRange(0,100000)][int]$RunSeconds = 0,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
   [ValidateRange(5,300)][int]$ChallengeWaitSeconds = 120,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
@@ -278,14 +280,17 @@ function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
 }
 
 $script:lastProviderRequestUtc=[DateTime]::MinValue
-function Wait-CardmarketRequestBudget {
+function Wait-CardmarketRequestBudget([int]$GapSeconds = 0) {
   # Global to this single browser tab/collector process. Limit provider
   # navigation AND AJAX page requests, not merely completed card checks.
   # Keep delays fixed and conservative; never forge browser fingerprints.
+  # A load-more click or a form submit is an XHR on an already loaded page
+  # and is charged the shorter AJAX gap instead of the navigation gap.
+  if($GapSeconds -le 0){$GapSeconds=$MinRequestGapSeconds}
   if($script:lastProviderRequestUtc -ne [DateTime]::MinValue){
     $elapsed=([DateTime]::UtcNow-$script:lastProviderRequestUtc).TotalSeconds
-    if($elapsed -lt $MinRequestGapSeconds){
-      $waitMs=[int][Math]::Ceiling(($MinRequestGapSeconds-$elapsed)*1000)
+    if($elapsed -lt $GapSeconds){
+      $waitMs=[int][Math]::Ceiling(($GapSeconds-$elapsed)*1000)
       if($waitMs -gt 0){Start-Sleep -Milliseconds $waitMs}
     }
   }
@@ -316,7 +321,7 @@ function Move-To([string]$url) {
     # itself if the page is left alone, so look only every 5 s while waiting.
     Start-Sleep -Milliseconds $(if($sawChallenge){5000}else{400})
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,httpStatus:performance.getEntriesByType("navigation")[0]?.responseStatus||0,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
-    if (!$state) { continue }
+    if (!$state) { Start-Sleep -Milliseconds 200; continue }
     $s = $state | ConvertFrom-Json
     $actual = [uri]$s.href
     $sameOrigin = ($actual.Scheme -eq $desired.Scheme -and $actual.Authority -eq $desired.Authority)
@@ -443,9 +448,9 @@ $candidateCases = if ($MaxCases -gt 0) { @($cases | Select-Object -First $MaxCas
 $processed = [Collections.Generic.HashSet[string]]::new()
 $latest = @{}
 if (Test-Path $resultsPath) {
-  Get-Content $resultsPath | ForEach-Object {
+  foreach ($line in [IO.File]::ReadLines($resultsPath)) {
     try {
-      $prev = $_ | ConvertFrom-Json
+      $prev = $line | ConvertFrom-Json
       $key = [string]$prev.key
       if ($key) { $latest[$key] = $prev }
     } catch {}
@@ -588,10 +593,16 @@ try {
     $k='{0}|{1}' -f $c.cardyssey_karte,$c.variante_id
     if(Test-CardmarketNeedsSearch $c $latest[$k]){$needsSearch.Add($c)}else{$direct.Add($c)}
   }
+  # Direct URLs stay first: the search step triggers most provider challenges.
   $ordered=@($direct)+@($needsSearch | Select-Object -First $MaxSearchCasesPerBatch)
   $selected = if ($BatchLimit -gt 0) { @($ordered | Select-Object -First $BatchLimit) } else { $ordered }
+  $runDeadline=if($RunSeconds -gt 0){[DateTime]::UtcNow.AddSeconds($RunSeconds)}else{[DateTime]::MaxValue}
   Save-Progress $processed.Count $runTotal 'RUNNING' ''
   foreach ($case in $selected) {
+    if([DateTime]::UtcNow -ge $runDeadline){
+      Save-Progress $processed.Count $runTotal 'BATCH_COMPLETE_MORE_PENDING' ''
+      break
+    }
     $script:providerBlock=$null
     $combinedTarget=$null
     $offerLanguageIds=@([int]$LangCfg.LanguageId)
@@ -1063,7 +1074,7 @@ try {
               $matchesById += $link
             }
             if ($matchesById.Count -gt 0) { break }
-            Start-Sleep -Seconds ([Math]::Max(3,$DelaySeconds))
+            Start-Sleep -Seconds 2
           }
           if ($matchesById.Count -eq 1) {
             $likely = @($matchesById[0])
@@ -1292,6 +1303,7 @@ try {
               $restoreUrl=([string]$out.url).Split('?')[0]
               if(-not (Move-To $restoreUrl)){throw 'FILTER_RESTORE_PRODUCT_FAILED'}
             }
+            # Form submit reloads the page: full navigation gap.
             Wait-CardmarketRequestBudget
             $filterOk = Js ('(()=>{let f=[...document.forms].find(f=>f.action.includes("Product_Filter_FilterProduct"));let l=f?.querySelector("' + $filterName + '");if(!l)return false;[...f.querySelectorAll("input")].filter(x=>x.name.startsWith("language[")).forEach(x=>x.checked=false);l.checked=true;f.querySelector("[name=minCondition]").value="2";f.querySelector("[name=\"extra[isSigned]\"]").value="N";f.querySelector("[name=\"extra[isAltered]\"]").value="N";const choices=[["extra[isReverseHolo]","'+$reverseCode+'"],["extra[isFirstEd]","'+$firstCode+'"]];for(const [name,want] of choices){const el=f.elements.namedItem(name);if(!el){if(want==="Y")return false;continue;}el.value=want;}f.requestSubmit(f.querySelector("[name=apply]"));return true})()')
             if($filterOk){$out.filter_mode='FORM_SUBMISSION_DOM_VERIFIED'}
@@ -1303,7 +1315,12 @@ try {
             # Never mark a market as complete if the provider still exposes
             # more offers at this limit.
             $offerCap=1200
-            $maxOfferPages=3 # At most three AJAX loads; incomplete lists remain unpublishable.
+            [decimal]$casePrice=0
+            [void][decimal]::TryParse(([string]$case.existing_price_eur).Trim(),
+              [Globalization.NumberStyles]::AllowDecimalPoint,[Globalization.CultureInfo]::InvariantCulture,[ref]$casePrice)
+            # Three pages cover only ~75 offers at 25 rows per click, which is
+            # exactly where expensive cards never become complete.
+            $maxOfferPages=if($casePrice -ge 250){10}elseif($casePrice -ge 100){7}elseif($casePrice -ge 20){5}else{3}
             $rowsExpr = New-CardmarketOfferRowsExpression -LanguageIds $offerLanguageIds -ReverseCode $reverseCode -FirstCode $firstCode
             $data = $null
             for ($fi = 0; $fi -lt 12; $fi++) {
@@ -1325,7 +1342,7 @@ try {
                 if ($beforeRows -ge $offerCap) { $out.pagination_failure='CARDMARKET_COLLECTOR_CAP';break }
                 $out.offer_pages_attempted++
                 # Do not mistake a hidden/disabled load-more button for a successful click.
-                Wait-CardmarketRequestBudget
+                Wait-CardmarketRequestBudget $MinAjaxGapSeconds
                 $clicked=Js '(()=>{const b=document.querySelector("#loadMoreButton");if(!b)return "MISSING";if(b.disabled||b.classList.contains("d-none")||getComputedStyle(b).display==="none")return "DISABLED";b.click();return "CLICKED"})()'
                 if ($clicked -ne 'CLICKED') {
                   $out.pagination_failure=if($clicked -eq 'DISABLED') {'LOAD_MORE_DISABLED_OR_LIMIT_REACHED'} else {'LOAD_MORE_BUTTON_LOST'}
@@ -1579,10 +1596,12 @@ try {
     [void]$processed.Add($key)
     Save-Progress $processed.Count $runTotal 'RUNNING' $case.cardyssey_karte
 
+    # The provider gap is already held before every request. The sleep here
+    # doubled the cadence (11 s lock plus 11 s trailing).
     if ($out.status -in @('MULTIPLE_SEARCH_HITS','NO_EXACT_NUMBER_SEARCH_HIT','PRODUCT_ID_NOT_IN_VERIFIED_SET')) {
-      Start-Sleep -Seconds ([Math]::Max(4, [Math]::Min(6, $DelaySeconds)))
+      Start-Sleep -Seconds 2
     } else {
-      Start-Sleep -Seconds ([Math]::Max(3, $DelaySeconds))
+      Start-Sleep -Milliseconds 500
     }
   }
 
@@ -1595,8 +1614,8 @@ try {
   }
   $statuses = @{}
   if (Test-Path $resultsPath) {
-    Get-Content $resultsPath | ForEach-Object {
-      try { $e = $_ | ConvertFrom-Json; if ($e.key) { $statuses[[string]$e.key] = $e } } catch {}
+    foreach ($line in [IO.File]::ReadLines($resultsPath)) {
+      try { $e = $line | ConvertFrom-Json; if ($e.key) { $statuses[[string]$e.key] = $e } } catch {}
     }
   }
   $validIdentityStatuses = @('FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE','NO_CONFIRMED_FILTERED_OFFERS','FILTER_UNAVAILABLE','FILTER_UNVERIFIED_EMPTY','MAPPED_NO_PRICE_REQUIRED','FILTER_NOT_APPLIED','COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED')

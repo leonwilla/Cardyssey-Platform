@@ -18,14 +18,36 @@ from pathlib import Path
 VALID = {"FILTERED_SAMPLE_REVIEW_NOT_MARKET_WIDE", "NO_CONFIRMED_FILTERED_OFFERS",
          "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED"}
 
+# Must match the collector's offerCap. Anything the collector can produce has
+# to survive this filter, otherwise the most valuable cards (many offers) are
+# dropped although a complete median exists.
+MAX_OFFERS = 1200
+
+def refresh_days_for(row, sample):
+    # Mirrors Get-CardmarketRefreshDays in the collector (same price basis:
+    # the queue's existing_price_eur, scan median only as fallback): >=250 EUR daily,
+    # >=100 EUR weekly, everything else four weeks. Tier 0 is a missing price
+    # and is retried weekly instead of monthly.
+    try:
+        price = float(str(row.get("existing_price_eur") or "").strip() or "nan")
+    except ValueError:
+        price = float("nan")
+    if not math.isfinite(price) and isinstance(sample, (int, float)):
+        price = float(sample)
+    if math.isfinite(price):
+        if price >= 250:
+            return 1
+        if price >= 100:
+            return 7
+    if str(row.get("scan_tier")) == "0" or row.get("needs_price") == "YES":
+        return 7
+    return 28
+
 def select_observations(records, worklist):
     allowed = {(r["cardyssey_karte"], r["variante_id"]):
                set(filter(None, (r.get("cardmarket_ids") or "").split(",")))
                for r in worklist}
-    refresh_days = {(r["cardyssey_karte"],r["variante_id"]):
-                    (7 if str(r.get("scan_tier")) in ("0","1") else
-                     14 if str(r.get("scan_tier")) == "2" else 30)
-                    for r in worklist}
+    worklist_by_key = {(r["cardyssey_karte"], r["variante_id"]): r for r in worklist}
     prepared = {}
     for r in records:
         key = (str(r.get("card_id") or ""), str(r.get("variant_id") or ""))
@@ -37,7 +59,7 @@ def select_observations(records, worklist):
             continue
         count = r.get("verified_lang_nm_offers", r.get("de_nm_offers"))
         lang = r.get("language", "de")
-        if lang not in ("de", "en") or type(count) is not int or count < 0 or count > 300:
+        if lang not in ("de", "en") or type(count) is not int or count < 0 or count > MAX_OFFERS:
             continue
         complete = r.get("all_pages_complete") is True
         if r.get("status") == "COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED" and not complete:
@@ -46,7 +68,7 @@ def select_observations(records, worklist):
             complete = False
         prepared[key] = {
             "language_code": lang, "card_id": key[0], "variant_id": key[1],
-            "refresh_days":refresh_days[key],
+            "refresh_days": refresh_days_for(worklist_by_key.get(key) or {}, sample),
             "query": str(r.get("query") or "")[:255],
             "candidate": {"provider": "CARDMARKET", "product_id": pid,
                           "match_type": "CARDMARKET_FILTERED_ASKING_SAMPLE",
