@@ -1,4 +1,5 @@
 "use client";
+import "./collection.css";
 
 import {
   useEffect,
@@ -1240,443 +1241,165 @@ export default function CollectionPage() {
         .filter(Boolean)
     ).size;
 
+  const topCards = [...items]
+    .filter((item) => item.imageBase)
+    .map((item) => ({ item, value: positionValueEur(item, market) ?? 0 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  const handOrder = topCards.length === 3 ? [topCards[1], topCards[0], topCards[2]] : topCards;
+  const filtersActive = Boolean(query || languageFilter || setFilter || variantFilter || conditionFilter);
+  const resetFilters = () => {
+    setQuery(""); setLanguageFilter(""); setSetFilter(""); setVariantFilter(""); setConditionFilter("");
+    (["language", "set", "variant", "condition"] as CollectionFilterName[]).forEach((name) => persistFilter(name, ""));
+  };
+  const openedGroup = openedSet ? groupedSets.find((group) => group.id === openedSet) : undefined;
+  const collectionTotal = groupedSets.reduce((n, group) => n + group.total, 0);
+
   return (
-    <AppShell
-      active="/collection"
-      user={user}
-    >
-      <section className="pageIntro">
-        <div>
-          <span className="eyebrowText">
-            Meine Sammlung
-          </span>
+    <AppShell active="/collection" user={user}>
+      <div className="cx">
+        <section className="cx-deck" aria-label="Sammlungsübersicht">
+          <div>
+            <span className="cx-eyebrow">Meine Sammlung</span>
+            <h1 className="cx-title">Deine Sammlung</h1>
+            <div className="cx-value">
+              <strong>{loading ? "…" : market === "EBAY" && ebayLoading && total == null ? "Lädt …" : eur(total)}</strong>
+              <div className="cx-toggle" role="group" aria-label="Preismarkt">
+                <button type="button" className={market === "TCG" ? "on" : ""} onClick={() => selectMarket("TCG")}>TCG</button>
+                <button type="button" className={market === "EBAY" ? "on" : ""} onClick={() => selectMarket("EBAY")}>eBay</button>
+              </div>
+            </div>
+            <div className="cx-valueNote">
+              {market === "EBAY"
+                ? (ebayLoading ? `eBay-Werte werden geladen · ${ebayPricedCount}/${items.length} bewertet` : `${ebayPricedCount}/${items.length} Einträge mit eBay-Marktwert`) + (ebayLoadError ? ` · ${ebayLoadError}` : "")
+                : "Sammlungswert nach Cardmarket-Preisen"}
+            </div>
+            <div className="cx-stats">
+              <div className="cx-stat"><b>{count.toLocaleString("de-DE")}</b><span>Karten</span></div>
+              <div className="cx-stat"><b>{items.length.toLocaleString("de-DE")}</b><span>Einträge</span></div>
+              <div className="cx-stat"><b>{setCount}</b><span>Sets begonnen</span></div>
+              <div className="cx-stat"><b>{total != null && count ? eur(total / count) : "—"}</b><span>Ø pro Karte</span></div>
+            </div>
+            <div className="cx-actions">
+              <button type="button" className="cx-add" onClick={() => setAdding(true)}>+ Karte hinzufügen</button>
+            </div>
+          </div>
+          {handOrder.length > 0 && (
+            <div className="cx-hand" aria-label="Deine wertvollsten Karten">
+              {handOrder.map(({ item, value }) => (
+                <button type="button" key={item.key} className="cx-handCard" title={`${item.name} bearbeiten`} onClick={() => setEditing(item)}>
+                  <img src={`${item.imageBase!.replace(/\/$/, "")}/high.webp`} alt={item.name} />
+                  <span className="cx-handPrice">{eur(value)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
-          <h1>
-            Deine Sammlung
-          </h1>
+        {loading && <div className="cx-empty">Sammlung wird geladen …</div>}
+        {error && <div className="statusPanel errorPanel">{error}</div>}
 
-          <p>
-            Karten, Mengen und Marktwerte
-            zentral und synchron verwalten.
-          </p>
-        </div>
-
-        <button
-          className="primaryButton"
-          onClick={
-            () =>
-              setAdding(true)
-          }
-        >
-          + Karte hinzufügen
-        </button>
-      </section>
-
-      {loading && (
-        <div className="statusPanel">
-          Sammlung wird aus
-          Cardyssey geladen …
-        </div>
-      )}
-
-      {error && (
-        <div className="statusPanel errorPanel">
-          {error}
-        </div>
-      )}
-
-      {!loading &&
-        !error && (
+        {!loading && !error && (
           <>
-            <section className="statsGrid collectionStatsGrid">
-              <div className="statCard heroStat">
-                <span>
-                  Sammlungswert
-                </span>
-
-                <strong>
-                  {market === "EBAY" &&
-                  ebayLoading &&
-                  total == null
-                    ? "Lädt …"
-                    : eur(total)}
-                </strong>
-
-                <div className="segmented">
-                  <button
-                    onClick={
-                      () =>
-                        selectMarket(
-                          "TCG"
-                        )
-                    }
-                    className={
-                      market ===
-                      "TCG"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    TCG
-                  </button>
-
-                  <button
-                    onClick={
-                      () =>
-                        selectMarket(
-                          "EBAY"
-                        )
-                    }
-                    className={
-                      market ===
-                      "EBAY"
-                        ? "selected"
-                        : ""
-                    }
-                  >
-                    eBay
-                  </button>
+            <section className="cx-tools" aria-label="Suche und Filter">
+              <div className="cx-toolRow">
+                <label className="cx-search">
+                  <span aria-hidden="true">🔍</span>
+                  <input type="search" aria-label="Suche" placeholder="Name, Set oder Nummer suchen …" value={query} onChange={(event) => setQuery(event.target.value)} />
+                </label>
+                <div className="cx-views" role="group" aria-label="Ansicht">
+                  <button type="button" className={view === "SETS" ? "on" : ""} onClick={() => { setView("SETS"); setOpenedSet(null); }}>Sets</button>
+                  <button type="button" className={view === "CARDS" ? "on" : ""} onClick={() => { setView("CARDS"); setOpenedSet(null); }}>Alle Karten</button>
                 </div>
-
-                {market === "EBAY" && (
-                  <small>
-                    {ebayLoading
-                      ? `eBay-Werte werden geladen · ${ebayPricedCount}/${items.length} Einträge bewertet`
-                      : `${ebayPricedCount}/${items.length} Einträge mit eBay-Marktwert`}
-                  </small>
-                )}
-
-                {market === "EBAY" &&
-                  ebayLoadError && (
-                    <small>
-                      {ebayLoadError}
-                    </small>
-                  )}
               </div>
-
-              <div className="statCard">
-                <span>Karten</span>
-                <strong>
-                  {count}
-                </strong>
-                <small>
-                  inklusive Mengen
-                </small>
+              <div className="cx-filters">
+                <label className={"cx-filter" + (languageFilter ? " on" : "")}>Sprache
+                  <select value={languageFilter} onChange={(event) => { const value = event.target.value; setLanguageFilter(value); persistFilter("language", value); setSetFilter(""); persistFilter("set", ""); }}>
+                    <option value="">Alle</option>
+                    {languageOptions.map((language) => <option key={language} value={language}>{language.toUpperCase()}</option>)}
+                  </select>
+                </label>
+                <label className={"cx-filter" + (setFilter ? " on" : "")}>Set
+                  <select value={setFilter} onChange={(event) => { const value = event.target.value; setSetFilter(value); persistFilter("set", value); }}>
+                    <option value="">Alle</option>
+                    {setOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                  </select>
+                </label>
+                <label className={"cx-filter" + (variantFilter ? " on" : "")}>Variante
+                  <select value={variantFilter} onChange={(event) => { const value = event.target.value; setVariantFilter(value); persistFilter("variant", value); }}>
+                    <option value="">Alle</option>
+                    {variantOptions.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
+                  </select>
+                </label>
+                <label className={"cx-filter" + (conditionFilter ? " on" : "")}>Zustand
+                  <select value={conditionFilter} onChange={(event) => { const value = event.target.value; setConditionFilter(value); persistFilter("condition", value); }}>
+                    <option value="">Alle</option>
+                    {conditionOptions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
+                  </select>
+                </label>
+                <label className="cx-filter">Sortierung
+                  <select value={sort} onChange={(event) => selectSort(event.target.value as CollectionSort)}>
+                    <option value="VALUE_DESC">Wert: hoch → niedrig</option>
+                    <option value="VALUE_ASC">Wert: niedrig → hoch</option>
+                    <option value="NAME_ASC">Name: A → Z</option>
+                    <option value="NAME_DESC">Name: Z → A</option>
+                    <option value="SET_ASC">Set und Kartennummer</option>
+                    <option value="QUANTITY_DESC">Menge: hoch → niedrig</option>
+                    <option value="QUANTITY_ASC">Menge: niedrig → hoch</option>
+                  </select>
+                </label>
+                {filtersActive && <button type="button" className="cx-reset" onClick={resetFilters}>Filter zurücksetzen</button>}
+                <span className="cx-count">{view === "SETS" && !openedSet ? `${groupedSets.length} Sets` : `${visibleCards.length} Einträge`}{filtersActive ? " (gefiltert)" : ""}</span>
               </div>
-
-              <div className="statCard">
-                <span>
-                  Sets begonnen
-                </span>
-                <strong>
-                  {setCount}
-                </strong>
-                <small>
-                  deine Sammlung
-                </small>
-              </div>
-
             </section>
 
-            <section className="sectionBlock collectionSection">
-              <div className="sectionTitle">
-                <div>
-                  <span className="eyebrowText">
-                    Synchronisiert
-                  </span>
-
-                  <h2>{view === "SETS" ? (openedSet
-                    ? groupedSets.find((group) => group.id === openedSet)?.name
-                    : "Deine Sets") : "Deine Karten"}</h2>
-                </div>
-
-                <div className="collectionToolbar">
-                  <label className="collectionSortControl collectionSearchControl">
-                    <span>Suche</span>
-                    <input
-                      type="search"
-                      placeholder="Name, Set oder Nummer"
-                      value={query}
-                      onChange={(event) =>
-                        setQuery(
-                          event.target.value
-                        )
-                      }
-                    />
-                  </label>
-
-                  <label className="collectionSortControl">
-                    <span>Sprache</span>
-                    <select
-                      value={languageFilter}
-                      onChange={(event) => {
-                        const value =
-                          event.target.value;
-                        setLanguageFilter(
-                          value
-                        );
-                        persistFilter(
-                          "language",
-                          value
-                        );
-                        setSetFilter("");
-                        persistFilter(
-                          "set",
-                          ""
-                        );
-                      }}
-                    >
-                      <option value="">
-                        Alle
-                      </option>
-                      {languageOptions.map(
-                        (language) => (
-                          <option
-                            key={language}
-                            value={language}
-                          >
-                            {language.toUpperCase()}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </label>
-
-                  <label className="collectionSortControl">
-                    <span>Set</span>
-                    <select
-                      value={setFilter}
-                      onChange={(event) => {
-                        const value =
-                          event.target.value;
-                        setSetFilter(value);
-                        persistFilter(
-                          "set",
-                          value
-                        );
-                      }}
-                    >
-                      <option value="">
-                        Alle
-                      </option>
-                      {setOptions.map(
-                        ([id, name]) => (
-                          <option
-                            key={id}
-                            value={id}
-                          >
-                            {name}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </label>
-
-                  <label className="collectionSortControl">
-                    <span>Variante</span>
-                    <select
-                      value={variantFilter}
-                      onChange={(event) => {
-                        const value =
-                          event.target.value;
-                        setVariantFilter(
-                          value
-                        );
-                        persistFilter(
-                          "variant",
-                          value
-                        );
-                      }}
-                    >
-                      <option value="">
-                        Alle
-                      </option>
-                      {variantOptions.map(
-                        (variant) => (
-                          <option
-                            key={variant}
-                            value={variant}
-                          >
-                            {variant}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </label>
-
-                  <label className="collectionSortControl">
-                    <span>Zustand</span>
-                    <select
-                      value={conditionFilter}
-                      onChange={(event) => {
-                        const value =
-                          event.target.value;
-                        setConditionFilter(
-                          value
-                        );
-                        persistFilter(
-                          "condition",
-                          value
-                        );
-                      }}
-                    >
-                      <option value="">
-                        Alle
-                      </option>
-                      {conditionOptions.map(
-                        (condition) => (
-                          <option
-                            key={condition}
-                            value={condition}
-                          >
-                            {condition}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </label>
-
-                  <label className="collectionSortControl">
-                    <span>
-                      Sortierung
-                    </span>
-
-                    <select
-                      value={sort}
-                      onChange={
-                        (event) =>
-                          selectSort(
-                            event.target.value as CollectionSort
-                          )
-                      }
-                    >
-                      <option value="VALUE_DESC">
-                        Wert: hoch → niedrig
-                      </option>
-                      <option value="VALUE_ASC">
-                        Wert: niedrig → hoch
-                      </option>
-                      <option value="NAME_ASC">
-                        Name: A → Z
-                      </option>
-                      <option value="NAME_DESC">
-                        Name: Z → A
-                      </option>
-                      <option value="SET_ASC">
-                        Set und Kartennummer
-                      </option>
-                      <option value="QUANTITY_DESC">
-                        Menge: hoch → niedrig
-                      </option>
-                      <option value="QUANTITY_ASC">
-                        Menge: niedrig → hoch
-                      </option>
-                    </select>
-                  </label>
-
-                  {(query ||
-                    languageFilter ||
-                    setFilter ||
-                    variantFilter ||
-                    conditionFilter) && (
-                    <button
-                      type="button"
-                      className="ghostButton"
-                      onClick={() => {
-                        setQuery("");
-                        setLanguageFilter("");
-                        setSetFilter("");
-                        setVariantFilter("");
-                        setConditionFilter("");
-                        (
-                          [
-                            "language",
-                            "set",
-                            "variant",
-                            "condition",
-                          ] as CollectionFilterName[]
-                        ).forEach(
-                          (name) =>
-                            persistFilter(
-                              name,
-                              ""
-                            )
-                        );
-                      }}
-                    >
-                      Filter zurücksetzen
-                    </button>
-                  )}
-
-                </div>
+            {view === "SETS" && openedGroup && (
+              <div className="cx-crumb">
+                <button type="button" onClick={() => setOpenedSet(null)}>← Alle Sets</button>
+                <h2>{openedGroup.name}</h2>
+                <span className="cx-count" style={{ marginLeft: 0 }}>{openedGroup.quantity} Karten · {eur(openedGroup.total)}</span>
               </div>
+            )}
 
-              <div className="collectionViewBar">
-                <button type="button" onClick={() => {setView("SETS");setOpenedSet(null);}}>Sets</button>
-                <button type="button" onClick={() => {setView("CARDS");setOpenedSet(null);}}>Alle Karten</button>
-                {view === "SETS" && openedSet && <button type="button" onClick={() => setOpenedSet(null)}>Zurück zu Sets</button>}
-              </div>
-              {items.length ===
-              0 ? (
-                <div className="statusPanel">
-                  Deine Sammlung
-                  ist noch leer.
-                </div>
-              ) : sortedItems.length ===
-                0 ? (
-                <div className="statusPanel">
-                  Keine Karten für die aktuellen Filter gefunden.
-                </div>
-              ) : view === "SETS" && !openedSet ? (
-                <div className="collectionSetGrid">
-                  {groupedSets.map((group) => (
-                    <button type="button" className="collectionSetCard" key={group.id} onClick={() => setOpenedSet(group.id)}>
-                      <strong>{group.name}</strong>
-                      <span>{group.cards.length} Einträge / {group.quantity} Karten</span>
-                      <b>{eur(group.total)}</b>
+            {items.length === 0 ? (
+              <div className="cx-empty">Deine Sammlung ist noch leer. Füge oben deine erste Karte hinzu oder scanne sie.</div>
+            ) : sortedItems.length === 0 ? (
+              <div className="cx-empty">Keine Karten für diese Filter. <button type="button" className="cx-reset" onClick={resetFilters}>Filter zurücksetzen</button></div>
+            ) : view === "SETS" && !openedSet ? (
+              <div className="cx-sets">
+                {groupedSets.map((group) => {
+                  const covers = group.cards.filter((card) => card.imageBase).slice(0, 3);
+                  const share = collectionTotal > 0 ? group.total / collectionTotal * 100 : 0;
+                  return (
+                    <button type="button" className="cx-set" key={group.id} onClick={() => setOpenedSet(group.id)}>
+                      <div className="cx-stack" aria-hidden="true">
+                        {covers.length ? covers.map((card) => <img key={card.key} src={`${card.imageBase!.replace(/\/$/, "")}/low.webp`} alt="" loading="lazy" />) : <i />}
+                      </div>
+                      <div>
+                        <div className="cx-setName">{group.name}</div>
+                        <div className="cx-setMeta">{group.quantity} {group.quantity === 1 ? "Karte" : "Karten"} · {group.cards.length} {group.cards.length === 1 ? "Eintrag" : "Einträge"}</div>
+                        <div className="cx-setValue">{eur(group.total)}</div>
+                        <div className="cx-share"><i style={{ width: `${Math.max(2, share)}%` }} /></div>
+                        <div className="cx-shareLbl">{share.toLocaleString("de-DE", { maximumFractionDigits: 1 })} % deines Sammlungswerts</div>
+                      </div>
                     </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="cardGrid">
-                  {visibleCards.map(
-                    (item) => {
-                      const hasLiveEbay =
-                        market === "EBAY" &&
-                        Object.prototype.hasOwnProperty.call(
-                          ebayLiveUnitEur,
-                          item.key
-                        );
-
-                      return (
-                        <CardTile
-                          key={
-                            item.id ||
-                            item.key
-                          }
-                          item={item}
-                          market={
-                            market
-                          }
-                          liveUnitEur={
-                            hasLiveEbay
-                              ? ebayLiveUnitEur[
-                                  item.key
-                                ]
-                              : undefined
-                          }
-                          onEdit={
-                            setEditing
-                          }
-                        />
-                      );
-                    }
-                  )}
-                </div>
-              )}
-            </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="cx-binder">
+                {visibleCards.map((item) => {
+                  const hasLiveEbay = market === "EBAY" && Object.prototype.hasOwnProperty.call(ebayLiveUnitEur, item.key);
+                  return (
+                    <CardTile key={item.id || item.key} item={item} market={market}
+                      liveUnitEur={hasLiveEbay ? ebayLiveUnitEur[item.key] : undefined} onEdit={setEditing} />
+                  );
+                })}
+              </div>
+            )}
           </>
         )}
+      </div>
 
       <CollectionItemEditor
         item={editing}
