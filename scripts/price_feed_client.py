@@ -14,10 +14,24 @@ import random
 import time
 from urllib.parse import urlsplit
 import requests
+from email.utils import parsedate_to_datetime
 
 HOSTS={"tcgcsv.com","downloads.s3.cardmarket.com"}
 CACHE=Path(os.environ.get("CARDYSSEY_FEED_CACHE","/home/tv/.local/state/cardyssey-queue/price-feeds"))
 MAX_BYTES=80_000_000
+
+def _published_newer(url,headers,cache):
+    """Cardmarket veröffentlicht die Preisliste einmal täglich (~02:45). Ohne diese Prüfung
+    blieb eine um 00:25 gefüllte Kopie 20 h gültig und alle Läufe nutzten den Vortag.
+    Nach 1 h fragt ein kleiner HEAD-Aufruf, ob die Datei neuer ist als die Kopie."""
+    if urlsplit(url).hostname!="downloads.s3.cardmarket.com" or time.time()-cache.stat().st_mtime<3600:
+        return False
+    try:
+        r=requests.head(url,headers=headers,timeout=(10,20),allow_redirects=False)
+        modified=r.headers.get("Last-Modified") if r.status_code==200 else None
+        return bool(modified) and parsedate_to_datetime(modified).timestamp()>cache.stat().st_mtime
+    except (requests.RequestException,TypeError,ValueError):
+        return False
 
 def fetch_json(url,*,headers=None,max_age=20*3600,timeout=45,attempts=3):
     parsed=urlsplit(url)
@@ -28,7 +42,7 @@ def fetch_json(url,*,headers=None,max_age=20*3600,timeout=45,attempts=3):
     cache=CACHE/(key+".json")
     with (CACHE/(key+".lock")).open("a") as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
-        if cache.exists() and time.time()-cache.stat().st_mtime<max_age:
+        if cache.exists() and time.time()-cache.stat().st_mtime<max_age and not _published_newer(url,headers,cache):
             try:return json.loads(cache.read_text())
             except (ValueError,OSError):pass
         error=None
