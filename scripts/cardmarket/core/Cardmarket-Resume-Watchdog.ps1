@@ -57,6 +57,8 @@ $blockMessage='Cardyssey: Cardmarket will seit über '+$BlockedAlertGraceMinutes
 # Many challenges clear by themselves within minutes. Remember when a block
 # was first seen and alert only if it is still present after the grace time.
 $blockSeenFile=Join-Path $base 'telegram-block-first-seen.json'
+$blockClearedFile=Join-Path $base 'telegram-block-last-cleared.json'
+$BlockFlapMinutes=15
 function Register-CardmarketBlockSeen([string]$ClearanceId) {
   if(Test-Path $blockSeenFile){return}
   # Remember the (expired) clearance fingerprint: resume only once Cardmarket
@@ -64,7 +66,18 @@ function Register-CardmarketBlockSeen([string]$ClearanceId) {
   if(!$ClearanceId){
     try{$ClearanceId=[string]((Get-Content -Raw -Encoding UTF8 (Join-Path $base 'browser-session-status.json') | ConvertFrom-Json).clearanceId)}catch{}
   }
-  @{firstSeen=[DateTime]::UtcNow.ToString('o');clearanceId=$ClearanceId} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockSeenFile
+  # A resume that runs straight into the next challenge is still the same
+  # block: keep its first-seen time, else the alert grace restarts every pass
+  # and the owner never gets a message (seen 25.11.2026, 09:55-11:25 UTC).
+  $first=[DateTime]::UtcNow.ToString('o')
+  if(Test-Path $blockClearedFile){
+    try{
+      $cleared=Get-Content -Raw -Encoding UTF8 $blockClearedFile | ConvertFrom-Json
+      $age=([DateTime]::UtcNow - [DateTime]::Parse([string]$cleared.clearedAt).ToUniversalTime()).TotalMinutes
+      if($age -lt $BlockFlapMinutes -and $cleared.firstSeen){$first=[string]$cleared.firstSeen}
+    }catch{}
+  }
+  @{firstSeen=$first;clearanceId=$ClearanceId} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockSeenFile
 }
 function Test-CardmarketClearanceRenewed([string]$CurrentId) {
   # True when the block is over: a new clearance was issued, the fingerprint is
@@ -76,7 +89,22 @@ function Test-CardmarketClearanceRenewed([string]$CurrentId) {
   try{$first=[DateTime]::Parse([string]$seen.firstSeen).ToUniversalTime()}catch{return $true}
   return ([DateTime]::UtcNow - $first).TotalMinutes -ge $ClearanceWaitMinutes
 }
-function Clear-CardmarketBlockSeen { if(Test-Path $blockSeenFile){Remove-Item -Force $blockSeenFile} }
+function Clear-CardmarketBlockSeen {
+  if(!(Test-Path $blockSeenFile)){return}
+  try{
+    $seen=Get-Content -Raw -Encoding UTF8 $blockSeenFile | ConvertFrom-Json
+    @{firstSeen=[string]$seen.firstSeen;clearedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 $blockClearedFile
+  }catch{}
+  Remove-Item -Force $blockSeenFile
+}
+function Test-CardmarketBlockResolved {
+  # Over only when no new block followed the last resume for the flap window.
+  if(Test-Path $blockSeenFile){return $false}
+  if(!(Test-Path $blockClearedFile)){return $true}
+  try{$cleared=Get-Content -Raw -Encoding UTF8 $blockClearedFile | ConvertFrom-Json
+      return ([DateTime]::UtcNow - [DateTime]::Parse([string]$cleared.clearedAt).ToUniversalTime()).TotalMinutes -ge $BlockFlapMinutes}
+  catch{return $true}
+}
 function Test-CardmarketBlockGraceElapsed {
   if(!(Test-Path $blockSeenFile)){return $false}
   try{$first=[DateTime]::Parse([string]((Get-Content -Raw -Encoding UTF8 $blockSeenFile | ConvertFrom-Json).firstSeen)).ToUniversalTime()}
@@ -106,7 +134,9 @@ try {
     return
   } elseif($diag.status -eq 'AVAILABLE'){
     Clear-CardmarketBlockSeen
-    Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $false
+    # Keep the sent state while the block may come back, else a flapping
+    # block sends a new message every pass.
+    if(Test-CardmarketBlockResolved){Send-CardmarketTelegramAlert 'BLOCKED' $blockMessage $false}
   }
   if($diag.status -eq 'BLOCKED'){Note 'CHALLENGE_STILL_PRESENT';return}
   # Login is an incident in itself; do not wait until 50 cards have been
