@@ -2,9 +2,10 @@
 # Rotate German/English batches so neither backlog can starve the other.
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
-  [ValidateRange(1,1000)][int]$BatchLimit = 60,
+  [ValidateRange(1,1000)][int]$BatchLimit = 200,
   [ValidateRange(4,120)][int]$DelaySeconds = 11,
   [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
+  [ValidateRange(1,90)][int]$MinAjaxGapSeconds = 3,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 50,
   [ValidateRange(0,500)][int]$IndexRequestsPerRun = 100,
@@ -98,8 +99,12 @@ do {
       }
     }
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -ge $deadline){break}
+    # The collector stops itself at the wall clock. Handing it the remaining
+    # seconds keeps the batch inside the live clearance instead of relying on
+    # a fixed case count.
+    $runSeconds=if($RunMinutes -gt 0){[int][Math]::Max(60,($deadline-[DateTime]::UtcNow).TotalSeconds)}else{0}
     Write-Output ('LANGUAGE_BEGIN '+$language+' '+[DateTime]::UtcNow.ToString('o'))
-    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -MinRequestGapSeconds $MinRequestGapSeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
+    & $collector -Language $language -InputCsv (Join-Path $base "queue-$language.csv") -OutputDir $base -CdpPort 9223 -BatchLimit $BatchLimit -DelaySeconds $DelaySeconds -MinRequestGapSeconds $MinRequestGapSeconds -MinAjaxGapSeconds $MinAjaxGapSeconds -RunSeconds $runSeconds -ScanMode $ScanMode -RequireLogin:$RequireLogin
     if(!$?){throw "Collector failed for $language"}
     $progress=Get-Content -Raw (Join-Path $base "progress-$language.json") | ConvertFrom-Json
     Write-Output ('LANGUAGE_END '+$language+' status='+$progress.status+' processed='+$progress.done)
@@ -130,6 +135,8 @@ do {
       $stop=$true;break
     }
     if($SingleBatch){break}
+    # Each collector process starts with an empty request clock, so the gap
+    # to the previous language's last request is held here.
     if($RunMinutes -gt 0 -and [DateTime]::UtcNow -lt $deadline){
       Start-Sleep -Seconds $MinRequestGapSeconds
     }
@@ -137,7 +144,7 @@ do {
   if($stop -or $SingleBatch -or $RunMinutes -eq 0 -or [DateTime]::UtcNow -ge $deadline){break}
   $pending=@($selectedLanguages | Where-Object {-not $done[$_]})
   if($pending.Count -eq 0){break}
-  Start-Sleep -Seconds 25
+  Start-Sleep -Seconds $MinRequestGapSeconds  # new collector process: keep the provider gap
 }while($true)
 Write-Output ('RUNNER_END '+[DateTime]::UtcNow.ToString('o')+
   ' completed='+(@($selectedLanguages | Where-Object {$done[$_]} ) -join ',')+

@@ -118,7 +118,7 @@ if([string]$health.status -ne 'AVAILABLE'){
 if([string]$health.login -ne 'AUTHENTICATED'){
   Write-Output 'CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE'
 }
-Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","60","-DelaySeconds","11","-MinRequestGapSeconds","11","-Languages","both","-RunMinutes","50","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
+Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-BatchLimit","200","-DelaySeconds","11","-MinRequestGapSeconds","11","-Languages","both","-RunMinutes","50","-ScanMode","identity") -RedirectStandardOutput (Join-Path $base "language-queue-stdout.log") -RedirectStandardError (Join-Path $base "language-queue-stderr.log")
 } finally {
   if($ownsLock){$launchLock.ReleaseMutex()}
   $launchLock.Dispose()
