@@ -9,6 +9,8 @@ import {
 
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import "../deck.css";
+import "./scan.css";
 import { mergeScanCandidates, withAbort } from "@/lib/scan-candidates";
 
 const scanLanguages = [
@@ -73,6 +75,8 @@ export default function ScanPage() {
   const recognitionController = useRef<AbortController | null>(null);
   const ocrWorker = useRef<import("tesseract.js").Worker | null>(null);
   const [cameraStarting, setCameraStarting] = useState(false);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   const [cameraActive, setCameraActive] =
     useState(false);
@@ -365,243 +369,164 @@ export default function ScanPage() {
     };
   }, []);
 
+  /** Photo, screenshot or drag & drop: scale to max 1600 px, same path as the camera. */
+  async function takeImageFile(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) {
+      if (file) setError("Bitte ein Bild (JPG, PNG, WEBP) wählen.");
+      return;
+    }
+    stopCamera();
+    setError(null);
+    setCandidates([]);
+    setOcrText("");
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error()); img.src = url; });
+      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      setImage(canvas.toDataURL("image/jpeg", 0.92));
+    } catch {
+      setError("Das Bild konnte nicht gelesen werden.");
+    }
+  }
+
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const file = [...(event.clipboardData?.items ?? [])].find((item) => item.type.startsWith("image/"))?.getAsFile();
+      if (file) { event.preventDefault(); void takeImageFile(file); }
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  });
+
+  const resetScan = () => { setImage(null); setCandidates([]); setOcrText(""); setError(null); };
+  const stage = candidates.length ? 3 : image ? 2 : 1;
+
   return (
     <AppShell active="/scan">
-      <section className="pageIntro scannerPageIntro">
-        <div>
-          <span className="eyebrowText">
-            Scannen
-          </span>
-
-          <h1>Kartenscanner</h1>
-
-          <p>
-            Karte groß ausrichten,
-            aufnehmen und direkt
-            deiner Sammlung zuordnen.
-          </p>
-        </div>
-
-        <label className="scannerLanguageControl">
-          <span>Sprache</span>
-
-          <select
-            value={languageCode}
-            disabled={automaticLanguage}
-            onChange={(event) =>
-              setLanguageCode(
-                event.target.value as
-                  ScanLanguage["api"]
-              )
-            }
-          >
-            {scanLanguages.map(
-              (language) => (
-                <option
-                  key={language.api}
-                  value={language.api}
-                >
-                  {language.label}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-      </section>
-
-      <section className="scannerWorkspace">
-        <div className="scannerFrame webScannerFrame">
-          {cameraActive ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="scannerMedia"
-            />
-          ) : image ? (
-            <img
-              src={image}
-              alt="Aufgenommene Karte"
-              className="scannerMedia contain"
-            />
-          ) : (
-            <div className="scannerEmpty">
-              <span>KAMERA</span>
-              <strong>
-                Bereit für deine Karte
-              </strong>
-              <small>
-                Starte die Kamera und
-                richte deine Karte aus.
-              </small>
+      <div className="dk scanPage">
+        <section className="dk-deck" aria-label="Kartenscanner">
+          <div className="dk-deckGrid">
+            <div>
+              <span className="dk-eyebrow">Scannen</span>
+              <h1 className="dk-title">Kartenscanner</h1>
+              <p className="dk-sub">Foto oder Screenshot rein, Karte erkennen, in die Sammlung legen. Klappt auch mit Bildern aus eBay- oder Cardmarket-Anzeigen.</p>
+              <div className="scanSteps" aria-label="Ablauf">
+                {["Bild", "Erkennen", "Hinzufügen"].map((label, index) => (
+                  <span key={label} className={stage > index + 1 ? "done" : stage === index + 1 ? "on" : ""}><b>{index + 1}</b>{label}</span>
+                ))}
+              </div>
             </div>
-          )}
+            <div className="scanLang">
+              <span className="dk-eyebrow">Sprache der Karte</span>
+              <div className="dk-toggle" role="group" aria-label="Spracherkennung">
+                <button type="button" className={automaticLanguage ? "on" : ""} onClick={() => setAutomaticLanguage(true)}>Automatisch</button>
+                <button type="button" className={!automaticLanguage ? "on" : ""} onClick={() => setAutomaticLanguage(false)}>Festlegen</button>
+              </div>
+              {!automaticLanguage && (
+                <label className="dk-deckSelect">Sprache
+                  <select value={languageCode} onChange={(event) => setLanguageCode(event.target.value as ScanLanguage["api"])}>
+                    {scanLanguages.map((language) => <option key={language.api} value={language.api}>{language.label}</option>)}
+                  </select>
+                </label>
+              )}
+              <small>{automaticLanguage ? "Sucht in allen 6 Sprachen – etwas langsamer." : `Sucht nur auf ${selectedLanguage.label} – schneller.`}</small>
+            </div>
+          </div>
+        </section>
 
+        <section className="scanWork">
           <div
-            className="scannerCardGuide"
-            aria-hidden="true"
+            className={"scanStage" + (dragging ? " drag" : "") + (image || cameraActive ? " filled" : "")}
+            onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); void takeImageFile(event.dataTransfer.files?.[0]); }}
           >
-            <span className="scanLine" />
+            {cameraActive ? (
+              <video ref={videoRef} autoPlay playsInline muted className="scanMedia" />
+            ) : image ? (
+              <img src={image} alt="Gewählte Karte" className="scanMedia contain" />
+            ) : (
+              <div className="scanDrop">
+                <div className="scanGhostCard" aria-hidden="true"><span>?</span></div>
+                <strong className="onDesk">Karte hier ablegen</strong>
+                <strong className="onTouch">Bereit für deine Karte</strong>
+                <small className="onDesk">Bild hierher ziehen, <kbd>Strg</kbd>+<kbd>V</kbd> zum Einfügen oder rechts auswählen</small>
+                <small className="onTouch">Tippe auf „Foto oder Screenshot wählen“ – die Kamera öffnet sich direkt.</small>
+              </div>
+            )}
+            <div className="scanCorners" aria-hidden="true"><i /><i /><i /><i />{(cameraActive || recognizing) && <span className="scanBeam" />}</div>
           </div>
 
-        </div>
-
-        <div className="scannerModeBlock">
-          <div className="scannerModeLabel">
-            <span>SCAN-MODUS</span>
-            <small>
-              {automaticLanguage
-                ? "Sprache automatisch"
-                : "Sprache manuell"}
-            </small>
-          </div>
-
-          <div className="scannerModeSwitch">
-            <button
-              type="button"
-              className={
-                !automaticLanguage
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setAutomaticLanguage(false)
-              }
-            >
-              STANDARD
-            </button>
-
-            <button
-              type="button"
-              className={
-                automaticLanguage
-                  ? "selected"
-                  : ""
-              }
-              onClick={() =>
-                setAutomaticLanguage(true)
-              }
-            >
-              AUTO
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="statusPanel errorPanel scannerError">
-            {error}
-          </div>
-        )}
-
-        <div className="scannerActions">
-          {!cameraActive && (
-            <button
-              className="primaryButton scannerMainAction"
-              onClick={startCamera}
-              disabled={cameraStarting || recognizing}
-            >
-              {cameraStarting ? "Kamera wird geöffnet …" : "Kamera starten"}
-            </button>
-          )}
-
-          {cameraActive && (
-            <button
-              className="primaryButton scannerMainAction"
-              onClick={capture}
-            >
-              Foto aufnehmen
-            </button>
-          )}
-
-        </div>
-
-        {image && (
-          <div className="scannerReviewActions">
-            <button
-              className="ghostButton"
-              disabled={recognizing}
-              onClick={() => {
-                setImage(null);
-                setCandidates([]);
-                setOcrText("");
-              }}
-            >
-              Neu aufnehmen
-            </button>
-
-            <button
-              className="primaryButton"
-              onClick={recognizeCard}
-              disabled={recognizing}
-            >
-              {recognizing
-                ? "Erkenne Karte …"
-                : "Karte erkennen"}
-            </button>
-          </div>
-        )}
+          <aside className="scanSide">
+            {!image && !cameraActive && (
+              <>
+                <button type="button" className="scanSource primary" onClick={() => fileInput.current?.click()} disabled={recognizing}>
+                  <span className="scanIcon">🖼</span><span><b>Foto oder Screenshot wählen</b><small>Am Handy öffnet sich direkt die Kamera</small></span>
+                </button>
+                <input ref={fileInput} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { void takeImageFile(event.target.files?.[0]); event.target.value = ""; }} />
+                <button type="button" className="scanSource" onClick={startCamera} disabled={cameraStarting || recognizing}>
+                  <span className="scanIcon">📷</span><span><b>{cameraStarting ? "Kamera wird geöffnet …" : "Live-Kamera"}</b><small>Webcam oder Handy-Kamera im Browser</small></span>
+                </button>
+                <div className="scanSource tip">
+                  <span className="scanIcon">📋</span><span><b>Bild einfügen</b><small>Screenshot kopieren, dann hier <kbd>Strg</kbd>+<kbd>V</kbd></small></span>
+                </div>
+              </>
+            )}
+            {cameraActive && (
+              <>
+                <button type="button" className="dk-gold scanBig" onClick={capture}>● Foto aufnehmen</button>
+                <button type="button" className="dk-ghost" onClick={stopCamera}>Kamera schließen</button>
+                <p className="scanHint">Karte gerade und formatfüllend in den Rahmen halten, ohne Spiegelung.</p>
+              </>
+            )}
+            {image && (
+              <>
+                <button type="button" className="dk-gold scanBig" onClick={recognizeCard} disabled={recognizing}>{recognizing ? "Erkenne Karte …" : "✦ Karte erkennen"}</button>
+                <button type="button" className="dk-ghost" disabled={recognizing} onClick={resetScan}>Anderes Bild</button>
+                {recognizing && <p className="scanHint">Text und Bild werden abgeglichen{automaticLanguage ? " – in allen Sprachen" : ""}. Das dauert ein paar Sekunden.</p>}
+              </>
+            )}
+            {error && <div className="statusPanel errorPanel" role="alert">{error}</div>}
+          </aside>
+        </section>
 
         {candidates.length > 0 && (
-          <div className="scannerCandidates scannerResultPanel">
-            <span className="eyebrowText">
-              Erkannte Karten
-            </span>
-
-            <div className="scannerCandidateGrid">
-              {candidates.map(
-                (card) => (
-                  <button
-                    type="button"
-                    className="scannerCandidate"
-                    key={card.recognizedLanguage + ":" + card.id}
-                    onClick={() =>
-                      router.push(
-                        `/collection?addCard=${encodeURIComponent(
-                          card.id
-                        )}&language=${encodeURIComponent(
-                          card.recognizedLanguage ??
-                            selectedLanguage.api
-                        )}`
-                      )
-                    }
-                  >
-                    <strong>
-                      {card.name}
-                    </strong>
-
-                    <span>
-                      {card.setName ??
-                        card.setId}
-                      {" · #"}
-                      {card.localId}
-                      {" · "}
-                      {scanLanguageLabel(
-                        card.recognizedLanguage ??
-                          selectedLanguage.api
-                      )}
-                    </span>
-
-                    <small>
-                      Zur Sammlung hinzufügen →
-                    </small>
+          <section aria-label="Erkannte Karten" style={{ display: "grid", gap: 12 }}>
+            <div className="scanResultHead"><h2>Treffer</h2><span className="dk-count">{candidates.length} mögliche Karten · antippen zum Hinzufügen</span></div>
+            <div className="dk-binder">
+              {candidates.map((card, index) => {
+                const language = card.recognizedLanguage ?? selectedLanguage.api;
+                const img = card.imageBase ? `${String(card.imageBase).replace(/\/$/, "")}/low.webp` : null;
+                return (
+                  <button type="button" className="dk-pocket" key={card.recognizedLanguage + ":" + card.id}
+                    onClick={() => router.push(`/collection?addCard=${encodeURIComponent(card.id)}&language=${encodeURIComponent(language)}`)}>
+                    <div className="dk-art">
+                      {img && <img src={img} alt={card.name} loading="lazy" />}
+                      {index === 0 && <span className="dk-badge gold">Bester Treffer</span>}
+                      <span className="dk-plus">+ Zur Sammlung</span>
+                    </div>
+                    <div className="dk-name">{card.name}</div>
+                    <div className="dk-meta">{card.setName ?? card.setId} · #{card.localId} · {scanLanguageLabel(language)}</div>
                   </button>
-                )
-              )}
+                );
+              })}
             </div>
-          </div>
+          </section>
         )}
 
         {ocrText && (
           <details className="scannerOcrDebug">
-            <summary>
-              Erkannten Text anzeigen
-            </summary>
-
+            <summary>Erkannten Text anzeigen</summary>
             <pre>{ocrText}</pre>
           </details>
         )}
-      </section>
+      </div>
     </AppShell>
   );
 }
