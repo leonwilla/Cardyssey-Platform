@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import { EbayPriceHistoryChart } from "@/components/EbayPriceHistoryChart";
+import { TcgPriceHistoryChart } from "@/components/TcgPriceHistoryChart";
 
 import type {
   PortfolioItem,
@@ -749,6 +750,10 @@ export function CollectionItemEditor({
               })}
             </div>
           </div>
+        )}
+
+        {effectiveMarket !== "EBAY" && item.variantSpec?.id && (
+          <TcgPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
         )}
 
         {effectiveMarket === "EBAY" && item.variantSpec?.id && (
