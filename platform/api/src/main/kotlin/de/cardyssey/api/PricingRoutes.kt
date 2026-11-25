@@ -56,6 +56,61 @@ fun Route.pricingRoutes(
                 }
                 call.respond(EbayHistoryResponse(id,language,variantId,history))
             }
+            // Shown TCG price over time (DE/EN: Cardmarket only), one value per
+            // day (last change of that day), plus the value before the range
+            // start so the line starts at the left edge.
+            get("/tcg-history/{id}") {
+                val id = call.parameters["id"]?.trim().orEmpty()
+                val language = call.request.queryParameters["language"]?.trim()?.lowercase() ?: "de"
+                val variantId = call.request.queryParameters["variantId"]?.trim().orEmpty()
+                val days = tcgHistoryDays(call.request.queryParameters["days"])
+                if (!id.matches(Regex("[a-zA-Z0-9_-]{2,90}")) || days == null ||
+                    !catalog.validLanguage(language) || !variantId.matches(Regex("[a-zA-Z0-9_:-]{2,100}"))) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid_history_query"))
+                    return@get
+                }
+                val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    dataSource.connection.use { connection ->
+                        connection.prepareStatement("""
+                            WITH rows AS (
+                                SELECT (captured_at AT TIME ZONE 'Europe/Berlin')::date AS day, captured_at, base_eur
+                                FROM tcg_price_history
+                                WHERE card_id=? AND language_code=? AND variant_id=? AND base_eur > 0
+                                  AND upper(COALESCE(source,'')) NOT LIKE 'TCGDEX%'
+                                  AND (language_code NOT IN ('de','en')
+                                       OR upper(COALESCE(source,'')) LIKE 'CARDMARKET%'
+                                       OR upper(COALESCE(source,'')) LIKE 'MANUAL%'
+                                       OR upper(COALESCE(source,'')) LIKE 'ADMIN%')
+                            ), daily AS (
+                                SELECT DISTINCT ON (day) day, base_eur FROM rows ORDER BY day, captured_at DESC
+                            )
+                            SELECT day, base_eur, (SELECT MIN(day) FROM daily) AS first_day FROM daily
+                            WHERE ? = 0 OR day >= (NOW() AT TIME ZONE 'Europe/Berlin')::date - ?
+                               OR day = (SELECT MAX(day) FROM daily
+                                         WHERE day < (NOW() AT TIME ZONE 'Europe/Berlin')::date - ?)
+                            ORDER BY day
+                        """.trimIndent()).use { query ->
+                            query.setString(1, id)
+                            query.setString(2, language)
+                            query.setString(3, variantId)
+                            query.setInt(4, days)
+                            query.setInt(5, days)
+                            query.setInt(6, days)
+                            query.executeQuery().use { results ->
+                                var firstDay: String? = null
+                                val points = buildList {
+                                    while (results.next()) {
+                                        firstDay = results.getDate("first_day")?.toString()
+                                        add(TcgHistoryPoint(results.getDate("day").toString(), results.getDouble("base_eur")))
+                                    }
+                                }
+                                points to firstDay
+                            }
+                        }
+                    }
+                }
+                call.respond(TcgHistoryResponse(id, language, variantId, days, result.second, result.first))
+            }
             get("/cards/{id}") {
                 val cardId =
                     call.parameters["id"]
@@ -223,4 +278,29 @@ data class EbayHistoryResponse(
     val languageCode: String,
     val variantId: String,
     val points: List<EbayHistoryPoint>
+)
+
+/** Allowed chart ranges in days; 0 = everything recorded. */
+internal val TCG_HISTORY_RANGES = setOf(0, 7, 30, 90, 365)
+
+internal fun tcgHistoryDays(raw: String?): Int? {
+    val value = raw?.trim().orEmpty()
+    if (value.isEmpty()) return 30
+    return value.toIntOrNull()?.takeIf { it in TCG_HISTORY_RANGES }
+}
+
+@Serializable
+data class TcgHistoryPoint(
+    val date: String,
+    val eur: Double
+)
+
+@Serializable
+data class TcgHistoryResponse(
+    val cardId: String,
+    val languageCode: String,
+    val variantId: String,
+    val days: Int,
+    val recordedSince: String?,
+    val points: List<TcgHistoryPoint>
 )
