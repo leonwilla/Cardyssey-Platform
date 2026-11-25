@@ -36,11 +36,4 @@ class SessionWarmupTests(unittest.TestCase):
   self.assertNotIn('PHPSESSID',s)
   self.assertNotIn('captcha.solve',s.lower())
   self.assertNotIn('User_Login',s)
- def test_morning_script_never_runs_on_wrong_date_or_old_guide(self):
-  s=(source_path('cardmarket-next-day-delta-20261112.py')).read_text()
-  self.assertIn("!='2026-11-12'",s)
-  self.assertIn('if not after or after<=before:',s)
-  self.assertIn('dry_run=True',s)
-  self.assertIn('PREVIEW_ONLY_SCANNER_ACTIVE',s)
-  self.assertIn("guard.returncode",s)
 if __name__=='__main__':unittest.main()

@@ -52,11 +52,8 @@ class BrowserOptimizationTests(unittest.TestCase):
         data=json.loads(p.read_text())
         self.assertEqual(data['source'],'CARDYSSEY_DIAGNOSTIC_ONLY')
         ps=self.source('cardmarket-offer-comments.ps1')
-        py=self.source('cardmarket_variant_resolver.py')
         self.assertIn("$rulePath=Join-Path $PSScriptRoot 'cardmarket-comment-rules.json'",ps)
-        self.assertIn("COMMENT_RULES_PATH=",py)
         self.assertIn("return 'SHORTHAND_HINT'",ps)
-        self.assertIn('return "shorthand_hint"',py)
     def test_no_modification_of_pricing_cache_and_job_refresh(self):
         runner=self.source('Cardmarket-Queue-Runner.ps1')
         weekly=self.source('run-cardmarket-identity-weekly.py')

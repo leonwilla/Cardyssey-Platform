@@ -9,7 +9,6 @@ Windows-Profil `%LOCALAPPDATA%\Cardyssey\CardmarketCollector`.
 | `core/` | Produktive Scanner, Windows-Launcher, Sessionprüfung, Feed- und Queue-Sync, Preis- und Variantengates, Delta-Workflow |
 | `admin/` | Serverseitige Skripte für Next.js-Admin, Monitoring, Einzelprüfung und Druckvarianten-Review |
 | `tests/` | Vollständige Python-/PowerShell-Regressionen und kanonischer Test-Datei-Locator |
-| `archive/` | Historische Reparatur-, Prüf- und Probe-Skripte. Nicht für Automationsbetrieb verwenden. |
 
 **Hinweis zur Größe:** Es liegen mehr als 15 Dateien im Kern, weil der bestehende
 Dauerbetrieb viele eigenständige Schritte enthält (DE/EN-Importe, Queue-Export,
@@ -18,10 +17,19 @@ nur Skripte verschoben, für die kein aktiver Cron- oder Wochenlauf-Aufruf
 bekannt ist. Aktive `repair-`-, `reconcile-`- und `audit-`-Schritte bleiben im
 `core/`, solange der Wochenlauf sie benötigt.
 
+## Aufgeräumt am 25.11.2026
+
+Alle Skripte, die von keinem Cron-Job, keiner Windows-Aufgabe, keinem Workflow,
+keiner Admin-Seite und keinem anderen genutzten Skript aufgerufen wurden, sind
+entfernt (Ordner `archive/` komplett, dazu u. a. `cardmarket_variant_resolver.py`,
+`cardmarket-lightweight-search.ps1`, `apply-cardmarket-offline-review.py`).
+Sie bleiben in der Git-Historie (Commit „Cardmarket aufgeräumt“). Behalten
+wurden die Installations-Skripte für Windows (`Cardmarket-Collector-Install.ps1`,
+`Install-Cardmarket-Telegram-Alerts.ps1`, `Cardmarket-Watchdog-Interval.ps1`).
+
 ## Live-Aufrufpfade
 
 - Wochenlauf: `scripts/cardmarket/core/run-cardmarket-identity-weekly.py --apply`
-- Delta-Vergleich am 12.11.2026: `scripts/cardmarket/core/cardmarket-next-day-delta-20261112.py`
 - Browser-Skripte im Quellcode: `scripts/cardmarket/core/*.ps1`
 - Windows-Installation: `python3 scripts/cardmarket/core/deploy-windows-modules.py --apply`.
   **Wichtig:** Die Installation kopiert ausschließlich Module/Regelkonfiguration
