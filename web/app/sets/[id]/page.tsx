@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import type { PortfolioItem, User } from "@/lib/types";
+import { positionValueEur } from "@/lib/pricing";
+import "../../deck.css";
+import "../sets.css";
 
 type SetCard = {
   id: string;
@@ -39,6 +42,7 @@ export default function SetDetailsPage() {
   const [fallback, setFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
+  const [show, setShow] = useState<"all" | "owned" | "missing">("all");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -91,135 +95,101 @@ export default function SetDetailsPage() {
     return () => controller.abort();
   }, [params.id, router, language, retry]);
 
-  const owned = useMemo(
-    () =>
-      new Set(
-        items
-          .filter(
-            (item) =>
-              item.languageCode === language
-          )
-          .map((item) => item.cardId)
-      ),
-    [items, language]
-  );
+  const mine = useMemo(() => {
+    const byCard = new Map<string, { quantity: number; value: number }>();
+    for (const item of items) {
+      if (item.languageCode !== language) continue;
+      const entry = byCard.get(item.cardId) ?? { quantity: 0, value: 0 };
+      entry.quantity += item.quantity;
+      entry.value += positionValueEur(item, "TCG") ?? 0;
+      byCard.set(item.cardId, entry);
+    }
+    return byCard;
+  }, [items, language]);
+  const owned = useMemo(() => new Set(mine.keys()), [mine]);
 
-  if (loading) {
+  if (loading || !set) {
     return (
       <AppShell active="/sets" user={user}>
-        <div className="statusPanel">
-          Set wird geladen …
+        <div className="dk">
+          {loading ? <div className="dk-empty">Set wird geladen …</div> : (
+            <div className="dk-empty">Keine Set-Daten verfügbar. <button className="dk-ghost" onClick={() => setRetry((value) => value + 1)}>Erneut versuchen</button></div>
+          )}
         </div>
       </AppShell>
     );
   }
 
-  if (!set) {
-    return (
-      <AppShell active="/sets" user={user}>
-        <div className="statusPanel errorPanel">
-          Keine Set-Daten verfügbar.
-          <button className="ghostButton" onClick={() => setRetry(value => value + 1)}>Erneut versuchen</button>
-        </div>
-      </AppShell>
-    );
-  }
-
-  const ownedCount =
-    set.cards.filter((card) => owned.has(card.id)).length;
-
-  const percent =
-    set.officialCount > 0
-      ? (ownedCount / set.officialCount) * 100
-      : null;
+  const ownedCount = set.cards.filter((card) => owned.has(card.id)).length;
+  const total = set.officialCount > 0 ? set.officialCount : set.cards.length;
+  const percent = total > 0 ? Math.min(100, (ownedCount / total) * 100) : 0;
+  const setValue = set.cards.reduce((n, card) => n + (mine.get(card.id)?.value ?? 0), 0);
+  const copies = set.cards.reduce((n, card) => n + (mine.get(card.id)?.quantity ?? 0), 0);
+  const shown = set.cards.filter((card) => show === "all" || (show === "owned") === owned.has(card.id));
+  const eur = (v: number) => v.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+  const add = (id: string) => router.push(`/collection?addCard=${encodeURIComponent(id)}&language=${encodeURIComponent(language)}`);
 
   return (
     <AppShell active="/sets" user={user}>
-      <section className="pageIntro">
-        <div>
-          <span className="eyebrowText">{set.id}</span>
-          <h1>{set.name}</h1>
-
-          {fallback ? (
-            <p>
-              {ownedCount} gesammelte Karten ·
-              TCGdex aktuell nicht erreichbar
-            </p>
-          ) : (
-            <p>
-              {ownedCount} / {set.officialCount} Karten ·{" "}
-              {percent?.toFixed(1)} %
-            </p>
-          )}
-        </div>
-      </section>
-
-      {fallback && (
-        <div className="statusPanel">
-          Offline-/Cache-Modus: Es werden momentan nur
-          Karten angezeigt, die bereits in deiner Sammlung
-          gespeichert sind.
-        </div>
-      )}
-
-      <div className="cardGrid">
-        {set.cards.map((card) => {
-          const isOwned = owned.has(card.id);
-
-          const image = card.imageBase
-            ? `${card.imageBase.replace(/\/$/, "")}/high.webp`
-            : null;
-
-          return (
-            <button
-              type="button"
-              key={card.id}
-              className={`cardTile setCardButton ${
-                isOwned ? "ownedSetCard" : ""
-              }`}
-              onClick={() =>
-                router.push(
-                  `/collection?addCard=${encodeURIComponent(
-                    card.id
-                  )}&language=${encodeURIComponent(language)}`
-                )
-              }
-              aria-label={`${card.name} zur Sammlung hinzufügen`}
-            >
-              <div className="cardImageWrap">
-                {image ? (
-                  <img
-                    src={image}
-                    alt={card.name}
-                    className="cardImage"
-                  />
-                ) : (
-                  <div className="cardImagePlaceholder" />
-                )}
+      <div className="dk">
+        <section className="dk-deck" aria-label={set.name}>
+          <div className="dk-deckGrid">
+            <div>
+              <button type="button" className="setBack" onClick={() => router.push("/sets")}>← Set-Bibliothek</button>
+              <span className="dk-eyebrow">{set.id} · {language.toUpperCase()}</span>
+              <h1 className="dk-title">{set.name}</h1>
+              <div className="dk-stats">
+                <div className="dk-stat"><b>{ownedCount}{fallback ? "" : ` / ${total}`}</b><span>Karten gesammelt</span></div>
+                <div className="dk-stat"><b>{fallback ? "–" : Math.max(0, total - ownedCount)}</b><span>fehlen noch</span></div>
+                <div className="dk-stat"><b>{copies}</b><span>Exemplare</span></div>
+                <div className="dk-stat"><b>{eur(setValue)}</b><span>Wert deiner Karten</span></div>
               </div>
-
-              <div className="cardMeta">
-                <strong>{card.name}</strong>
-
-                <div className="muted">
-                  #{card.localId || "—"}
-                </div>
-
-                <div className="chips">
-                  <span className="chip">
-                    {isOwned ? "✓ In Sammlung" : "Fehlt"}
-                  </span>
-
-                  <span className="chip setCardAction">
-                    {isOwned
-                      ? "+ Weiteres Exemplar"
-                      : "+ Hinzufügen"}
-                  </span>
+            </div>
+            {!fallback && (
+              <div className="setRingWrap">
+                <div className="dk-ring" style={{ "--p": Math.round(percent), "--s": "150px" } as React.CSSProperties}>
+                  <div><b>{Math.round(percent)}%</b><span>{percent >= 100 ? "Komplett ★" : "komplett"}</span></div>
                 </div>
               </div>
-            </button>
-          );
-        })}
+            )}
+          </div>
+        </section>
+
+        {fallback && <div className="dk-note">Offline-Modus: Es werden nur Karten angezeigt, die schon in deiner Sammlung sind.</div>}
+
+        <section className="dk-tools">
+          <div className="dk-toolRow">
+            <div className="dk-seg" role="group" aria-label="Anzeigen">
+              {([["all", "Alle", set.cards.length], ["owned", "Habe ich", ownedCount], ["missing", "Fehlt", set.cards.length - ownedCount]] as const).map(([value, label, n]) => (
+                <button key={value} type="button" className={show === value ? "on" : ""} onClick={() => setShow(value)}>{label}<b>{n}</b></button>
+              ))}
+            </div>
+            <span className="dk-count">Fehlende Karte antippen = zur Sammlung hinzufügen</span>
+          </div>
+        </section>
+
+        {shown.length === 0 ? (
+          <div className="dk-empty">{show === "missing" ? "Nichts mehr offen – Set komplett! ★" : "Noch keine Karte aus diesem Set."}</div>
+        ) : (
+          <div className="dk-binder">
+            {shown.map((card) => {
+              const have = mine.get(card.id);
+              const image = card.imageBase ? `${card.imageBase.replace(/\/$/, "")}/low.webp` : null;
+              return (
+                <button type="button" key={card.id} className={"dk-pocket" + (have ? "" : " missing")} onClick={() => add(card.id)}
+                  aria-label={`${card.name} ${have ? "– weiteres Exemplar hinzufügen" : "zur Sammlung hinzufügen"}`}>
+                  <div className="dk-art">
+                    {image && <img src={image} alt={card.name} loading="lazy" />}
+                    {have ? <span className="dk-badge gold">✓ {have.quantity}×</span> : <span className="dk-badge">#{card.localId || "—"}</span>}
+                    <span className="dk-plus">{have ? "+ Weiteres Exemplar" : "+ Hinzufügen"}</span>
+                  </div>
+                  <div className="dk-name">{card.name}</div>
+                  <div className="dk-meta">#{card.localId || "—"}{have && have.value > 0 ? ` · ${eur(have.value)}` : ""}</div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AppShell>
   );

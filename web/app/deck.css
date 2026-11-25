@@ -1,0 +1,103 @@
+/* Cardyssey "Kartendeck" – gemeinsame Bausteine für die Nutzerseiten
+   (Scanner, Sets, …). Dunkler Deck-Kopf mit Goldfolie und Holo-Kante,
+   Karten hochkant wie im Sammelordner. Farben aus den App-Tokens, damit
+   Hell/Dunkel und Farbthemen greifen. */
+.dk{
+  --dk-ink:var(--appearance-ink,#22312b);
+  --dk-muted:var(--appearance-muted,#5f6c65);
+  --dk-card:var(--appearance-panel,#fffaf3);
+  --dk-soft:var(--appearance-soft,#eee6d9);
+  --dk-line:var(--appearance-outline,#ddd0c0);
+  --dk-accent:var(--light-accent,#a66c20);
+  --dk-deck:#1d2a24;--dk-deck-2:#26372f;
+  --dk-gold:#e4bd6a;--dk-gold-2:#b98742;
+  --dk-ok:#2f9b6a;
+  --dk-holo:linear-gradient(115deg,#f3d27a 0%,#f7a8c4 22%,#9fd7f2 44%,#b6f0c4 64%,#f3d27a 86%);
+  display:grid;gap:22px;color:var(--dk-ink);font-variant-numeric:tabular-nums;
+}
+:root[data-brightness="dark"] .dk{--dk-deck:#0f1512;--dk-deck-2:#18211c}
+
+/* ---------- Deck-Kopf ---------- */
+.dk-deck{position:relative;overflow:hidden;border-radius:28px;padding:30px;color:#f5efe5;
+  background:
+    radial-gradient(90% 120% at 100% 50%,#3d5547 0%,transparent 60%),
+    repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 34px),
+    repeating-linear-gradient(0deg,#ffffff07 0 1px,transparent 1px 34px),
+    linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck));
+  box-shadow:0 22px 60px #1d2a2433}
+.dk-deck::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--dk-holo)}
+.dk-deckGrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:center}
+.dk-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;color:var(--dk-gold)}
+.dk-title{margin:6px 0 4px;padding-bottom:.1em;font-size:clamp(32px,4.6vw,52px);line-height:1;font-weight:950;letter-spacing:-.02em;
+  background:linear-gradient(100deg,#fff6df 0%,var(--dk-gold) 45%,#fff1c9 60%,var(--dk-gold-2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.dk-sub{margin:0;max-width:620px;font-size:14px;color:#d5d9d2}
+.dk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:18px}
+.dk-stat{padding:11px 12px;border-radius:14px;background:linear-gradient(170deg,#ffffff14,#ffffff06);border:1px solid #ffffff1f}
+.dk-stat b{display:block;font-size:22px;font-weight:950;color:#fff8e8;line-height:1.1}
+.dk-stat span{font-size:11px;color:#c9d1c9;font-weight:700}
+.dk-gold{border:0;border-radius:13px;padding:11px 18px;font-weight:950;font-size:14px;cursor:pointer;color:#22190b;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(180deg,#f0d18c,#c4924a);box-shadow:0 8px 22px #c4924a44}
+.dk-gold:hover:not(:disabled){filter:brightness(1.06)}
+.dk-gold:disabled{opacity:.55;cursor:not-allowed}
+.dk-ghost{border:1px solid var(--dk-line);border-radius:13px;padding:10px 16px;font-weight:900;font-size:14px;cursor:pointer;background:var(--dk-card);color:var(--dk-ink)}
+.dk-ghost:hover:not(:disabled){border-color:var(--dk-accent);color:var(--dk-accent)}
+.dk-ghost:disabled{opacity:.55;cursor:not-allowed}
+.dk-deck .dk-ghost{background:#ffffff12;border-color:#ffffff2a;color:#f5efe5}
+.dk-toggle{display:inline-flex;padding:3px;border-radius:12px;background:#ffffff14;border:1px solid #ffffff22}
+.dk-toggle button{border:0;background:transparent;color:#d9dfd8;font-weight:900;font-size:13px;padding:6px 14px;border-radius:9px;cursor:pointer}
+.dk-toggle button.on{background:linear-gradient(180deg,#e9c77d,#c4924a);color:#22190b}
+.dk-deckSelect{display:inline-flex;align-items:center;gap:8px;border-radius:12px;background:#ffffff12;border:1px solid #ffffff22;padding:0 4px 0 12px;font-size:12px;font-weight:850;color:#d9dfd8}
+body .dk .dk-deckSelect select{border:0!important;background:transparent!important;box-shadow:none!important;color:#fff8e8;font-weight:900;min-height:36px;padding:0 6px!important}
+body .dk .dk-deckSelect select option{color:#22312b}
+
+/* Fortschrittsring (conic) */
+.dk-ring{--p:0;--s:120px;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;flex:none;
+  background:conic-gradient(var(--dk-gold) calc(var(--p)*1%),#ffffff1c 0)}
+.dk-ring>div{width:calc(var(--s) - 18px);height:calc(var(--s) - 18px);border-radius:50%;background:var(--dk-deck);display:grid;place-items:center;text-align:center}
+.dk-ring b{font-size:calc(var(--s)*.24);font-weight:950;color:#fff8e8;line-height:1}
+.dk-ring span{font-size:11px;color:#c9d1c9;font-weight:800}
+
+/* ---------- Werkzeugleiste ---------- */
+.dk-tools{background:var(--dk-card);border:1px solid var(--dk-line);border-radius:20px;padding:14px;display:grid;gap:12px}
+.dk-toolRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.dk-search{flex:1 1 260px;display:flex;align-items:center;gap:8px;border:1px solid var(--dk-line);border-radius:13px;padding:0 12px;background:var(--dk-soft)}
+body .dk .dk-search input{flex:1;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--dk-ink);font-size:15px;font-weight:700;min-height:44px;outline:none;padding:0!important}
+.dk-seg{display:inline-flex;flex-wrap:wrap;padding:3px;border-radius:13px;background:var(--dk-soft);border:1px solid var(--dk-line);gap:2px}
+.dk-seg button{border:0;background:transparent;color:var(--dk-muted);font-weight:900;font-size:13px;padding:8px 13px;border-radius:10px;cursor:pointer;white-space:nowrap}
+.dk-seg button.on{background:var(--dk-card);color:var(--dk-accent);box-shadow:0 1px 6px #27262022}
+.dk-seg button b{font-weight:950;margin-left:4px;opacity:.7}
+.dk-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--dk-line);border-radius:999px;padding:0 4px 0 12px;background:var(--dk-card);font-size:12px;font-weight:850;color:var(--dk-muted)}
+body .dk .dk-pill select{border:0!important;background:transparent!important;box-shadow:none!important;color:var(--dk-ink);font-weight:850;font-size:13px;min-height:34px;padding:0 6px!important;cursor:pointer}
+.dk-count{font-size:12px;color:var(--dk-muted);font-weight:800;margin-left:auto}
+.dk-empty{border:1px dashed var(--dk-line);border-radius:18px;padding:28px;text-align:center;color:var(--dk-muted);font-weight:700}
+.dk-note{border-left:4px solid var(--dk-accent);background:color-mix(in srgb,var(--dk-accent) 9%,transparent);border-radius:10px;padding:10px 12px;font-size:13px}
+
+/* ---------- Ordner: Karten hochkant ---------- */
+.dk-binder{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(46%,170px),1fr));gap:16px}
+.dk-pocket{position:relative;cursor:pointer;border:1px solid var(--dk-line);border-radius:18px;padding:10px;background:var(--dk-card);display:grid;gap:8px;
+  text-align:left;color:var(--dk-ink);font:inherit;transition:transform .18s ease,box-shadow .18s ease}
+.dk-pocket:hover{transform:translateY(-4px);box-shadow:0 16px 34px #27262024}
+.dk-art{position:relative;aspect-ratio:63/88;border-radius:11px;overflow:hidden;background:var(--dk-soft)}
+.dk-art img{width:100%;height:100%;object-fit:cover;display:block;transition:filter .25s ease,opacity .25s ease}
+.dk-art::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,#ffffff55 45%,transparent 60%);
+  background-size:250% 100%;background-position:120% 0;mix-blend-mode:overlay;transition:background-position .6s ease;pointer-events:none}
+.dk-pocket:hover .dk-art::after{background-position:-20% 0}
+.dk-badge{position:absolute;top:7px;right:7px;padding:3px 8px;border-radius:8px;background:#14201bd9;color:#fff;font-size:11px;font-weight:900}
+.dk-badge.gold{background:linear-gradient(180deg,#f0d18c,#c4924a);color:#22190b}
+.dk-plus{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:950;color:#fff;background:#14201b88;opacity:0;transition:opacity .2s ease}
+.dk-pocket:hover .dk-plus,.dk-pocket:focus-visible .dk-plus{opacity:1}
+.dk-pocket.missing{background:transparent;border-style:dashed}
+.dk-pocket.missing .dk-art img{filter:grayscale(1);opacity:.38}
+.dk-pocket.missing:hover .dk-art img{filter:none;opacity:.9}
+.dk-name{font-size:13px;font-weight:950;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-meta{font-size:11px;color:var(--dk-muted)}
+
+@media(max-width:900px){
+  .dk-deck{padding:22px 18px}
+  .dk-deckGrid{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .dk-count{margin-left:0;width:100%}
+  .dk-seg{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}
+}
+@media(prefers-reduced-motion:reduce){.dk-pocket,.dk-art img{transition:none}}
