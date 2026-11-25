@@ -1,3 +1,5 @@
+> **Hinweis 25.11.2026:** `cardmarket_variant_resolver.py` und `cardmarket-lightweight-search.ps1` wurden entfernt (nicht mehr aufgerufen). Aktueller Ablauf: `docs/CARDMARKET_IDENTITY_AND_PRICE_PIPELINE.md`.
+
 # Cardmarket: Varianten-Evidenz und Preisprüfung
 
 Stand: 2026-11-11. **Keine** automatische Bestätigung nur nach V1/V2,

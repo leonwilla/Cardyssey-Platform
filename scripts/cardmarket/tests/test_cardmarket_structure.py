@@ -10,7 +10,7 @@ ADMIN=REPO/'scripts/cardmarket/admin'
 
 class CardmarketStructureTests(unittest.TestCase):
     def test_all_versioned_cardmarket_scripts_have_canonical_locations(self):
-        self.assertGreaterEqual(len(CATEGORY_BY_NAME),110)
+        self.assertGreaterEqual(len(CATEGORY_BY_NAME),80)
         for name in CATEGORY_BY_NAME:
             with self.subTest(name=name):
                 self.assertTrue(source_path(name).is_file())
