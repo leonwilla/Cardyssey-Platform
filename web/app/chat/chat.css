@@ -1,0 +1,82 @@
+/* Nachrichten im Kartendeck-Look: Deck-Kopf, Spieltisch als Chat-Fläche,
+   eigene Nachrichten in Deck-Grün mit Goldkante. */
+.ch-deck{padding:24px 28px}
+.ch-deckRow{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.ch-deck .dk-title{font-size:clamp(30px,4vw,44px)}
+.ch-stats{grid-template-columns:repeat(4,minmax(0,1fr));max-width:620px}
+.ch-stats .dk-stat b{font-size:19px}
+
+body.cardysseyApp .ch .ch-share{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;border-radius:16px;
+  border:1px solid color-mix(in srgb,var(--dk-gold) 55%,transparent);background:color-mix(in srgb,var(--dk-gold) 12%,var(--dk-card))}
+body.cardysseyApp .ch .ch-share p{margin:0;flex:1 1 220px;font-size:13px;color:var(--dk-muted)}
+
+/* Rahmen */
+body.cardysseyApp .ch .chatLayout{border-radius:26px;border:1px solid var(--dk-line);background:var(--dk-card);
+  box-shadow:0 18px 44px #1d2a2414;min-height:clamp(560px,70vh,820px)}
+
+/* Seitenleiste */
+body.cardysseyApp .ch .chatThreadList{background:color-mix(in srgb,var(--dk-soft) 70%,var(--dk-card));border-color:var(--dk-line);padding:16px 12px;gap:6px;overflow:auto}
+body.cardysseyApp .ch .chatListHead{padding:12px 8px 6px}
+body.cardysseyApp .ch .chatListHead:first-child{padding-top:2px}
+body.cardysseyApp .ch .chatListHead strong{font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:950;color:var(--dk-accent)}
+body.cardysseyApp .ch .chatListHead span{min-width:24px;text-align:center;padding:2px 8px;border-radius:999px;background:var(--dk-card);border:1px solid var(--dk-line);color:var(--dk-ink);font-size:11px;font-weight:950}
+body.cardysseyApp .ch .chatThreadList>p.muted{margin:0 8px 6px;font-size:13px;color:var(--dk-muted)}
+body.cardysseyApp .ch .chatThread{position:relative;border-radius:14px;padding:10px;background:transparent;border:1px solid transparent;color:var(--dk-ink);transition:background .15s ease,border-color .15s ease}
+body.cardysseyApp .ch .chatThread:hover{background:var(--dk-card);border-color:var(--dk-line);box-shadow:none}
+body.cardysseyApp .ch .chatThread.active{background:var(--dk-card);border-color:color-mix(in srgb,var(--dk-gold) 70%,var(--dk-line));box-shadow:0 6px 18px #1d2a2414}
+body.cardysseyApp .ch .chatThread.active::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;width:4px;border-radius:0 4px 4px 0;background:linear-gradient(180deg,#f0d18c,#c4924a)}
+body.cardysseyApp .ch .chatAvatar{width:42px;height:42px;border-radius:13px;color:#f5efe5;font-weight:950;
+  background:linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck));box-shadow:inset 0 0 0 2px #e4bd6a66}
+body.cardysseyApp .ch .chatThread.active .chatAvatar{box-shadow:inset 0 0 0 2px var(--dk-gold)}
+body.cardysseyApp .ch .chatThreadText strong{font-size:14px;font-weight:900}
+body.cardysseyApp .ch .chatThreadText small{color:var(--dk-muted);font-size:12px}
+body.cardysseyApp .ch .chatUnread{background:linear-gradient(180deg,#f0d18c,#c4924a);color:#22190b;font-weight:950}
+body.cardysseyApp .ch .chatBrowseRooms{margin-top:4px;border:1px dashed color-mix(in srgb,var(--dk-gold) 60%,var(--dk-line));border-radius:14px;background:transparent;color:var(--dk-ink);font-weight:850;padding:12px}
+body.cardysseyApp .ch .chatBrowseRooms:hover{background:var(--dk-card)}
+body.cardysseyApp .ch .chatBrowseRooms small{color:var(--dk-muted);font-weight:700}
+body.cardysseyApp .ch .chatRoomJoin{border-radius:11px;border:1px solid var(--dk-line);background:var(--dk-card);color:var(--dk-accent);font-weight:950;min-width:36px}
+body.cardysseyApp .ch .chatDirectory input{border-radius:12px;border:1px solid var(--dk-line);background:var(--dk-card);color:var(--dk-ink)}
+
+/* Raum */
+body.cardysseyApp .ch .chatRoom{background:var(--dk-card)}
+body.cardysseyApp .ch .chatRoomHead{padding:16px 22px;border-color:var(--dk-line);background:var(--dk-card)}
+body.cardysseyApp .ch .chatRoomHead span{color:var(--dk-accent);letter-spacing:.16em;font-size:10px}
+body.cardysseyApp .ch .chatRoomHead strong{font-size:18px;font-weight:950}
+body.cardysseyApp .ch .chatMessages{gap:12px;padding:22px 24px;
+  background:
+    radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--dk-ink) 9%,transparent) 1px,transparent 0) 0 0/22px 22px,
+    radial-gradient(80% 60% at 50% 0%,color-mix(in srgb,var(--dk-gold) 7%,transparent),transparent 70%),
+    color-mix(in srgb,var(--dk-soft) 45%,var(--dk-card))}
+body.cardysseyApp .ch .chatEmpty{color:var(--dk-muted);font-weight:750;text-align:center}
+body.cardysseyApp .ch .chatMessage{border-radius:18px 18px 18px 6px;border:1px solid var(--dk-line);background:var(--dk-card);padding:11px 14px 8px;box-shadow:0 4px 14px #1d2a2410;color:var(--dk-ink)}
+body.cardysseyApp .ch .chatMessage.own{border-radius:18px 18px 6px 18px;color:#f5efe5;border-color:#e4bd6a55;
+  background:linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck))}
+body.cardysseyApp .ch .chatMessage.own .muted{color:#c9d1c9!important;border-left-color:var(--dk-gold)!important}
+body.cardysseyApp .ch .chatMessage time{font-size:10px;color:var(--dk-muted)}
+body.cardysseyApp .ch .chatMessage.own time{color:#e4bd6acc}
+body.cardysseyApp .ch .chatMessage footer button{font-size:10px;font-weight:800;color:var(--dk-muted)}
+body.cardysseyApp .ch .chatMessage.own footer button{color:#c9d1c9}
+body.cardysseyApp .ch .chatMessage footer button:hover{color:var(--dk-accent)}
+body.cardysseyApp .ch .chatMessage.own footer button:hover{color:var(--dk-gold)}
+body.cardysseyApp .ch .chatMessage .chatReactions{margin-top:6px;min-height:0}
+body.cardysseyApp .ch .chatStatus{color:var(--dk-muted);font-weight:700;background:var(--dk-card)}
+
+/* Eingabe */
+body.cardysseyApp .ch .chatComposer{grid-template-columns:minmax(0,1fr) auto auto;align-items:end;gap:10px;padding:14px 18px;border-color:var(--dk-line);background:var(--dk-card)}
+body.cardysseyApp .ch .chatComposer textarea{min-height:48px;border-radius:16px;border:1px solid var(--dk-line);background:var(--dk-soft);color:var(--dk-ink);resize:none;font-size:15px}
+body.cardysseyApp .ch .chatComposer textarea:focus{border-color:var(--dk-gold);background:var(--dk-card);box-shadow:0 0 0 3px color-mix(in srgb,var(--dk-gold) 22%,transparent)}
+body.cardysseyApp .ch .chatComposer button{min-height:48px;border-radius:14px;font-weight:950;padding:0 18px;white-space:nowrap}
+body.cardysseyApp .ch .chatComposer .ghostButton{border:1px solid var(--dk-line);background:var(--dk-card);color:var(--dk-ink)}
+body.cardysseyApp .ch .chatComposer .ghostButton::before{content:"";display:inline-block;width:11px;height:15px;margin-right:8px;vertical-align:-2px;border-radius:3px;border:2px solid var(--dk-accent)}
+body.cardysseyApp .ch .chatComposer .ghostButton:hover{border-color:var(--dk-accent);color:var(--dk-accent)}
+body.cardysseyApp .ch .chatComposer .primaryButton{border:0;color:#22190b;background:linear-gradient(180deg,#f0d18c,#c4924a);box-shadow:0 8px 20px #c4924a3d}
+body.cardysseyApp .ch .chatComposer .primaryButton:disabled{opacity:.5;box-shadow:none}
+
+@media(max-width:800px){
+  .ch-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.cardysseyApp .ch .chatThreadList{max-height:300px}
+}
+@media(max-width:520px){
+  body.cardysseyApp .ch .chatComposer{grid-template-columns:1fr 1fr}
+  body.cardysseyApp .ch .chatComposer textarea{grid-column:1/-1}
+}

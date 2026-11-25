@@ -1,0 +1,198 @@
+/* Account im Kartendeck-Look: Deck-Kopf mit Sammlerausweis,
+   Reiter als Kartenregister, alle Unterbereiche in einheitlichen Panels. */
+.ac-deck .dk-deckGrid{grid-template-columns:minmax(0,1fr) minmax(0,440px)}
+
+/* Sammlerausweis */
+.ac-pass{position:relative;border-radius:22px;padding:16px 18px;display:grid;gap:14px;overflow:hidden;color:#f5efe5;
+  background:linear-gradient(150deg,#ffffff1a,#ffffff07);border:1px solid #e4bd6a55;box-shadow:0 18px 40px #0004}
+.ac-pass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:var(--dk-holo);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.55;pointer-events:none}
+.ac-pass::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,#e4bd6a2a,transparent 70%);pointer-events:none}
+.ac-passTop{display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.22em;text-transform:uppercase;font-weight:950;color:var(--dk-gold)}
+.ac-passTop b{letter-spacing:.06em;padding:3px 9px;border-radius:999px;color:#22190b;background:linear-gradient(180deg,#f0d18c,#c4924a)}
+.ac-passMain{display:flex;gap:14px;align-items:center;min-width:0}
+.ac-avatar{position:relative;flex:none;width:72px;height:72px;border-radius:20px;overflow:hidden;cursor:pointer;display:grid;place-items:center;
+  background:linear-gradient(160deg,#3d5547,#1d2a24);box-shadow:0 0 0 2px var(--dk-gold),0 10px 24px #0005}
+.ac-avatar img{width:100%;height:100%;object-fit:cover}
+.ac-avatar span{font-size:30px;font-weight:950;color:var(--dk-gold)}
+.ac-avatar i{position:absolute;inset:auto 0 0 0;padding:3px 0;text-align:center;font-style:normal;font-size:10px;font-weight:900;background:#14201bcc;color:#fff;transform:translateY(100%);transition:transform .18s ease}
+.ac-avatar:hover i,.ac-avatar:focus-within i{transform:none}
+.ac-avatar input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ac-passWho{display:grid;gap:2px;min-width:0}
+.ac-passWho strong{font-size:21px;font-weight:950;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-passWho small{font-size:13px;color:#c9d1c9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-link{justify-self:start;border:0;background:none;padding:2px 0;color:#e4bd6a;font-size:11px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.ac-passId{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#0000002e;border:1px dashed #e4bd6a55}
+.ac-passId small{display:block;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:900;color:#c9d1c9}
+.ac-passId code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;font-weight:800;letter-spacing:.06em;color:#fff1c9;word-break:break-all}
+.ac-passId .dk-gold{flex:none;padding:8px 13px;font-size:13px}
+
+/* Reiter wie Register im Ordner */
+.ac-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:2px solid var(--dk-line);padding:0 4px}
+.ac-tabs button{position:relative;display:inline-flex;align-items:center;gap:7px;border:1px solid transparent;border-bottom:0;border-radius:14px 14px 0 0;
+  margin-bottom:-2px;padding:10px 15px;background:transparent;color:var(--dk-muted);font-weight:900;font-size:14px;cursor:pointer}
+.ac-tabs button i{font-style:normal;font-size:13px;opacity:.75}
+.ac-tabs button:hover{color:var(--dk-ink);background:color-mix(in srgb,var(--dk-soft) 70%,transparent)}
+.ac-tabs button.on{background:var(--dk-card);color:var(--dk-accent);border-color:var(--dk-line);border-bottom:2px solid var(--dk-card)}
+.ac-tabs button.on::before{content:"";position:absolute;left:12px;right:12px;top:-1px;height:3px;border-radius:0 0 3px 3px;background:linear-gradient(90deg,#f0d18c,#c4924a)}
+
+/* Panels */
+.ac-panel{grid-template-columns:minmax(0,1fr);background:var(--dk-card);border:1px solid var(--dk-line);border-radius:22px;padding:24px;display:grid;gap:14px;align-content:start;box-shadow:0 10px 30px #1d2a240b}
+.ac-panel h2{margin:0;font-size:24px;font-weight:950;letter-spacing:-.01em}
+.ac-panel h3{margin:0;font-size:17px;font-weight:950}
+.ac-kicker{font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:950;color:var(--dk-accent)}
+.ac-lead{margin:-6px 0 4px;font-size:14px;color:var(--dk-muted);max-width:560px}
+.ac-split{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:18px;align-items:start}
+.ac-side{display:grid;gap:18px}
+.ac-mini{gap:8px;padding:20px}
+.ac-mini p{margin:0 0 4px;font-size:13px;color:var(--dk-muted)}
+.ac-mini button{justify-self:start}
+.ac-danger{border-color:color-mix(in srgb,#b9604d 45%,var(--dk-line));background:linear-gradient(180deg,color-mix(in srgb,#b9604d 6%,var(--dk-card)),var(--dk-card))}
+.ac-danger .ac-kicker{color:#b9604d}
+.ac-dangerBtn{border:1px solid #b9604d;border-radius:13px;padding:10px 16px;background:transparent;color:#b9604d;font-weight:900;font-size:14px;cursor:pointer}
+.ac-dangerBtn:hover:not(:disabled){background:#b9604d;color:#fff}
+.ac-actions{display:flex;gap:10px;justify-content:flex-end}
+
+.ac-field{display:grid;gap:6px}
+.ac-field>span{font-size:12px;font-weight:900;color:var(--dk-muted)}
+.ac-field small{font-size:12px;color:var(--dk-muted)}
+body.cardysseyApp .ac :is(.ac-field input,.ac-sub .editorField input,.ac-sub .friendSearchRow input,.ac-sub .showcasePickerControls input,.ac-sub .showcasePickerControls select){
+  min-height:46px;border-radius:13px;border:1px solid var(--dk-line);background:var(--dk-soft);color:var(--dk-ink);padding:0 14px;font-size:15px;font-weight:650;box-shadow:none}
+body.cardysseyApp .ac :is(.ac-field input,.ac-sub input,.ac-sub select):focus{outline:none;border-color:var(--dk-gold);background:var(--dk-card);box-shadow:0 0 0 3px color-mix(in srgb,var(--dk-gold) 22%,transparent)}
+body.cardysseyApp .ac .ac-field input:disabled{opacity:.7;cursor:not-allowed}
+
+/* Unterbereiche aus eigenen Komponenten: Hülle angleichen */
+body.cardysseyApp .ac .ac-sub :is(.accountSecurityPanel,.showcaseSettings,.privacyPanel,.appearancePanel){
+  max-width:none;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;color:var(--dk-ink)}
+body.cardysseyApp .ac .ac-sub .eyebrowText{font-size:10px;letter-spacing:.2em;text-transform:uppercase;font-weight:950;color:var(--dk-accent)}
+body.cardysseyApp .ac .ac-sub :is(h1,h2){margin:2px 0 4px;font-size:24px;font-weight:950;letter-spacing:-.01em;color:var(--dk-ink);line-height:1.15}
+body.cardysseyApp .ac .ac-sub .pageIntro{margin:0;padding:0;border:0;background:none}
+body.cardysseyApp .ac .ac-sub :is(p,.muted){color:var(--dk-muted)}
+body.cardysseyApp .ac .ac-sub .primaryButton{border:0;border-radius:13px;color:#22190b;background:linear-gradient(180deg,#f0d18c,#c4924a);box-shadow:0 8px 20px #c4924a33;font-weight:950}
+body.cardysseyApp .ac .ac-sub .ghostButton{border:1px solid var(--dk-line);border-radius:13px;background:var(--dk-card);color:var(--dk-ink);font-weight:900}
+body.cardysseyApp .ac .ac-sub .ghostButton:hover{border-color:var(--dk-accent);color:var(--dk-accent)}
+body.cardysseyApp .ac .ac-sub .statusPanel{border-radius:12px;border:0;border-left:4px solid var(--dk-accent);background:color-mix(in srgb,var(--dk-accent) 9%,transparent);padding:10px 12px}
+
+/* Freunde */
+body.cardysseyApp .ac .ac-sub .friendSection{margin:18px 0 0;padding:0;border:0;display:grid;gap:10px}
+body.cardysseyApp .ac .ac-sub .friendSection h2{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--dk-muted);margin:0}
+body.cardysseyApp .ac .ac-sub .friendSearchRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;margin:0}
+body.cardysseyApp .ac .ac-sub .friendSearchRow input{min-width:0;width:100%}
+body.cardysseyApp .ac .ac-sub .friendRow{display:flex;flex-direction:row;text-align:left;align-items:center;gap:14px;padding:12px 14px;border-radius:18px;border:1px solid var(--dk-line);background:var(--dk-card);transition:border-color .15s ease,transform .15s ease}
+body.cardysseyApp .ac .ac-sub .friendRow:hover{border-color:color-mix(in srgb,var(--dk-gold) 70%,var(--dk-line));transform:translateY(-1px)}
+body.cardysseyApp .ac .ac-sub .friendAvatar{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:950;font-size:18px;color:var(--dk-gold);
+  background:linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck));box-shadow:inset 0 0 0 2px #e4bd6a66}
+body.cardysseyApp .ac .ac-sub .friendWho{flex:1;min-width:0;display:grid;gap:2px}
+body.cardysseyApp .ac .ac-sub .friendWho strong{font-size:15px;color:var(--dk-ink)}
+body.cardysseyApp .ac .ac-sub .friendWho span{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--dk-muted);overflow:hidden;text-overflow:ellipsis}
+body.cardysseyApp .ac .ac-sub .friendActions{display:flex;gap:8px;flex:none}
+body.cardysseyApp .ac .ac-sub .friendActions button,body.cardysseyApp .ac .ac-sub .friendRow>button{padding:8px 14px;font-size:13px}
+
+/* Sicherheit */
+body.cardysseyApp .ac .ac-sub .accountSecurityPanel{display:grid;gap:10px}
+body.cardysseyApp .ac .ac-sub .accountSecurityPanel>p{max-width:640px}
+body.cardysseyApp .ac .ac-sub .accountSecurityForm{max-width:520px;gap:14px;margin-top:8px;padding:18px;border-radius:18px;background:color-mix(in srgb,var(--dk-soft) 55%,transparent);border:1px solid var(--dk-line)}
+body.cardysseyApp .ac .ac-sub .accountSecurityForm .editorField>span{font-size:12px;font-weight:900;color:var(--dk-muted)}
+body.cardysseyApp .ac .ac-sub .accountSecurityForm .editorField input{background:var(--dk-card)}
+body.cardysseyApp .ac .ac-sub .accountSecurityReveal{color:var(--dk-muted)}
+body.cardysseyApp .ac .ac-sub .accountSecurityFootnote{font-size:12px}
+.pwMeter{display:flex;align-items:center;gap:5px}
+.pwMeter i{width:34px;height:5px;border-radius:5px;background:var(--dk-line)}
+.pwMeter b{margin-left:6px;font-size:11px;font-weight:900;color:var(--dk-muted)}
+.pwMeter.s1 i:nth-child(1){background:#b9604d}
+.pwMeter.s2 i:nth-child(-n+2){background:var(--dk-gold)}
+.pwMeter.s3 i{background:var(--dk-ok)}
+.pwMatch{font-weight:800;color:#b9604d!important}
+.pwMatch.ok{color:var(--dk-ok)!important}
+
+/* Showcase */
+body.cardysseyApp .ac .ac-sub .showcaseSettings{display:grid;gap:12px}
+body.cardysseyApp .ac .ac-sub .showcaseSaveTop{justify-self:start}
+body.cardysseyApp .ac .ac-sub .showcaseSaveTop{position:sticky;top:8px;z-index:2;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:color-mix(in srgb,var(--dk-card) 92%,transparent);border:1px solid var(--dk-line);backdrop-filter:blur(6px)}
+body.cardysseyApp .ac .ac-sub .showcaseSelected{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin:6px 0 10px;padding:18px;border-radius:20px;
+  background:radial-gradient(90% 120% at 100% 0%,#3d5547 0%,transparent 60%),linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck))}
+body.cardysseyApp .ac .ac-sub .showcaseSlot{padding:8px;border-radius:14px;border:1px solid #ffffff22;background:#ffffff0d;color:#f5efe5}
+body.cardysseyApp .ac .ac-sub .showcaseSlot img{aspect-ratio:63/88;object-fit:cover;border-radius:9px}
+body.cardysseyApp .ac .ac-sub .showcaseSlot strong{color:#f5efe5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.cardysseyApp .ac .ac-sub .showcasePosition{top:12px;left:12px;color:#22190b;background:linear-gradient(180deg,#f0d18c,#c4924a);box-shadow:0 4px 10px #0005}
+body.cardysseyApp .ac .ac-sub .showcaseSlot:first-child{border-color:var(--dk-gold)}
+body.cardysseyApp .ac .ac-sub .showcaseMove button{min-height:28px;border-radius:8px;border:1px solid #ffffff2a;background:#ffffff12;color:#f5efe5;font-weight:900}
+body.cardysseyApp .ac .ac-sub .showcaseMove button:disabled{opacity:.35}
+body.cardysseyApp .ac .ac-sub .showcasePickerHeading{display:flex;justify-content:space-between;align-items:baseline}
+body.cardysseyApp .ac .ac-sub .showcasePickerHeading h3{font-size:17px;color:var(--dk-ink)}
+body.cardysseyApp .ac .ac-sub .showcasePickerControls{display:flex;gap:10px;flex-wrap:wrap}
+body.cardysseyApp .ac .ac-sub .showcasePickerControls input{flex:1 1 240px;width:auto}
+body.cardysseyApp .ac .ac-sub .showcasePickerControls select{flex:0 1 220px;width:auto;cursor:pointer}
+body.cardysseyApp .ac .ac-sub .showcaseSlot.empty{display:grid;place-items:center;align-content:center;gap:6px;min-height:200px;border:2px dashed #e4bd6a55;background:transparent;color:#c9d1c9;font-size:12px;font-weight:800;text-align:center}
+body.cardysseyApp .ac .ac-sub .showcaseSlot.empty b{font-size:22px;color:#e4bd6a99}
+body.cardysseyApp .ac .ac-sub .showcasePicker{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+body.cardysseyApp .ac .ac-sub .showcasePick{border-radius:15px;border:1px solid var(--dk-line);background:var(--dk-card);color:var(--dk-ink);transition:border-color .15s ease,transform .15s ease}
+body.cardysseyApp .ac .ac-sub .showcasePick:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--dk-gold) 70%,var(--dk-line))}
+body.cardysseyApp .ac .ac-sub .showcasePick.selected{border-color:var(--dk-gold);background:color-mix(in srgb,var(--dk-gold) 12%,var(--dk-card))}
+body.cardysseyApp .ac .ac-sub .showcasePick img{border-radius:5px}
+body.cardysseyApp .ac .ac-sub .showcasePick small{color:var(--dk-muted)}
+body.cardysseyApp .ac .ac-sub .showcasePickValue{color:var(--dk-accent)!important;font-weight:900}
+body.cardysseyApp .ac .ac-sub .showcasePick>b{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:16px;color:var(--dk-accent);background:var(--dk-soft)}
+body.cardysseyApp .ac .ac-sub .showcasePick.selected>b{color:#22190b;background:linear-gradient(180deg,#f0d18c,#c4924a)}
+
+/* Privatsphäre */
+body.cardysseyApp .ac .ac-sub .privacyPanel{display:grid;gap:14px}
+body.cardysseyApp .ac .ac-sub .privacyHead p{margin:0}
+body.cardysseyApp .ac .ac-sub .privacyRows{display:grid;gap:0;border:1px solid var(--dk-line);border-radius:18px;overflow:hidden;max-width:760px}
+body.cardysseyApp .ac .ac-sub .privacyRow{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 16px;border:0;border-bottom:1px solid var(--dk-line);background:var(--dk-card)}
+body.cardysseyApp .ac .ac-sub .privacyRow:nth-child(even){background:color-mix(in srgb,var(--dk-soft) 40%,var(--dk-card))}
+body.cardysseyApp .ac .ac-sub .privacyRow:last-child{border-bottom:0}
+body.cardysseyApp .ac .ac-sub .privacyRow strong{font-size:14px;font-weight:900}
+.privacyChoice{display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:var(--dk-soft);border:1px solid var(--dk-line)}
+.privacyChoice button{border:0;background:transparent;color:var(--dk-muted);font-weight:900;font-size:12px;padding:7px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.privacyChoice button.on{background:var(--dk-card);color:var(--dk-accent);box-shadow:0 1px 6px #27262022}
+.privacyChoice button.on.public{color:var(--dk-ok)}
+.privacyChoice button.on.private{color:#b9604d}
+body.cardysseyApp .ac .ac-sub .privacyPanel>.primaryButton{justify-self:start;padding:11px 18px}
+
+/* Design */
+body.cardysseyApp .ac .ac-sub .appearancePanel{gap:12px}
+body.cardysseyApp .ac .ac-sub .brightnessChooser{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;border-radius:18px;border:1px solid var(--dk-line);background:var(--dk-card)}
+body.cardysseyApp .ac .ac-sub .brightnessChooser>div:first-child{display:grid}
+body.cardysseyApp .ac .ac-sub .brightnessChoices{display:inline-flex;padding:3px;border-radius:12px;background:var(--dk-soft);border:1px solid var(--dk-line)}
+body.cardysseyApp .ac .ac-sub .brightnessChoices button{border:0;border-radius:9px;padding:8px 14px;background:transparent;color:var(--dk-muted);font-weight:900;cursor:pointer}
+body.cardysseyApp .ac .ac-sub .brightnessChoices button[aria-pressed="true"]{background:linear-gradient(180deg,#f0d18c,#c4924a);color:#22190b}
+body.cardysseyApp .ac .ac-sub .themeChoiceGrid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+body.cardysseyApp .ac .ac-sub .themeChoice{position:relative;min-height:0;padding:16px;border-radius:20px;border:1px solid var(--dk-line);background:var(--dk-card);color:var(--dk-ink);overflow:hidden;transition:transform .18s ease,border-color .18s ease}
+body.cardysseyApp .ac .ac-sub .themeChoice:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--dk-gold) 70%,var(--dk-line))}
+body.cardysseyApp .ac .ac-sub .themeChoice.selected{border-color:var(--dk-gold);box-shadow:0 12px 30px #c4924a26}
+body.cardysseyApp .ac .ac-sub .themeChoice.selected::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--dk-holo)}
+body.cardysseyApp .ac .ac-sub .themeChoice small{color:var(--dk-muted)}
+body.cardysseyApp .ac .ac-sub .themeSwatches i{width:34px;height:34px;border:2px solid var(--dk-card);box-shadow:0 4px 10px #0002;margin-right:-10px}
+body.cardysseyApp .ac .ac-sub .themeSelectedLabel{color:var(--dk-accent)}
+
+/* Android */
+.ac-panel.ac-app{grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:center;max-width:820px}
+.ac-app>div:last-child{display:grid;gap:10px;justify-items:start}
+.ac-app .ac-lead{margin:0}
+.ac-app h2{margin-bottom:2px}
+.ac-release{margin:0;font-size:13px;color:var(--dk-muted)}
+.ac-phone{width:120px;height:220px;border-radius:26px;padding:8px;background:linear-gradient(160deg,#3d5547,#141d18);box-shadow:0 18px 40px #1d2a2440,inset 0 0 0 2px #e4bd6a66}
+.ac-phone>div{height:100%;border-radius:19px;display:grid;align-content:start;gap:8px;padding:16px 12px;background:linear-gradient(180deg,#26372f,#1d2a24);text-align:center}
+.ac-phone span{font-size:22px;color:var(--dk-gold)}
+.ac-phone b{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#fff1c9}
+.ac-phone i{height:30px;border-radius:7px;background:#ffffff12;border:1px solid #ffffff1a}
+.ac-phone i:first-of-type{background:linear-gradient(90deg,#e4bd6a55,#ffffff12)}
+
+@media(max-width:1000px){
+  .ac-deck .dk-deckGrid{grid-template-columns:1fr}
+  .ac-split{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .ac-panel{padding:18px}
+  .ac-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ac-tabs button{padding:9px 12px;font-size:13px}
+  .ac-passId{flex-direction:column;align-items:stretch}
+  .ac-panel.ac-app{grid-template-columns:minmax(0,1fr)}
+  .ac-phone{display:none}
+  body.cardysseyApp .ac .ac-sub .friendRow{flex-wrap:wrap}
+  body.cardysseyApp .ac .ac-sub .friendActions{width:100%}
+  body.cardysseyApp .ac .ac-sub .friendSearchRow .primaryButton{padding:0 14px}
+  body.cardysseyApp .ac .ac-sub .friendActions button{flex:1}
+  body.cardysseyApp .ac .ac-sub .privacyRow{flex-direction:column;align-items:flex-start}
+}

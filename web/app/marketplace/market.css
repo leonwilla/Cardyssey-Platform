@@ -1,0 +1,80 @@
+/* Marktplatz & Kaufangebote im Kartendeck-Look */
+.mk-deckSide{display:grid;gap:12px;justify-items:stretch}
+.mk-store{position:relative;display:flex;gap:14px;align-items:center;padding:16px;border-radius:18px;text-decoration:none;color:#f5efe5;overflow:hidden;
+  background:linear-gradient(160deg,#ffffff16,#ffffff06);border:1px solid #e4bd6a55;transition:transform .18s ease,border-color .18s ease}
+.mk-store::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,#ffffff22 48%,transparent 62%);background-size:250% 100%;background-position:120% 0;transition:background-position .7s ease;pointer-events:none}
+.mk-store:hover{transform:translateY(-2px);border-color:var(--dk-gold)}
+.mk-store:hover::after{background-position:-20% 0}
+.mk-storeMark{flex:none;width:48px;height:66px;border-radius:9px;display:grid;place-items:center;font-size:22px;color:#22190b;
+  background:linear-gradient(160deg,#f6dc9c,#c4924a);box-shadow:0 8px 20px #0005;transform:rotate(-6deg)}
+.mk-store small{display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;font-weight:950;color:var(--dk-gold)}
+.mk-store strong{display:block;font-size:16px;font-weight:950;margin:3px 0 2px}
+.mk-store em{font-style:normal;font-size:12px;color:#c9d1c9;font-weight:700}
+
+.mk-tabs{display:flex;justify-content:flex-start}
+
+/* Angebote */
+.mk-offers{display:grid;gap:16px}
+.mk-offersHead{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.mk-offersHead h2{margin:0;font-size:22px;font-weight:950}
+.mk-offersHead p{margin:2px 0 0;font-size:13px;color:var(--dk-muted)}
+
+.mk-emptyDeal{display:flex;gap:28px;align-items:center;padding:28px;border-radius:22px;border:1px dashed var(--dk-line);
+  background:repeating-linear-gradient(135deg,transparent 0 14px,color-mix(in srgb,var(--dk-soft) 55%,transparent) 14px 15px),var(--dk-card)}
+.mk-emptyDeal h3{margin:0 0 4px;font-size:18px;font-weight:950}
+.mk-emptyDeal p{margin:0 0 14px;max-width:480px;font-size:14px;color:var(--dk-muted)}
+.mk-emptySlots{position:relative;flex:none;width:120px;height:110px}
+.mk-emptySlots i{position:absolute;bottom:0;left:34px;width:56px;height:78px;border-radius:9px;border:2px dashed color-mix(in srgb,var(--dk-gold) 70%,var(--dk-line));background:var(--dk-card);transform-origin:50% 120%}
+.mk-emptySlots i:nth-child(1){transform:rotate(-16deg) translateX(-10px)}
+.mk-emptySlots i:nth-child(2){transform:rotate(0deg) translateY(-6px);border-style:solid;background:linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck));border-color:var(--dk-gold)}
+.mk-emptySlots i:nth-child(2)::after{content:"✉";position:absolute;inset:0;display:grid;place-items:center;color:var(--dk-gold);font-style:normal;font-size:20px}
+.mk-emptySlots i:nth-child(3){transform:rotate(16deg) translateX(10px)}
+
+.mk-deals{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,430px),1fr));gap:16px}
+.mk-deal{position:relative;display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;padding:14px;border-radius:20px;border:1px solid var(--dk-line);background:var(--dk-card);overflow:hidden}
+.mk-deal::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--dk-line)}
+.mk-deal.pending::before{background:linear-gradient(180deg,#f0d18c,#c4924a)}
+.mk-deal.accepted::before{background:var(--dk-ok)}
+.mk-deal.rejected::before,.mk-deal.withdrawn::before{background:#b9604d}
+.mk-dealArt{aspect-ratio:63/88;border-radius:10px;overflow:hidden;background:var(--dk-soft);align-self:start}
+.mk-dealArt img{width:100%;height:100%;object-fit:cover;display:block}
+.mk-dealBody{display:grid;gap:10px;min-width:0;align-content:start}
+.mk-dealTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.mk-dealTop>div{min-width:0}
+.mk-dealSet{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:950;color:var(--dk-accent)}
+.mk-dealTop h3{margin:2px 0;font-size:17px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-dealTop small{font-size:12px;color:var(--dk-muted)}
+.mk-status{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:950;background:var(--dk-soft);color:var(--dk-muted)}
+.mk-status::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.mk-status.pending{color:#9a6a1e;background:color-mix(in srgb,var(--dk-gold) 20%,var(--dk-card))}
+.mk-status.accepted{color:var(--dk-ok);background:color-mix(in srgb,var(--dk-ok) 14%,var(--dk-card))}
+.mk-status.rejected,.mk-status.withdrawn{color:#b9604d;background:color-mix(in srgb,#b9604d 12%,var(--dk-card))}
+.mk-dealPrices{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--dk-soft)}
+.mk-dealPrices small{display:block;font-size:11px;color:var(--dk-muted);font-weight:800}
+.mk-dealPrices strong{font-size:15px;font-weight:950}
+.mk-offerPrice strong{font-size:22px;color:var(--dk-accent)}
+.mk-diff{margin-left:auto;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:950;color:var(--dk-ok);background:color-mix(in srgb,var(--dk-ok) 14%,transparent)}
+.mk-diff.down{color:#b9604d;background:color-mix(in srgb,#b9604d 12%,transparent)}
+.mk-dealMsg{position:relative;margin:0;padding:9px 12px;border-radius:4px 14px 14px 14px;border:1px solid var(--dk-line);font-size:13px;font-style:italic}
+.mk-dealFoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.mk-person,.mk-seller{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--dk-muted);font-weight:700;min-width:0}
+.mk-person i,.mk-seller i{flex:none;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:950;color:#f5efe5;background:linear-gradient(160deg,var(--dk-deck-2),var(--dk-deck))}
+.mk-person b{color:var(--dk-ink)}
+.mk-dealActions{display:inline-flex;gap:8px}
+.mk-dealActions button,.mk-dealFoot>.dk-ghost{padding:8px 14px;font-size:13px}
+
+/* Karten entdecken */
+.mk-listing .dk-art{border-radius:11px}
+.mk-price{top:auto;bottom:8px;right:8px;font-size:12px;padding:4px 9px}
+.mk-qty{top:7px;right:7px}
+.mk-chips{display:flex;flex-wrap:wrap;gap:4px}
+.mk-chips span{padding:2px 7px;border-radius:7px;background:var(--dk-soft);font-size:10px;font-weight:850;color:var(--dk-muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-chips .vb{background:color-mix(in srgb,var(--dk-gold) 25%,transparent);color:#8a5d17}
+.mk-seller{border-top:1px dashed var(--dk-line);padding-top:8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+@media(max-width:640px){
+  .mk-emptyDeal{flex-direction:column;text-align:center;padding:22px}
+  .mk-deal{grid-template-columns:84px minmax(0,1fr);gap:12px}
+  .mk-dealTop{flex-direction:column}
+}
+body.cardysseyApp .mk .dk-search input[type="search"]{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:44px;outline:none}

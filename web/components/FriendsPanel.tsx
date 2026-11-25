@@ -226,9 +226,10 @@ export default function FriendsPanel({embedded=false}:{embedded?:boolean}={}) {
             className="friendRow"
             key={result.friendCode}
           >
-            <div>
-              <strong>
-                {result.displayName ??
+            <span className="friendAvatar" aria-hidden="true">{(result.displayName ?? "C").charAt(0).toUpperCase()}</span>
+<div className="friendWho">
+<strong>
+{result.displayName ??
                   "Cardyssey Collector"}
               </strong>
 
@@ -279,9 +280,10 @@ export default function FriendsPanel({embedded=false}:{embedded?:boolean}={}) {
               className="friendRow"
               key={request.id}
             >
-              <div>
-                <strong>
-                  {request.user.displayName ??
+              <span className="friendAvatar" aria-hidden="true">{(request.user.displayName ?? "C").charAt(0).toUpperCase()}</span>
+<div className="friendWho">
+<strong>
+{request.user.displayName ??
                     "Cardyssey Collector"}
                 </strong>
 
@@ -329,9 +331,10 @@ export default function FriendsPanel({embedded=false}:{embedded?:boolean}={}) {
               className="friendRow"
               key={request.id}
             >
-              <div>
-                <strong>
-                  {request.user.displayName ??
+              <span className="friendAvatar" aria-hidden="true">{(request.user.displayName ?? "C").charAt(0).toUpperCase()}</span>
+<div className="friendWho">
+<strong>
+{request.user.displayName ??
                     "Cardyssey Collector"}
                 </strong>
 
@@ -369,9 +372,10 @@ export default function FriendsPanel({embedded=false}:{embedded?:boolean}={}) {
               className="friendRow"
               key={friend.friendCode}
             >
-              <div>
-                <strong>
-                  {friend.displayName ??
+              <span className="friendAvatar" aria-hidden="true">{(friend.displayName ?? "C").charAt(0).toUpperCase()}</span>
+<div className="friendWho">
+<strong>
+{friend.displayName ??
                     "Cardyssey Collector"}
                 </strong>
 

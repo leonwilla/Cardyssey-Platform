@@ -1,5 +1,8 @@
 "use client";
 
+import "../deck.css";
+import "../marketplace/market.css";
+
 import {
   useCallback,
   useEffect,
@@ -74,7 +77,7 @@ function statusLabel(
   }
 }
 
-export default function OffersPage({embedded=false,onDiscover}:{embedded?:boolean;onDiscover?:()=>void}={}) {
+export default function OffersPage({embedded=false,onDiscover,onCounts}:{embedded?:boolean;onDiscover?:()=>void;onCounts?:(c:{incoming:number;outgoing:number;pending:number})=>void}={}) {
   const router =
     useRouter();
 
@@ -227,312 +230,109 @@ export default function OffersPage({embedded=false,onDiscover}:{embedded?:boolea
     }
   }
 
+  useEffect(() => {
+    onCounts?.({
+      incoming: incoming.length,
+      outgoing: outgoing.length,
+      pending: incoming.filter((o) => o.status === "PENDING").length,
+    });
+  }, [incoming, outgoing, onCounts]);
+
   const items =
     tab === "incoming"
       ? incoming
       : outgoing;
 
-  const content=(<section className={embedded?"offersWorkspace embedded":"offersWorkspace"}>
-      {embedded ? (
-        <div className="offersWorkspaceIntro">
-          <div>
-            <span className="eyebrowText">Dein Marktplatz</span>
-            <h2>Kaufangebote im Überblick</h2>
-            <p>Hier siehst du Anfragen zu deinen Karten und Angebote, die du verschickt hast.</p>
-          </div>
-          <span className="offersOverviewCount">{incoming.length + outgoing.length} Angebote</span>
-        </div>
-      ) : <div className="pageIntro">
+  const content = (
+    <section className={embedded ? "mk-offers" : "dk mk-offers"}>
+      {!embedded && (
+        <section className="dk-deck">
+          <span className="dk-eyebrow">Marktplatz</span>
+          <h1 className="dk-title">Angebote</h1>
+          <p className="dk-sub">Kaufangebote senden, prüfen und verwalten.</p>
+        </section>
+      )}
+      <div className="mk-offersHead">
         <div>
-          <span className="eyebrowText">
-            Marketplace
-          </span>
-
-          <h1>Angebote</h1>
-
-          <p>
-            Kaufangebote senden,
-            prüfen und verwalten.
-          </p>
+          <h2>Kaufangebote</h2>
+          <p>Anfragen zu deinen Karten und Angebote, die du verschickt hast.</p>
         </div>
-      </div>
-
-      }
-      <div className="offerTabs" role="tablist" aria-label="Kaufangebote filtern">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "incoming"}
-          className={
-            tab === "incoming"
-              ? "active"
-              : ""
-          }
-          onClick={
-            () =>
-              setTab(
-                "incoming"
-              )
-          }
-        >
-          Eingehend
-          <span>
-            {incoming.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "outgoing"}
-          className={
-            tab === "outgoing"
-              ? "active"
-              : ""
-          }
-          onClick={
-            () =>
-              setTab(
-                "outgoing"
-              )
-          }
-        >
-          Gesendet
-          <span>
-            {outgoing.length}
-          </span>
-        </button>
+        <div className="dk-seg" role="tablist" aria-label="Kaufangebote filtern">
+          <button type="button" role="tab" aria-selected={tab === "incoming"} className={tab === "incoming" ? "on" : ""} onClick={() => setTab("incoming")}>
+            Eingehend<b>{incoming.length}</b>
+          </button>
+          <button type="button" role="tab" aria-selected={tab === "outgoing"} className={tab === "outgoing" ? "on" : ""} onClick={() => setTab("outgoing")}>
+            Gesendet<b>{outgoing.length}</b>
+          </button>
+        </div>
       </div>
 
       {loading ? (
-        <div className="statusPanel">
-          Angebote werden
-          geladen …
-        </div>
+        <div className="dk-empty">Angebote werden geladen …</div>
       ) : items.length === 0 ? (
-        <div className="offerEmptyState" role="status">
-          <span className="offerEmptyIcon" aria-hidden="true">✉</span>
-          <h3>{tab === "incoming" ? "Noch keine eingehenden Angebote" : "Noch keine gesendeten Angebote"}</h3>
-          <p>{tab === "incoming"
-            ? "Wenn jemand eine deiner Karten kaufen möchte, erscheint die Anfrage hier."
-            : "Du hast noch kein Kaufangebot verschickt. Entdecke Karten von anderen Sammlern."}</p>
-          {embedded && onDiscover && (
-            <button type="button" className="ghostButton" onClick={onDiscover}>
-              Karten entdecken
-            </button>
-          )}
+        <div className="mk-emptyDeal" role="status">
+          <div className="mk-emptySlots" aria-hidden="true"><i /><i /><i /></div>
+          <div>
+            <h3>{tab === "incoming" ? "Noch keine eingehenden Angebote" : "Noch keine gesendeten Angebote"}</h3>
+            <p>{tab === "incoming"
+              ? "Wenn jemand eine deiner Karten kaufen möchte, liegt die Anfrage hier wie ein Deal-Ticket bereit."
+              : "Du hast noch kein Kaufangebot verschickt. Stöbere bei anderen Sammlern und mach ein Angebot."}</p>
+            {embedded && onDiscover && (
+              <button type="button" className="dk-ghost" onClick={onDiscover}>Karten entdecken →</button>
+            )}
+          </div>
         </div>
       ) : (
-        <div className="offerGrid">
-          {items.map(
-            (offer) => {
-              const image =
-                imageUrl(
-                  offer.imageBase
-                );
-
-              const pending =
-                offer.status ===
-                "PENDING";
-
-              return (
-                <article
-                  className="offerCard"
-                  key={offer.id}
-                >
-                  <div className="offerImage">
-                    {image ? (
-                      <img
-                        src={image}
-                        alt={
-                          offer.name
-                        }
-                      />
-                    ) : (
-                      <div className="cardImagePlaceholder" />
-                    )}
+        <div className="mk-deals">
+          {items.map((offer) => {
+            const image = imageUrl(offer.imageBase);
+            const pending = offer.status === "PENDING";
+            const diff =
+              offer.offerPriceEur != null && offer.listingPriceEur
+                ? Math.round((offer.offerPriceEur / offer.listingPriceEur - 1) * 100)
+                : null;
+            const person = tab === "incoming"
+              ? offer.buyerDisplayName ?? offer.buyerFriendCode
+              : offer.sellerDisplayName ?? offer.sellerFriendCode;
+            return (
+              <article className={"mk-deal " + offer.status.toLowerCase()} key={offer.id}>
+                <div className="mk-dealArt">
+                  {image ? <img src={image} alt={offer.name} loading="lazy" /> : null}
+                </div>
+                <div className="mk-dealBody">
+                  <div className="mk-dealTop">
+                    <div>
+                      <span className="mk-dealSet">{offer.setName ?? "Trading Card"}</span>
+                      <h3>{offer.name}</h3>
+                      <small>#{offer.localId ?? "—"} · {offer.variant} · {offer.condition} · {offer.quantity}×</small>
+                    </div>
+                    <span className={"mk-status " + offer.status.toLowerCase()}>{statusLabel(offer.status)}</span>
                   </div>
-
-                  <div className="offerContent">
-                    <div className="offerTop">
-                      <div>
-                        <span className="eyebrowText">
-                          {offer.setName ??
-                            "Trading Card"}
-                        </span>
-
-                        <h3>
-                          {
-                            offer.name
-                          }
-                        </h3>
-
-                        <small className="muted">
-                          #
-                          {offer.localId ??
-                            "—"}
-                          {" · "}
-                          {
-                            offer.variant
-                          }
-                          {" · "}
-                          {
-                            offer.condition
-                          }
-                        </small>
-                      </div>
-
-                      <span
-                        className={
-                          `offerStatus ${
-                            offer.status.toLowerCase()
-                          }`
-                        }
-                      >
-                        {statusLabel(
-                          offer.status
-                        )}
+                  <div className="mk-dealPrices">
+                    <div className="mk-offerPrice"><small>Angebot</small><strong>{money(offer.offerPriceEur)}</strong></div>
+                    <div><small>Listenpreis</small><strong>{money(offer.listingPriceEur)}</strong></div>
+                    {diff != null && <span className={"mk-diff" + (diff < 0 ? " down" : "")}>{diff > 0 ? "+" : ""}{diff} %</span>}
+                  </div>
+                  {offer.message && <p className="mk-dealMsg">{offer.message}</p>}
+                  <div className="mk-dealFoot">
+                    <span className="mk-person"><i>{String(person).charAt(0).toUpperCase()}</i>{tab === "incoming" ? "Von " : "An "}<b>{person}</b></span>
+                    {pending && tab === "incoming" && (
+                      <span className="mk-dealActions">
+                        <button type="button" className="dk-ghost" disabled={busyId === offer.id} onClick={() => action(offer.id, "reject")}>Ablehnen</button>
+                        <button type="button" className="dk-gold" disabled={busyId === offer.id} onClick={() => action(offer.id, "accept")}>Annehmen</button>
                       </span>
-                    </div>
-
-                    <div className="offerPrices">
-                      <div>
-                        <small>
-                          Angebot
-                        </small>
-
-                        <strong>
-                          {money(
-                            offer.offerPriceEur
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <small>
-                          Listenpreis
-                        </small>
-
-                        <strong>
-                          {money(
-                            offer.listingPriceEur
-                          )}
-                        </strong>
-                      </div>
-
-                      <div>
-                        <small>
-                          Menge
-                        </small>
-
-                        <strong>
-                          {
-                            offer.quantity
-                          }×
-                        </strong>
-                      </div>
-                    </div>
-
-                    {offer.message && (
-                      <p className="offerMessage">
-                        “
-                        {
-                          offer.message
-                        }
-                        ”
-                      </p>
                     )}
-
-                    <div className="offerPerson">
-                      {tab ===
-                      "incoming"
-                        ? (
-                          <>
-                            Von{" "}
-                            <b>
-                              {offer.buyerDisplayName ??
-                                offer.buyerFriendCode}
-                            </b>
-                          </>
-                        )
-                        : (
-                          <>
-                            An{" "}
-                            <b>
-                              {offer.sellerDisplayName ??
-                                offer.sellerFriendCode}
-                            </b>
-                          </>
-                        )}
-                    </div>
-
-                    {pending &&
-                      tab ===
-                        "incoming" && (
-                        <div className="offerActions">
-                          <button
-                            className="primaryButton"
-                            disabled={
-                              busyId ===
-                              offer.id
-                            }
-                            onClick={
-                              () =>
-                                action(
-                                  offer.id,
-                                  "accept"
-                                )
-                            }
-                          >
-                            Annehmen
-                          </button>
-
-                          <button
-                            className="ghostButton"
-                            disabled={
-                              busyId ===
-                              offer.id
-                            }
-                            onClick={
-                              () =>
-                                action(
-                                  offer.id,
-                                  "reject"
-                                )
-                            }
-                          >
-                            Ablehnen
-                          </button>
-                        </div>
-                      )}
-
-                    {pending &&
-                      tab ===
-                        "outgoing" && (
-                        <button
-                          className="ghostButton offerWithdraw"
-                          disabled={
-                            busyId ===
-                            offer.id
-                          }
-                          onClick={
-                            () =>
-                              action(
-                                offer.id,
-                                "withdraw"
-                              )
-                          }
-                        >
-                          Angebot zurückziehen
-                        </button>
-                      )}
+                    {pending && tab === "outgoing" && (
+                      <button type="button" className="dk-ghost" disabled={busyId === offer.id} onClick={() => action(offer.id, "withdraw")}>Zurückziehen</button>
+                    )}
                   </div>
-                </article>
-              );
-            }
-          )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
-    </section>);
+    </section>
+  );
   return embedded?content:<AppShell active="/offers" user={user}>{content}</AppShell>;
 }
