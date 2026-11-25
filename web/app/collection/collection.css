@@ -1,0 +1,143 @@
+/* Sammlung im Kartendeck-Look: Kopf mit aufgefächerter Hand der wertvollsten
+   Karten, Sets als kleine Kartenstapel, Karten hochkant wie im Sammelordner.
+   Farben aus den App-Tokens (Hell/Dunkel + Farbthemen). */
+.cx{
+  --cx-ink:var(--appearance-ink,#22312b);
+  --cx-muted:var(--appearance-muted,#5f6c65);
+  --cx-card:var(--appearance-panel,#fffaf3);
+  --cx-soft:var(--appearance-soft,#eee6d9);
+  --cx-line:var(--appearance-outline,#ddd0c0);
+  --cx-accent:var(--light-accent,#a66c20);
+  --cx-deck:#1d2a24;--cx-deck-2:#26372f;
+  --cx-gold:#e4bd6a;--cx-gold-2:#b98742;
+  --cx-holo:linear-gradient(115deg,#f3d27a 0%,#f7a8c4 22%,#9fd7f2 44%,#b6f0c4 64%,#f3d27a 86%);
+  display:grid;gap:22px;color:var(--cx-ink);font-variant-numeric:tabular-nums;
+}
+:root[data-brightness="dark"] .cx{--cx-deck:#0f1512;--cx-deck-2:#18211c}
+
+/* ---------- Kopf ---------- */
+.cx-deck{position:relative;overflow:hidden;border-radius:28px;padding:30px;color:#f5efe5;
+  background:
+    radial-gradient(90% 120% at 100% 50%,#3d5547 0%,transparent 60%),
+    repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 34px),
+    repeating-linear-gradient(0deg,#ffffff07 0 1px,transparent 1px 34px),
+    linear-gradient(160deg,var(--cx-deck-2),var(--cx-deck));
+  box-shadow:0 22px 60px #1d2a2433;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px;align-items:center}
+.cx-deck::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--cx-holo)}
+.cx-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;color:var(--cx-gold)}
+.cx-title{margin:6px 0 2px;font-size:clamp(32px,4.6vw,52px);line-height:1;font-weight:950;letter-spacing:-.02em;
+  background:linear-gradient(100deg,#fff6df 0%,var(--cx-gold) 45%,#fff1c9 60%,var(--cx-gold-2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cx-value{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:18px 0 4px}
+.cx-value strong{font-size:clamp(38px,5.4vw,60px);font-weight:950;line-height:1;color:#fff8e8;letter-spacing:-.02em}
+.cx-valueNote{font-size:12px;color:#c9d1c9}
+.cx-toggle{display:inline-flex;padding:3px;border-radius:12px;background:#ffffff14;border:1px solid #ffffff22}
+.cx-toggle button{border:0;background:transparent;color:#d9dfd8;font-weight:900;font-size:13px;padding:6px 14px;border-radius:9px;cursor:pointer}
+.cx-toggle button.on{background:linear-gradient(180deg,#e9c77d,#c4924a);color:#22190b}
+.cx-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}
+.cx-stat{position:relative;padding:11px 12px;border-radius:14px;background:linear-gradient(170deg,#ffffff14,#ffffff06);border:1px solid #ffffff1f}
+.cx-stat b{display:block;font-size:22px;font-weight:950;color:#fff8e8;line-height:1.1}
+.cx-stat span{font-size:11px;color:#c9d1c9;font-weight:700}
+.cx-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.cx-add{border:0;border-radius:13px;padding:11px 18px;font-weight:950;font-size:14px;cursor:pointer;color:#22190b;
+  background:linear-gradient(180deg,#f0d18c,#c4924a);box-shadow:0 8px 22px #c4924a44}
+.cx-add:hover{filter:brightness(1.06)}
+
+/* Aufgefächerte Hand der wertvollsten Karten */
+.cx-hand{position:relative;height:270px;display:flex;justify-content:center;align-items:flex-end}
+.cx-handCard{position:absolute;bottom:10px;width:150px;aspect-ratio:63/88;border-radius:10px;overflow:hidden;cursor:pointer;
+  border:0;padding:0;background:#0003;box-shadow:0 16px 34px #0007;transform-origin:50% 120%;transition:transform .25s ease}
+.cx-handCard img{width:100%;height:100%;object-fit:cover;display:block}
+.cx-handCard::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,#ffffff40 45%,transparent 60%);
+  mix-blend-mode:overlay;opacity:0;transition:opacity .25s ease}
+.cx-handCard:hover::after{opacity:1}
+.cx-hand .cx-handCard:nth-child(1){transform:rotate(-14deg) translateX(-70px)}
+.cx-hand .cx-handCard:nth-child(2){transform:rotate(0deg) translateY(-14px);z-index:2}
+.cx-hand .cx-handCard:nth-child(3){transform:rotate(14deg) translateX(70px)}
+.cx-hand .cx-handCard:nth-child(1):hover{transform:rotate(-14deg) translateX(-70px) translateY(-14px)}
+.cx-hand .cx-handCard:nth-child(2):hover{transform:translateY(-28px)}
+.cx-hand .cx-handCard:nth-child(3):hover{transform:rotate(14deg) translateX(70px) translateY(-14px)}
+.cx-handPrice{position:absolute;left:6px;right:6px;bottom:6px;padding:4px 6px;border-radius:7px;background:#14201bdd;color:#ffe9b8;font-size:12px;font-weight:900;text-align:center}
+.cx-handLabel{position:absolute;top:0;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.18em;text-transform:uppercase;font-weight:900;color:var(--cx-gold)}
+
+/* ---------- Werkzeugleiste ---------- */
+.cx-tools{background:var(--cx-card);border:1px solid var(--cx-line);border-radius:20px;padding:14px;display:grid;gap:12px}
+.cx-toolRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cx-search{flex:1 1 280px;display:flex;align-items:center;gap:8px;border:1px solid var(--cx-line);border-radius:13px;padding:0 12px;background:var(--cx-soft)}
+.cx-search input{flex:1;border:0;background:transparent;color:var(--cx-ink);font-size:15px;font-weight:700;min-height:44px;outline:none}
+.cx-views{display:inline-flex;padding:3px;border-radius:13px;background:var(--cx-soft);border:1px solid var(--cx-line)}
+.cx-views button{border:0;background:transparent;color:var(--cx-muted);font-weight:900;font-size:14px;padding:9px 16px;border-radius:10px;cursor:pointer}
+.cx-views button.on{background:var(--cx-card);color:var(--cx-accent);box-shadow:0 1px 6px #27262022}
+.cx-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cx-filter{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--cx-line);border-radius:999px;padding:0 4px 0 12px;background:var(--cx-card);font-size:12px;font-weight:850;color:var(--cx-muted)}
+.cx-filter.on{border-color:var(--cx-accent);color:var(--cx-accent);background:color-mix(in srgb,var(--cx-accent) 8%,transparent)}
+.cx-filter select{border:0;background:transparent;color:var(--cx-ink);font-weight:850;font-size:13px;min-height:34px;padding-right:6px;cursor:pointer;max-width:200px}
+.cx-reset{border:0;background:transparent;color:var(--cx-accent);font-weight:900;font-size:12px;cursor:pointer;text-decoration:underline}
+.cx-count{font-size:12px;color:var(--cx-muted);font-weight:800;margin-left:auto}
+.cx-crumb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cx-crumb button{border:1px solid var(--cx-line);background:var(--cx-card);color:var(--cx-ink);border-radius:11px;padding:7px 12px;font-weight:900;cursor:pointer}
+.cx-crumb h2{margin:0;font-size:24px;font-weight:950}
+
+/* ---------- Sets als Kartenstapel ---------- */
+.cx-sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:14px}
+.cx-set{position:relative;text-align:left;cursor:pointer;border:1px solid var(--cx-line);border-radius:20px;padding:14px;background:var(--cx-card);color:var(--cx-ink);
+  display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:center;transition:transform .18s ease,box-shadow .18s ease}
+.cx-set:hover{transform:translateY(-3px);box-shadow:0 14px 30px #2726201f}
+.cx-set::before{content:"";position:absolute;inset:0;border-radius:20px;padding:1px;background:var(--cx-holo);opacity:0;transition:opacity .2s ease;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.cx-set:hover::before{opacity:.9}
+.cx-stack{position:relative;height:112px}
+.cx-stack img,.cx-stack i{position:absolute;top:4px;left:14px;width:64px;aspect-ratio:63/88;border-radius:6px;object-fit:cover;box-shadow:0 6px 14px #0003;background:var(--cx-soft)}
+.cx-stack>*:nth-child(1){transform:rotate(-9deg) translateX(-10px);z-index:1}
+.cx-stack>*:nth-child(2){transform:rotate(0deg);z-index:2}
+.cx-stack>*:nth-child(3){transform:rotate(9deg) translateX(10px);z-index:3}
+.cx-setName{font-size:16px;font-weight:950;line-height:1.2}
+.cx-setMeta{font-size:12px;color:var(--cx-muted);margin-top:3px}
+.cx-setValue{font-size:22px;font-weight:950;color:var(--cx-accent);margin-top:8px}
+.cx-share{height:5px;border-radius:5px;background:var(--cx-soft);overflow:hidden;margin-top:8px}
+.cx-share>i{display:block;height:100%;background:linear-gradient(90deg,var(--cx-gold-2),var(--cx-gold))}
+.cx-shareLbl{font-size:11px;color:var(--cx-muted);margin-top:3px}
+
+/* ---------- Karten hochkant wie im Ordner ---------- */
+.cx-binder{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(46%,190px),1fr));gap:16px}
+.cx-card{position:relative;cursor:pointer;border:1px solid var(--cx-line);border-radius:18px;padding:10px;background:var(--cx-card);display:grid;gap:9px;
+  transition:transform .18s ease,box-shadow .18s ease;text-align:left;color:var(--cx-ink)}
+.cx-card:hover{transform:translateY(-4px);box-shadow:0 16px 34px #27262024}
+.cx-cardArt{position:relative;aspect-ratio:63/88;border-radius:11px;overflow:hidden;background:var(--cx-soft)}
+.cx-cardArt img{width:100%;height:100%;object-fit:cover;display:block}
+.cx-cardArt::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,#ffffff55 45%,transparent 60%);
+  background-size:250% 100%;background-position:120% 0;mix-blend-mode:overlay;transition:background-position .6s ease}
+.cx-card:hover .cx-cardArt::after{background-position:-20% 0}
+.cx-qty{position:absolute;top:7px;right:7px;padding:3px 8px;border-radius:8px;background:#14201bd9;color:#fff;font-size:12px;font-weight:900}
+.cx-price{position:absolute;left:7px;bottom:7px;padding:4px 9px;border-radius:9px;background:linear-gradient(180deg,#f0d18c,#c4924a);color:#22190b;font-size:13px;font-weight:950;box-shadow:0 4px 12px #0004}
+.cx-price.none{background:#14201bd9;color:#e9efe9;font-weight:800}
+.cx-cardName{font-size:14px;font-weight:950;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-cardMeta{font-size:11px;color:var(--cx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cx-tags{display:flex;gap:5px;flex-wrap:wrap}
+.cx-tag{font-size:10px;font-weight:850;padding:3px 7px;border-radius:7px;background:var(--cx-soft);color:var(--cx-ink)}
+.cx-tag.holo{background:var(--cx-holo);color:#2b2530}
+.cx-unit{font-size:11px;color:var(--cx-muted)}
+.cx-ref{font-size:10px;color:var(--cx-muted)}
+
+.cx-empty{border:1px dashed var(--cx-line);border-radius:18px;padding:28px;text-align:center;color:var(--cx-muted);font-weight:700}
+
+@media(max-width:900px){
+  .cx-deck{grid-template-columns:1fr;padding:22px 18px}
+  .cx-hand{height:220px;order:-1}
+  .cx-handCard{width:120px}
+  .cx-hand .cx-handCard:nth-child(1){transform:rotate(-12deg) translateX(-58px)}
+  .cx-hand .cx-handCard:nth-child(3){transform:rotate(12deg) translateX(58px)}
+  .cx-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){.cx-count{margin-left:0;width:100%}}
+@media(prefers-reduced-motion:reduce){.cx-card,.cx-set,.cx-handCard{transition:none}}
+
+/* Globale Formularstile innerhalb der Pillen neutralisieren */
+body .cx .cx-search input,body .cx .cx-filter select,body.cardysseyApp .cx .cx-search input,body.cardysseyApp .cx .cx-filter select{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;margin:0}
+.cx .cx-search input{padding:0!important}
+.cx .cx-filter select{padding:0 6px 0 2px!important;min-height:34px;width:auto}
+.cx-title{padding-bottom:.1em}
+@media(max-width:640px){
+  .cx-filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .cx-filter{flex:0 0 auto}
+  .cx-views{width:100%}.cx-views button{flex:1}
+}
