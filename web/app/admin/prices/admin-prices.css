@@ -1,0 +1,165 @@
+/* Scan-Zentrale: eigener Look "Kartendeck" — Kennzahlen als Sammelkarten mit
+   Holo-Kante, Bereiche als Ordner-Reiter, Status als Energie-Marken.
+   Farben kommen aus den App-Tokens, damit Hell/Dunkel und Farbthemen greifen. */
+.ap{
+  --ap-ink:var(--appearance-ink,#22312b);
+  --ap-muted:var(--appearance-muted,#5f6c65);
+  --ap-card:var(--appearance-panel,#fffaf3);
+  --ap-soft:var(--appearance-soft,#eee6d9);
+  --ap-line:var(--appearance-outline,#ddd0c0);
+  --ap-accent:var(--light-accent,#a66c20);
+  --ap-deck:#1d2a24;
+  --ap-deck-2:#26372f;
+  --ap-gold:#e4bd6a;
+  --ap-gold-2:#b98742;
+  --ap-ok:#2f9b6a;
+  --ap-warn:#d6942b;
+  --ap-bad:#c4462f;
+  --ap-idle:#7d8a83;
+  --ap-holo:linear-gradient(115deg,#f3d27a 0%,#f7a8c4 22%,#9fd7f2 44%,#b6f0c4 64%,#f3d27a 86%);
+  display:grid;gap:26px;color:var(--ap-ink);
+  font-variant-numeric:tabular-nums;
+}
+:root[data-brightness="dark"] .ap{--ap-deck:#0f1512;--ap-deck-2:#18211c}
+
+/* ---------- Kommandodeck (Kopf) ---------- */
+.ap-deck{
+  position:relative;overflow:hidden;border-radius:26px;padding:28px 28px 24px;
+  background:
+    radial-gradient(120% 90% at 100% 0%,#3b5245 0%,transparent 55%),
+    repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 34px),
+    repeating-linear-gradient(0deg,#ffffff07 0 1px,transparent 1px 34px),
+    linear-gradient(160deg,var(--ap-deck-2),var(--ap-deck));
+  color:#f5efe5;box-shadow:0 22px 60px #1d2a2433;
+}
+.ap-deck::after{ /* Holo-Schimmer an der Oberkante */
+  content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--ap-holo);opacity:.9;
+}
+.ap-deckTop{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+.ap-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:900;color:var(--ap-gold)}
+.ap-title{
+  margin:6px 0 4px;font-size:clamp(30px,4.4vw,48px);line-height:1;font-weight:950;letter-spacing:-.02em;
+  background:linear-gradient(100deg,#fff6df 0%,var(--ap-gold) 45%,#fff1c9 60%,var(--ap-gold-2) 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.ap-sub{margin:0;max-width:640px;font-size:14px;color:#d5d9d2}
+.ap-live{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ap-livePill{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:#ffffff12;border:1px solid #ffffff22;font-size:12px;font-weight:800;color:#e9efe9}
+.ap-pulse{width:9px;height:9px;border-radius:50%;background:var(--ap-ok);box-shadow:0 0 0 0 #2f9b6a99;animation:ap-pulse 2s infinite}
+@keyframes ap-pulse{70%{box-shadow:0 0 0 9px #2f9b6a00}100%{box-shadow:0 0 0 0 #2f9b6a00}}
+.ap-deckButton{border:1px solid #e4bd6a88;background:#e4bd6a1c;color:#fff3d6;border-radius:12px;padding:9px 14px;font-weight:900;cursor:pointer}
+.ap-deckButton:hover{background:#e4bd6a33}
+
+/* Kennzahl-Karten: kleine Sammelkarten mit Holo-Kante */
+.ap-hand{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:22px}
+@media(max-width:1280px){.ap-hand{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.ap-hand{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ap-tcard{
+  position:relative;padding:14px 14px 12px;border-radius:16px;min-height:112px;
+  background:linear-gradient(170deg,#ffffff14,#ffffff06);border:1px solid #ffffff1f;
+  display:grid;align-content:space-between;gap:8px;transition:transform .18s ease;
+}
+.ap-tcard::before{ /* Holo-Rahmen */
+  content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:var(--ap-holo);opacity:.35;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+  pointer-events:none;transition:opacity .18s ease;
+}
+.ap-tcard:hover{transform:translateY(-2px) rotate(-.4deg)}
+.ap-tcard:hover::before{opacity:.85}
+.ap-tcardHead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#c9d1c9}
+.ap-tcardNo{font-size:10px;color:#9fb0a6;letter-spacing:0}
+.ap-tcardValue{font-size:28px;font-weight:950;line-height:1;color:#fff8e8}
+.ap-tcardValue small{font-size:13px;font-weight:800;color:#c9d1c9;margin-left:4px}
+.ap-tcardFoot{font-size:12px;color:#c9d1c9}
+.ap-meter{height:6px;border-radius:6px;background:#ffffff1a;overflow:hidden}
+.ap-meter>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--ap-gold-2),var(--ap-gold))}
+
+/* ---------- Energie-Marken (Status) ---------- */
+.ap-energy{display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 4px;border-radius:999px;font-size:12px;font-weight:850;white-space:nowrap;
+  background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c);border:1px solid color-mix(in srgb,var(--c) 35%,transparent)}
+.ap-energy::before{content:"";width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff9 0 18%,transparent 19%),var(--c);box-shadow:inset 0 -2px 0 #0003}
+.ap-deck .ap-energy{color:#fff;background:color-mix(in srgb,var(--c) 30%,transparent)}
+.ap-ok{--c:var(--ap-ok)}.ap-warn{--c:var(--ap-warn)}.ap-bad{--c:var(--ap-bad)}.ap-idle{--c:var(--ap-idle)}
+
+/* ---------- Ordner-Reiter ---------- */
+.ap-tabs{position:sticky;top:8px;z-index:5;display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;
+  padding:0 6px;border-bottom:2px solid var(--ap-line)}
+.ap-tab{position:relative;border:1px solid var(--ap-line);border-bottom:0;border-radius:14px 14px 0 0;padding:10px 16px 9px;margin-bottom:-2px;
+  background:var(--ap-soft);color:var(--ap-muted);font-weight:900;font-size:14px;cursor:pointer;display:inline-flex;gap:8px;align-items:center}
+.ap-tab[aria-selected="true"]{background:var(--ap-card);color:var(--ap-ink);border-color:var(--ap-line);border-bottom:2px solid var(--ap-card)}
+.ap-tab[aria-selected="true"]::before{content:"";position:absolute;left:12px;right:12px;top:-1px;height:3px;border-radius:3px;background:var(--ap-holo)}
+.ap-count{min-width:22px;padding:1px 7px;border-radius:999px;background:var(--ap-accent);color:#fff;font-size:11px;font-weight:900;text-align:center}
+
+/* ---------- Bausteine ---------- */
+.ap-panel{background:var(--ap-card);border:1px solid var(--ap-line);border-radius:20px;padding:20px;display:grid;gap:14px}
+.ap-panelHead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ap-panelHead h2,.ap-panelHead h3{margin:0;font-size:18px;font-weight:950}
+.ap-hint{font-size:12px;color:var(--ap-muted);margin:0}
+.ap-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px}
+.ap-btn{border:1px solid var(--ap-line);background:var(--ap-card);color:var(--ap-ink);border-radius:11px;padding:8px 13px;font-weight:850;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.ap-btn:hover:not(:disabled){border-color:var(--ap-accent);color:var(--ap-accent)}
+.ap-btn:disabled{opacity:.5;cursor:not-allowed}
+.ap-btnGold{background:linear-gradient(180deg,#c9964f,#a66c20);border-color:#8f5c1a;color:#fff}
+.ap-btnGold:hover:not(:disabled){color:#fff;filter:brightness(1.08)}
+.ap-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ap-callout{border-left:4px solid var(--c,var(--ap-accent));background:color-mix(in srgb,var(--c,var(--ap-accent)) 9%,transparent);border-radius:10px;padding:10px 12px;font-size:13px;display:grid;gap:3px}
+.ap-callout strong{font-size:13px}
+.ap-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ap-stat{background:var(--ap-soft);border-radius:12px;padding:10px 12px;display:grid;gap:2px}
+.ap-stat b{font-size:20px;font-weight:950}
+.ap-stat span{font-size:11px;color:var(--ap-muted);font-weight:700}
+.ap-big{font-size:30px;font-weight:950;line-height:1}
+.ap-big small{font-size:14px;color:var(--ap-muted);font-weight:800}
+.ap-bar{height:10px;border-radius:8px;background:var(--ap-soft);overflow:hidden}
+.ap-bar>i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--ap-gold-2),var(--ap-gold))}
+.ap-details{border:1px dashed var(--ap-line);border-radius:12px;padding:10px 12px;font-size:12px}
+.ap-details summary{cursor:pointer;font-weight:900;color:var(--ap-accent)}
+.ap-details[open]>*:not(summary){margin-top:8px}
+.ap-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:10px}
+.ap-fact{border:1px solid var(--ap-line);border-radius:14px;padding:12px;display:grid;gap:4px;font-size:13px}
+.ap-fact>span{font-size:11px;font-weight:850;letter-spacing:.06em;text-transform:uppercase;color:var(--ap-muted)}
+.ap-fact>b{font-size:17px}
+
+/* Stunden-Diagramm */
+.ap-hours{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(18px,1fr);gap:5px;align-items:end;height:120px;padding-top:16px}
+.ap-hour{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+.ap-hourBar{width:100%;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--ap-gold),var(--ap-gold-2));min-height:2px}
+.ap-hourBar.zero{background:var(--ap-soft)}
+.ap-hourVal{position:absolute;top:-2px;font-size:10px;font-weight:900;color:var(--ap-ink)}
+.ap-hourBlock{width:6px;height:6px;border-radius:50%;background:var(--ap-bad)}
+.ap-hourLbl{font-size:10px;color:var(--ap-muted)}
+.ap-legend{display:flex;gap:14px;font-size:11px;color:var(--ap-muted);align-items:center;flex-wrap:wrap}
+.ap-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* Filterleiste */
+.ap-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ap-filters select,.ap-filters input{border:1px solid var(--ap-line);background:var(--ap-card);color:var(--ap-ink);border-radius:11px;padding:8px 10px;font-size:13px;min-height:38px}
+.ap-filters input{flex:1 1 220px}
+
+/* Prüffälle als Karten mit farbiger Kante je Typ */
+.ap-cases{display:grid;gap:10px}
+.ap-case{position:relative;border:1px solid var(--ap-line);border-radius:16px;padding:14px 14px 14px 18px;background:var(--ap-card);display:grid;gap:8px}
+.ap-case::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:5px;border-radius:0 5px 5px 0;background:var(--c,var(--ap-idle))}
+.ap-caseHead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.ap-caseName{font-size:15px;font-weight:950}
+.ap-caseMeta{font-size:12px;color:var(--ap-muted)}
+.ap-chips{display:flex;gap:6px;flex-wrap:wrap}
+.ap-chip{font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--ap-soft);color:var(--ap-ink)}
+.ap-caseBody{font-size:12px;display:grid;gap:4px}
+.ap-pager{display:flex;gap:10px;align-items:center;justify-content:center}
+
+/* eBay-Sets als kleine Kartenreihe */
+.ap-sets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+.ap-set{border:1px solid var(--ap-line);border-radius:14px;padding:12px;display:grid;gap:8px;background:var(--ap-card)}
+.ap-set b{font-size:14px}
+
+@media(max-width:640px){
+  .ap-deck{padding:20px 16px;border-radius:20px}
+  .ap-panel{padding:14px}
+  .ap-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ap-tab{padding:9px 11px;font-size:13px;flex:0 0 auto}
+  .ap-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ap-hours{overflow-x:auto}
+}
+@media(prefers-reduced-motion:reduce){.ap-pulse{animation:none}.ap-tcard{transition:none}}
