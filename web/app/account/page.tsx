@@ -1,5 +1,8 @@
 "use client";
 
+import "../deck.css";
+import "./account.css";
+
 import {
   useEffect,
   useState,
@@ -41,6 +44,25 @@ import type {
   AndroidReleaseInfo,
 } from "@/lib/android-release";
 
+type AccountTab =
+  | "profile"
+  | "friends"
+  | "security"
+  | "showcase"
+  | "privacy"
+  | "appearance"
+  | "app";
+
+const ACCOUNT_TABS: { id: AccountTab; label: string; icon: string }[] = [
+  { id: "profile", label: "Profil", icon: "◉" },
+  { id: "friends", label: "Freunde", icon: "♢" },
+  { id: "security", label: "Sicherheit", icon: "◈" },
+  { id: "showcase", label: "Showcase", icon: "★" },
+  { id: "privacy", label: "Privatsphäre", icon: "◐" },
+  { id: "appearance", label: "Design", icon: "✦" },
+  { id: "app", label: "Android App", icon: "▣" },
+];
+
 export default function AccountPage() {
   const router = useRouter();
 
@@ -66,15 +88,7 @@ export default function AccountPage() {
     useState<string | null>(null);
 
   const [accountTab, setAccountTab] =
-    useState<
-      "profile" |
-      "friends" |
-      "showcase" |
-      "privacy" |
-      "appearance" |
-      "security" |
-      "app"
-    >("profile");
+    useState<AccountTab>("profile");
 
   const [
     androidRelease,
@@ -84,7 +98,15 @@ export default function AccountPage() {
       null
     );
 
-  useEffect(()=>{if(new URLSearchParams(window.location.search).get("tab")==="friends")setAccountTab("friends")},[]);
+  useEffect(()=>{const t=new URLSearchParams(window.location.search).get("tab");if(t&&ACCOUNT_TABS.some(x=>x.id===t))setAccountTab(t as AccountTab)},[]);
+
+  function openTab(tab: AccountTab) {
+    setAccountTab(tab);
+    setMessage(null);
+    const url = new URL(window.location.href);
+    if (tab === "profile") url.searchParams.delete("tab"); else url.searchParams.set("tab", tab);
+    window.history.replaceState(null, "", url.toString());
+  }
 
   useEffect(() => {
     fetch(
@@ -363,6 +385,8 @@ export default function AccountPage() {
     }
   }
 
+  const initial = user ? (user.displayName || user.email).charAt(0).toUpperCase() : "";
+
   return (
     <AppShell
       active="/account"
@@ -370,351 +394,162 @@ export default function AccountPage() {
         loading ? undefined : user
       }
     >
-      <section className="pageIntro">
-        <div>
-          <span className="eyebrowText">
-            Account
-          </span>
+      <div className="dk ac">
+        <section className="dk-deck ac-deck">
+          <div className="dk-deckGrid">
+            <div>
+              <span className="dk-eyebrow">Account</span>
+              <h1 className="dk-title">Dein Cardyssey-Konto</h1>
+              <p className="dk-sub">Profil, Freunde, Sicherheit und Design. Alles gilt für Web und Android gleichermaßen.</p>
+            </div>
 
-          <h1>
-            Dein Cardyssey-Konto
-          </h1>
-
-          <p>
-            Profil, Cloud und Einstellungen
-            auf Web und Android.
-          </p>
-        </div>
-      </section>
-
-      {loading ? (
-        <div className="statusPanel">
-          Account wird geladen …
-        </div>
-      ) : user && (
-        <>
-          <div className="accountSummaryGrid">
-          <section className="accountCard">
-            <div className="profileAvatarWrap">
-              <label
-                className="profileAvatarButton"
-                title="Profilbild ändern"
-              >
-                <div className="avatar large">
-                  {user.avatarUrl ? (
-                    <img
-                      src={user.avatarUrl}
-                      alt="Profilbild"
-                    />
-                  ) : (
-                    (user.displayName ||
-                      user.email)
-                      .charAt(0)
-                      .toUpperCase()
-                  )}
+            {user && (
+              <div className="ac-pass">
+                <div className="ac-passTop">
+                  <span>Sammlerausweis</span>
+                  {user.role === "FOUNDER" && <b>◆ Founder</b>}
+                  {user.role === "ADMIN" && <b>Admin</b>}
                 </div>
-
-                <span className="profileAvatarEdit">
-                  Ändern
-                </span>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  disabled={avatarSaving}
-                  onChange={
-                    (event) => {
-                      const file =
-                        event.target.files?.[0]
-                          ?? null;
-
-                      uploadAvatar(file);
-
-                      event.currentTarget.value =
-                        "";
-                    }
-                  }
-                />
-              </label>
-            </div>
-
-            <div>
-              <h2>
-                {user.displayName ||
-                  "Cardyssey Collector"}
-              </h2>
-
-              <p className="muted">
-                {user.email}
-              </p>
-
-              {user.avatarUrl && (
-                <button
-                  type="button"
-                  className="profileAvatarRemove"
-                  disabled={avatarSaving}
-                  onClick={deleteAvatar}
-                >
-                  Profilbild entfernen
-                </button>
-              )}
-            </div>
-          </section>
-
-          <section className="friendCodePanel">
-            <div>
-              <span className="eyebrowText">
-                Deine Cardyssey-ID
-              </span>
-
-              <strong>
-                {user.friendCode}
-              </strong>
-
-              <p>
-                Über diese ID können dich
-                später andere Sammler finden.
-              </p>
-            </div>
-
-            <button
-              className="ghostButton"
-              onClick={copyFriendCode}
-            >
-              ID kopieren
-            </button>
-          </section>
+                <div className="ac-passMain">
+                  <label className="ac-avatar" title="Profilbild ändern">
+                    {user.avatarUrl ? <img src={user.avatarUrl} alt="Profilbild" /> : <span>{initial}</span>}
+                    <i>{avatarSaving ? "…" : "Ändern"}</i>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      disabled={avatarSaving}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        uploadAvatar(file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <div className="ac-passWho">
+                    <strong>{user.displayName || "Cardyssey Collector"}</strong>
+                    <small>{user.email}</small>
+                    {user.avatarUrl && (
+                      <button type="button" className="ac-link" disabled={avatarSaving} onClick={deleteAvatar}>Profilbild entfernen</button>
+                    )}
+                  </div>
+                </div>
+                <div className="ac-passId">
+                  <div>
+                    <small>Cardyssey-ID</small>
+                    <code>{user.friendCode}</code>
+                  </div>
+                  <button type="button" className="dk-gold" onClick={copyFriendCode}>ID kopieren</button>
+                </div>
+              </div>
+            )}
           </div>
+        </section>
 
-          <section
-            className="accountTabs"
-            aria-label="Account Bereiche"
-          >
-            <button
-              type="button"
-              className={
-                accountTab === "profile"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                setAccountTab("profile")
-              }
-            >
-              Profil
-            </button>
+        {loading ? (
+          <div className="dk-empty">Account wird geladen …</div>
+        ) : user && (
+          <>
+            <nav className="ac-tabs" aria-label="Account Bereiche">
+              {ACCOUNT_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={accountTab === t.id ? "on" : ""}
+                  aria-current={accountTab === t.id ? "page" : undefined}
+                  onClick={() => openTab(t.id)}
+                >
+                  <i aria-hidden="true">{t.icon}</i>{t.label}
+                </button>
+              ))}
+            </nav>
 
-            <button type="button" className={accountTab==="friends"?"active":""} onClick={()=>setAccountTab("friends")}>Freunde</button>
-            <button type="button" className={accountTab==="security"?"active":""} onClick={()=>setAccountTab("security")}>Sicherheit</button>
-
-            <button
-              type="button"
-              className={
-                accountTab === "showcase"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                setAccountTab("showcase")
-              }
-            >
-              Showcase
-            </button>
-
-            <button
-              type="button"
-              className={
-                accountTab === "privacy"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                setAccountTab("privacy")
-              }
-            >
-              Privatsphäre
-            </button>
-
-            <button
-              type="button"
-              className={
-                accountTab === "appearance"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                setAccountTab("appearance")
-              }
-            >
-              Design
-            </button>
-
-            <button
-              type="button"
-              className={
-                accountTab === "app"
-                  ? "active"
-                  : ""
-              }
-              onClick={() =>
-                setAccountTab("app")
-              }
-            >
-              Android App
-            </button>
-          </section>
-
-          {accountTab === "app" && (
-          <section
-            className="sectionBlock"
-            style={{
-              maxWidth: "650px",
-            }}
-          >
-            <span className="eyebrowText">
-              Android App
-            </span>
-
-            <h2>
-              Cardyssey für Android
-            </h2>
-
-            <p className="muted">
-              Lade hier immer die aktuellste
-              Demo-Version der App herunter.
-            </p>
-
-            {androidRelease ? (
-              <p className="androidReleaseMeta">
-                Aktualisiert: {formatAndroidReleaseDate(
-                  androidRelease.builtAt
-                )}
-              </p>
-            ) : (
-              <p className="androidReleaseMeta">
-                Aktuelle Versionsinformationen
-                werden geladen …
-              </p>
+            {message && accountTab !== "profile" && (
+              <div className="dk-note" role="status">{message}</div>
             )}
 
-            <a
-              className="primaryButton inline"
-              href={ANDROID_APK_DOWNLOAD_URL}
-            >
-              Android App herunterladen
-            </a>
-          </section>
-          )}
+            {accountTab === "profile" && (
+              <div className="ac-split">
+                <section className="ac-panel">
+                  <span className="ac-kicker">Profil</span>
+                  <h2>Persönliche Daten</h2>
+                  <p className="ac-lead">So sehen dich andere Sammler im Chat, auf dem Marktplatz und in deinem Showcase.</p>
 
-          {accountTab === "profile" && (
-          <section
-            className="sectionBlock"
-            style={{
-              maxWidth: "650px",
-            }}
-          >
-            <span className="eyebrowText">
-              Profil
-            </span>
+                  <label className="ac-field">
+                    <span>Anzeigename</span>
+                    <input
+                      value={displayName}
+                      maxLength={100}
+                      placeholder="Dein Name"
+                      onChange={(event) => setDisplayName(event.target.value)}
+                    />
+                  </label>
 
-            <h2>
-              Persönliche Daten
-            </h2>
+                  <label className="ac-field">
+                    <span>E-Mail</span>
+                    <input value={user.email} disabled />
+                    <small>Die E-Mail-Adresse kann nicht geändert werden.</small>
+                  </label>
 
-            <label className="editorField">
-              <span>Anzeigename</span>
+                  {message && <div className="dk-note" role="status">{message}</div>}
 
-              <input
-                value={displayName}
-                maxLength={100}
-                placeholder="Dein Name"
-                onChange={
-                  (event) =>
-                    setDisplayName(
-                      event.target.value
-                    )
-                }
-              />
-            </label>
+                  <div className="ac-actions">
+                    <button
+                      className="dk-gold"
+                      onClick={saveProfile}
+                      disabled={saving || displayName === (user.displayName ?? "")}
+                    >
+                      {saving ? "Speichert …" : "Profil speichern"}
+                    </button>
+                  </div>
+                </section>
 
-            <label className="editorField">
-              <span>E-Mail</span>
+                <aside className="ac-side">
+                  <section className="ac-panel ac-mini">
+                    <span className="ac-kicker">Sitzung</span>
+                    <h3>Abmelden</h3>
+                    <p>Meldet dich in diesem Browser ab. Die App bleibt angemeldet.</p>
+                    <button className="dk-ghost" onClick={logout}>Abmelden</button>
+                  </section>
 
-              <input
-                value={user.email}
-                disabled
-              />
-            </label>
-
-            {message && (
-              <div className="statusPanel">
-                {message}
+                  <section className="ac-panel ac-mini ac-danger">
+                    <span className="ac-kicker">Gefahrenzone</span>
+                    <h3>Account löschen</h3>
+                    <p>Löscht Sammlung, Wunschliste, Showcase, Marktplatz-Daten und Chats endgültig.</p>
+                    <button className="ac-dangerBtn" onClick={deleteAccount} disabled={deletingAccount}>
+                      {deletingAccount ? "Account wird gelöscht …" : "Account dauerhaft löschen"}
+                    </button>
+                  </section>
+                </aside>
               </div>
             )}
 
-            <div
-              className="editorActions"
-              style={{
-                marginTop: "20px",
-              }}
-            >
-              <button
-                className="ghostButton"
-                onClick={logout}
-              >
-                Abmelden
-              </button>
+            {accountTab === "app" && (
+              <section className="ac-panel ac-app">
+                <div className="ac-phone" aria-hidden="true">
+                  <div><span>✦</span><b>Cardyssey</b><i /><i /><i /></div>
+                </div>
+                <div>
+                  <span className="ac-kicker">Android App</span>
+                  <h2>Cardyssey für Android</h2>
+                  <p className="ac-lead">Karten mit der Kamera scannen, Sammlung unterwegs ansehen und chatten. Hier gibt es immer die aktuellste Demo-Version.</p>
+                  <p className="ac-release">
+                    {androidRelease
+                      ? <>Aktualisiert: <b>{formatAndroidReleaseDate(androidRelease.builtAt)}</b></>
+                      : "Versionsinfo wird geladen …"}
+                  </p>
+                  <a className="dk-gold" href={ANDROID_APK_DOWNLOAD_URL}>Android App herunterladen</a>
+                </div>
+              </section>
+            )}
 
-              <button
-                className="primaryButton"
-                onClick={saveProfile}
-                disabled={saving}
-              >
-                {saving
-                  ? "Speichert …"
-                  : "Profil speichern"}
-              </button>
-            </div>
-
-            <div
-              className="editorActions"
-              style={{
-                marginTop: "28px",
-              }}
-            >
-              <button
-                className="ghostButton"
-                onClick={deleteAccount}
-                disabled={deletingAccount}
-              >
-                {deletingAccount
-                  ? "Account wird gelöscht …"
-                  : "Account dauerhaft löschen"}
-              </button>
-            </div>
-          </section>
-          )}
-          {accountTab === "security" && <div className="accountTabPanel"><AccountSecurityPanel /></div>}
-          {accountTab === "friends" && <div className="accountTabPanel"><FriendsPanel embedded /></div>}
-          {accountTab === "showcase" && (
-            <div className="accountTabPanel">
-              <ShowcaseSettingsPanel />
-            </div>
-          )}
-
-          {accountTab === "privacy" && (
-            <div className="accountTabPanel">
-              <PrivacySettingsPanel />
-            </div>
-          )}
-
-          {accountTab === "appearance" && (
-            <div className="accountTabPanel">
-              <AppearanceSettingsPanel />
-            </div>
-          )}
-        </>
-      )}
+            {accountTab === "security" && <div className="ac-panel ac-sub"><AccountSecurityPanel /></div>}
+            {accountTab === "friends" && <div className="ac-panel ac-sub"><FriendsPanel embedded /></div>}
+            {accountTab === "showcase" && <div className="ac-panel ac-sub"><ShowcaseSettingsPanel /></div>}
+            {accountTab === "privacy" && <div className="ac-panel ac-sub"><PrivacySettingsPanel /></div>}
+            {accountTab === "appearance" && <div className="ac-panel ac-sub"><AppearanceSettingsPanel /></div>}
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

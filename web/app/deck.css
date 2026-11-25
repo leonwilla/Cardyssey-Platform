@@ -13,7 +13,7 @@
   --dk-gold:#e4bd6a;--dk-gold-2:#b98742;
   --dk-ok:#2f9b6a;
   --dk-holo:linear-gradient(115deg,#f3d27a 0%,#f7a8c4 22%,#9fd7f2 44%,#b6f0c4 64%,#f3d27a 86%);
-  display:grid;gap:22px;color:var(--dk-ink);font-variant-numeric:tabular-nums;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:22px;color:var(--dk-ink);font-variant-numeric:tabular-nums;
 }
 :root[data-brightness="dark"] .dk{--dk-deck:#0f1512;--dk-deck-2:#18211c}
 

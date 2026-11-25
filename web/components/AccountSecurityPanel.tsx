@@ -94,6 +94,7 @@ export function AccountSecurityPanel() {
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
           />
+          <PasswordMeter value={newPassword} />
           <small>Mindestens 12 Zeichen, gerne eine längere Passphrase.</small>
         </label>
         <label className="editorField">
@@ -107,6 +108,11 @@ export function AccountSecurityPanel() {
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
           />
+          {confirmation && (
+            <small className={confirmation === newPassword ? "pwMatch ok" : "pwMatch"}>
+              {confirmation === newPassword ? "✓ Stimmt überein" : "Stimmt noch nicht überein"}
+            </small>
+          )}
         </label>
         <label className="accountSecurityReveal">
           <input type="checkbox" checked={visible} onChange={(event) => setVisible(event.target.checked)} />
@@ -121,5 +127,19 @@ export function AccountSecurityPanel() {
         Danach musst du dich auf der Webseite und in der App erneut anmelden.
       </p>
     </section>
+  );
+}
+
+/** Simple length/variety hint, shown while typing. No password leaves the browser. */
+function PasswordMeter({ value }: { value: string }) {
+  if (!value) return null;
+  const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((r) => r.test(value)).length;
+  const score = value.length < 12 ? 1 : value.length >= 20 || (value.length >= 14 && variety >= 3) ? 3 : 2;
+  const label = ["", "Zu kurz", "Gut", "Sehr stark"][score];
+  return (
+    <span className={"pwMeter s" + score} aria-live="polite">
+      <i /><i /><i />
+      <b>{label}{value.length < 12 ? ` · ${value.length}/12` : ""}</b>
+    </span>
   );
 }

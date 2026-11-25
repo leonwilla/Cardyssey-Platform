@@ -140,34 +140,20 @@ export function PrivacySettingsPanel() {
             >
               <strong>{title}</strong>
 
-              <select
-                value={
-                  settings[key] as Visibility
-                }
-                onChange={
-                  (event) =>
-                    changeVisibility(
-                      key,
-                      event.target
-                        .value as Visibility
-                    )
-                }
-              >
-                {(
-                  [
-                    "PUBLIC",
-                    "FRIENDS",
-                    "PRIVATE",
-                  ] as Visibility[]
-                ).map((value) => (
-                  <option
+              <div className="privacyChoice" role="radiogroup" aria-label={title}>
+                {(["PUBLIC", "FRIENDS", "PRIVATE"] as Visibility[]).map((value) => (
+                  <button
                     key={value}
-                    value={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={settings[key] === value}
+                    className={(settings[key] === value ? "on " : "") + value.toLowerCase()}
+                    onClick={() => changeVisibility(key, value)}
                   >
                     {labels[value]}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           )
         )}
@@ -177,27 +163,20 @@ export function PrivacySettingsPanel() {
             Showcase-Größe
           </strong>
 
-          <select
-            value={settings.showcaseSize}
-            onChange={
-              (event) =>
-                setSettings({
-                  ...settings,
-                  showcaseSize:
-                    Number(
-                      event.target.value
-                    ) as 5 | 10,
-                })
-            }
-          >
-            <option value={5}>
-              Top 5
-            </option>
-
-            <option value={10}>
-              Top 10
-            </option>
-          </select>
+          <div className="privacyChoice" role="radiogroup" aria-label="Showcase-Größe">
+            {([5, 10] as const).map((size) => (
+              <button
+                key={size}
+                type="button"
+                role="radio"
+                aria-checked={settings.showcaseSize === size}
+                className={settings.showcaseSize === size ? "on" : ""}
+                onClick={() => setSettings({ ...settings, showcaseSize: size })}
+              >
+                Top {size}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

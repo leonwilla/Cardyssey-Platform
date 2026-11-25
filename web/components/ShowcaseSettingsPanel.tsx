@@ -378,7 +378,7 @@ export function ShowcaseSettingsPanel() {
         {message && <span role="status">{message}</span>}
       </div>
 
-      {selected.length > 0 && (
+      {(
         <div className="showcaseSelected">
           {selected.map(
             (id, index) => {
@@ -456,6 +456,12 @@ export function ShowcaseSettingsPanel() {
               );
             }
           )}
+          {Array.from({ length: Math.max(0, maxSize - selected.length) }, (_, k) => (
+            <div className="showcaseSlot empty" key={"empty" + k}>
+              <b>#{selected.length + k + 1}</b>
+              Freier Platz
+            </div>
+          ))}
         </div>
       )}
 

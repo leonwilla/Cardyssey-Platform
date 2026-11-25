@@ -1,5 +1,8 @@
 "use client";
 
+import "../deck.css";
+import "./market.css";
+
 import {
   useEffect,
   useMemo,
@@ -69,8 +72,18 @@ export default function MarketplacePage() {
 
   const [marketTab,setMarketTab]=useState<"browse"|"offers">("offers");
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "browse") setMarketTab("browse");
+  }, []);
+
   const [query, setQuery] =
     useState("");
+
+  const [sort, setSort] =
+    useState<"new" | "priceAsc" | "priceDesc" | "name">("new");
+
+  const [counts, setCounts] =
+    useState({ incoming: 0, outgoing: 0, pending: 0 });
 
   const [loading, setLoading] =
     useState(true);
@@ -139,168 +152,125 @@ export default function MarketplacePage() {
       query,
     ]);
 
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    const price = (l: Listing) => l.priceEur ?? Number.POSITIVE_INFINITY;
+    if (sort === "priceAsc") list.sort((a, b) => price(a) - price(b));
+    if (sort === "priceDesc") list.sort((a, b) => (b.priceEur ?? -1) - (a.priceEur ?? -1));
+    if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name, "de"));
+    return list;
+  }, [filtered, sort]);
+
+  const sellers = useMemo(
+    () => new Set(listings.map((l) => l.sellerFriendCode)).size,
+    [listings]
+  );
+
   return (
     <AppShell
       active="/marketplace"
       user={user}
     >
-      <section className="marketplaceStoreLink" aria-label="Cardyssey Webshop">
-        <div className="marketplaceStoreMark" aria-hidden="true">✦</div>
-        <div className="marketplaceStoreCopy">
-          <span>DER OFFIZIELLE CARDYSSEY STORE</span>
-          <strong>Du suchst eine bestimmte Karte?</strong>
-          <p>Entdecke unser Shopsortiment und passende Fundstücke für deine Wunschliste – mit demselben Cardyssey-Konto.</p>
+      <div className="dk mk">
+        <section className="dk-deck">
+          <div className="dk-deckGrid">
+            <div>
+              <span className="dk-eyebrow">Cardyssey</span>
+              <h1 className="dk-title">Marktplatz</h1>
+              <p className="dk-sub">Karten von anderen Sammlern, deine Kaufangebote und der offizielle Cardyssey-Store an einem Tisch.</p>
+              <div className="dk-stats">
+                <div className="dk-stat"><b>{loading ? "…" : listings.length}</b><span>Karten im Angebot</span></div>
+                <div className="dk-stat"><b>{loading ? "…" : sellers}</b><span>Verkäufer</span></div>
+                <div className="dk-stat"><b>{counts.pending}</b><span>offene Anfragen</span></div>
+                <div className="dk-stat"><b>{counts.outgoing}</b><span>gesendet</span></div>
+              </div>
+            </div>
+            <div className="mk-deckSide">
+              <a className="mk-store" href="https://shop.cardyssey.de/">
+                <span className="mk-storeMark" aria-hidden="true">✦</span>
+                <span>
+                  <small>Offizieller Cardyssey Store</small>
+                  <strong>Du suchst eine bestimmte Karte?</strong>
+                  <em>Shopsortiment mit demselben Konto ansehen ↗</em>
+                </span>
+              </a>
+              <button type="button" className="dk-gold" onClick={() => router.push("/selling")}>Eigene Karten verkaufen</button>
+            </div>
+          </div>
+        </section>
+
+        <div className="mk-tabs">
+          <div className="dk-seg" role="tablist" aria-label="Marktplatz-Bereiche">
+            <button role="tab" aria-selected={marketTab === "offers"} className={marketTab === "offers" ? "on" : ""} onClick={() => setMarketTab("offers")}>Meine Angebote<b>{counts.incoming + counts.outgoing}</b></button>
+            <button role="tab" aria-selected={marketTab === "browse"} className={marketTab === "browse" ? "on" : ""} onClick={() => setMarketTab("browse")}>Karten entdecken<b>{listings.length}</b></button>
+          </div>
         </div>
-        <a className="marketplaceStoreAction" href="https://shop.cardyssey.de/">Zum Webshop <span aria-hidden="true">↗</span></a>
-      </section>
-      <div className="marketplaceSections" role="tablist" aria-label="Marktplatz-Bereiche">
-        <button role="tab" aria-selected={marketTab==="offers"} className={marketTab==="offers"?"active":""} onClick={()=>setMarketTab("offers")}>Meine Angebote</button>
-        <button role="tab" aria-selected={marketTab==="browse"} className={marketTab==="browse"?"active":""} onClick={()=>setMarketTab("browse")}>Karten entdecken</button>
-      </div>
-      {marketTab==="offers"?<OffersPage embedded onDiscover={()=>setMarketTab("browse")} />:<>
-      <div className="pageHeader marketplaceHeader">
-        <div>
-          <span className="eyebrowText">
-            Cardyssey
-          </span>
 
-          <h1>Marktplatz</h1>
-
-          <p className="muted">
-            Karten, die andere Sammler
-            aktuell anbieten.
-          </p>
+        <div hidden={marketTab !== "offers"}>
+          <OffersPage embedded onDiscover={() => setMarketTab("browse")} onCounts={setCounts} />
         </div>
 
-        <button
-          className="primaryButton"
-          onClick={
-            () =>
-              router.push("/selling")
-          }
-        >
-          Eigene Karten verkaufen
-        </button>
-      </div>
+        {marketTab === "browse" && (
+          <>
+            <div className="dk-tools">
+              <div className="dk-toolRow">
+                <label className="dk-search">
+                  <span aria-hidden="true">⌕</span>
+                  <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Karte, Set, Variante oder Verkäufer …" aria-label="Marktplatz durchsuchen" />
+                </label>
+                <label className="dk-pill">Sortieren
+                  <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+                    <option value="new">Neueste</option>
+                    <option value="priceAsc">Preis aufsteigend</option>
+                    <option value="priceDesc">Preis absteigend</option>
+                    <option value="name">Name A–Z</option>
+                  </select>
+                </label>
+                <span className="dk-count">{sorted.length} von {listings.length} Karten</span>
+              </div>
+            </div>
 
-      <div className="marketSearch">
-        <input
-          type="search"
-          value={query}
-          onChange={
-            (event) =>
-              setQuery(
-                event.target.value
-              )
-          }
-          placeholder="Karte, Set oder Variante suchen …"
-        />
-      </div>
-
-      {loading ? (
-        <div className="statusPanel">
-          Marktplatz wird geladen …
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="statusPanel">
-          Aktuell keine passenden
-          Verkaufsangebote.
-        </div>
-      ) : (
-        <div className="marketGrid">
-          {filtered.map(
-            (listing) => {
-
-              const image =
-                imageUrl(
-                  listing.imageBase
-                );
-
-              return (
-                <article
-                  className="marketCard"
-                  key={listing.id}
-                >
-                  <div className="marketImage">
-                    {image ? (
-                      <img
-                        src={image}
-                        alt={listing.name}
-                      />
-                    ) : (
-                      <div className="cardImagePlaceholder" />
-                    )}
-                  </div>
-
-                  <div className="marketBody">
-                    <span className="eyebrowText">
-                      {listing.setName ??
-                        "Trading Card"}
-                    </span>
-
-                    <h3>
-                      {listing.name}
-                    </h3>
-
-                    <p className="muted">
-                      #{listing.localId ?? "—"}
-                    </p>
-
-                    <div className="chips">
-                      <span className="chip">
-                        {listing.languageCode.toUpperCase()}
-                      </span>
-
-                      <span className="chip">
-                        {listing.variant}
-                      </span>
-
-                      <span className="chip">
-                        {listing.condition}
-                      </span>
-
-                      <span className="chip">
-                        {listing.quantity}×
-                      </span>
-                    </div>
-
-                    <div className="marketPrice">
-                      {money(
-                        listing.priceEur
-                      )}
-
-                      {listing.negotiable && (
-                        <small>
-                          verhandelbar
-                        </small>
-                      )}
-                    </div>
-
+            {loading ? (
+              <div className="dk-empty">Marktplatz wird geladen …</div>
+            ) : sorted.length === 0 ? (
+              <div className="dk-empty">{listings.length === 0 ? "Gerade bietet niemand Karten an. Sei der Erste und stell eigene Karten ein." : "Keine Karte passt zu deiner Suche."}</div>
+            ) : (
+              <div className="dk-binder mk-binder">
+                {sorted.map((listing) => {
+                  const image = imageUrl(listing.imageBase);
+                  return (
                     <button
-                      className="ghostButton"
-                      onClick={
-                        () =>
-                          router.push(
-                            `/friends/${
-                              encodeURIComponent(
-                                listing.sellerFriendCode
-                              )
-                            }`
-                          )
-                      }
+                      type="button"
+                      className="dk-pocket mk-listing"
+                      key={listing.id}
+                      onClick={() => router.push(`/friends/${encodeURIComponent(listing.sellerFriendCode)}`)}
+                      title={`Profil von ${listing.sellerDisplayName ?? "Verkäufer"} ansehen`}
                     >
-                      {listing.sellerDisplayName ??
-                        "Verkäufer"}
-                      {" · Profil"}
+                      <div className="dk-art">
+                        {image ? <img src={image} alt={listing.name} loading="lazy" /> : null}
+                        <span className="dk-badge gold mk-price">{money(listing.priceEur)}</span>
+                        {listing.quantity > 1 && <span className="dk-badge mk-qty">{listing.quantity}×</span>}
+                        <span className="dk-plus">Zum Verkäufer</span>
+                      </div>
+                      <div>
+                        <div className="dk-name" title={listing.name}>{listing.name}</div>
+                        <div className="dk-meta">#{listing.localId ?? "—"} · {listing.setName ?? "Trading Card"}</div>
+                      </div>
+                      <div className="mk-chips">
+                        <span>{listing.languageCode.toUpperCase()}</span>
+                        <span>{listing.variant}</span>
+                        <span>{listing.condition}</span>
+                        {listing.negotiable && <span className="vb">VB</span>}
+                      </div>
+                      <div className="mk-seller"><i>{(listing.sellerDisplayName ?? "V").charAt(0).toUpperCase()}</i>{listing.sellerDisplayName ?? "Verkäufer"}</div>
                     </button>
-                  </div>
-                </article>
-              );
-            }
-          )}
-        </div>
-      )}
-      </>}
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </AppShell>
   );
 }

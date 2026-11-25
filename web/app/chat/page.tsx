@@ -1,5 +1,8 @@
 "use client";
 
+import "../deck.css";
+import "./chat.css";
+
 import { ChatReactions } from "@/components/ChatReactions";
 
 import { SharedChatCard } from "@/components/SharedChatCard";
@@ -1437,34 +1440,26 @@ export default function ChatPage() {
       active="/chat"
       user={user}
     >
-      <section className="pageIntro">
-        <div>
-          <span className="eyebrowText">
-            Nachrichten
-          </span>
-
-          <h1>Chats & Gruppen</h1>
-
-          <p>
-            Freundeschats und Gruppen laufen
-            jetzt auf Web und Android über
-            denselben Cardyssey-Stand.
-          </p>
+      <div className="dk ch">
+      <section className="dk-deck ch-deck">
+        <div className="ch-deckRow">
+          <div>
+            <span className="dk-eyebrow">Nachrichten</span>
+            <h1 className="dk-title">Chats &amp; Gruppen</h1>
+            <p className="dk-sub">Freunde, Gruppen und Community-Räume. Alles läuft auf Web und Android im selben Stand.</p>
+          </div>
+          <button type="button" className="dk-gold" onClick={() => void createGroup()}>+ Neue Gruppe</button>
         </div>
-
-        <button
-          type="button"
-          className="primaryButton"
-          onClick={() =>
-            void createGroup()
-          }
-        >
-          + Neue Gruppe
-        </button>
+        <div className="dk-stats ch-stats">
+          <div className="dk-stat"><b>{threads.length}</b><span>Freunde</span></div>
+          <div className="dk-stat"><b>{groups.length}</b><span>Gruppen</span></div>
+          <div className="dk-stat"><b>{joinedRoomIds.length}</b><span>Community-Räume</span></div>
+          <div className="dk-stat"><b>{threads.reduce((n, t) => n + (t.unreadCount || 0), 0) + groups.reduce((n, g) => n + (g.unreadCount || 0), 0)}</b><span>ungelesen</span></div>
+        </div>
       </section>
 
       {pendingShare && (
-        <div className="statusPanel">
+        <div className="statusPanel ch-share">
           <strong>{pendingShare.name} teilen</strong>
           <p>{selection ? "Die Karte wird an den ausgewählten Chat gesendet." : "Wähle zuerst einen Freund, eine Gruppe oder einen Raum."}</p>
           <button className="primaryButton" disabled={!selection || shareSending} onClick={() => void shareCard(pendingShare)}>
@@ -2316,6 +2311,7 @@ export default function ChatPage() {
             </>
           )}
         </section>
+      </div>
       </div>
     </AppShell>
   );
