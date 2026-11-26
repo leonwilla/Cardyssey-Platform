@@ -53,13 +53,23 @@ REPRINT_SETS = ("30th", "cel25")
 LANG_WORDS = {
     "de": r"\bdeutsch\b|\bgerman\b|\bde\b|\bger\b|\bdt\b",
     "en": r"\benglish\b|\benglisch\b|\beng\b|\ben\b",
+    "ja": r"\bjapan\w*\b|\bjp\b|\bjpn\b|\bjap\b",
+    "ko": r"\bkorea\w*\b|\bkr\b|\bkor\b",
+    "zh-tw": r"\bchines\w*\b|\btraditional\b|\bt ?chinese\b|\btaiwan\w*\b|\bhong kong\b",
 }
-OTHER_LANG = {
+_ALL_LANGS = {"de": r"\bdeutsch\b|\bgerman\b", "en": r"\benglish\b|\benglisch\b|\beng\b",
+              "ja": r"\bjapan\w*\b|\bjp\b|\bjpn\b", "ko": r"\bkorea\w*\b|\bkr\b",
+              "zh-tw": r"\bchines\w*\b|\bsimplified\b", "fr": r"\bfranz\w*\b|\bfrench\b",
+              "it": r"\bital\w*\b", "es": r"\bspan\w*\b", "pt": r"\bportug\w*\b"}
+OTHER_LANG_BASE = {
     "de": r"\benglish\b|\benglisch\b|\beng\b|\bjap\w*\b|\bjp\b|\bkorea\w*\b|\bchines\w*\b|\bfranz\w*\b|"
           r"\bfrench\b|\bital\w*\b|\bspan\w*\b|\bportug\w*\b|\bniederl\w*\b|\bdutch\b",
     "en": r"\bdeutsch\b|\bgerman\b|\bjap\w*\b|\bjp\b|\bkorea\w*\b|\bchines\w*\b|\bfranz\w*\b|\bfrench\b|"
           r"\bital\w*\b|\bspan\w*\b|\bportug\w*\b|\bniederl\w*\b|\bdutch\b",
 }
+OTHER_LANG = dict(OTHER_LANG_BASE)
+for _lang in ("ja", "ko", "zh-tw"):
+    OTHER_LANG[_lang] = "|".join(v for k, v in _ALL_LANGS.items() if k != _lang)
 # Variants we cannot tell apart reliably from titles: computed for review,
 # never published automatically.
 UNCERTAIN_STAMPS = {"set-logo", "player-rewards-program"}

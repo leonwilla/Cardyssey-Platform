@@ -224,7 +224,7 @@ fun Route.pricingRoutes(
                             // Insights): EBAY uses current matching eBay offers (median of the
                             // three cheapest), otherwise - like AUTO - the Cardmarket value.
                             val offers = if (market == "EBAY" && selectedVariant != null && details != null &&
-                                language in setOf("de", "en"))
+                                language in setOf("de", "en", "ja", "ko", "zh-tw"))
                                 runCatching { sourcePolicy.ebayOffers(cardId, language, selectedVariant.id) }.getOrNull()
                             else null
                             val listingValue = offers?.takeIf { it.first >= 3 && it.second.size >= 3 }
@@ -283,7 +283,7 @@ fun Route.pricingRoutes(
                     referenceNote = "Englischer Karten-Richtwert; Druckvariante und Zustand ungeprüft. Kein bestätigter Marktpreis.",
                     referenceUpdatedAtMs = reference.second
                 ) else quote
-                val offers = if (language in setOf("de", "en") && quote.variantId != null)
+                val offers = if (language in setOf("de", "en", "ja", "ko", "zh-tw") && quote.variantId != null)
                     runCatching { sourcePolicy.ebayOffers(cardId, language, quote.variantId) }.getOrNull()
                 else null
                 call.respond(if (offers != null) withReference.copy(
