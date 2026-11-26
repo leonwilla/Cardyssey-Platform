@@ -449,6 +449,74 @@ def _pick_by_variant_ids(row, group, main, guide=None):
     return chosen[0]
 
 
+def _product_number_ok(item, printed, code, prefix, set_id):
+    if item.get("title_number"):
+        return title_number_matches(item["title_number"], printed)
+    return number_matches(item["product"], printed, set_id, code, prefix)
+
+
+def _plain_name(name):
+    """Name for the TCGdex ID check: Cardmarket adds level suffixes
+    ('Tropius Lv.35') and writes Gold Star as text."""
+    text = re.sub(r"\s+lv\.?\s*[0-9]+$", "", str(name or ""), flags=re.I)
+    return normalize_name(text.replace("☆", " gold star "))
+
+
+def _pick_tcgdex_variant(row, card_rows, catalog, allowed_exps, english_name, products, guide, code, prefixes):
+    """Last resort: the variant's own Cardmarket ID from TCGdex.
+
+    Used where the set list cannot decide (special prints that Cardmarket
+    keeps in a separate "Additionals" expansion, numbers missing from the
+    list, unindexed sets). Accepted only when every check holds: exactly one
+    ID, no other variant of the card uses it, the official catalog lists it
+    as a single in the card's own expansion or its Additionals, the English
+    name matches, the printed number matches where Cardmarket's list shows
+    it, and a special print is not clearly cheaper than the plain card.
+    """
+    ids = _variant_ids(row)
+    if len(ids) != 1 or not ids[0].isdigit():
+        return None
+    own = ids[0]
+    # Normal and reverse share one product (reverse is a filter there), so
+    # only variants with the same filter key must not share the ID.
+    if any(own in _variant_ids(r) for r in card_rows if r is not row and filter_key(r) == filter_key(row)):
+        return None
+    product = catalog.get(int(own))
+    if not product or product.get("idCategory") != 51 or str(product.get("idExpansion")) not in allowed_exps:
+        return None
+    base = str(product.get("name") or "").split(" [", 1)[0]
+    if not english_name or _plain_name(base) != _plain_name(english_name):
+        return None
+    item = products.get(own)
+    if item and not _product_number_ok(item, row.get("kartennummer"), code, prefixes.get(item["slug"]),
+                                       row.get("set_id", "")):
+        return None
+    if guide is not None and kind_key(row):
+        plain = [r for r in card_rows if not kind_key(r) and filter_key(r) == filter_key(row)] or \
+                [r for r in card_rows if not kind_key(r)]
+        plain_ids = {i for r in plain for i in _variant_ids(r)}
+        if len(plain_ids) == 1:
+            def price(pid):
+                g = guide.get(int(pid)) or {}
+                return g.get("trend") or g.get("avg")
+            a, b = price(next(iter(plain_ids))), price(own)
+            if a and b and b < a * 0.9:
+                return None
+    return own, item
+
+
+def _set_pick(row, alt, language, catalog, below):
+    pid, item = alt
+    row["index_product_id"] = pid
+    row["index_product_url"] = (f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/"
+                                f"{item['slug']}/{item['product']}") if item else ""
+    if not below:
+        row["catalog_singleton_id"] = pid
+        product = catalog.get(int(pid))
+        if product:
+            row["catalog_expansion_id"] = str(product["idExpansion"])
+
+
 def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_exp, set_codes=None,
                 minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None, guide=None, names=None):
     """Add index hints to one language queue in place. Returns status counts.
@@ -459,7 +527,7 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
     config/cardmarket-variant-version-rules.json maps its kind to a version
     (V1/V2/...). Everything else goes to review as a GROUP (set + kind), so a
     single human rule resolves all cards of that kind in the set.
-    names maps card IDs to English names for sets matched by name (30th-c).
+    names maps card IDs to English names (30th-c reprints, TCGdex ID check).
     """
     set_codes = set_codes or {}
     related = related or {}
@@ -474,9 +542,14 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
     verified_slug = {exp: info["slug"] for exp, info in expansions.items()
                      if info.get("slugVerified") is True and PRODUCT_PATH.fullmatch(str(info.get("slug") or ""))}
     guards = index_set_guards(expansions, set_exp)
+    # "<Set>-Additionals" holds the separately sold special prints of a set
+    # (e.g. Poke Ball / Master Ball patterns of Prismatic Evolutions).
+    additionals = {slug: exp for exp, slug in verified_slug.items() if slug.endswith("-Additionals")}
     siblings = defaultdict(list)
+    card_rows = defaultdict(list)
     for row in rows:
         siblings[(row["cardyssey_karte"], filter_key(row))].append(row)
+        card_rows[row["cardyssey_karte"]].append(row)
     # 1st edition and unlimited share one Cardmarket product; the price guide
     # mixes them, so every variant of such a card is scanned in the browser
     # (isFirstEd filter) whatever its value.
@@ -507,10 +580,23 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
                  if str(e) in verified_slug]
         if primary and primary not in slugs:
             slugs.insert(0, primary)
-        if not slugs:
-            _finish(row, "SET_NOT_INDEXED", below, stats)
-            continue
         code = str(set_codes.get(row["set_id"]) or "")
+        allowed = ({str(e) for e in related.get(row["set_id"], [])} | {str(set_exp.get(row["set_id"]) or "")}
+                   | ({additionals[primary + "-Additionals"]} if primary and primary + "-Additionals" in additionals
+                      else set()))
+        english = (names or {}).get(row["cardyssey_karte"]) or (row.get("kartenname_suche") if language == "en" else "")
+
+        def tcgdex_pick():
+            return _pick_tcgdex_variant(row, card_rows[row["cardyssey_karte"]], catalog, allowed - {""},
+                                        english, products, guide, code, prefixes)
+        if not slugs:
+            alt = tcgdex_pick()
+            if alt:
+                _set_pick(row, alt, language, catalog, below)
+                _finish(row, "DIRECT_PRODUCT_ID_TCGDEX", below, stats)
+            else:
+                _finish(row, "SET_NOT_INDEXED", below, stats)
+            continue
         if row["set_id"] in NAME_MATCH_SETS:
             wanted = normalize_name((names or {}).get(row["cardyssey_karte"]) or row.get("kartenname_suche"))
             matches = sorted((pid, item) for slug in slugs for pid, item in by_slug.get(slug, [])
@@ -571,6 +657,13 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             if not pick:
                 status = "REVIEW_GROUP"
                 row["index_review_group"] = f"{row['set_id']}|{rule_kind}|several-versions"
+        if not pick and status in ("REVIEW_GROUP", "NO_NUMBER_MATCH_IN_SET", "SPECIAL_NOT_SEPARABLE"):
+            alt = tcgdex_pick()
+            if alt:
+                row["index_review_group"] = ""
+                _set_pick(row, alt, language, catalog, below)
+                _finish(row, "DIRECT_PRODUCT_ID_TCGDEX", below, stats)
+                continue
         if status == "REVIEW_GROUP" or status == "NO_NUMBER_MATCH_IN_SET":
             row["index_candidate_urls"] = json.dumps(urls[:6]) if urls else ""
         if pick:

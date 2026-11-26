@@ -86,11 +86,10 @@ def main():
         guide = {x['idProduct']: x for x in fetch_json(load_game_profile()['price_url'])['priceGuides']}
     except Exception:
         guide = None  # without the guide the ID pick still needs the full ID check
-    # English names for sets matched by name (30th-c reprints); card IDs are
+    # English names (30th-c reprints, TCGdex ID name check); card IDs are
     # the same in both languages.
     with (args.base / 'queue-en.csv').open(encoding='utf-8-sig', newline='') as stream:
-        names = {r['cardyssey_karte']: r['kartenname_suche'] for r in csv.DictReader(stream)
-                 if r.get('set_id') in idx.NAME_MATCH_SETS}
+        names = {r['cardyssey_karte']: r['kartenname_suche'] for r in csv.DictReader(stream)}
     review = {}
     report = {'checkedAt': datetime.now(timezone.utc).isoformat(), 'indexedProducts': len(products),
               'verifiedExpansions': sum(1 for e in expansions.values() if e.get('slugVerified') is True),

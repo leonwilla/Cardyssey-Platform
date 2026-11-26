@@ -177,6 +177,34 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(main['index_product_id'], '907610')
         self.assertEqual(classic['index_product_id'], '907940')
 
+    def test_special_print_from_additionals_by_tcgdex_variant_id(self):
+        exp = {'5944': {'slug': 'Prismatic-Evolutions', 'slugVerified': True, 'crawledAt': 'x'},
+               '6009': {'slug': 'Prismatic-Evolutions-Additionals', 'slugVerified': True, 'crawledAt': 'x'}}
+        lines = [json.dumps({'id': i, 'slug': sl, 'product': p, 'title': t, 'idExpansion': e})
+                 for i, sl, p, t, e in (
+                     ('805463', 'Prismatic-Evolutions', 'Eevee-PRE074', 'Eevee (PRE 074)', '5944'),
+                     ('806514', 'Prismatic-Evolutions-Additionals', 'Eevee-V1-xPRE074', 'Eevee (xPRE 074)', '6009'),
+                     ('806515', 'Prismatic-Evolutions-Additionals', 'Eevee-V2-xPRE074', 'Eevee (xPRE 074)', '6009'))]
+        expansions, products = idx.load_index({'schema': idx.INDEX_SCHEMA, 'expansions': exp}, lines)
+        catalog = {int(i): {'idProduct': int(i), 'idCategory': 51, 'idExpansion': int(e),
+                            'name': 'Eevee [Boosted Evolution | Reckless Charge]'}
+                   for i, e in (('805463', 5944), ('806514', 6009), ('806515', 6009))}
+        rows = [row('sv08.5-074', '074', 'Reverse', cardmarket_ids='805463', existing_price_eur='0.1'),
+                row('sv08.5-074', '074', 'Reverse', foil='Pokéball', cardmarket_ids='806514',
+                    variante_id='pb', existing_price_eur='1'),
+                row('sv08.5-074', '074', 'Reverse', foil='Meisterball', cardmarket_ids='806515',
+                    variante_id='mb', existing_price_eur='9')]
+        idx.apply_index(rows, 'en', products, expansions, {}, catalog, {'sv08.5': 5944},
+                        names={'sv08.5-074': 'Eevee'})
+        got = {r['variante_id']: (r['index_product_id'], r['index_match'] or r['index_status']) for r in rows}
+        self.assertEqual(got['pb'], ('806514', 'DIRECT_PRODUCT_ID_TCGDEX'))
+        self.assertEqual(got['mb'], ('806515', 'DIRECT_PRODUCT_ID_TCGDEX'))
+        # a wrong name never passes
+        rows[2]['cardmarket_ids'] = '806515'
+        idx.apply_index(rows, 'en', products, expansions, {}, catalog, {'sv08.5': 5944},
+                        names={'sv08.5-074': 'Vaporeon'})
+        self.assertEqual(rows[2]['index_product_id'], '')
+
     def test_verified_flag_without_product_id_does_not_block_index(self):
         rows = [row('ecard3-145', '145', routing_state='VERIFIED_PRODUCT_ID', catalog_singleton_id='')]
         apply(rows)
