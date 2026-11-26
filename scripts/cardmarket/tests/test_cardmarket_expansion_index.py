@@ -201,3 +201,37 @@ class CollectorWiringTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class VariantIdPickTests(unittest.TestCase):
+    PRODUCTS = {
+        '279731': {'slug': 'Skyridge', 'product': 'Grass-Energy-V1-SK88', 'idExpansion': '1538'},
+        '449588': {'slug': 'Skyridge', 'product': 'Grass-Energy-V2-SK88', 'idExpansion': '1538'},
+    }
+
+    def run_apply(self, rows, guide=None):
+        catalog = {int(k): {'idProduct': int(k), 'idExpansion': 1538} for k in self.PRODUCTS}
+        return idx.apply_index(rows, 'de', self.PRODUCTS, EXPANSIONS, {}, catalog, {'ecard3': 1538}, guide=guide)
+
+    def rows(self, plain_id='279731', promo_id='449588'):
+        return [row('ecard3-88', '88', 'Holo', cardmarket_ids=plain_id),
+                row('ecard3-88', '88', 'Holo', stempel='["player-rewards-program"]', cardmarket_ids=promo_id)]
+
+    def test_distinct_variant_ids_resolve_review_group(self):
+        rows = self.rows()
+        self.run_apply(rows)
+        self.assertTrue(rows[0]['index_status'].startswith('DIRECT_PRODUCT_URL'))
+        self.assertTrue(rows[0]['index_product_url'].endswith('/Grass-Energy-V1-SK88'))
+        self.assertEqual(rows[1]['index_status'], 'DIRECT_PRODUCT_URL_VARIANT_ID')
+        self.assertTrue(rows[1]['index_product_url'].endswith('/Grass-Energy-V2-SK88'))
+
+    def test_shared_id_stays_in_review(self):
+        rows = self.rows(promo_id='279731')
+        self.run_apply(rows)
+        self.assertEqual(rows[1]['index_status'], 'REVIEW_GROUP')
+
+    def test_cheaper_special_print_is_rejected(self):
+        rows = self.rows()
+        guide = {279731: {'trend': 50.0}, 449588: {'trend': 10.0}}
+        self.run_apply(rows, guide=guide)
+        self.assertEqual(rows[1]['index_status'], 'REVIEW_GROUP')

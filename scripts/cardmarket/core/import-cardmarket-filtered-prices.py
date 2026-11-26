@@ -61,7 +61,8 @@ def standard_catalog(directory, language):
     return rows, guards, first_edition_sets
 
 
-INDEX_DIRECT = ("DIRECT_PRODUCT_URL", "DIRECT_PRODUCT_URL_ID_CORRECTED", "DIRECT_PRODUCT_URL_RULE")
+INDEX_DIRECT = ("DIRECT_PRODUCT_URL", "DIRECT_PRODUCT_URL_ID_CORRECTED", "DIRECT_PRODUCT_URL_RULE",
+                "DIRECT_PRODUCT_URL_VARIANT_ID")
 
 
 def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):

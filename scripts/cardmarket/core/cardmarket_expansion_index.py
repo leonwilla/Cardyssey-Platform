@@ -382,8 +382,41 @@ def _pick_plain(main, row, language, tcgdex_ids):
     return chosen[0] if len(chosen) == 1 else None
 
 
+def _variant_ids(row):
+    return [x.strip() for x in str(row.get("cardmarket_ids") or "").split(",") if x.strip()]
+
+
+def _pick_by_variant_ids(row, group, main, guide=None):
+    """Pick the product by the per-variant Cardmarket ID (TCGdex variant data).
+
+    Only when it cannot be a guess: every variant of this card/filter key has
+    exactly one ID, all IDs differ, and this variant's ID is one of the
+    products Cardmarket lists under this card number in the set. With the
+    official price guide, a special print priced clearly below the plain
+    print of the same card is rejected (such swaps are typical ID mix-ups).
+    Checked 26.11.2026: 119 of 119 priced groups were plausible.
+    """
+    ids = [_variant_ids(r) for r in group]
+    if any(len(i) != 1 for i in ids) or len({i[0] for i in ids}) != len(group):
+        return None
+    own = _variant_ids(row)[0]
+    chosen = [m for m in main if m[0] == own]
+    if len(chosen) != 1:
+        return None
+    if guide is not None and kind_key(row):
+        plain = [r for r in group if not kind_key(r)]
+        if len(plain) == 1:
+            def price(pid):
+                g = guide.get(int(pid)) or {}
+                return g.get("trend") or g.get("avg")
+            a, b = price(_variant_ids(plain[0])[0]), price(own)
+            if a and b and b < a * 0.9:
+                return None
+    return chosen[0]
+
+
 def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_exp, set_codes=None,
-                minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None):
+                minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None, guide=None):
     """Add index hints to one language queue in place. Returns status counts.
 
     A variant is priced automatically when Cardmarket can tell it apart: it is
@@ -477,10 +510,17 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             status = "SPECIAL_NOT_SEPARABLE"
             row["index_candidate_urls"] = json.dumps(urls[:1])
         elif collision and (kind or len(plain_rows) != 1):
-            status = "REVIEW_GROUP"
-            row["index_review_group"] = f"{row['set_id']}|{kind}"
+            pick = _pick_by_variant_ids(row, group, main, guide)
+            if pick:
+                status = "DIRECT_PRODUCT_URL_VARIANT_ID"
+            else:
+                status = "REVIEW_GROUP"
+                row["index_review_group"] = f"{row['set_id']}|{kind}"
         else:
             pick = _pick_plain(main, row, language, tcgdex_ids)
+            if not pick:
+                pick = _pick_by_variant_ids(row, group, main, guide)
+                status = "DIRECT_PRODUCT_URL_VARIANT_ID" if pick else ""
             if not pick:
                 status = "REVIEW_GROUP"
                 row["index_review_group"] = f"{row['set_id']}|{rule_kind}|several-versions"

@@ -82,6 +82,10 @@ def main():
     guards = idx.index_set_guards(expansions, set_exp)
     rules_file = ROOT / 'config/cardmarket-variant-version-rules.json'
     rules = idx.load_rules(json.loads(rules_file.read_text(encoding='utf-8'))) if rules_file.is_file() else {}
+    try:
+        guide = {x['idProduct']: x for x in fetch_json(load_game_profile()['price_url'])['priceGuides']}
+    except Exception:
+        guide = None  # without the guide the ID pick still needs the full ID check
     review = {}
     report = {'checkedAt': datetime.now(timezone.utc).isoformat(), 'indexedProducts': len(products),
               'verifiedExpansions': sum(1 for e in expansions.values() if e.get('slugVerified') is True),
@@ -91,7 +95,7 @@ def main():
 
         def mutate(rows, language=language):
             stats = idx.apply_index(rows, language, products, expansions, tcgdex, catalog, set_exp, set_codes,
-                                    related=related, rules=rules)
+                                    related=related, rules=rules, guide=guide)
             for r in rows:
                 if r.get('index_status') == 'REVIEW_GROUP' and r.get('index_review_group'):
                     g = review.setdefault(r['index_review_group'], {'de': 0, 'en': 0, 'examples': [], 'urls': set()})
