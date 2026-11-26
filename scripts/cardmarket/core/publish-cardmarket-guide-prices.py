@@ -68,11 +68,36 @@ def is_manual(source):
     return source.upper().startswith(KEEP_MANUAL)
 
 
+TREND_MAX_FACTOR = 2.0
+
+
+def _positive(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0
+
+
 def guide_value(guide, reverse):
+    """Trend des offiziellen Preisführers; bei kaputtem Trend der Median aus Trend, 7- und 30-Tage-Schnitt.
+
+    Cardmarkets "trend" ist bei selten verkauften Karten manchmal unsinnig (z. B. 0,02 EUR bei
+    einem 30-Tage-Schnitt von 1.048 EUR, 26.11.2026: 210 Preise). Liegt der Trend mehr als
+    Faktor 2 neben den Durchschnitten, zählt der mittlere der drei Werte.
+    """
     suffix = '-holo' if reverse else ''
+    trend = guide.get('trend' + suffix)
+    refs = [(k + suffix, guide.get(k + suffix)) for k in ('avg30', 'avg7')]
+    refs = [(k, float(v)) for k, v in refs if _positive(v)]
+    if _positive(trend) and refs:
+        ref = sum(v for _, v in refs) / len(refs)
+        if ref / TREND_MAX_FACTOR <= trend <= ref * TREND_MAX_FACTOR:
+            return round(float(trend), 2), 'trend' + suffix
+        if len(refs) == 2:
+            values = sorted([('trend' + suffix, float(trend))] + refs, key=lambda kv: kv[1])
+            key, value = values[1]
+            return round(value, 2), key + ' (Median, Trend unplausibel)'
+        return round(refs[0][1], 2), refs[0][0] + ' (Trend unplausibel)'
     for key in KEYS:
         v = guide.get(key + suffix)
-        if isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0:
+        if _positive(v):
             return round(float(v), 2), key + suffix
     return None, None
 

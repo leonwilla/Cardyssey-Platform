@@ -74,5 +74,23 @@ class GuidePriceTests(unittest.TestCase):
         self.assertNotIn('POKEMONTCGIO_CARDMARKET', gp.CARDMARKET)
 
 
+class RobustTrendTests(unittest.TestCase):
+    def test_normal_trend_is_kept(self):
+        self.assertEqual(gp.guide_value({'trend': 10.0, 'avg30': 12.0, 'avg7': 9.0}, False), (10.0, 'trend'))
+
+    def test_broken_low_trend_uses_median(self):
+        value, key = gp.guide_value({'trend': 0.02, 'avg30': 1047.94, 'avg7': 422.43}, False)
+        self.assertEqual(value, 422.43)
+        self.assertTrue(key.startswith('avg7'))
+
+    def test_broken_high_trend_uses_median(self):
+        value, _ = gp.guide_value({'trend': 295.69, 'avg30': 48.02, 'avg7': 150.95}, False)
+        self.assertEqual(value, 150.95)
+
+    def test_only_avg30_reference(self):
+        value, key = gp.guide_value({'trend-holo': 0.02, 'avg30-holo': 12.0}, True)
+        self.assertEqual((value, key), (12.0, 'avg30-holo (Trend unplausibel)'))
+
+
 if __name__ == '__main__':
     unittest.main()
