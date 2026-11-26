@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish one filtered asking median per card variant and language.
+"""Publish one filtered asking value (median of the 5 cheapest offers) per card variant and language.
 
 Verified standard prints may use a sample that reached the paging limit.
 Other prints require complete offers and a matching human-confirmed route.
@@ -109,6 +109,21 @@ def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):
     return first == "N" and x.get("exact_print_filter_supported") is not False
 
 
+def _valid_eur(v):
+    return not isinstance(v,bool) and isinstance(v,(float,int)) and math.isfinite(v) and 0<v<1e6
+
+def market_value(x, complete):
+    """Marktwert aus den Angeboten: Median der 5 günstigsten passenden Angebote
+    (Sprache, Near Mint, Variante). Das ist ungefähr der Preis, zu dem man die
+    Karte gerade kaufen kann; teure Ladenhüter am oberen Ende zählen nicht mit,
+    ein einzelnes Lockangebot ganz unten auch nicht. Ältere Ergebnisse ohne
+    diesen Wert nutzen weiter den Median aller Angebote."""
+    entry=x.get("entry_five_median_eur")
+    if _valid_eur(entry):
+        return float(entry)
+    median=x.get("median_all_offers_eur" if complete else "sample_median_eur")
+    return float(median) if _valid_eur(median) else None
+
 def collect(path,language,now=None,guides=None,rejected=None):
     """guides: {idProduct: Preisführer-Eintrag}; unplausible Preise landen in rejected (Liste)."""
     if language not in ('de','en'):raise ValueError('language')
@@ -134,8 +149,8 @@ def collect(path,language,now=None,guides=None,rejected=None):
                    and type(x.get("offer_pages_attempted")) is int and x["offer_pages_attempted"] >= 3)
         if not complete and not sampled:
             continue
-        median = x.get("median_all_offers_eur" if complete else "sample_median_eur")
-        if isinstance(median,bool) or not isinstance(median,(float,int)) or not math.isfinite(median) or not 0<median<1e6:continue
+        median = market_value(x, complete)
+        if median is None:continue
         verified_offers = x.get("verified_lang_nm_offers")
         if type(verified_offers) is not int or verified_offers < 1:
             continue
@@ -261,4 +276,4 @@ if __name__=='__main__':
        'full_filtered_candidates':sum(not row['page_limited_sample'] for row in rows),
        'page_limited_standard_candidates':sum(row['page_limited_sample'] for row in rows),
        'automatic_standard_candidates':sum(row['automatic_standard'] for row in rows),
-       'apply':a.apply,'basis':'filtered_active_asking_median_not_sold'}))
+       'apply':a.apply,'basis':'filtered_asking_cheapest_five_median_not_sold'}))
