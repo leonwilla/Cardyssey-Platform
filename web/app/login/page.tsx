@@ -8,6 +8,8 @@ import {
 import {
   BrandMark,
 } from "@/components/BrandMark";
+import { AuthDeckSide } from "@/components/AuthDeckSide";
+import "../auth-deck.css";
 
 export default function LoginPage() {
   const [shopReturnTo,setShopReturnTo]=useState("");
@@ -36,8 +38,8 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <main className="authPage">
-      <div className="authGlow" />
+    <main className="authPage authDeck">
+      <AuthDeckSide />
 
       <section className="authCard">
         <div className="authBrand">

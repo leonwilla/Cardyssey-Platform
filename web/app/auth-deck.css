@@ -1,0 +1,33 @@
+/* Anmeldung im Kartendeck-Look */
+body.cardysseyApp .authPage.authDeck{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);place-items:stretch;padding:0;gap:0;min-height:100vh}
+.authDeck .authGlow{display:none}
+.authDeckSide{position:relative;overflow:hidden;color:#f5efe5;display:flex;align-items:center;justify-content:center;padding:48px;
+  background:radial-gradient(70% 70% at 80% 30%,#3d5547 0%,transparent 70%),
+    repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 38px),repeating-linear-gradient(0deg,#ffffff07 0 1px,transparent 1px 38px),
+    linear-gradient(165deg,#26372f,#1d2a24)}
+.authDeckSide::after{content:"";position:absolute;top:0;bottom:0;right:0;width:3px;background:linear-gradient(180deg,#f3d27a,#f7a8c4,#9fd7f2,#b6f0c4,#f3d27a)}
+.authDeckInner{max-width:460px;width:100%}
+.authDeckEyebrow{font-size:11px;letter-spacing:.24em;text-transform:uppercase;font-weight:900;color:#e4bd6a}
+.authDeckTitle{font-size:clamp(38px,4.4vw,58px);line-height:1;letter-spacing:-.035em;font-weight:900;margin:14px 0 16px}
+.authDeckTitle span{background:linear-gradient(100deg,#fff6df,#e4bd6a 40%,#fff1c9 60%,#b98742);-webkit-background-clip:text;background-clip:text;color:transparent}
+.authDeckText{color:#f5efe5b0;line-height:1.6;margin:0;font-size:16px}
+.authDeckFan{position:relative;height:250px;margin:30px 0 24px}
+.authDeckFan img{position:absolute;left:50%;top:10px;width:150px;aspect-ratio:63/88;object-fit:cover;border-radius:10px;box-shadow:0 20px 40px -16px #000c}
+.authDeckFan img:nth-child(1){transform:translateX(calc(-50% - 90px)) translateY(18px) rotate(-11deg);filter:brightness(.8)}
+.authDeckFan img:nth-child(2){transform:translateX(-50%);z-index:2;outline:3px solid #e4bd6a;outline-offset:2px}
+.authDeckFan img:nth-child(3){transform:translateX(calc(-50% + 90px)) translateY(18px) rotate(11deg);filter:brightness(.8)}
+.authDeckList{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+.authDeckList li{padding-left:24px;position:relative;font-weight:700;font-size:14px}
+.authDeckList li::before{content:"◆";position:absolute;left:0;color:#e4bd6a;font-size:12px;top:1px}
+body.cardysseyApp .authDeck .authCard{align-self:center;justify-self:center;margin:40px 24px;border-radius:24px;position:relative;overflow:hidden}
+body.cardysseyApp .authDeck .authCard::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#f3d27a,#f7a8c4,#9fd7f2,#b6f0c4,#f3d27a)}
+.authDeck .eyebrowText{letter-spacing:.22em;font-weight:900}
+@media (max-width:880px){
+  body.cardysseyApp .authPage.authDeck{grid-template-columns:minmax(0,1fr);align-content:start}
+  .authDeckSide{padding:32px 22px 26px}
+  .authDeckSide::after{top:auto;left:0;width:auto;height:3px;background:linear-gradient(90deg,#f3d27a,#f7a8c4,#9fd7f2,#b6f0c4,#f3d27a)}
+  .authDeckFan,.authDeckList{display:none}
+  .authDeckTitle{font-size:34px;margin:10px 0 8px}
+  .authDeckText{font-size:14px}
+  body.cardysseyApp .authDeck .authCard{margin:-14px 14px 32px;width:auto}
+}
