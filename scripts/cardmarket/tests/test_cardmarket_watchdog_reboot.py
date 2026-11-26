@@ -26,6 +26,6 @@ class RebootRecoveryPolicyTests(unittest.TestCase):
         self.assertIn("if([string]$health.status -ne 'AVAILABLE')",s)
         self.assertIn("CARDMARKET_PUBLIC_LIMITED_SESSION_CONTINUE",s)
         self.assertIn('"-BatchLimit","200"',s)
-        self.assertIn('"-MinRequestGapSeconds","11"',s)
+        self.assertIn('"-MinRequestGapSeconds","8"',s)
 
 if __name__=="__main__":unittest.main()

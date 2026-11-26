@@ -7,7 +7,7 @@
 # the run stops immediately and reports BLOCKED for the normal backoff.
 param(
   [ValidateRange(1,500)][int]$MaxRequests = 60,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 8,
   [ValidateRange(1,65535)][int]$CdpPort = 9223,
   [ValidateRange(1,365)][int]$RefreshDays = 30,
   [string]$Base = (Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector')

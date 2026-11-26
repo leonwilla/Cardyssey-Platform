@@ -7,8 +7,8 @@ param(
   [string]$OutputDir = "C:\Users\TV\AppData\Local\Cardyssey\CardmarketCollector",
   [int]$MaxCases = 0,          # 0 = gesamte Warteschlange
   [int]$BatchLimit = 0,        # 0 = unbegrenzt; sonst N fällige Fälle pro Lauf
-  [int]$DelaySeconds = 11,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
+  [int]$DelaySeconds = 8,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 8,
   [ValidateRange(1,90)][int]$MinAjaxGapSeconds = 3,
   [ValidateRange(0,100000)][int]$RunSeconds = 0,
   [ValidateSet('identity','missing')][string]$ScanMode = 'identity',
