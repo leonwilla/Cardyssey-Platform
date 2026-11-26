@@ -34,20 +34,20 @@
 @media(max-width:560px){.businessShopHeroStats{gap:20px}.businessShop .businessShopMain .cardGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.businessShop .businessShopMain button.cardTile{min-height:160px;padding:15px}.businessShopHero{margin-bottom:36px}}
 
 /* Modern theme follows the existing /preview-redesign design system:
-   paper #f4eee4, forest ink #1d2924, ember #e0522c, pale blue #c6dbe9. */
+   paper #f4eee4, forest ink #1d2924, ember #a66c20, pale blue #c6dbe9. */
 .businessShop .businessShopBrand span{font-size:11px;font-weight:700;letter-spacing:.16em}
 .businessShop .businessShopHero h1{letter-spacing:-.058em;max-width:630px}
 .businessShop .businessShopHero p{max-width:510px}
-.businessShop .businessShopHeroAction:hover{background:#e0522c;color:white}
+.businessShop .businessShopHeroAction:hover{background:#a66c20;color:white}
 .businessShop .businessShopHeroArtwork:before{content:"";position:absolute;border-radius:50%;z-index:0}
 .businessShop .businessShopHeroCardBack{background:linear-gradient(135deg,#cfd9c1,#e9dfcf);border-color:#faf7f1;box-shadow:0 22px 50px #1d292426}
 .businessShop .businessShopHeroCardFront{background:linear-gradient(145deg,#fbf7f0,#c6dbe9);border-color:#fffaf2;box-shadow:0 25px 55px #1d29242b}
 .businessShop .businessShopSectionHeading h2,.businessShop .businessShopCatalogTitle{color:#1d2924}
 .businessShop .businessShopMain .cardTile{background:#fbf7f0;border:1px solid #d9cdbb;color:#1d2924;box-shadow:0 8px 24px #1d29240b}
-.businessShop .businessShopMain .cardTile:hover{border-color:#e0522c;box-shadow:0 14px 30px #1d292421}
-.businessShop .businessShopSetIcon{color:#e0522c}
+.businessShop .businessShopMain .cardTile:hover{border-color:#a66c20;box-shadow:0 14px 30px #1d292421}
+.businessShop .businessShopSetIcon{color:#a66c20}
 .businessShop .businessShopSetCount{color:#58635d}
-.businessShop .businessShopSetCount>span{color:#e0522c}
+.businessShop .businessShopSetCount>span{color:#a66c20}
 .businessShop .businessShopMain select,.businessShop .businessShopMain input{background:#fbf7f0;color:#1d2924;border-color:#d9cdbb}
 .businessShop .businessShopMain .ghostButton{background:#fbf7f0;border:1px solid #d9cdbb;color:#1d2924}
 @media(max-width:700px){.businessShop .businessShopHero{padding:22px 0 30px;min-height:0}}
@@ -63,22 +63,22 @@
 .shopBrowseTabs button[aria-pressed=true]{background:#e9dfcf;color:#1d2924;font-weight:750}
 .shopBrowseTabs button span{float:right;opacity:.7}
 .shopBrowseSidebar label.shopCheck{display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:500}
-.shopCheck input{accent-color:#e0522c}
+.shopCheck input{accent-color:#a66c20}
 .shopSidebarNote{border-top:1px solid #d9cdbb;padding-top:18px;font-size:12px;color:#5d6a61;line-height:1.6}
 .shopSidebarNote strong{color:#1d2924}.shopSidebarNote p{margin:7px 0 0}
 .shopBrowseTop{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:24px;padding-bottom:19px;border-bottom:1px solid #d9cdbb}
-.shopBrowseEyebrow{font-size:11px;letter-spacing:.18em;color:#e0522c;font-weight:800}
+.shopBrowseEyebrow{font-size:11px;letter-spacing:.18em;color:#a66c20;font-weight:800}
 .shopBrowseTop h3{font-size:28px;letter-spacing:-.04em;margin:5px 0 4px}
 .shopBrowseTop p{color:#58635d;margin:0;font-size:13px}
 .shopBack{background:#1d2924;border:0;border-radius:30px;padding:10px 16px;color:#f4eee4;cursor:pointer}
 .shopSetGrid{display:grid;gap:15px}
 .shopSetTile{display:flex;flex-direction:column;text-align:left;border:1px solid #d9cdbb;background:#fbf7f0;color:#1d2924;cursor:pointer;min-width:0;transition:transform .15s,border-color .15s}
-.shopSetTile:hover{border-color:#e0522c}
+.shopSetTile:hover{border-color:#a66c20}
 .shopSetArtwork{display:flex;align-items:center;justify-content:space-between;padding:22px;background:linear-gradient(135deg,#cfd9c1,#e9dfcf 65%,#c6dbe9);position:relative}
-.shopSetMark{font-size:48px;color:#e0522c;opacity:.78}
+.shopSetMark{font-size:48px;color:#a66c20;opacity:.78}
 .shopSetCount{border-radius:30px;padding:7px 10px;background:#fff8f0bd;color:#1d2924;font-size:12px}
 .shopSetDetails{display:grid;gap:15px;padding:17px}
-.shopSetDetails strong{font-size:16px}.shopSetDetails>span{display:flex;justify-content:space-between;gap:8px;color:#58635d;font-size:12px}.shopSetDetails>span span{font-size:18px;color:#e0522c}
+.shopSetDetails strong{font-size:16px}.shopSetDetails>span{display:flex;justify-content:space-between;gap:8px;color:#58635d;font-size:12px}.shopSetDetails>span span{font-size:18px;color:#a66c20}
 .shopProductGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .shopProduct{background:#fbf7f0;border:1px solid #d9cdbb;border-radius:16px;overflow:hidden;color:#1d2924;min-width:0}
 .shopProductArt{height:235px;display:flex;align-items:center;justify-content:center;background:#eee9df;padding:18px}
@@ -107,15 +107,15 @@
 .shopSetPreviewImage{height:114px;max-width:42%;object-fit:contain;filter:drop-shadow(0 8px 7px #1d292433);transform:rotate(-7deg)}
 .shopProductArt .shopSetPreviewImage{height:100%;max-width:100%;transform:none}
 
-.shopWishlistMatches{margin:20px 0 40px;padding:26px;border:1px solid #d9cdbb;border-radius:22px;background:#fbf7f0;color:#1d2924}.shopWishlistHeading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:20px}.shopWishlistHeading span{color:#c4502b;font-size:11px;font-weight:800;letter-spacing:.15em}.shopWishlistHeading h2{margin:8px 0;font-size:clamp(24px,3vw,34px)}.shopWishlistHeading p{color:#53645b}.shopWishlistHeading a{color:#c4502b}.shopWishlistVariant{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#965021}@media(max-width:700px){.shopWishlistMatches{padding:16px}.shopWishlistHeading{align-items:flex-start;flex-direction:column}}
+.shopWishlistMatches{margin:20px 0 40px;padding:26px;border:1px solid #d9cdbb;border-radius:22px;background:#fbf7f0;color:#1d2924}.shopWishlistHeading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:20px}.shopWishlistHeading span{color:#8f5a18;font-size:11px;font-weight:800;letter-spacing:.15em}.shopWishlistHeading h2{margin:8px 0;font-size:clamp(24px,3vw,34px)}.shopWishlistHeading p{color:#53645b}.shopWishlistHeading a{color:#8f5a18}.shopWishlistVariant{display:block;font-size:12px;font-weight:700;margin-bottom:6px;color:#965021}@media(max-width:700px){.shopWishlistMatches{padding:16px}.shopWishlistHeading{align-items:flex-start;flex-direction:column}}
 
-.shopHeaderWishlist,.shopWishlistHeading button{border:1px solid currentColor;border-radius:99px;padding:9px 13px;background:transparent;color:inherit;cursor:pointer;font:inherit}.shopAccountButton{border-radius:999px;padding:10px 14px;background:#1d2924;color:#fff!important;font-size:13px}.shopWishlistPage{max-width:1100px;margin:0 auto}.shopWishlistTop{display:flex;align-items:center;justify-content:space-between;gap:15px}.shopWishlistTop span{color:#e0522c;font-size:11px;font-weight:800;letter-spacing:.16em}.shopWishlistTop h1{font-size:clamp(35px,6vw,62px);margin:10px 0}.shopWishlistTop p{color:#67766b}.shopWishlistTop button,.shopWishlistOwnedGrid button{border:0;border-radius:12px;padding:11px 14px;background:#1d2924;color:#fff;cursor:pointer}.shopWishlistPage .wishlistCatalogPicker{--navy-card:#fffaf3;--navy:#fff;--text:#1d2924;--secondary:#647168;--border:#ded1c1}.shopWishlistOwned{margin:35px 0}.shopWishlistOwnedGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.shopWishlistOwnedGrid article{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #d9cdbb;border-radius:14px;padding:10px;background:#fffaf3}.shopWishlistOwnedGrid article>div{display:flex;align-items:center;gap:12px}.shopWishlistOwnedGrid img{width:45px;height:63px;object-fit:contain}.shopWishlistOwnedGrid article span{display:grid;gap:5px}.shopWishlistOwnedGrid small{color:#69756c}@media(max-width:700px){.shopWishlistTop{align-items:flex-start;flex-direction:column}.shopWishlistOwnedGrid{grid-template-columns:1fr}.businessShopHeader nav{align-items:center}.shopAccountButton{font-size:11px}}
+.shopHeaderWishlist,.shopWishlistHeading button{border:1px solid currentColor;border-radius:99px;padding:9px 13px;background:transparent;color:inherit;cursor:pointer;font:inherit}.shopAccountButton{border-radius:999px;padding:10px 14px;background:#1d2924;color:#fff!important;font-size:13px}.shopWishlistPage{max-width:1100px;margin:0 auto}.shopWishlistTop{display:flex;align-items:center;justify-content:space-between;gap:15px}.shopWishlistTop span{color:#a66c20;font-size:11px;font-weight:800;letter-spacing:.16em}.shopWishlistTop h1{font-size:clamp(35px,6vw,62px);margin:10px 0}.shopWishlistTop p{color:#67766b}.shopWishlistTop button,.shopWishlistOwnedGrid button{border:0;border-radius:12px;padding:11px 14px;background:#1d2924;color:#fff;cursor:pointer}.shopWishlistPage .wishlistCatalogPicker{--navy-card:#fffaf3;--navy:#fff;--text:#1d2924;--secondary:#647168;--border:#ded1c1}.shopWishlistOwned{margin:35px 0}.shopWishlistOwnedGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.shopWishlistOwnedGrid article{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #d9cdbb;border-radius:14px;padding:10px;background:#fffaf3}.shopWishlistOwnedGrid article>div{display:flex;align-items:center;gap:12px}.shopWishlistOwnedGrid img{width:45px;height:63px;object-fit:contain}.shopWishlistOwnedGrid article span{display:grid;gap:5px}.shopWishlistOwnedGrid small{color:#69756c}@media(max-width:700px){.shopWishlistTop{align-items:flex-start;flex-direction:column}.shopWishlistOwnedGrid{grid-template-columns:1fr}.businessShopHeader nav{align-items:center}.shopAccountButton{font-size:11px}}
 
 /* Compact shop header: profile menu owns wishlist, invoices and theme. */
-.businessShopHeader .businessShopBrand{cursor:pointer;flex-shrink:0}.businessShopHeader nav{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap}.shopAccountMenu{position:relative;z-index:30}.shopAccountButton{display:inline-flex;align-items:center;gap:10px;white-space:nowrap;cursor:pointer;border:0}.shopAccountButton span{font-size:18px}.shopAccountDropdown{position:absolute;right:0;top:calc(100% + 12px);width:min(310px,calc(100vw - 24px));padding:10px;display:grid;gap:3px;background:#fffaf3;color:#1d2924;border:1px solid #d8ccbb;border-radius:18px;box-shadow:0 20px 55px #1d29243c}.shopAccountDropdownName{display:grid;gap:4px;padding:12px;border-bottom:1px solid #e0d5c6;margin-bottom:5px}.shopAccountDropdownName small{font-size:12px;color:#647168;overflow-wrap:anywhere}.shopAccountDropdown>button:not(.shopDesignToggle),.shopAccountDropdown>a{display:flex;justify-content:space-between;padding:12px;border:0;background:transparent;border-radius:10px;font:inherit;text-decoration:none;color:#1d2924;cursor:pointer;text-align:left}.shopAccountDropdown>button:hover,.shopAccountDropdown>a:hover{background:#f1e8db}.shopAccountDropdownDesign{display:flex;align-items:center;justify-content:space-between;padding:12px;border-top:1px solid #e0d5c6;font-size:13px}.shopDesignToggle{border:0;border-radius:99px;width:44px;height:25px;background:#b7b7ac;padding:3px;cursor:pointer;transition:background .18s}.shopDesignToggle.on{background:#1d2924}.shopDesignToggle i{display:block;width:19px;height:19px;border-radius:50%;background:white;transition:transform .18s}.shopDesignToggle.on i{transform:translateX(19px)}.shopAccountPage{max-width:860px;margin:16px auto 50px;min-height:60vh}.shopAccountPage h1{font-size:clamp(35px,5vw,58px);margin:18px 0}.shopAccountEyebrow{display:block;margin-top:30px;font-size:11px;letter-spacing:.17em;color:#e0522c;font-weight:800}.shopAccountEmpty{padding:32px;border:1px solid #d9cdbb;border-radius:20px;background:#fffaf3;color:#1d2924}.shopAccountEmpty p{color:#56665d;line-height:1.65}@media(max-width:700px){.businessShopHeader nav{width:100%;justify-content:space-between;gap:12px;flex-wrap:wrap}.shopAccountMenu{margin-left:auto}.shopAccountDropdown{right:0}.shopAccountPage{min-height:55vh}.shopAccountEmpty{padding:20px}}
+.businessShopHeader .businessShopBrand{cursor:pointer;flex-shrink:0}.businessShopHeader nav{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap}.shopAccountMenu{position:relative;z-index:30}.shopAccountButton{display:inline-flex;align-items:center;gap:10px;white-space:nowrap;cursor:pointer;border:0}.shopAccountButton span{font-size:18px}.shopAccountDropdown{position:absolute;right:0;top:calc(100% + 12px);width:min(310px,calc(100vw - 24px));padding:10px;display:grid;gap:3px;background:#fffaf3;color:#1d2924;border:1px solid #d8ccbb;border-radius:18px;box-shadow:0 20px 55px #1d29243c}.shopAccountDropdownName{display:grid;gap:4px;padding:12px;border-bottom:1px solid #e0d5c6;margin-bottom:5px}.shopAccountDropdownName small{font-size:12px;color:#647168;overflow-wrap:anywhere}.shopAccountDropdown>button:not(.shopDesignToggle),.shopAccountDropdown>a{display:flex;justify-content:space-between;padding:12px;border:0;background:transparent;border-radius:10px;font:inherit;text-decoration:none;color:#1d2924;cursor:pointer;text-align:left}.shopAccountDropdown>button:hover,.shopAccountDropdown>a:hover{background:#f1e8db}.shopAccountDropdownDesign{display:flex;align-items:center;justify-content:space-between;padding:12px;border-top:1px solid #e0d5c6;font-size:13px}.shopDesignToggle{border:0;border-radius:99px;width:44px;height:25px;background:#b7b7ac;padding:3px;cursor:pointer;transition:background .18s}.shopDesignToggle.on{background:#1d2924}.shopDesignToggle i{display:block;width:19px;height:19px;border-radius:50%;background:white;transition:transform .18s}.shopDesignToggle.on i{transform:translateX(19px)}.shopAccountPage{max-width:860px;margin:16px auto 50px;min-height:60vh}.shopAccountPage h1{font-size:clamp(35px,5vw,58px);margin:18px 0}.shopAccountEyebrow{display:block;margin-top:30px;font-size:11px;letter-spacing:.17em;color:#a66c20;font-weight:800}.shopAccountEmpty{padding:32px;border:1px solid #d9cdbb;border-radius:20px;background:#fffaf3;color:#1d2924}.shopAccountEmpty p{color:#56665d;line-height:1.65}@media(max-width:700px){.businessShopHeader nav{width:100%;justify-content:space-between;gap:12px;flex-wrap:wrap}.shopAccountMenu{margin-left:auto}.shopAccountDropdown{right:0}.shopAccountPage{min-height:55vh}.shopAccountEmpty{padding:20px}}
 
 /* Themes are palettes only: identical structure, sizing, spacing and typography. */
-.businessShop{--shop-accent:#e0522c}
+.businessShop{--shop-accent:#a66c20}
 .businessShop{background:var(--shop-bg);color:var(--shop-ink)}
 .businessShop .businessShopMain{padding:30px 24px 90px}
 .businessShop .businessShopHeader{background:var(--shop-panel);color:var(--shop-ink);border-color:var(--shop-border);box-shadow:none}
@@ -167,3 +167,40 @@
 .shopGuestLogin{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 19px;border-radius:999px;background:var(--shop-ink);color:var(--shop-bg)!important;text-decoration:none;font-weight:700;font-size:13px}.shopGuestLogin:hover{opacity:.84}
 
 .shopProductPlaceholder{display:grid;place-items:center;align-content:center;gap:7px;height:100%;color:var(--shop-muted)}.shopProductPlaceholder img{width:78px;max-height:100px;object-fit:contain;opacity:.6}.shopProductPlaceholder small{font-size:11px}.businessShop{--shop-bg:var(--appearance-page);--shop-panel:var(--appearance-panel);--shop-ink:var(--appearance-ink);--shop-muted:var(--appearance-muted);--shop-border:var(--appearance-outline);--shop-soft:var(--appearance-soft);color-scheme:var(--appearance-color-scheme);font-family:inherit}.businessShop .shopLandingHero{background:#1d2924;color:#f5efe5}.businessShop .shopAccountDropdownName small,.businessShop .shopAccountEmpty p{color:var(--shop-muted)}.businessShop .shopAccountDropdownName,.businessShop .shopAccountDropdownDesign{border-color:var(--shop-border)}.businessShop .shopAccountDropdown>button:hover,.businessShop .shopAccountDropdown>a:hover{background:var(--shop-soft)}.businessShop .shopWishlistTop button,.businessShop .shopWishlistOwnedGrid button{color:var(--shop-ink);border-color:var(--shop-border)}
+/* ---------- Kartendeck-Look (wie App, Webapp und Startseite) ---------- */
+.businessShop{--deck-holo:linear-gradient(115deg,#f3d27a 0%,#f7a8c4 22%,#9fd7f2 44%,#b6f0c4 64%,#f3d27a 86%);--deck-gold:#e4bd6a}
+.businessShopHeader{position:sticky;top:0;z-index:30;background:#1d2a24f0 !important;backdrop-filter:blur(12px);border-bottom:0 !important;color:#f5efe5}
+.businessShopHeader::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--deck-holo);opacity:.75}
+.businessShop .businessShopBrand{color:#f5efe5 !important;letter-spacing:.14em}
+.businessShop .businessShopBrand span{color:var(--deck-gold);border-color:#e4bd6a55}
+.businessShop .shopHeaderNavLink{color:#f5efe5c0 !important}
+.businessShop .shopHeaderNavLink:hover{color:var(--deck-gold) !important}
+.businessShop .shopGuestLogin{background:linear-gradient(180deg,#f0cf85,#d6a650) !important;color:#1d1508 !important;font-weight:900}
+.businessShop .shopLandingHero{position:relative;overflow:hidden;
+  background:radial-gradient(60% 90% at 85% 40%,#3d5547 0%,transparent 70%),repeating-linear-gradient(90deg,#ffffff07 0 1px,transparent 1px 38px),repeating-linear-gradient(0deg,#ffffff07 0 1px,transparent 1px 38px),linear-gradient(165deg,#26372f,#1d2a24) !important}
+.businessShop .shopLandingHero::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--deck-holo)}
+.businessShop .shopLandingKicker{color:var(--deck-gold) !important;letter-spacing:.24em}
+.businessShop .shopLandingHero h1 em{font-style:normal;font-weight:900;background:linear-gradient(100deg,#fff6df,#e4bd6a 40%,#fff1c9 60%,#b98742);-webkit-background-clip:text;background-clip:text;color:transparent}
+.businessShop .shopLandingPrimary{background:linear-gradient(180deg,#f0cf85,#d6a650) !important;color:#1d1508 !important;font-weight:900}
+.shopDeckFan{min-height:380px}
+.shopDeckFan img{position:absolute;left:50%;top:50%;width:190px;aspect-ratio:63/88;object-fit:cover;border-radius:12px;box-shadow:0 26px 50px -18px #000d;transition:transform .35s}
+.shopDeckFan img:nth-of-type(1){transform:translate(calc(-50% - 105px),-46%) rotate(-12deg);filter:brightness(.8)}
+.shopDeckFan img:nth-of-type(2){transform:translate(-50%,-54%);z-index:2;outline:3px solid var(--deck-gold);outline-offset:2px}
+.shopDeckFan img:nth-of-type(3){transform:translate(calc(-50% + 105px),-46%) rotate(12deg);filter:brightness(.8)}
+.shopDeckFan:hover img:nth-of-type(1){transform:translate(calc(-50% - 125px),-44%) rotate(-15deg)}
+.shopDeckFan:hover img:nth-of-type(3){transform:translate(calc(-50% + 125px),-44%) rotate(15deg)}
+.businessShop .shopLandingWorld,.businessShop .shopLandingShortcuts button,.businessShop .shopSetTile,.businessShop .shopProduct{position:relative}
+.businessShop .shopLandingWorld::after,.businessShop .shopLandingShortcuts button::after,.businessShop .shopSetTile::after,.businessShop .shopProduct::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;background:var(--deck-holo);opacity:0;transition:opacity .2s;pointer-events:none;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.businessShop .shopLandingWorld:hover::after,.businessShop .shopLandingShortcuts button:hover::after,.businessShop .shopSetTile:hover::after,.businessShop .shopProduct:hover::after{opacity:1}
+.businessShop .shopLandingWorld.pokemon{background:radial-gradient(70% 100% at 85% 20%,#3d5547,transparent 70%),linear-gradient(160deg,#26372f,#1d2a24) !important;color:#f5efe5 !important}
+.businessShop .shopLandingWorld.pokemon small,.businessShop .shopLandingWorld.pokemon b{color:#f5efe5c0}
+.businessShop .shopLandingWorld.pokemon .shopWorldOverline,.businessShop .shopLandingWorld.pokemon .shopWorldSymbol{color:var(--deck-gold) !important}
+.businessShop .shopLandingWorld.pokemon b{border-color:var(--deck-gold) !important;color:var(--deck-gold)}
+.businessShop .shopSetArtwork{background:linear-gradient(160deg,#26372f,#1d2a24) !important}
+.businessShop .shopSetArtwork img.shopSetPreviewImage{object-fit:contain;padding:14px}
+.businessShop .shopCategoryTree button.active{border-color:var(--deck-gold) !important}
+.businessShopFooter{position:relative}
+.businessShopFooter::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:var(--deck-holo);opacity:.6}
+@media(max-width:700px){.shopDeckFan{display:grid !important;min-height:260px}.shopDeckFan img{width:130px}
+ .shopDeckFan img:nth-of-type(1){transform:translate(calc(-50% - 70px),-46%) rotate(-12deg)}.shopDeckFan img:nth-of-type(3){transform:translate(calc(-50% + 70px),-46%) rotate(12deg)}}
