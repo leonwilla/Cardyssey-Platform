@@ -219,11 +219,14 @@ fun Route.pricingRoutes(
                             legacyVariant = requestedLegacyVariant,
                             condition = condition
                         )
-                        if (market == "AUTO" && ebay?.eur == null) {
-                            if (policy != null && details != null && selectedVariant != null)
+                        if (ebay?.eur == null) {
+                            // No eBay sales yet: AUTO and EBAY show the Cardmarket value
+                            // (EBAY marked, owner decision 26.11.2026: every card has a value).
+                            val tcg = if (policy != null && details != null && selectedVariant != null)
                                 sourcePolicy.tcgResponse(details,selectedVariant,condition,policy)
                             else pricing.quote(cardId,language,requestedVariantId,requestedLegacyVariant,condition)
-                        } else ebay?.copy(
+                            if (market == "EBAY") tcg?.copy(policyStatus = "EBAY_NO_SALES_CARDMARKET_VALUE") else tcg
+                        } else ebay.copy(
                             policyClass = policy?.priceClass,
                             policyStatus = policy?.status,
                             policyProviderFamily = policy?.providerFamily,
@@ -253,11 +256,17 @@ fun Route.pricingRoutes(
                 val reference = if (quote.market == "TCG" && quote.eur == null && requestedVariantId != null) {
                     referenceCache.reference(cardId,language,requestedVariantId)
                 } else null
-                call.respond(if (reference != null) quote.copy(
+                val withReference = if (reference != null) quote.copy(
                     referenceEur = reference.first,
                     referenceNote = "Englischer Karten-Richtwert; Druckvariante und Zustand ungeprüft. Kein bestätigter Marktpreis.",
                     referenceUpdatedAtMs = reference.second
-                ) else quote)
+                ) else quote
+                val offers = if (language in setOf("de", "en") && quote.variantId != null)
+                    runCatching { sourcePolicy.ebayOffers(cardId, language, quote.variantId) }.getOrNull()
+                else null
+                call.respond(if (offers != null) withReference.copy(
+                    ebayOfferCount = offers.first, ebayOffers = offers.second
+                ) else withReference)
             }
         }
     }

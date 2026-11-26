@@ -57,7 +57,18 @@ data class CardPriceQuoteResponse(
     val policyProviderFamily: String? = null,
     val preferredMarket: String? = null,
     // Verified Cardmarket product page of this variant ("Auf Cardmarket ansehen").
-    val providerUrl: String? = null
+    val providerUrl: String? = null,
+    // Current eBay Buy-It-Now offers matching exactly this variant (asking
+    // prices with links, never used as a value).
+    val ebayOfferCount: Int? = null,
+    val ebayOffers: List<EbayOfferResponse> = emptyList()
+)
+
+@Serializable
+data class EbayOfferResponse(
+    val title: String,
+    val eur: Double,
+    val url: String
 )
 
 enum class PricingCondition(
