@@ -81,6 +81,7 @@ class CardmarketUpgrade(unittest.TestCase):
                        'DIRECT_ID_LOOKUP_TIMEOUT_OR_UNAVAILABLE'):
             self.assertIn(marker,source)
         ui=(ROOT/'web/app/admin/prices/page.tsx').read_text()
-        self.assertIn('kein DE/EN-Variantenpreis',ui)
-        self.assertIn('Kandidat {i+1} ansehen',ui)
+        # Seit 24.11. ist der offizielle Preisführer unter 20 € die Preisquelle; der Monitor
+        # zeigt ihn nicht mehr als Vergleich. Die Kandidaten-Links müssen bleiben.
+        self.assertIn('Kandidat {i+1}',ui)
 if __name__=='__main__':unittest.main()
