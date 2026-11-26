@@ -449,6 +449,27 @@ def _pick_by_variant_ids(row, group, main, guide=None):
     return chosen[0]
 
 
+NAME_NOISE = re.compile(r"\blv\.?\s*[0-9x]+\b|\[[^\]]*\]|\b(?:e4|g|gl|fb|c|4)\b", re.I)
+
+
+def same_card_name(english, product_title):
+    """Plausibility of a number-based match: Cardmarket's product name must be
+    the card's English name. Tolerates level/sub-type suffixes ('Rhyperior E4'
+    vs 'Rhyperior [4] Lv. 55'), missing spaces ('M Latios EX' / 'MLatios EX')
+    and short forms ('Blend Energy GFPD')."""
+    if not english or not product_title:
+        return True  # nothing to compare: keep the number-based decision
+    a = normalize_name(NAME_NOISE.sub(" ", english.replace("☆", " gold star ")))
+    b = normalize_name(NAME_NOISE.sub(" ", product_title.rsplit(" (", 1)[0].replace("☆", " gold star ")))
+    if not a or not b or name_score(a, b) >= 0.5:
+        return True
+    ja, jb = a.replace(" ", ""), b.replace(" ", "")
+    if ja in jb or jb in ja:
+        return True
+    ta, tb = a.split(), b.split()
+    return len(ta) > 1 and len(tb) > 1 and ta[:2] == tb[:2]
+
+
 def _product_number_ok(item, printed, code, prefix, set_id):
     if item.get("title_number"):
         return title_number_matches(item["title_number"], printed)
@@ -657,6 +678,12 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             if not pick:
                 status = "REVIEW_GROUP"
                 row["index_review_group"] = f"{row['set_id']}|{rule_kind}|several-versions"
+        if pick and english and not same_card_name(english, pick[1].get("title") or ""):
+            # Number matched, name does not: wrong set mapping or shifted
+            # numbering (e.g. Team Aqua's Sharpedo -> Flareon). No price is
+            # better than a wrong one; the TCGdex variant ID may still rescue it.
+            pick, status = None, "REVIEW_GROUP"
+            row["index_review_group"] = f"{row['set_id']}|name-mismatch"
         if not pick and status in ("REVIEW_GROUP", "NO_NUMBER_MATCH_IN_SET", "SPECIAL_NOT_SEPARABLE"):
             alt = tcgdex_pick()
             if alt:
