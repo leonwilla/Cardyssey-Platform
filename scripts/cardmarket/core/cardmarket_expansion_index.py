@@ -487,7 +487,10 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
         rule = rules.get((row["set_id"], rule_kind)) or rules.get(("*", rule_kind))
         if not matches:
             status = "NO_NUMBER_MATCH_IN_SET"
-        elif str(row.get("routing_state") or "") == "VERIFIED_PRODUCT_ID":
+        elif (str(row.get("routing_state") or "") == "VERIFIED_PRODUCT_ID"
+              and str(row.get("catalog_singleton_id") or "").isdigit()):
+            # A human route only counts with its product ID; a bare
+            # "verified" flag without ID would block the index forever.
             status = "HUMAN_ROUTE_KEPT"
         elif not main:
             # Only a secondary expansion (e.g. "Additionals") has this number.
