@@ -153,6 +153,30 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(rows[0]['catalog_singleton_id'], '1')
         self.assertEqual(rows[1]['index_status'], 'GUIDE_PRICE_BELOW_THRESHOLD')
 
+    def test_title_number_for_slugs_without_number(self):
+        self.assertEqual(idx.title_number('Excadrill', 'Excadrill (FST 183)'), ('', '183'))
+        self.assertEqual(idx.title_number('Cramorant-V2', 'Cramorant (SHF SV30)'), ('SV', '30'))
+        self.assertIsNone(idx.title_number('Crushing-Hammer-SVI168', 'Crushing Hammer (SVI 168)'))
+        self.assertTrue(idx.title_number_matches(('', '183'), '183'))
+        self.assertTrue(idx.title_number_matches(('SV', '30'), 'SV030'))
+        self.assertFalse(idx.title_number_matches(('SV', '10'), '10'))
+        self.assertFalse(idx.title_number_matches(('', '10'), 'SV10'))
+        self.assertEqual(idx.slug_number('Seismitoad-30C084'), ('30C', '084'))
+
+    def test_30th_reprints_match_by_english_name_only(self):
+        exp = {'6601': {'slug': '30th-Celebration', 'slugVerified': True, 'crawledAt': 'x'}}
+        lines = [json.dumps({'id': i, 'slug': '30th-Celebration', 'product': p, 'title': t, 'idExpansion': '6601'})
+                 for i, p, t in (('907940', 'Charizard-30CBS-4', 'Charizard (30C BS 4)'),
+                                 ('907610', 'Illumise-30C004', 'Illumise (30C 004)'))]
+        expansions, products = idx.load_index({'schema': idx.INDEX_SCHEMA, 'expansions': exp}, lines)
+        main = row('30th-004', '004', set_id='30th', kartenname_suche='Illumise')
+        classic = row('30th-c-001', '001', set_id='30th-c', kartenname_suche='Glurak')
+        idx.apply_index([main], 'de', products, expansions, {}, {}, {'30th': 6601})
+        idx.apply_index([classic], 'de', products, expansions, {}, {}, {'30th-c': 6601},
+                        names={'30th-c-001': 'Charizard'})
+        self.assertEqual(main['index_product_id'], '907610')
+        self.assertEqual(classic['index_product_id'], '907940')
+
     def test_verified_flag_without_product_id_does_not_block_index(self):
         rows = [row('ecard3-145', '145', routing_state='VERIFIED_PRODUCT_ID', catalog_singleton_id='')]
         apply(rows)
