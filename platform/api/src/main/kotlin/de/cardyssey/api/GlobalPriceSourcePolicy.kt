@@ -33,7 +33,8 @@ internal data class GlobalPrintPricePolicy(
     val providerFamily: String,
     val source: String?,
     val baseEur: Double?,
-    val status: String
+    val status: String,
+    val providerUrl: String? = null
 )
 
 internal class GlobalPriceSourceRepository(private val dataSource: HikariDataSource) {
@@ -41,10 +42,12 @@ internal class GlobalPriceSourceRepository(private val dataSource: HikariDataSou
         withContext(Dispatchers.IO) {
             dataSource.connection.use { connection ->
                 connection.prepareStatement("""
-                    SELECT price_class, preferred_market, preferred_provider_family,
-                           selected_price_source,selected_price_eur,price_status
-                    FROM global_price_source_policy
-                    WHERE card_id=? AND language_code=? AND variant_id=?
+                    SELECT p.price_class, p.preferred_market, p.preferred_provider_family,
+                           p.selected_price_source, p.selected_price_eur, p.price_status, t.provider_url
+                    FROM global_price_source_policy p
+                    LEFT JOIN tcg_price_cache t
+                      ON t.card_id = p.card_id AND t.language_code = p.language_code AND t.variant_id = p.variant_id
+                    WHERE p.card_id=? AND p.language_code=? AND p.variant_id=?
                 """.trimIndent()).use { statement ->
                     statement.setString(1, cardId)
                     statement.setString(2, language)
@@ -56,7 +59,8 @@ internal class GlobalPriceSourceRepository(private val dataSource: HikariDataSou
                             providerFamily = row.getString("preferred_provider_family"),
                             source = row.getString("selected_price_source"),
                             baseEur = row.getBigDecimal("selected_price_eur")?.toDouble(),
-                            status = row.getString("price_status")
+                            status = row.getString("price_status"),
+                            providerUrl = row.getString("provider_url")
                         )
                     }
                 }
@@ -93,7 +97,8 @@ internal class GlobalPriceSourceRepository(private val dataSource: HikariDataSou
             policyClass = policy.priceClass,
             policyStatus = policy.status,
             policyProviderFamily = policy.providerFamily,
-            preferredMarket = policy.preferredMarket
+            preferredMarket = policy.preferredMarket,
+            providerUrl = policy.providerUrl
         )
     }
 }

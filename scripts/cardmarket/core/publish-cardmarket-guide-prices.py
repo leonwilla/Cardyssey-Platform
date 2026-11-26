@@ -28,6 +28,7 @@ import json
 import math
 import re
 import subprocess
+import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -347,6 +348,12 @@ def main():
                         'aenderung_prozent', 'cardmarket_wert', 'cardmarket_produkt'])
             w.writerows(changes)
     report['changedRows'] = len(changes)
+    if a.apply:
+        # App and web read prices from global_price_source_policy; without this
+        # step new prices only showed up after the daily 04:46 sync.
+        sync = subprocess.run([sys.executable, str(ROOT / 'scripts/sync_global_price_source_policy.py')],
+                              capture_output=True, text=True, timeout=1800)
+        report['displaySync'] = 'ok' if sync.returncode == 0 else f'failed ({sync.returncode})'
     (ROOT / 'reports/cardmarket-guide-prices-latest.json').write_text(json.dumps(report, indent=1))
     print(json.dumps(report))
 
