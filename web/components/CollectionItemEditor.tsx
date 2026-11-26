@@ -601,9 +601,9 @@ export function CollectionItemEditor({
         {effectiveMarket === "TCG" && unitValue == null &&
           (pricingQuote?.referenceEur ?? item.referenceUnitEur ?? 0) > 0 && (
           <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:13}}>
-            Richtwert: {formatEur(pricingQuote?.referenceEur ?? item.referenceUnitEur ?? null)}
-            {" "}pro Karte · Englisch · Druckvariante und Zustand ungeprüft.
-            Nicht im Sammlungswert enthalten.
+            Richtwert: {formatEur(pricingQuote?.referenceEur ?? item.referenceUnitEur ?? null)} pro Karte
+            {" "}· {pricingQuote?.referenceNote ?? "Englischer Karten-Richtwert, Druckvariante und Zustand ungeprüft."}
+            {" "}Nicht im Sammlungswert enthalten.
           </p>
         )}
 

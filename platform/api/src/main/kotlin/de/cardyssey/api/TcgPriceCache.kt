@@ -62,28 +62,41 @@ class TcgPriceCacheRepository(
     private val dataSource: HikariDataSource
 ) {
     /** Card-level reference quote, explicitly NOT a verified printing/condition price. */
-    fun reference(cardId: String, languageCode: String, variantId: String): Pair<Double, Long>? =
+    fun reference(cardId: String, languageCode: String, variantId: String): Triple<Double, Long, String>? =
         dataSource.connection.use { connection ->
             connection.prepareStatement("""
-                SELECT r.price_eur,r.observed_at
+                SELECT r.price_eur,r.observed_at,r.provider,r.evidence->>'basis' AS basis,r.evidence->>'n' AS n
                 FROM price_reference_candidates r
                 LEFT JOIN tcg_price_cache c
                   ON c.card_id=r.card_id AND c.language_code=r.language_code AND c.variant_id=r.variant_id
                 WHERE r.card_id=? AND r.language_code=? AND r.variant_id=?
-                  AND r.provider='POKEMONTCGAPI_REFERENCE'
+                  AND r.provider IN ('POKEMONTCGAPI_REFERENCE','CARDYSSEY_REFERENCE')
                   AND r.price_eur>0
                   AND (c.resolution_status IS NULL OR c.resolution_status<>'PRICE_FOUND')
-                ORDER BY r.observed_at DESC LIMIT 1
+                ORDER BY (r.provider='CARDYSSEY_REFERENCE') DESC, r.observed_at DESC LIMIT 1
             """.trimIndent()).use { statement ->
                 statement.setString(1,cardId)
                 statement.setString(2,languageCode)
                 statement.setString(3,variantId)
                 statement.executeQuery().use { rs ->
-                    if (!rs.next()) null else Pair(
+                    if (!rs.next()) null else Triple(
                         rs.getBigDecimal("price_eur").toDouble(),
-                        rs.getObject("observed_at", OffsetDateTime::class.java).toInstant().toEpochMilli()
+                        rs.getObject("observed_at", OffsetDateTime::class.java).toInstant().toEpochMilli(),
+                        referenceNote(rs.getString("provider"), rs.getString("basis"), rs.getString("n"))
                     )
                 }
+            }
+        }
+
+    private fun referenceNote(provider: String, basis: String?, n: String?): String = when {
+        provider != "CARDYSSEY_REFERENCE" ->
+            "Englischer Karten-Richtwert; Druckvariante und Zustand ungeprüft. Kein bestätigter Marktpreis."
+        basis == "ja_same_card" ->
+            "Richtwert aus der japanischen Ausgabe derselben Karte (CardTrader). Für diese Sprache gibt es keinen Marktpreis."
+        else ->
+            "Richtwert: üblicher Preis dieser Seltenheit" + (if (basis == "set_rarity") " im Set" else "") +
+                (n?.let { " ($it Karten)" } ?: "") + ". Für diese Karte gibt es keinen eigenen Marktpreis."
+    }
             }
         }
 

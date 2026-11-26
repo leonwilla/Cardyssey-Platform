@@ -147,9 +147,9 @@ private fun CollectionItemDto.withCachedTcgPrice(
         ?.let { id -> cache.reference(cardId, languageCode, id) }
     val itemWithReference = if (candidate != null) copy(
         referenceUnitEur = candidate.first,
-        referenceSource = "POKEMONTCGAPI_REFERENCE",
+        referenceSource = "CARDYSSEY_REFERENCE",
         referenceUpdatedAtMs = candidate.second,
-        referenceNote = "Unverbindlicher englischer Karten-Referenzwert. Druckvariante und Zustand nicht bestätigt; nicht im Sammlungswert."
+        referenceNote = candidate.third + " Nicht im Sammlungswert."
     ) else copy(referenceUnitEur = null, referenceSource = null, referenceUpdatedAtMs = null, referenceNote = null)
 
     val value =
