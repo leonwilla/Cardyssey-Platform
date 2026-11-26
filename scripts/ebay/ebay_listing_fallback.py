@@ -79,6 +79,47 @@ WHERE c.language_code IN ('de','en') AND c.set_id !~* '^(A[0-9]|B[0-9]|P-A)'
 """
 
 
+ASIA_INFO = Path.home() / ".local/state/cardtrader-asia-cards.json"
+ASIA_TARGETS = """
+SELECT json_build_object('lang',c.language_code,'card',c.card_id,'number',c.local_id,'set',c.set_id,
+  'total',s.official_count,'setName',NULL,'variants',c.variants,
+  'missing',(SELECT json_agg(v->>'id') FROM jsonb_array_elements(c.variants) v
+             LEFT JOIN tcg_price_cache p ON p.language_code=c.language_code AND p.card_id=c.card_id
+                                         AND p.variant_id=v->>'id'
+             WHERE NOT (p.resolution_status='PRICE_FOUND' AND COALESCE(p.base_eur,0)>0)),
+  'noPrice',1,
+  'checked',(SELECT min(o.checked_at) FROM ebay_listing_offers o
+             WHERE o.language_code=c.language_code AND o.card_id=c.card_id))
+FROM catalog_cards_mirror c
+LEFT JOIN catalog_sets_mirror s ON s.language_code=c.language_code AND s.set_id=c.set_id
+WHERE c.language_code IN ('ja','ko','zh-tw')
+"""
+RARE_ASIA = {"rare", "holo rare", "ultra rare", "secret rare", "illustration rare", "special illustration rare",
+             "hyper rare", "shiny holo rare", "shiny rare", "double rare", "art rare", "super rare",
+             "character rare", "character super rare", "trainer gallery rare", "ace spec rare", "promo",
+             "amazing rare", "radiant rare", "rare holo", "prism rare", "rainbow rare"}
+
+
+def load_asia_targets(languages):
+    """Rare Japanese/Korean/Chinese cards without a price; English name from
+    CardTrader (our Japanese catalog names are not searchable on eBay)."""
+    try:
+        info = json.loads(ASIA_INFO.read_text())
+    except (OSError, ValueError):
+        return []
+    rows = []
+    for line in psql(ASIA_TARGETS).splitlines():
+        x = json.loads(line)
+        ct = info.get(f"{x['lang']}|{x['card']}") or {}
+        if x["lang"] not in languages or not x["missing"] or not ct.get("name"):
+            continue
+        if str(ct.get("rarity") or "").lower() not in RARE_ASIA:
+            continue
+        x.update(name=ct["name"], enName=None, deName=None, setName=ct.get("exp") or x["set"])
+        rows.append(x)
+    return rows
+
+
 def load_targets(languages):
     rows = []
     for line in psql(TARGETS).splitlines():
@@ -106,13 +147,13 @@ class Ebay:
         self.token, self.expires = d["access_token"], time.time() + int(d.get("expires_in", 7200))
         return self.token
 
-    def search(self, query, marketplace="EBAY_DE"):
+    def search(self, query, marketplace="EBAY_DE", currency="EUR"):
         params = {"q": query, "category_ids": CATEGORY, "limit": "200", "sort": "price",
-                  "filter": "buyingOptions:{FIXED_PRICE},conditionIds:{4000},priceCurrency:EUR"}
+                  "filter": f"buyingOptions:{{FIXED_PRICE}},conditionIds:{{4000}},priceCurrency:{currency}"}
         req = urllib.request.Request(
             "https://api.ebay.com/buy/browse/v1/item_summary/search?" + urllib.parse.urlencode(params),
             headers={"Authorization": "Bearer " + self._token(), "X-EBAY-C-MARKETPLACE-ID": marketplace,
-                     "Accept-Language": "de-DE"})
+                     "Accept-Language": "de-DE" if marketplace == "EBAY_DE" else "en-US"})
         self.calls += 1
         for attempt in range(3):
             try:
@@ -125,18 +166,47 @@ class Ebay:
         return []
 
 
+_USD_EUR = None
+
+
+def usd_eur():
+    """ECB reference rate via frankfurter.dev (cached per run)."""
+    global _USD_EUR
+    if _USD_EUR is None:
+        d = json.load(urllib.request.urlopen("https://api.frankfurter.dev/v2/rate/USD/EUR", timeout=20))
+        _USD_EUR = float(d.get("rate") or d["rates"]["EUR"])
+    return _USD_EUR
+
+
+def search_card(ebay, card):
+    """Asian cards are listed far more on eBay.com (30-card test: 23 vs 3
+    cards with offers); their USD prices are converted with the ECB rate."""
+    if card["lang"] in ("ja", "ko", "zh-tw"):
+        rate = usd_eur()
+        items = ebay.search(query_for(card), "EBAY_US", "USD")
+        for it in items:
+            price = it.get("price") or {}
+            if price.get("currency") == "USD":
+                it["price"] = {"value": round(float(price["value"]) * rate, 2), "currency": "EUR"}
+        return items
+    return ebay.search(query_for(card))
+
+
 def query_for(card):
     number = str(card["number"] or "").strip()
     total = card.get("total")
     plain = number.isdigit()
     num = f"{number}/{total}" if plain and total else number
+    if card["lang"] in ("ja", "ko", "zh-tw"):
+        word = {"ja": "japanese", "ko": "korean", "zh-tw": "chinese"}[card["lang"]]
+        return f"{card['name']} {num} {word}"
     return f"{card['name']} {num}"
 
 
 def evaluate(card, items):
     """Per missing variant: spec status, matching offers, fallback price."""
     variants = {v["id"]: v for v in card["variants"] or []}
-    other = card.get("enName") if card["lang"] == "de" else card.get("deName")
+    other = (card.get("enName") if card["lang"] == "de" else card.get("deName")) if card["lang"] in ("de", "en") else None
     names = [n for n in (card["name"], other) if n]
     set_words = [w for w in em.norm(card.get("setName") or "").split() if len(w) > 3]
     out = []
@@ -200,14 +270,15 @@ def main():
     p.add_argument("--apply", action="store_true")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--limit", type=int, default=0, help="max cards this run")
-    p.add_argument("--language", choices=("de", "en"), action="append")
+    p.add_argument("--language", choices=("de", "en", "ja", "ko", "zh-tw"), action="append")
     p.add_argument("--cards", help="comma separated card IDs (test)")
     a = p.parse_args()
-    languages = a.language or ["de", "en"]
+    languages = a.language or ["de", "en", "ja", "ko", "zh-tw"]
     state = load_state()
     budget = DAILY_CALLS - state["calls"]
     now = datetime.now(timezone.utc)
-    cards = load_targets(languages)
+    cards = load_targets([l for l in languages if l in ("de", "en")]) + \
+        load_asia_targets([l for l in languages if l not in ("de", "en")])
     if a.cards:
         wanted = set(a.cards.split(","))
         cards = [c for c in cards if c["card"] in wanted]
@@ -226,10 +297,10 @@ def main():
     ebay = Ebay()
     stats = {"cards": 0, "variants": 0, "priced": 0, "uncertain": 0, "skipped": 0, "too_few": 0}
     # "priced" = at least three matching offers (shown with links, no price).
-    pending = {"de": [], "en": []}
+    pending = {"de": [], "en": [], "ja": [], "ko": [], "zh-tw": []}
     for card in cards:
         query = query_for(card)
-        items = ebay.search(query)
+        items = search_card(ebay, card)
         stats["cards"] += 1
         for r in evaluate(card, items):
             stats["variants"] += 1
