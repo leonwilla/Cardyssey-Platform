@@ -33,6 +33,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from cardmarket_expansion_index import FIRST_EDITION
+from cardmarket_price_sanity import browser_price_plausible
 from cardmarket_game_profile import load_game_profile
 from price_feed_client import fetch_json
 
@@ -48,6 +49,7 @@ BROWSER_FRESH_DAYS = 30
 NEVER = "TIMESTAMPTZ '2100-01-01'"
 KEYS = ('trend', 'avg30', 'avg7', 'avg', 'low')
 CLEANED_DETAIL = 'DE/EN: nur Cardmarket-Preise (keine andere Quelle)'
+BROWSER_IMPLAUSIBLE = 'Browser-Preis unplausibel'
 
 
 def psql(sql=None, stdin=None):
@@ -147,10 +149,19 @@ def plan(queue, guides, prices, now):
     for key, row in queue.items():
         cur = prices.get(key) or {}
         source = cur.get('source') or ''
+        implausible = ''
         if source in BROWSER and str(cur.get('updated') or '') >= fresh_cut and (cur.get('eur') or 0) > 0:
-            keep.append(key)
-            stats['keep_browser_exact'] += 1
-            continue
+            pid = resolved[key]
+            guide_eur = None
+            if pid and row['cardyssey_karte'] not in first_ed and shared[(row['cardyssey_karte'], pid, is_reverse(row))] == 1:
+                guide_eur, _ = guide_value(guides.get(pid, {}), is_reverse(row))
+            ok, why = browser_price_plausible(float(cur.get('eur')), guide_eur)
+            if ok:
+                keep.append(key)
+                stats['keep_browser_exact'] += 1
+                continue
+            implausible = f'; {BROWSER_IMPLAUSIBLE} ({cur.get("eur")} EUR, {why})'
+            stats['browser_implausible_replaced'] += 1
         if is_manual(source):
             stats['keep_manual'] += 1
             continue
@@ -170,7 +181,7 @@ def plan(queue, guides, prices, now):
             continue
         stats['publish'] += 1
         updates.append({'card': row['cardyssey_karte'], 'variant': row['variante_id'], 'price': value,
-                        'detail': f'Cardmarket product {pid}; key {key_used}',
+                        'detail': f'Cardmarket product {pid}; key {key_used}{implausible}',
                         'old': cur.get('eur'), 'old_source': source, 'set': row['set_id'],
                         'name': row.get('kartenname_suche') or '', 'key': key_used,
                         'url': row.get('index_product_url') or row.get('known_url') or str(pid)})
@@ -198,7 +209,8 @@ ON CONFLICT(card_id,language_code,variant_id) DO UPDATE SET
  next_attempt_at=EXCLUDED.next_attempt_at
 WHERE NOT (upper(COALESCE(tcg_price_cache.source,'')) LIKE 'MANUAL%' OR upper(COALESCE(tcg_price_cache.source,'')) LIKE 'ADMIN%')
   AND NOT (tcg_price_cache.source = ANY(ARRAY[{browser}]) AND COALESCE(tcg_price_cache.base_eur,0) > 0
-           AND tcg_price_cache.updated_at >= NOW() - INTERVAL '{fresh} days');
+           AND tcg_price_cache.updated_at >= NOW() - INTERVAL '{fresh} days'
+           AND position('Browser-Preis unplausibel' in COALESCE(EXCLUDED.failure_detail,'')) = 0);
 """
 
 # Remove every DE/EN price that is not from Cardmarket (or manual); block the

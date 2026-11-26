@@ -15,6 +15,11 @@ import argparse,csv,json,math,re,subprocess
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
+import importlib.util as _ilu
+from cardmarket_price_sanity import browser_price_plausible
+_gp_spec=_ilu.spec_from_file_location('_guide_prices',_cm_Path(__file__).resolve().parent/'publish-cardmarket-guide-prices.py')
+_gp=_ilu.module_from_spec(_gp_spec);_gp_spec.loader.exec_module(_gp)
+guide_value=_gp.guide_value
 
 STANDARD_REVERSE_FILTER = {"normal":"N", "nonholo":"N", "common":"N", "holo":"N", "reverse":"Y"}
 VERSIONED_PRODUCT = re.compile(r"(?:^|-)V[1-9][0-9]?(?:-|$)", re.IGNORECASE)
@@ -104,7 +109,8 @@ def is_standard(x, row, set_slug, first_edition_sets, path_parts, product_id):
     return first == "N" and x.get("exact_print_filter_supported") is not False
 
 
-def collect(path,language,now=None):
+def collect(path,language,now=None,guides=None,rejected=None):
+    """guides: {idProduct: Preisführer-Eintrag}; unplausible Preise landen in rejected (Liste)."""
     if language not in ('de','en'):raise ValueError('language')
     now=now or datetime.now(timezone.utc)
     latest={}
@@ -178,6 +184,13 @@ def collect(path,language,now=None):
         try:seen=datetime.fromisoformat(str(x.get('seen_at') or '').replace('Z','+00:00')).astimezone(timezone.utc)
         except (ValueError,TypeError):continue
         if seen<now-timedelta(days=8) or seen>now+timedelta(hours=1):continue
+        if guides is not None:
+            guide_eur,_=guide_value(guides.get(int(pid)) or {}, reverse=="Y")
+            ok,why=browser_price_plausible(median,guide_eur,first_edition=(first=="Y"),offers=verified_offers)
+            if not ok:
+                if rejected is not None:
+                    rejected.append({'card':card,'variant':variant,'price':median,'guide':guide_eur,'reason':why})
+                continue
         results.append({'language':language,'card':card,'variant':variant,
             'product_id':pid,'url':url.split('?')[0],'price':round(median,4),'observed_at':seen.isoformat(),
             'automatic_standard':automatic,'page_limited_sample':sampled})
@@ -234,9 +247,17 @@ def apply(rows):
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--language',choices=('de','en'),required=True)
     p.add_argument('--results',type=Path,required=True);p.add_argument('--apply',action='store_true');a=p.parse_args()
-    rows=collect(a.results,a.language)
+    guides=None
+    try:
+        from price_feed_client import fetch_json
+        from cardmarket_game_profile import load_game_profile
+        guides={x['idProduct']:x for x in fetch_json(load_game_profile()['price_url'])['priceGuides']}
+    except Exception:
+        guides=None  # ohne Preisführer keine Plausibilitätsprüfung, Import läuft wie bisher
+    rejected=[]
+    rows=collect(a.results,a.language,guides=guides,rejected=rejected)
     if a.apply and rows:apply(rows)
-    print(json.dumps({'language':a.language,
+    print(json.dumps({'language':a.language,'implausible_rejected':len(rejected),
        'full_filtered_candidates':sum(not row['page_limited_sample'] for row in rows),
        'page_limited_standard_candidates':sum(row['page_limited_sample'] for row in rows),
        'automatic_standard_candidates':sum(row['automatic_standard'] for row in rows),
