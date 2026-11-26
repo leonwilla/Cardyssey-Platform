@@ -92,5 +92,31 @@ class RobustTrendTests(unittest.TestCase):
         self.assertEqual((value, key), (12.0, 'avg30-holo (Trend unplausibel)'))
 
 
+class BrowserSanityTests(unittest.TestCase):
+    def browser(self, eur):
+        return {'a-1|v': {'k': 'a-1|v', 'source': 'CARDMARKET_EN_NM_WEB', 'eur': eur, 'updated': '2026-11-24T10:00:00'}}
+
+    def test_plausible_browser_price_is_kept(self):
+        updates, keep, stats = run([q('a-1')], self.browser(30.0))
+        self.assertEqual((updates, keep), ([], ['a-1|v']))
+
+    def test_fantasy_browser_price_is_replaced_by_guide(self):
+        updates, keep, stats = run([q('a-1')], self.browser(8250.0))
+        self.assertEqual(keep, [])
+        self.assertEqual(updates[0]['price'], 12.5)
+        self.assertIn('Browser-Preis unplausibel', updates[0]['detail'])
+        self.assertEqual(stats['browser_implausible_replaced'], 1)
+
+    def test_sanity_rules(self):
+        import cardmarket_price_sanity as s
+        self.assertFalse(s.browser_price_plausible(8250, 25.34, offers=1)[0])
+        self.assertTrue(s.browser_price_plausible(60, 25.34, offers=1)[0])
+        self.assertFalse(s.browser_price_plausible(150, 25.34, offers=1)[0])
+        self.assertTrue(s.browser_price_plausible(150, 25.34, offers=12)[0])
+        self.assertFalse(s.browser_price_plausible(3999, 39.46, first_edition=True, offers=1)[0])
+        self.assertTrue(s.browser_price_plausible(30, 0.32, first_edition=True, offers=17)[0])
+        self.assertTrue(s.browser_price_plausible(500, None)[0])
+
+
 if __name__ == '__main__':
     unittest.main()
