@@ -82,6 +82,26 @@ class FilteredImportTests(unittest.TestCase):
         self.assertTrue(rows[0]["automatic_standard"])
         self.assertFalse(rows[0]["page_limited_sample"])
 
+    def test_cheapest_five_median_is_preferred_over_all_offer_median(self):
+        self.write_queue("de")
+        rows = self.collect(
+            status="COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED", all_pages_complete=True,
+            median_all_offers_eur=9.0, entry_five_median_eur=2.5, verified_lang_nm_offers=5,
+            offers_seen=5, pagination_failure="",
+        )
+        self.assertEqual(rows[0]["price"], 2.5)
+
+    def test_invalid_cheapest_five_falls_back_to_median(self):
+        self.write_queue("de")
+        for bad in (None, True, 0, float("nan")):
+            with self.subTest(bad=bad):
+                rows = self.collect(
+                    status="COMPLETE_FILTERED_ASKING_MEDIAN_PRINT_UNVERIFIED", all_pages_complete=True,
+                    median_all_offers_eur=2.0, entry_five_median_eur=bad, verified_lang_nm_offers=5,
+                    offers_seen=5, pagination_failure="",
+                )
+                self.assertEqual(rows[0]["price"], 2.0)
+
     def test_sample_requires_at_least_twenty_valid_offers_and_actual_page_limit(self):
         self.write_queue("de")
         for changes in (
