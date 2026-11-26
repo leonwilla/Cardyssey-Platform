@@ -153,6 +153,12 @@ class ApplyTests(unittest.TestCase):
         self.assertEqual(rows[0]['catalog_singleton_id'], '1')
         self.assertEqual(rows[1]['index_status'], 'GUIDE_PRICE_BELOW_THRESHOLD')
 
+    def test_verified_flag_without_product_id_does_not_block_index(self):
+        rows = [row('ecard3-145', '145', routing_state='VERIFIED_PRODUCT_ID', catalog_singleton_id='')]
+        apply(rows)
+        self.assertNotEqual(rows[0]['index_status'], 'HUMAN_ROUTE_KEPT')
+        self.assertTrue(rows[0]['index_product_id'])
+
     def test_cheap_card_gets_url_but_keeps_guide_price_route(self):
         rows = [row('ecard3-103', '103', existing_price_eur='0.50', catalog_singleton_id='275361')]
         apply(rows)
