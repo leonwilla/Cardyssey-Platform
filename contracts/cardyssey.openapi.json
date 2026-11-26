@@ -6254,6 +6254,18 @@
             "type": "string",
             "nullable": true,
             "description": "Verified Cardmarket product page of this variant"
+          },
+          "ebayOfferCount": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0
+          },
+          "ebayOffers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbayOfferResponse"
+            },
+            "description": "Current matching eBay Buy-It-Now offers (asking prices, not a value)"
           }
         },
         "required": [
@@ -6738,6 +6750,25 @@
           "total",
           "offset",
           "items"
+        ]
+      },
+      "EbayOfferResponse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "eur": {
+            "type": "number"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "eur",
+          "url"
         ]
       }
     }

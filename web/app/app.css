@@ -937,3 +937,13 @@ body.cardysseyApp .cardmarketLink:hover, body.cardysseyApp .cardmarketLink:focus
   border-color:var(--appearance-ink); background:var(--appearance-panel);
 }
 body.cardysseyApp .cardmarketLink span {opacity:.65; font-size:11px}
+
+/* "Angebote auf eBay" im Karten-Fenster */
+body.cardysseyApp .ebayOffers {margin-top:14px; padding:12px 14px; border:1px solid var(--appearance-outline); border-radius:13px; background:var(--appearance-soft)}
+body.cardysseyApp .ebayOffers > strong {display:block; font-size:13px}
+body.cardysseyApp .ebayOffers > span {display:block; margin-top:2px; font-size:11.5px; color:var(--appearance-muted)}
+body.cardysseyApp .ebayOffers ul {list-style:none; margin:8px 0 0; padding:0; display:grid; gap:4px}
+body.cardysseyApp .ebayOffers a {display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:6px 8px; border-radius:8px; color:var(--appearance-ink); text-decoration:none; font-size:12.5px}
+body.cardysseyApp .ebayOffers a:hover, body.cardysseyApp .ebayOffers a:focus-visible {background:var(--appearance-panel)}
+body.cardysseyApp .ebayOffers a em {font-style:normal; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; color:var(--appearance-muted)}
+body.cardysseyApp .ebayOffers a span {opacity:.6; font-size:11px}

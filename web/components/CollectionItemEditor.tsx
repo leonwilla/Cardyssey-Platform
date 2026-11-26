@@ -54,7 +54,21 @@ type PricingQuote = {
   priceWindowLabel?: string | null;
   lowSample?: boolean | null;
   providerUrl?: string | null;
+  ebayOfferCount?: number | null;
+  ebayOffers?: EbayOffer[];
 };
+
+type EbayOffer = { title: string; eur: number; url: string };
+
+function parseEbayOffers(value: unknown): EbayOffer[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((o) =>
+    o && typeof o.title === "string" && typeof o.url === "string" && /^https:\/\/www\.ebay\./.test(o.url) &&
+    typeof o.eur === "number" && Number.isFinite(o.eur)
+      ? [{ title: o.title, eur: o.eur, url: o.url }]
+      : []
+  );
+}
 
 const CARDMARKET_PRODUCT =
   /^https:\/\/www\.cardmarket\.com\/(de|en)\/Pokemon\/Products\/Singles\/[A-Za-z0-9-]+\/[A-Za-z0-9-]+$/;
@@ -249,6 +263,8 @@ export function CollectionItemEditor({
           priceWindowLabel: typeof data?.priceWindowLabel === "string" ? data.priceWindowLabel : null,
           lowSample: data?.lowSample === true,
           providerUrl: typeof data?.providerUrl === "string" ? data.providerUrl : null,
+          ebayOfferCount: nullableFiniteNumber(data?.ebayOfferCount),
+          ebayOffers: parseEbayOffers(data?.ebayOffers),
           recentSales:
             Array.isArray(data?.recentSales)
               ? data.recentSales
@@ -335,8 +351,10 @@ export function CollectionItemEditor({
   // opening an unchanged item. A fresh quote is shown only for a changed
   // condition/market, preventing 0.02 € on the tile vs 0.06 € in the dialog.
   const effectiveMarket = pricingQuote?.market ?? selectedMarket;
+  const cardmarketValueForEbay = selectedMarket === "EBAY" && pricingQuote?.market === "TCG" &&
+    pricingQuote.policyStatus === "EBAY_NO_SALES_CARDMARKET_VALUE";
   const redirectedBulkPrice = selectedMarket === "EBAY" &&
-    pricingQuote?.market === "TCG" && pricingQuote.policyClass === "BULK";
+    pricingQuote?.market === "TCG" && (pricingQuote.policyClass === "BULK" || cardmarketValueForEbay);
   const showingCollectionValue =
     !redirectedBulkPrice && selectedMarket === market && condition === currentItem.condition;
   const unitValue = showingCollectionValue && displayedUnitEur !== undefined
@@ -590,11 +608,12 @@ export function CollectionItemEditor({
 
         {redirectedBulkPrice && (
           <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:12}}>
-            Bulk-Karte: Für diese Variante wird der passende TCG-/Regionalmarktpreis genutzt.
-            eBay ist nur für besondere Karten die reguläre Preisquelle.
+            {cardmarketValueForEbay
+              ? "Noch keine eBay-Verkaufsdaten für diese Karte: Der Wert stammt von Cardmarket."
+              : "Bulk-Karte: Für diese Variante wird der passende TCG-/Regionalmarktpreis genutzt. eBay ist nur für besondere Karten die reguläre Preisquelle."}
           </p>
         )}
-        {pricingQuote?.policyStatus && pricingQuote.policyStatus !== "PRICE_FOUND" && (
+        {pricingQuote?.policyStatus && pricingQuote.policyStatus !== "PRICE_FOUND" && !cardmarketValueForEbay && (
           <p style={{margin:"7px 0 0",color:"var(--secondary)",fontSize:12}}>
             Preisquelle noch nicht vollständig verifiziert: {pricingQuote.policyStatus}.
           </p>
@@ -771,6 +790,27 @@ export function CollectionItemEditor({
 
         {effectiveMarket !== "EBAY" && item.variantSpec?.id && (
           <TcgPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
+        )}
+
+        {!pricingLoading && (pricingQuote?.ebayOffers?.length ?? 0) > 0 && (
+          <div className="ebayOffers">
+            <strong>Angebote auf eBay</strong>
+            <span>
+              {pricingQuote?.ebayOfferCount ?? pricingQuote?.ebayOffers?.length} passende Angebote ab{" "}
+              {formatEur(Math.min(...(pricingQuote?.ebayOffers ?? []).map((o) => o.eur)))} · Angebotspreise, kein Verkaufswert
+            </span>
+            <ul>
+              {(pricingQuote?.ebayOffers ?? []).map((o) => (
+                <li key={o.url}>
+                  <a href={o.url} target="_blank" rel="noopener noreferrer">
+                    <b>{formatEur(o.eur)}</b>
+                    <em>{o.title}</em>
+                    <span aria-hidden="true">↗</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {effectiveMarket !== "EBAY" && !pricingLoading && (() => {

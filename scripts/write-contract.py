@@ -2329,6 +2329,11 @@ document["components"]["schemas"]["EbayRecentSaleResponse"] = obj(
     ]
 )
 
+document["components"]["schemas"]["EbayOfferResponse"] = obj(
+    {"title": string(), "eur": number(), "url": string()},
+    ["title", "eur", "url"]
+)
+
 document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
     {
         "cardId": string(),
@@ -2350,7 +2355,9 @@ document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
         "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64"),
         "recentSales":
             arr("EbayRecentSaleResponse"),
-        "providerUrl": string(nullable=True)
+        "providerUrl": string(nullable=True),
+        "ebayOfferCount": integer(nullable=True, minimum=0),
+        "ebayOffers": arr("EbayOfferResponse")
     },
     [
         "cardId",

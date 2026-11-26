@@ -67,6 +67,39 @@ internal class GlobalPriceSourceRepository(private val dataSource: HikariDataSou
             }
         }
 
+    /** Matching eBay offers of one variant (scripts/ebay/ebay_listing_fallback.py). */
+    suspend fun ebayOffers(cardId: String, language: String, variantId: String): Pair<Int, List<EbayOfferResponse>>? =
+        withContext(Dispatchers.IO) {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement("""
+                    SELECT offer_count, listings::text AS listings FROM ebay_listing_offers
+                    WHERE card_id=? AND language_code=? AND variant_id=? AND match_status='OK' AND offer_count>0
+                      AND checked_at > now() - interval '30 days'
+                """.trimIndent()).use { statement ->
+                    statement.setString(1, cardId)
+                    statement.setString(2, language)
+                    statement.setString(3, variantId)
+                    statement.executeQuery().use { row ->
+                        if (!row.next()) return@use null
+                        val offers = runCatching {
+                            kotlinx.serialization.json.Json.parseToJsonElement(row.getString("listings"))
+                                .let { it as kotlinx.serialization.json.JsonArray }
+                                .mapNotNull { element ->
+                                    val o = element as? kotlinx.serialization.json.JsonObject ?: return@mapNotNull null
+                                    val url = (o["url"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+                                    val title = (o["title"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+                                    val eur = (o["eur"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull()
+                                    if (url == null || title == null || eur == null ||
+                                        !url.startsWith("https://www.ebay.")) null
+                                    else EbayOfferResponse(title = title, eur = eur, url = url)
+                                }
+                        }.getOrDefault(emptyList())
+                        row.getInt("offer_count") to offers
+                    }
+                }
+            }
+        }
+
     /** A confirmed eBay transaction allows rare DE/EN AUTO to prefer sold evidence. */
     suspend fun hasVerifiedEbaySale(cardId: String, language: String, variantId: String): Boolean =
         withContext(Dispatchers.IO) {
