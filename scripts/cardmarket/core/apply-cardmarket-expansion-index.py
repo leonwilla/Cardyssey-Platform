@@ -79,6 +79,14 @@ def main():
     set_exp = idx.set_expansions(tcgdex, catalog, votes)
     related = idx.related_expansions(tcgdex, catalog, votes)
     set_codes = json.loads((ROOT / 'config/cardmarket-stamp-routes.json').read_text(encoding='utf-8')).get('setCodes') or {}
+    # Hand-verified set slugs (config/cardmarket-set-url-guards.json) win over
+    # the TCGdex vote: ex4 voted "EX-Sandstorm" and got 180 wrong prices.
+    configured = json.loads((ROOT / 'config/cardmarket-set-url-guards.json').read_text(encoding='utf-8'))
+    slug_exp = {str(v.get('slug')): int(k) for k, v in expansions.items() if v.get('slugVerified') is True}
+    for set_id, slug in configured.items():
+        if isinstance(slug, str) and slug in slug_exp and set_exp.get(set_id) != slug_exp[slug]:
+            set_exp[set_id] = slug_exp[slug]
+            related[set_id] = [slug_exp[slug]] + [e for e in related.get(set_id, []) if e != slug_exp[slug]]
     guards = idx.index_set_guards(expansions, set_exp)
     rules_file = ROOT / 'config/cardmarket-variant-version-rules.json'
     rules = idx.load_rules(json.loads(rules_file.read_text(encoding='utf-8'))) if rules_file.is_file() else {}

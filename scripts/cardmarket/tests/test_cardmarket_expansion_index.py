@@ -205,6 +205,14 @@ class ApplyTests(unittest.TestCase):
                         names={'sv08.5-074': 'Vaporeon'})
         self.assertEqual(rows[2]['index_product_id'], '')
 
+    def test_name_plausibility(self):
+        self.assertTrue(idx.same_card_name('Rhyperior E4', 'Rhyperior [4] Lv. 55 (PL 32)'))
+        self.assertTrue(idx.same_card_name('M Latios EX', 'MLatios EX (ROS 59)'))
+        self.assertTrue(idx.same_card_name('Blend Energy Grass Fire Psychic Darkness', 'Blend Energy GFPD (DEX 117)'))
+        self.assertFalse(idx.same_card_name("Team Aqua's Sharpedo", 'Flareon (MA 5)'))
+        self.assertFalse(idx.same_card_name('Plusle', 'Rayquaza (POP 13)'))
+        self.assertFalse(idx.same_card_name('Charizard GX', 'Wooper (HIF SV9)'))
+
     def test_verified_flag_without_product_id_does_not_block_index(self):
         rows = [row('ecard3-145', '145', routing_state='VERIFIED_PRODUCT_ID', catalog_singleton_id='')]
         apply(rows)
