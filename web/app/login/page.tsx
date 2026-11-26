@@ -119,8 +119,7 @@ export default function LoginPage() {
         </form>
 
         <small className="authSecurity">
-          Deine Sitzung wird sicher über
-          HttpOnly-Cookies gespeichert.
+          Deine Anmeldung bleibt sicher auf diesem Gerät gespeichert.
         </small>
       </section>
     </main>
