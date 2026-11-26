@@ -351,6 +351,7 @@ export function CollectionItemEditor({
   // opening an unchanged item. A fresh quote is shown only for a changed
   // condition/market, preventing 0.02 € on the tile vs 0.06 € in the dialog.
   const effectiveMarket = pricingQuote?.market ?? selectedMarket;
+  const ebayListingsValue = pricingQuote?.policyStatus === "EBAY_LISTINGS_VALUE";
   const cardmarketValueForEbay = selectedMarket === "EBAY" && pricingQuote?.market === "TCG" &&
     pricingQuote.policyStatus === "EBAY_NO_SALES_CARDMARKET_VALUE";
   const redirectedBulkPrice = selectedMarket === "EBAY" &&
@@ -360,7 +361,7 @@ export function CollectionItemEditor({
   const unitValue = showingCollectionValue && displayedUnitEur !== undefined
     ? displayedUnitEur
     : effectiveMarket === "EBAY"
-      ? pricingQuote !== null && ebaySales.length > 0 ? liveUnitValue : null
+      ? pricingQuote !== null && (ebaySales.length > 0 || ebayListingsValue) ? liveUnitValue : null
       : redirectedBulkPrice ? liveUnitValue : storedUnitValue ?? liveUnitValue;
 
   const positionValue =
@@ -577,7 +578,7 @@ export function CollectionItemEditor({
           <div>
             <span>
               {effectiveMarket === "EBAY"
-                ? "eBay-Median pro Karte"
+                ? ebayListingsValue ? "eBay-Angebote pro Karte" : "eBay-Median pro Karte"
                 : "TCG-Marktwert pro Karte"}
             </span>
             <strong>
@@ -613,7 +614,13 @@ export function CollectionItemEditor({
               : "Bulk-Karte: Für diese Variante wird der passende TCG-/Regionalmarktpreis genutzt. eBay ist nur für besondere Karten die reguläre Preisquelle."}
           </p>
         )}
-        {pricingQuote?.policyStatus && pricingQuote.policyStatus !== "PRICE_FOUND" && !cardmarketValueForEbay && (
+        {ebayListingsValue && (
+          <p style={{margin:"10px 0 0",color:"var(--secondary)",fontSize:12}}>
+            Noch keine eBay-Verkaufsdaten: Wert aus {pricingQuote?.sampleCount ?? "mehreren"} aktuellen eBay-Angeboten
+            (mittleres der 3 günstigsten). Angebotspreis, kein Verkaufspreis.
+          </p>
+        )}
+        {pricingQuote?.policyStatus && pricingQuote.policyStatus !== "PRICE_FOUND" && !cardmarketValueForEbay && !ebayListingsValue && (
           <p style={{margin:"7px 0 0",color:"var(--secondary)",fontSize:12}}>
             Preisquelle noch nicht vollständig verifiziert: {pricingQuote.policyStatus}.
           </p>
