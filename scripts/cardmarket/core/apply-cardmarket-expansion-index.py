@@ -86,6 +86,11 @@ def main():
         guide = {x['idProduct']: x for x in fetch_json(load_game_profile()['price_url'])['priceGuides']}
     except Exception:
         guide = None  # without the guide the ID pick still needs the full ID check
+    # English names for sets matched by name (30th-c reprints); card IDs are
+    # the same in both languages.
+    with (args.base / 'queue-en.csv').open(encoding='utf-8-sig', newline='') as stream:
+        names = {r['cardyssey_karte']: r['kartenname_suche'] for r in csv.DictReader(stream)
+                 if r.get('set_id') in idx.NAME_MATCH_SETS}
     review = {}
     report = {'checkedAt': datetime.now(timezone.utc).isoformat(), 'indexedProducts': len(products),
               'verifiedExpansions': sum(1 for e in expansions.values() if e.get('slugVerified') is True),
@@ -95,7 +100,7 @@ def main():
 
         def mutate(rows, language=language):
             stats = idx.apply_index(rows, language, products, expansions, tcgdex, catalog, set_exp, set_codes,
-                                    related=related, rules=rules, guide=guide)
+                                    related=related, rules=rules, guide=guide, names=names)
             for r in rows:
                 if r.get('index_status') == 'REVIEW_GROUP' and r.get('index_review_group'):
                     g = review.setdefault(r['index_review_group'], {'de': 0, 'en': 0, 'examples': [], 'urls': set()})

@@ -87,8 +87,9 @@ def needs_browser_scan(row, minimum=MIN_BROWSER_SCAN_EUR):
 
 
 def slug_number(product):
-    """('SVI', 168) for 'Crushing-Hammer-SVI168'; None if no trailing number."""
-    m = re.search(r"(?:^|-)([A-Za-z]{0,12})([0-9]{1,4})$", product or "")
+    """('SVI', 168) for 'Crushing-Hammer-SVI168', ('30C', '084') for
+    'Seismitoad-30C084'; None if no trailing number."""
+    m = re.search(r"(?:^|-)((?:[0-9]{0,3}[A-Za-z]{1,12})?)([0-9]{1,4})$", product or "")
     if not m:
         return None
     return m.group(1), m.group(2)
@@ -128,10 +129,41 @@ def number_matches(product, printed, set_id="", set_code="", main_prefix=None):
     return False
 
 
+TITLE_NUMBER = re.compile(r"\(([A-Za-z0-9]{1,6}) ([A-Za-z]{0,4})([0-9]{1,4})\)\s*$")
+
+
+def title_number(product, title):
+    """Printed number from Cardmarket's title when the slug has none.
+
+    Sword & Shield era slugs carry no number ('Excadrill', 'Cramorant-V2');
+    the title does ('Excadrill (FST 183)', 'Cramorant (SHF SV30)'). Returns
+    (letters, digits) such as ('', '183') or ('SV', '30'); None when the
+    slug already ends in a number (a bare V1/V2 version marker is none)."""
+    tail = slug_number(product)
+    if tail and tail[0].upper() != "V":
+        return None
+    m = TITLE_NUMBER.search(title or "")
+    return (m.group(2).upper(), m.group(3)) if m else None
+
+
+# 30th Celebration reprints keep their original number: 'Charizard (30C BS 4)'.
+# Our set 30th-c numbers them 001-030, so they are matched by name only.
+REPRINT_TITLE = re.compile(r"\(30C [A-Za-z]{1,6} [0-9]{1,4}\)\s*$")
+NAME_MATCH_SETS = {"30th-c"}
+
+
+def title_number_matches(number, printed):
+    """Exact letters and number: plain '10' never matches shiny 'SV10'."""
+    m = re.fullmatch(r"([A-Za-z]{0,12}?)0*([0-9]{1,4})", str(printed or "").strip())
+    return bool(m and number and m.group(1).upper() == number[0] and int(m.group(2)) == int(number[1]))
+
+
 def main_prefixes(products):
     """Most common slug number prefix per expansion slug ('SK' for Skyridge)."""
     counts = defaultdict(Counter)
     for item in products.values():
+        if item.get("reprint"):
+            continue
         tail = slug_number(item["product"])
         if tail:
             counts[item["slug"]][tail[0].upper()] += 1
@@ -295,7 +327,9 @@ def load_index(data, product_lines=()):
         if not exp or exp.get("slugVerified") is not True or exp.get("slug") != slug:
             continue
         products[pid] = {"slug": slug, "product": product, "idExpansion": str(item["idExpansion"]),
-                         "title": str(item.get("title") or "")}
+                         "title": str(item.get("title") or ""),
+                         "title_number": title_number(product, str(item.get("title") or "")),
+                         "reprint": bool(REPRINT_TITLE.search(str(item.get("title") or "")))}
     return expansions, products
 
 
@@ -416,7 +450,7 @@ def _pick_by_variant_ids(row, group, main, guide=None):
 
 
 def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_exp, set_codes=None,
-                minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None, guide=None):
+                minimum=MIN_BROWSER_SCAN_EUR, related=None, rules=None, guide=None, names=None):
     """Add index hints to one language queue in place. Returns status counts.
 
     A variant is priced automatically when Cardmarket can tell it apart: it is
@@ -425,6 +459,7 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
     config/cardmarket-variant-version-rules.json maps its kind to a version
     (V1/V2/...). Everything else goes to review as a GROUP (set + kind), so a
     single human rule resolves all cards of that kind in the set.
+    names maps card IDs to English names for sets matched by name (30th-c).
     """
     set_codes = set_codes or {}
     related = related or {}
@@ -476,9 +511,18 @@ def apply_index(rows, language, products, expansions, tcgdex_ids, catalog, set_e
             _finish(row, "SET_NOT_INDEXED", below, stats)
             continue
         code = str(set_codes.get(row["set_id"]) or "")
-        matches = sorted((pid, item) for slug in slugs for pid, item in by_slug.get(slug, [])
-                         if number_matches(item["product"], row["kartennummer"], row["set_id"], code,
-                                           prefixes.get(slug)))
+        if row["set_id"] in NAME_MATCH_SETS:
+            wanted = normalize_name((names or {}).get(row["cardyssey_karte"]) or row.get("kartenname_suche"))
+            matches = sorted((pid, item) for slug in slugs for pid, item in by_slug.get(slug, [])
+                             if item.get("reprint") and wanted
+                             and normalize_name(item["title"].rsplit(" (", 1)[0]) == wanted)
+        else:
+            matches = sorted(
+                (pid, item) for slug in slugs for pid, item in by_slug.get(slug, [])
+                if not item.get("reprint")
+                and (title_number_matches(item["title_number"], row["kartennummer"]) if item.get("title_number")
+                     else number_matches(item["product"], row["kartennummer"], row["set_id"], code,
+                                         prefixes.get(slug))))
         urls = [f"https://www.cardmarket.com/{language}/Pokemon/Products/Singles/{item['slug']}/{item['product']}"
                 for _, item in matches]
         main = [m for m in matches if m[1]["slug"] == primary]
