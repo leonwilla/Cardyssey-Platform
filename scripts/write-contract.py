@@ -2349,7 +2349,8 @@ document["components"]["schemas"]["CardPriceQuoteResponse"] = obj(
         "trend30dPercent": number(nullable=True),
         "updatedAtMs": integer(nullable=True, minimum=0, fmt="int64"),
         "recentSales":
-            arr("EbayRecentSaleResponse")
+            arr("EbayRecentSaleResponse"),
+        "providerUrl": string(nullable=True)
     },
     [
         "cardId",

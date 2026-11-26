@@ -925,3 +925,15 @@ body.cardysseyApp .legalShell{background:var(--appearance-panel);border-color:va
 body.cardysseyApp .legalPage h1,body.cardysseyApp .legalPage h2,body.cardysseyApp .legalPage h3{color:var(--appearance-ink)}
 body.cardysseyApp .legalPage p,body.cardysseyApp .legalPage li,body.cardysseyApp .legalPage address{color:var(--appearance-muted)}
 body.cardysseyApp .legalWarning{background:var(--appearance-soft);color:var(--appearance-ink);border-color:var(--appearance-outline)}
+
+/* "Auf Cardmarket ansehen" im Karten-Fenster: dezenter Link unter dem Preisverlauf */
+body.cardysseyApp .cardmarketLink {
+  display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:7px 12px;
+  border:1px solid var(--appearance-outline); border-radius:999px;
+  background:var(--appearance-soft); color:var(--appearance-ink);
+  font-size:12.5px; font-weight:600; text-decoration:none; transition:border-color .15s, background .15s;
+}
+body.cardysseyApp .cardmarketLink:hover, body.cardysseyApp .cardmarketLink:focus-visible {
+  border-color:var(--appearance-ink); background:var(--appearance-panel);
+}
+body.cardysseyApp .cardmarketLink span {opacity:.65; font-size:11px}

@@ -53,7 +53,23 @@ type PricingQuote = {
   recentSales?: EbayRecentSale[];
   priceWindowLabel?: string | null;
   lowSample?: boolean | null;
+  providerUrl?: string | null;
 };
+
+const CARDMARKET_PRODUCT =
+  /^https:\/\/www\.cardmarket\.com\/(de|en)\/Pokemon\/Products\/Singles\/[A-Za-z0-9-]+\/[A-Za-z0-9-]+$/;
+
+/** Verified product page, otherwise a Cardmarket search for the card name. */
+export function cardmarketLink(providerUrl: string | null | undefined, name: string, language: string) {
+  if (providerUrl && CARDMARKET_PRODUCT.test(providerUrl)) {
+    return { href: providerUrl, label: "Auf Cardmarket ansehen" };
+  }
+  const site = language === "en" ? "en" : "de";
+  return {
+    href: `https://www.cardmarket.com/${site}/Pokemon/Products/Search?searchString=${encodeURIComponent(name)}`,
+    label: "Auf Cardmarket suchen",
+  };
+}
 
 function nullableFiniteNumber(
   value: unknown
@@ -232,6 +248,7 @@ export function CollectionItemEditor({
           referenceNote: typeof data?.referenceNote === "string" ? data.referenceNote : null,
           priceWindowLabel: typeof data?.priceWindowLabel === "string" ? data.priceWindowLabel : null,
           lowSample: data?.lowSample === true,
+          providerUrl: typeof data?.providerUrl === "string" ? data.providerUrl : null,
           recentSales:
             Array.isArray(data?.recentSales)
               ? data.recentSales
@@ -755,6 +772,16 @@ export function CollectionItemEditor({
         {effectiveMarket !== "EBAY" && item.variantSpec?.id && (
           <TcgPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
         )}
+
+        {effectiveMarket !== "EBAY" && !pricingLoading && (() => {
+          const link = cardmarketLink(pricingQuote?.providerUrl, item.name, item.languageCode);
+          return (
+            <a className="cardmarketLink" href={link.href} target="_blank" rel="noopener noreferrer">
+              {link.label}
+              <span aria-hidden="true">↗</span>
+            </a>
+          );
+        })()}
 
         {effectiveMarket === "EBAY" && item.variantSpec?.id && (
           <EbayPriceHistoryChart cardId={item.cardId} language={item.languageCode} variantId={item.variantSpec.id}/>
