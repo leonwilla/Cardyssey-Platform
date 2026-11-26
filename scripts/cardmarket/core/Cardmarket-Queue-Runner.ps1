@@ -3,8 +3,8 @@
 # Never bypass a provider challenge or queue a retry indefinitely.
 param(
   [ValidateRange(1,1000)][int]$BatchLimit = 200,
-  [ValidateRange(4,120)][int]$DelaySeconds = 11,
-  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 11,
+  [ValidateRange(4,120)][int]$DelaySeconds = 8,
+  [ValidateRange(4,90)][int]$MinRequestGapSeconds = 8,
   [ValidateRange(1,90)][int]$MinAjaxGapSeconds = 3,
   [ValidateSet('de','en','both')][string]$Languages = 'de',
   [ValidateRange(0,110)][int]$RunMinutes = 50,

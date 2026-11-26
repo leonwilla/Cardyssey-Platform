@@ -53,7 +53,7 @@ function Js([string]$Expression,[int]$TimeoutSec) {
   return $script:document | ConvertTo-Json -Compress
 }
 
-$MinRequestGapSeconds=11
+$MinRequestGapSeconds=8
 $ChallengeWaitSeconds=0
 $script:lastProviderRequestUtc=[datetime]::MinValue
 $LangCfg=@{PathPrefix='/de/Pokemon'}

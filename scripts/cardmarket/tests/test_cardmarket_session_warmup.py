@@ -20,7 +20,7 @@ class SessionWarmupTests(unittest.TestCase):
   self.assertNotIn('"-RequireLogin"',s)
   self.assertIn("Get-CardmarketActiveCooldown",s)
   self.assertIn('"-BatchLimit","200"',s)
-  self.assertIn('"-MinRequestGapSeconds","11"',s)
+  self.assertIn('"-MinRequestGapSeconds","8"',s)
  def test_one_normal_navigation_six_seconds_no_challenge_bypass(self):
   s=(source_path('Cardmarket-Session-Warmup.ps1')).read_text(encoding='utf-8-sig')
   self.assertEqual(s.count("method='Page.navigate'"),1)
