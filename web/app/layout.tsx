@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Cardyssey",
-    description: "Deine TCG-Plattform für Sammlung, Scanner, Wishlist, Marketplace und Community.",
+    description: "Deine TCG-Plattform für Sammlung, Scanner, Wunschliste, Marktplatz und Community.",
     url: "https://cardyssey.de",
     siteName: "Cardyssey",
     locale: "de_DE",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Cardyssey",
-    description: "Deine TCG-Plattform für Sammlung, Scanner, Wishlist, Marketplace und Community.",
+    description: "Deine TCG-Plattform für Sammlung, Scanner, Wunschliste, Marktplatz und Community.",
   },
 };
 

@@ -717,24 +717,24 @@ export function AddCardDialog({
             "already_on_wishlist"
         ) {
           throw new Error(
-            "Diese Kartenvariante steht bereits auf deiner Wishlist."
+            "Diese Kartenvariante steht bereits auf deiner Wunschliste."
           );
         }
 
         throw new Error(
-          "Karte konnte nicht zur Wishlist hinzugefügt werden."
+          "Karte konnte nicht zur Wunschliste hinzugefügt werden."
         );
       }
 
       setError(
-        "✓ Zur Wishlist hinzugefügt."
+        "✓ Zur Wunschliste hinzugefügt."
       );
 
     } catch (e) {
       setError(
         e instanceof Error
           ? e.message
-          : "Wishlist konnte nicht gespeichert werden."
+          : "Wunschliste konnte nicht gespeichert werden."
       );
 
     } finally {
@@ -1193,7 +1193,7 @@ export function AddCardDialog({
             >
               {wishlistSaving
                 ? "Speichert …"
-                : "♡ Zur Wishlist"}
+                : "♡ Zur Wunschliste"}
             </button>
 
             <button

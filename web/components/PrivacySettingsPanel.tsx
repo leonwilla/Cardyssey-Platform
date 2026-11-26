@@ -29,12 +29,12 @@ const labels: Record<Visibility, string> = {
 
 const fields = [
   ["profileVisibility", "Profil"],
-  ["showcaseVisibility", "Showcase"],
+  ["showcaseVisibility", "Vitrine"],
   ["collectionVisibility", "Sammlung"],
   ["collectionValueVisibility", "Sammlungswert"],
   ["quantityVisibility", "Kartenmengen"],
   ["setsVisibility", "Set-Fortschritt"],
-  ["wishlistVisibility", "Wishlist"],
+  ["wishlistVisibility", "Wunschliste"],
 ] as const;
 
 export function PrivacySettingsPanel() {
@@ -160,10 +160,10 @@ export function PrivacySettingsPanel() {
 
         <div className="privacyRow">
           <strong>
-            Showcase-Größe
+            Vitrinen-Größe
           </strong>
 
-          <div className="privacyChoice" role="radiogroup" aria-label="Showcase-Größe">
+          <div className="privacyChoice" role="radiogroup" aria-label="Vitrinen-Größe">
             {([5, 10] as const).map((size) => (
               <button
                 key={size}
