@@ -25,7 +25,7 @@ from decimal import Decimal, InvalidOperation
 
 # Variants at or above this existing price (or without price) are scanned
 # language-exactly in the browser. Cheaper ones keep the official guide price.
-MIN_BROWSER_SCAN_EUR = Decimal("20")
+MIN_BROWSER_SCAN_EUR = Decimal("2")
 TILES_PER_PAGE = 30
 INDEX_SCHEMA = 1
 PLAN_SCHEMA = 1

@@ -47,8 +47,8 @@ class VariantClassTests(unittest.TestCase):
             self.assertEqual(idx.variant_class(row('a-1', '1', **extra)), 'SPECIAL', extra)
 
     def test_threshold(self):
-        self.assertFalse(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='19.99')))
-        self.assertTrue(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='20.00')))
+        self.assertFalse(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='1.99')))
+        self.assertTrue(idx.needs_browser_scan(row('a-1', '1', existing_price_eur='2.00')))
         self.assertTrue(idx.needs_browser_scan(row('a-1', '1', needs_price='YES', existing_price_eur='')))
 
 

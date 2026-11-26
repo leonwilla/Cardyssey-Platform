@@ -389,8 +389,8 @@ function Get-CardmarketBrowserQueueTier($Case, [bool]$HumanConfirmed) {
   [decimal]$price = 0
   if ([decimal]::TryParse(([string]$Case.existing_price_eur).Trim(),
       [Globalization.NumberStyles]::AllowDecimalPoint, [Globalization.CultureInfo]::InvariantCulture,
-      [ref]$price) -and $price -ge 20) { return 1 }
-  # Direct product URL from the expansion index: worth an exact scan (>= 20 EUR
+      [ref]$price) -and $price -ge 2) { return 1 }
+  # Direct product URL from the expansion index: worth an exact scan (>= 2 EUR, owner decision 26.11.
   # or a card with 1st edition, where the price guide mixes both prints).
   if ([string]$Case.index_status -like 'DIRECT_*') { return 1 }
   $type = ([string]$Case.drucktyp).Trim()
