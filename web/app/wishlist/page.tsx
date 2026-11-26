@@ -343,24 +343,24 @@ export default function WishlistPage() {
             Gesucht
           </span>
 
-          <h1>Wishlist</h1>
+          <h1>Wunschliste</h1>
 
           <p className="muted">
             Priorisiere Wunschkarten,
             setze einen Zielpreis und
             erkenne passende
-            Marketplace-Angebote direkt.
+            Marktplatz-Angebote direkt.
           </p>
         </div>
       </div>
 
       {loading ? (
         <div className="statusPanel">
-          Wishlist wird geladen …
+          Wunschliste wird geladen …
         </div>
       ) : sortedItems.length === 0 ? (
         <div className="statusPanel">
-          Deine Wishlist ist noch leer.
+          Deine Wunschliste ist noch leer.
           Füge Karten über die Kartensuche hinzu.
         </div>
       ) : (
@@ -464,7 +464,7 @@ export default function WishlistPage() {
                     >
                       {targetReached
                         ? "✓ Zielpreis erreicht · "
-                        : "Marketplace-Treffer · "}
+                        : "Marktplatz-Treffer · "}
                       {money(
                         match.priceEur
                       )}
@@ -514,7 +514,7 @@ export default function WishlistPage() {
             }
           >
             <span className="eyebrowText">
-              Wishlist
+              Wunschliste
             </span>
 
             <h2>
@@ -566,7 +566,7 @@ export default function WishlistPage() {
 
             <p className="muted">
               Cardyssey markiert passende
-              Marketplace-Angebote automatisch.
+              Marktplatz-Angebote automatisch.
             </p>
 
             <div className="editorActions">

@@ -57,7 +57,7 @@ const ACCOUNT_TABS: { id: AccountTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profil", icon: "◉" },
   { id: "friends", label: "Freunde", icon: "♢" },
   { id: "security", label: "Sicherheit", icon: "◈" },
-  { id: "showcase", label: "Showcase", icon: "★" },
+  { id: "showcase", label: "Vitrine", icon: "★" },
   { id: "privacy", label: "Privatsphäre", icon: "◐" },
   { id: "appearance", label: "Design", icon: "✦" },
   { id: "app", label: "Android App", icon: "▣" },
@@ -353,7 +353,7 @@ export default function AccountPage() {
 
   async function deleteAccount() {
     const confirmed = window.confirm(
-      "Account dauerhaft löschen? Sammlung, Wishlist, Showcase, Marketplace-Daten, Chats und weitere mit deinem Cardyssey-Account verknüpfte Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+      "Account dauerhaft löschen? Sammlung, Wunschliste, Vitrine, Marktplatz-Daten, Chats und weitere mit deinem Cardyssey-Account verknüpfte Daten werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
     );
 
     if (!confirmed) return;
@@ -472,7 +472,7 @@ export default function AccountPage() {
                 <section className="ac-panel">
                   <span className="ac-kicker">Profil</span>
                   <h2>Persönliche Daten</h2>
-                  <p className="ac-lead">So sehen dich andere Sammler im Chat, auf dem Marktplatz und in deinem Showcase.</p>
+                  <p className="ac-lead">So sehen dich andere Sammler im Chat, auf dem Marktplatz und in deiner Vitrine.</p>
 
                   <label className="ac-field">
                     <span>Anzeigename</span>
@@ -514,7 +514,7 @@ export default function AccountPage() {
                   <section className="ac-panel ac-mini ac-danger">
                     <span className="ac-kicker">Gefahrenzone</span>
                     <h3>Account löschen</h3>
-                    <p>Löscht Sammlung, Wunschliste, Showcase, Marktplatz-Daten und Chats endgültig.</p>
+                    <p>Löscht Sammlung, Wunschliste, Vitrine, Marktplatz-Daten und Chats endgültig.</p>
                     <button className="ac-dangerBtn" onClick={deleteAccount} disabled={deletingAccount}>
                       {deletingAccount ? "Account wird gelöscht …" : "Account dauerhaft löschen"}
                     </button>

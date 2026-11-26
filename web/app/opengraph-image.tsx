@@ -85,7 +85,7 @@ export default function Image() {
               opacity: 0.82,
             }}
           >
-            Sammlung · Scanner · Wishlist · Marketplace · Community
+            Sammlung · Scanner · Wunschliste · Marktplatz · Community
           </div>
         </div>
       </div>

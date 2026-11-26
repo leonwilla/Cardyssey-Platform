@@ -348,7 +348,7 @@ export default function FriendProfilePage() {
           {profile.canSeeShowcase && (
             <section className="friendShowcase">
               <span className="eyebrowText">
-                Showcase
+                Vitrine
               </span>
 
               <h2>
@@ -357,7 +357,7 @@ export default function FriendProfilePage() {
 
               {showcase.length === 0 ? (
                 <p className="muted">
-                  Noch keine Karten im Showcase.
+                  Noch keine Karten in der Vitrine.
                 </p>
               ) : (
                 <div className="friendShowcaseGrid">
@@ -569,7 +569,7 @@ export default function FriendProfilePage() {
 
           <section className="profileVisibilityGrid">
             <div className="statCard">
-              <span>Showcase</span>
+              <span>Vitrine</span>
               <strong>
                 {profile.canSeeShowcase
                   ? "Sichtbar"
@@ -596,7 +596,7 @@ export default function FriendProfilePage() {
             </div>
 
             <div className="statCard">
-              <span>Wishlist</span>
+              <span>Wunschliste</span>
               <strong>
                 {profile.canSeeWishlist
                   ? "Sichtbar"

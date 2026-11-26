@@ -301,7 +301,7 @@ export default function SellingPage() {
       <div className="pageHeader">
         <div>
           <span className="eyebrowText">
-            Marketplace
+            Marktplatz
           </span>
 
           <h1>Meine Verkäufe</h1>
