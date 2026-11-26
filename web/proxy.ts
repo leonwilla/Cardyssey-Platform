@@ -145,8 +145,9 @@ export async function proxy(request: NextRequest) {
   if (pathname === "/api/android/release" || pathname === "/api/private/apk") {
     return secure(NextResponse.next());
   }
+  // The backend enforces the founder registration switch (registration_closed).
   if (pathname === "/api/auth/register") {
-    return secure(NextResponse.redirect(new URL("/login",request.url)));
+    return secure(NextResponse.next());
   }
   const token = request.cookies.get("cardyssey_access")?.value;
   if (!token) return renewal(request);
