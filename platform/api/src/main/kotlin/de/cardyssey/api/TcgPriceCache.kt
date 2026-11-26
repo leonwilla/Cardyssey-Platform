@@ -97,8 +97,6 @@ class TcgPriceCacheRepository(
             "Richtwert: üblicher Preis dieser Seltenheit" + (if (basis == "set_rarity") " im Set" else "") +
                 (n?.let { " ($it Karten)" } ?: "") + ". Für diese Karte gibt es keinen eigenen Marktpreis."
     }
-            }
-        }
 
     fun read(
         cardId: String,
