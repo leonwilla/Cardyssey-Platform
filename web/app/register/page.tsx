@@ -1,6 +1,8 @@
 import {
   BrandMark,
 } from "@/components/BrandMark";
+import { AuthDeckSide } from "@/components/AuthDeckSide";
+import "../auth-deck.css";
 
 export default async function RegisterPage({
   searchParams,
@@ -23,8 +25,8 @@ export default async function RegisterPage({
       : null;
 
   return (
-    <main className="authPage">
-      <div className="authGlow" />
+    <main className="authPage authDeck">
+      <AuthDeckSide />
 
       <section className="authCard">
         <div className="authBrand">

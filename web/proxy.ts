@@ -98,7 +98,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isStoreHost = request.headers.get("host")?.split(":")[0]?.toLowerCase() === "shop.cardyssey.de";
   if (isStoreHost) {
-    const asset = pathname.startsWith("/_next/") || pathname === "/cardyssey-emblem-gold.png" || pathname === "/favicon.ico";
+    const asset = pathname.startsWith("/_next/") || pathname.startsWith("/set-logos/") || pathname === "/cardyssey-emblem-gold.png" || pathname === "/favicon.ico";
     if (asset) return secure(NextResponse.next());
     if (pathname === "/shop-logout") return secure(NextResponse.redirect(new URL("/",request.url)));
     if (pathname === "/login") return secure(NextResponse.redirect("https://cardyssey.de/login"));
@@ -136,7 +136,7 @@ export async function proxy(request: NextRequest) {
       pathname === "/api/auth/login" || pathname === "/api/auth/logout" || pathname === "/api/auth/me" || pathname === "/api/auth/renew" ||
       pathname === "/api/internal/private-access" || pathname.startsWith("/_next/") ||
       pathname === "/favicon.ico" || pathname === "/cardyssey-emblem-gold.png" ||
-      pathname.startsWith("/images/") || pathname.startsWith("/landing/") ||
+      pathname.startsWith("/images/") || pathname.startsWith("/landing/") || pathname.startsWith("/set-logos/") ||
       pathname.startsWith("/vendor/") || pathname.startsWith("/app-screenshots/")) {
     return secure(NextResponse.next());
   }
