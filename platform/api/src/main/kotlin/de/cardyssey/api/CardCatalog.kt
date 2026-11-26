@@ -815,12 +815,15 @@ class CardCatalogService(
 
                 set.copy(
                     logo =
-                        set.logo
-                            ?.takeIf(
-                                String::isNotBlank
-                            )
-                            ?: fallback
-                                ?.logo,
+                        SetLogoFallbacks.logoOr(
+                            set.id,
+                            set.logo
+                                ?.takeIf(
+                                    String::isNotBlank
+                                )
+                                ?: fallback
+                                    ?.logo
+                        ),
                     symbol =
                         set.symbol
                             ?.takeIf(
@@ -1048,12 +1051,15 @@ class CardCatalogService(
                             ?.string("name")
                         ?: setId,
                 logo =
-                    source.string("logo")
-                        ?.takeIf(
-                            String::isNotBlank
-                        )
-                        ?: english
-                            ?.string("logo"),
+                    SetLogoFallbacks.logoOr(
+                        source.string("id") ?: setId,
+                        source.string("logo")
+                            ?.takeIf(
+                                String::isNotBlank
+                            )
+                            ?: english
+                                ?.string("logo")
+                    ),
                 symbol =
                     source.string("symbol")
                         ?.takeIf(
