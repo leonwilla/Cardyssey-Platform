@@ -6249,6 +6249,11 @@
             "items": {
               "$ref": "#/components/schemas/EbayRecentSaleResponse"
             }
+          },
+          "providerUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Verified Cardmarket product page of this variant"
           }
         },
         "required": [

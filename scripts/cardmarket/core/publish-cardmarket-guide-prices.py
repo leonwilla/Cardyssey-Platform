@@ -230,6 +230,41 @@ WHERE language_code={lang} AND (next_attempt_at IS NULL OR next_attempt_at < NOW
 """
 
 
+PRODUCT_URL = re.compile(r'https://www\.cardmarket\.com/(de|en)/Pokemon/Products/Singles/[A-Za-z0-9-]+/[A-Za-z0-9-]+')
+
+LINKS = """
+WITH x AS (SELECT * FROM jsonb_to_recordset({payload}::jsonb) AS x(card text, variant text, url text))
+UPDATE tcg_price_cache t SET provider_url = x.url FROM x
+WHERE t.language_code = {lang} AND t.card_id = x.card AND t.variant_id = x.variant
+  AND t.provider_url IS DISTINCT FROM x.url;
+"""
+
+
+def product_links(queue, language):
+    """Verified Cardmarket product page per variant (for the "Auf Cardmarket
+    ansehen" link in app and web). Only our own verified mapping counts."""
+    links = {}
+    for key, row in queue.items():
+        if mapped_product(row) is None:
+            continue
+        url = str(row.get('index_product_url') or row.get('known_url') or '').split('?')[0]
+        m = PRODUCT_URL.fullmatch(url)
+        if m and m.group(1) == language:
+            links[key] = url
+    return links
+
+
+def write_links(language, links):
+    rows = [{'card': k.split('|', 1)[0], 'variant': k.split('|', 1)[1], 'url': u} for k, u in sorted(links.items())]
+    for i in range(0, len(rows), 2000):
+        psql(stdin='BEGIN;\n' + LINKS.format(payload=lit(json.dumps(rows[i:i + 2000], ensure_ascii=False)),
+                                              lang=lit(language)) + '\nCOMMIT;')
+    # Links whose mapping is gone are removed.
+    keep = ','.join(lit(k) for k in sorted(links)) or "''"
+    psql(stdin=f"UPDATE tcg_price_cache SET provider_url = NULL WHERE language_code = {lit(language)} "
+               f"AND provider_url IS NOT NULL AND card_id || '|' || variant_id NOT IN ({keep});")
+
+
 def write(language, updates, published_keys):
     browser = ','.join(lit(s) for s in BROWSER)
     for i in range(0, len(updates), 500):
@@ -285,6 +320,9 @@ def main():
                 if old_file.stat().st_mtime < now.timestamp() - 14 * 86400:
                     old_file.unlink()
             write(language, updates, by_key.keys())
+            links = product_links(queue, language)
+            write_links(language, links)
+            stats['product_links'] = len(links)
         for u in updates:
             old = u['old']
             if old is not None and u['old_source'] == SOURCE and abs(float(old) - u['price']) < 0.005:

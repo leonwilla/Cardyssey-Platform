@@ -55,7 +55,9 @@ data class CardPriceQuoteResponse(
     val policyClass: String? = null,
     val policyStatus: String? = null,
     val policyProviderFamily: String? = null,
-    val preferredMarket: String? = null
+    val preferredMarket: String? = null,
+    // Verified Cardmarket product page of this variant ("Auf Cardmarket ansehen").
+    val providerUrl: String? = null
 )
 
 enum class PricingCondition(

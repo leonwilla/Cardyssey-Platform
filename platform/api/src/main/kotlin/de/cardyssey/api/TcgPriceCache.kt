@@ -35,7 +35,8 @@ data class CachedTcgPrice(
     val baseEur: Double?,
     val resolutionStatus: String,
     val failureDetail: String?,
-    val updatedAtMs: Long
+    val updatedAtMs: Long,
+    val providerUrl: String? = null
 )
 
 data class TcgPriceRefreshTarget(
@@ -103,7 +104,8 @@ class TcgPriceCacheRepository(
                     base_eur,
                     resolution_status,
                     failure_detail,
-                    updated_at
+                    updated_at,
+                    provider_url
                 FROM tcg_price_cache
                 WHERE card_id = ?
                   AND language_code = ?
@@ -139,6 +141,8 @@ class TcgPriceCacheRepository(
                                 ?: "NO_PRICE",
                         failureDetail =
                             result.getString("failure_detail"),
+                        providerUrl =
+                            result.getString("provider_url"),
                         updatedAtMs =
                             result
                                 .getObject(
@@ -170,7 +174,8 @@ class TcgPriceCacheRepository(
                     base_eur,
                     resolution_status,
                     failure_detail,
-                    updated_at
+                    updated_at,
+                    provider_url
                 FROM tcg_price_cache
                 WHERE card_id = ?
                   AND language_code = ?
@@ -233,6 +238,8 @@ class TcgPriceCacheRepository(
                                 result.getString(
                                     "failure_detail"
                                 ),
+                            providerUrl =
+                                result.getString("provider_url"),
                             updatedAtMs =
                                 result.getObject(
                                     "updated_at",
@@ -1335,7 +1342,9 @@ class CachedTcgPricingService(
             trend30dPercent =
                 statistics.trend30dPercent,
             updatedAtMs =
-                updatedAtMs
+                updatedAtMs,
+            providerUrl =
+                providerUrl
         )
     }
 
