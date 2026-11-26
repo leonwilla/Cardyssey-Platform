@@ -35,6 +35,12 @@ LANG = {"ja": "jp", "ko": "kr", "zh-tw": "zh-TW", "zh-cn": "zh-CN"}
 SOURCE = {"ja": "CARDTRADER_JP_NM", "ko": "CARDTRADER_KO_NM", "zh-tw": "CARDTRADER_TW_NM", "zh-cn": "CARDTRADER_CN_NM"}
 GOOD = {"Mint", "Near Mint"}
 MIN_OFFERS = 2
+# Our set code -> CardTrader expansion code where they differ. Each one was
+# checked by hand (26.11.2026) on five cards per set (Japanese name vs.
+# CardTrader name at the same number). neo4, PMCG1, PMCG6, SA and SMH do NOT
+# match (other numbering) and stay unmapped.
+ALIASES = {"smp": "sm-p", "sv-p": "promosv", "m-p": "mp-promo", "bwp": "bwpr", "xyp": "pxy", "vs1": "pvs",
+           "sm4p": "sm4", "e1": "ec1", "pcg4": "gsso", "cp6": "ep20"}
 FEW_OFFERS = 6        # below this many offers a price must be plausible ...
 OUTLIER_FACTOR = 15   # ... i.e. at most 15x the median of its rarity in the set
 
@@ -158,9 +164,11 @@ def run(languages, dry_run):
         return cache[exp["id"]]
 
     for code, cards in sorted(catalog.items()):
-        main = by_code.get(code)
         for card in cards:
             lang = card["l"]
+            # Aliases were checked for Japanese sets only (Korean promos are a
+            # separate CardTrader expansion with other numbers).
+            main = by_code.get(ALIASES.get(code, code) if lang == "ja" else code)
             variants = card["v"] or []
             kinds = {v["id"]: variant_kind(v) for v in variants}
             for v in variants:
