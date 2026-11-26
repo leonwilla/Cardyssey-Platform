@@ -280,7 +280,7 @@ fun Route.pricingRoutes(
                 } else null
                 val withReference = if (reference != null) quote.copy(
                     referenceEur = reference.first,
-                    referenceNote = "Englischer Karten-Richtwert; Druckvariante und Zustand ungeprüft. Kein bestätigter Marktpreis.",
+                    referenceNote = reference.third,
                     referenceUpdatedAtMs = reference.second
                 ) else quote
                 val offers = if (language in setOf("de", "en") && quote.variantId != null)

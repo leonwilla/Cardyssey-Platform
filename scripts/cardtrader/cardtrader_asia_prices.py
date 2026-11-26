@@ -31,6 +31,9 @@ from pathlib import Path
 
 BASE = "https://api.cardtrader.com/api/v2"
 ENV = Path("/home/tv/cardshop/platform/.env")
+# Per card: CardTrader rarity and English name (for rarity reference values
+# and the eBay search of Asian cards).
+CARD_INFO = Path.home() / ".local/state/cardtrader-asia-cards.json"
 LANG = {"ja": "jp", "ko": "kr", "zh-tw": "zh-TW", "zh-cn": "zh-CN"}
 SOURCE = {"ja": "CARDTRADER_JP_NM", "ko": "CARDTRADER_KO_NM", "zh-tw": "CARDTRADER_TW_NM", "zh-cn": "CARDTRADER_CN_NM"}
 GOOD = {"Mint", "Near Mint"}
@@ -150,6 +153,7 @@ def run(languages, dry_run):
              for l in languages}
     rows = {l: [] for l in languages}
     cache = {}
+    info = {}
 
     def expansion_data(exp):
         if exp["id"] not in cache:
@@ -190,6 +194,10 @@ def run(languages, dry_run):
                     continue
                 numbers, products = expansion_data(exp)
                 bps = numbers.get(number_key(card["n"])) or []
+                if k == "main" and len(bps) == 1:
+                    info[f"{lang}|{card['c']}"] = {
+                        "rarity": (bps[0].get("fixed_properties") or {}).get("pokemon_rarity"),
+                        "name": bps[0].get("name"), "set": card["s"], "number": card["n"], "exp": exp["code"]}
                 if len(bps) != 1:
                     st["ambiguous" if bps else "no_offers"] += 1
                     continue
@@ -240,6 +248,14 @@ def run(languages, dry_run):
             kept.append(r)
         rows[lang] = kept
     if not dry_run:
+        previous = {}
+        try:
+            previous = json.loads(CARD_INFO.read_text())
+        except (OSError, ValueError):
+            pass
+        previous.update(info)
+        CARD_INFO.parent.mkdir(parents=True, exist_ok=True)
+        CARD_INFO.write_text(json.dumps(previous, ensure_ascii=False))
         for lang, items in rows.items():
             for i in range(0, len(items), 400):
                 psql(None, stdin="BEGIN;\n" + SAVE.format(payload=lit(json.dumps(items[i:i + 400], ensure_ascii=False)),
