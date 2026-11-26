@@ -220,12 +220,34 @@ fun Route.pricingRoutes(
                             condition = condition
                         )
                         if (ebay?.eur == null) {
-                            // No eBay sales yet: AUTO and EBAY show the Cardmarket value
-                            // (EBAY marked, owner decision 26.11.2026: every card has a value).
-                            val tcg = if (policy != null && details != null && selectedVariant != null)
-                                sourcePolicy.tcgResponse(details,selectedVariant,condition,policy)
-                            else pricing.quote(cardId,language,requestedVariantId,requestedLegacyVariant,condition)
-                            if (market == "EBAY") tcg?.copy(policyStatus = "EBAY_NO_SALES_CARDMARKET_VALUE") else tcg
+                            // No eBay sales yet (owner decision 26.11.2026, until Marketplace
+                            // Insights): EBAY uses current matching eBay offers (median of the
+                            // three cheapest), otherwise - like AUTO - the Cardmarket value.
+                            val offers = if (market == "EBAY" && selectedVariant != null && details != null &&
+                                language in setOf("de", "en"))
+                                runCatching { sourcePolicy.ebayOffers(cardId, language, selectedVariant.id) }.getOrNull()
+                            else null
+                            val listingValue = offers?.takeIf { it.first >= 3 && it.second.size >= 3 }
+                                ?.second?.map { it.eur }?.sorted()?.get(1)
+                            if (listingValue != null && details != null && selectedVariant != null) {
+                                CardPriceQuoteResponse(
+                                    cardId = details.id, languageCode = details.languageCode,
+                                    variantId = selectedVariant.id, variantType = selectedVariant.type,
+                                    condition = condition.name, market = "EBAY", source = "EBAY_LISTINGS",
+                                    baseEur = listingValue, conditionFactor = condition.factor,
+                                    eur = kotlin.math.round(listingValue * condition.factor * 100.0) / 100.0,
+                                    exactLanguageMatch = true, exactVariantMatch = true,
+                                    sampleCount = offers.first,
+                                    policyClass = policy?.priceClass,
+                                    policyStatus = "EBAY_LISTINGS_VALUE",
+                                    preferredMarket = policy?.preferredMarket
+                                )
+                            } else {
+                                val tcg = if (policy != null && details != null && selectedVariant != null)
+                                    sourcePolicy.tcgResponse(details,selectedVariant,condition,policy)
+                                else pricing.quote(cardId,language,requestedVariantId,requestedLegacyVariant,condition)
+                                if (market == "EBAY") tcg?.copy(policyStatus = "EBAY_NO_SALES_CARDMARKET_VALUE") else tcg
+                            }
                         } else ebay.copy(
                             policyClass = policy?.priceClass,
                             policyStatus = policy?.status,
