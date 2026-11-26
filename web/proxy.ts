@@ -94,6 +94,36 @@ async function grantPreview(response: NextResponse): Promise<NextResponse> {
   return secure(response);
 }
 
+const API_BASE = () => (process.env.CARDYSSEY_API_URL || "http://127.0.0.1:8081").replace(/\/$/, "");
+let registrationCache: {open:boolean; at:number} | null = null;
+
+async function registrationsOpen(): Promise<boolean> {
+  if (registrationCache && Date.now() - registrationCache.at < 30_000) return registrationCache.open;
+  try {
+    const response = await fetch(API_BASE() + "/api/v1/auth/registration-status", {cache:"no-store"});
+    const open = response.ok && (await response.json() as {enabled?:boolean}).enabled === true;
+    registrationCache = {open, at: Date.now()};
+    return open;
+  } catch {
+    return false;
+  }
+}
+
+async function hasAdminRole(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(API_BASE() + "/api/v1/admin/access", {headers:{Authorization:`Bearer ${token}`},cache:"no-store"});
+    if (!response.ok) return false;
+    return (await response.json() as {canAdmin?:boolean}).canAdmin === true;
+  } catch {
+    return false;
+  }
+}
+
+const RESTRICTED_PREFIXES = ["/admin", "/api/admin", "/api/internal", "/api/private", "/shop", "/api/shop", "/business-shop", "/preview-"];
+function isRestrictedPath(pathname: string): boolean {
+  return RESTRICTED_PREFIXES.some(prefix => pathname === prefix || pathname.startsWith(prefix.endsWith("-") ? prefix : prefix + "/") || (prefix.endsWith("-") && pathname.startsWith(prefix)));
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isStoreHost = request.headers.get("host")?.split(":")[0]?.toLowerCase() === "shop.cardyssey.de";
@@ -159,6 +189,13 @@ export async function proxy(request: NextRequest) {
       const user = await verification.json() as {id?:string};
       const ids = (process.env.CARDYSSEY_PRIVATE_USER_IDS || "").split(",").map(x=>x.trim());
       if (user.id && ids.includes(user.id)) return secure(NextResponse.next());
+      // Founder switch "registrations open": every signed-in account may use the
+      // web app. Admin, internal and unreleased shop areas still need the
+      // allowlist or a backend ADMIN/FOUNDER role.
+      if (user.id && await registrationsOpen()) {
+        if (!isRestrictedPath(pathname)) return secure(NextResponse.next());
+        if (await hasAdminRole(token)) return secure(NextResponse.next());
+      }
     }
   } catch { /* fail closed */ }
   return secure(NextResponse.redirect(new URL("/login",request.url)));
