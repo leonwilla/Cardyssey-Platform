@@ -15,7 +15,7 @@ param(
 )
 $ErrorActionPreference='Stop'
 $base=Join-Path $env:LOCALAPPDATA 'Cardyssey\CardmarketCollector'
-$collector=Join-Path $base 'cardmarket-language-browser-collector_test.ps1'
+$collector=Join-Path $base 'cardmarket-language-browser-collector.ps1'
 $backoffScript=Join-Path $base 'Cardmarket-Backoff-Policy.ps1'
 if(!(Test-Path $backoffScript)){throw 'CARDMARKET_BACKOFF_POLICY_MISSING'}
 . $backoffScript
