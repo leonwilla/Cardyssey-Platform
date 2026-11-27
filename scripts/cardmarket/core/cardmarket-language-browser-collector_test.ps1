@@ -279,73 +279,133 @@ function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
   return ($challenge -or $title -match '(?i)nur einen moment|just a moment|attention required|security check|checking your browser|access denied|cloudflare to restrict access|too many requests')
 }
 
-function Try-CloudflareChallengeClick {
-  # Findet die Turnstile-Box auch in Shadow Roots / verschachtelten Iframes
-  # und klickt sie per echtem CDP-Maus-Ereignis (Viewport-Koordinaten gehen
-  # durch Iframe-Grenzen hindurch). Gibt Diagnosezeilen aus.
+$script:cfWs = $null
+$script:cfReqId = 0
+
+function Send-CfCdp([string]$method, [hashtable]$parameters, [int]$TimeoutSec = 15) {
+  if (!$script:cfWs -or $script:cfWs.State -ne 'Open') { throw 'CF_WS_NOT_OPEN' }
+  $script:cfReqId += 1
+  $myId = $script:cfReqId
+  $packet = @{id=$myId;method=$method;params=$parameters} | ConvertTo-Json -Depth 15 -Compress
+  $bytes = [text.encoding]::UTF8.GetBytes($packet)
+  $script:cfWs.SendAsync([ArraySegment[byte]]::new($bytes), [Net.WebSockets.WebSocketMessageType]::Text,
+                         $true, [threading.CancellationToken]::None).GetAwaiter().GetResult() | Out-Null
+  $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSec)
+  $buf = New-Object byte[] 1048576
+  $ms  = New-Object System.IO.MemoryStream
+  while ($true) {
+    $remain = ($deadline - [DateTime]::UtcNow).TotalMilliseconds
+    if ($remain -le 0) { throw 'CF_CDP_TIMEOUT' }
+    $cts = [System.Threading.CancellationTokenSource]::new([int]$remain)
+    try {
+      $res = $script:cfWs.ReceiveAsync([ArraySegment[byte]]::new($buf), $cts.Token).GetAwaiter().GetResult()
+    } catch { throw 'CF_CDP_RECV_FAIL' } finally { $cts.Dispose() }
+    if ($res.MessageType -eq [Net.WebSockets.WebSocketMessageType]::Close) { throw 'CF_CDP_CLOSED' }
+    $ms.Write($buf, 0, $res.Count)
+    if (-not $res.EndOfMessage) { continue }
+    $text = [text.encoding]::UTF8.GetString($ms.ToArray()); $ms.SetLength(0)
+    $msg = $text | ConvertFrom-Json
+    if ($msg.id -eq $myId) {
+      if ($msg.error) { throw ('CF_CDP_ERROR: ' + $msg.error.message) }
+      return $msg
+    }
+  }
+}
+
+function Connect-CfFrameTarget {
+  # Der Cloudflare-Challenge-Frame ist ein eigener Browser-Prozess (OOPIF)
+  # und taucht als separates Debug-Target unter /json/list auf.
+  if ($script:cfWs) { try { $script:cfWs.Dispose() } catch {}; $script:cfWs = $null }
+  $targets = Invoke-RestMethod "http://127.0.0.1:$CdpPort/json/list"
+  $t = $targets | Where-Object { $_.url -match 'challenges\.cloudflare\.com|turnstile' } |
+       Where-Object { $_.type -in @('iframe','page') } | Select-Object -First 1
+  if (!$t) { Write-Host 'CF_NO_FRAME_TARGET'; return $false }
+  Write-Host ('CF_FRAME_FOUND type=' + $t.type + ' url=' + ([string]$t.url).Substring(0, [Math]::Min(100, ([string]$t.url).Length)))
+  $script:cfWs = [Net.WebSockets.ClientWebSocket]::new()
+  $script:cfWs.Options.SetRequestHeader('Origin', 'http://localhost')
+  $script:cfWs.ConnectAsync([uri]$t.webSocketDebuggerUrl, [threading.cancellationToken]::None).GetAwaiter().GetResult() | Out-Null
+  $script:cfReqId = 0
+  return $true
+}
+
+function Invoke-TopLevelChallengeClick {
+  # Fallback, wenn der Frame kein eigenes Debug-Target ist: Klick im
+  # Hauptseiten-Koordinatensystem auf das Widget-Rechteck.
   $probe = $null
   try {
     $probe = Js @'
 JSON.stringify((function(){
-  var out={iframes:[],shadowIframes:0};
+  var out={iframes:[]};
   function walk(root){
     var list=root.querySelectorAll('iframe');
     for(var i=0;i<list.length;i++){
-      var f=list[i];
-      var r=f.getBoundingClientRect();
-      if(r.width>1&&r.height>1){
-        out.iframes.push({src:(f.src||'').slice(0,120),title:(f.title||'').slice(0,60),
-          x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});
-      }
+      var f=list[i], r=f.getBoundingClientRect();
+      if(r.width>1&&r.height>1){out.iframes.push({src:(f.src||'').slice(0,120),
+        x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});}
     }
     var all=root.querySelectorAll('*');
-    for(var j=0;j<all.length;j++){
-      if(all[j].shadowRoot){out.shadowIframes++;walk(all[j].shadowRoot);}
-    }
+    for(var j=0;j<all.length;j++){ if(all[j].shadowRoot){walk(all[j].shadowRoot);} }
   }
   walk(document);
   return out;
 })())
 '@ 10
-  } catch {
-    Write-Host ('CF_PROBE_ERROR: ' + $_.Exception.Message)
-    return $false
-  }
-  if (!$probe) { Write-Host 'CF_PROBE_EMPTY'; return $false }
-  $info = $null
-  try { $info = $probe | ConvertFrom-Json } catch { Write-Host 'CF_PROBE_UNPARSABLE'; return $false }
-
-  foreach ($f in @($info.iframes)) {
-    Write-Host ('CF_IFRAME src=' + $f.src + ' title=' + $f.title +
-                ' rect=' + $f.x + ',' + $f.y + ' ' + $f.w + 'x' + $f.h)
-  }
-  Write-Host ('CF_SHADOW_IFRAMES=' + $info.shadowIframes)
-
-  $cands = @($info.iframes | Where-Object {
-    $_.src -match 'challenges\.cloudflare\.com' -or $_.title -match 'Cloudflare|Widget'
-  })
-  if ($cands.Count -eq 0) {
-    $cands = @($info.iframes | Where-Object { $_.w -ge 200 -and $_.w -le 400 -and $_.h -ge 40 -and $_.h -le 90 })
-  }
-  if ($cands.Count -eq 0) { Write-Host 'CF_NO_CANDIDATE'; return $false }
-
-  foreach ($c in $cands) {
-    foreach ($dx in @(30, 22, 40)) {
-      $x = [int]($c.x + $dx); $y = [int]($c.y + $c.h / 2)
-      Write-Host ('CF_CHALLENGE_CLICK_AT x=' + $x + ' y=' + $y)
-      $sx = $x - 60; if ($sx -lt 1) { $sx = 1 }
-      $sy = $y - 40; if ($sy -lt 1) { $sy = 1 }
-      Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$sx;y=$sy;buttons=0} 10 | Out-Null
-      Start-Sleep -Milliseconds 120
-      Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$x;y=$y;buttons=0} 10 | Out-Null
-      Start-Sleep -Milliseconds 250
+    $info = $probe | ConvertFrom-Json
+    foreach ($f in @($info.iframes)) {
+      Write-Host ('CF_IFRAME src=' + $f.src + ' rect=' + $f.x + ',' + $f.y + ' ' + $f.w + 'x' + $f.h)
+    }
+    $cands = @($info.iframes | Where-Object { $_.src -match 'challenges\.cloudflare\.com' })
+    if ($cands.Count -eq 0) {
+      $cands = @($info.iframes | Where-Object { $_.w -ge 200 -and $_.w -le 400 -and $_.h -ge 40 -and $_.h -le 90 })
+    }
+    foreach ($c in $cands) {
+      $x = [int]($c.x + 30); $y = [int]($c.y + $c.h / 2)
+      Write-Host ('CF_TOPLEVEL_CLICK x=' + $x + ' y=' + $y)
       Send-Cdp 'Input.dispatchMouseEvent' @{type='mousePressed';x=$x;y=$y;button='left';buttons=1;clickCount=1} 10 | Out-Null
       Start-Sleep -Milliseconds 90
       Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseReleased';x=$x;y=$y;button='left';buttons=0;clickCount=1} 10 | Out-Null
       Start-Sleep -Seconds 2
     }
+  } catch { Write-Host ('CF_TOPLEVEL_ERROR: ' + $_.Exception.Message) }
+  return $false
+}
+
+function Try-CloudflareChallengeClick {
+  # v2: Direkt zum Cloudflare-Frame-Target verbinden und IM Frame klicken.
+  try {
+    if (-not (Connect-CfFrameTarget)) { return Invoke-TopLevelChallengeClick }
+    $geo = Send-CfCdp 'Runtime.evaluate' @{
+      expression = @'
+(function(){
+  var el=document.querySelector('input[type="checkbox"],label,[role="checkbox"]');
+  var r=el?el.getBoundingClientRect():null;
+  return {w:window.innerWidth,h:window.innerHeight,
+          el:r?{x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}:null};
+})()
+'@
+      returnByValue = $true
+    } 10
+    $v = $geo.result.result.value
+    $points = @()
+    if ($v.el) { $points += @{x=[int]$v.el.x; y=[int]$v.el.y} }
+    $points += @{x=[int]([Math]::Round($v.w/2)); y=[int]([Math]::Round($v.h/2))}
+    $points += @{x=30; y=[int]([Math]::Round($v.h/2))}
+    foreach ($p in $points) {
+      Write-Host ('CF_FRAME_CLICK x=' + $p.x + ' y=' + $p.y + ' (frame ' + $v.w + 'x' + $v.h + ')')
+      Send-CfCdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$p.x;y=$p.y;buttons=0} 10 | Out-Null
+      Start-Sleep -Milliseconds 200
+      Send-CfCdp 'Input.dispatchMouseEvent' @{type='mousePressed';x=$p.x;y=$p.y;button='left';buttons=1;clickCount=1} 10 | Out-Null
+      Start-Sleep -Milliseconds 90
+      Send-CfCdp 'Input.dispatchMouseEvent' @{type='mouseReleased';x=$p.x;y=$p.y;button='left';buttons=0;clickCount=1} 10 | Out-Null
+      Start-Sleep -Seconds 3
+    }
+    return $true
+  } catch {
+    Write-Host ('CF_CLICK_ERROR: ' + $_.Exception.Message)
+    return $false
+  } finally {
+    if ($script:cfWs) { try { $script:cfWs.Dispose() } catch {}; $script:cfWs = $null }
   }
-  return $true
 }
 
 $script:lastProviderRequestUtc=[DateTime]::MinValue
