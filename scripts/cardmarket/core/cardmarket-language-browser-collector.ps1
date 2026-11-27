@@ -380,7 +380,18 @@ function Append-Observation([string]$path, [string]$line) {
 
 function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) {
   $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath;provider_attempted=$providerAttempted}
-  $s | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+  # Write via temp file + replace with retries: a plain Set-Content that hits a
+  # concurrent reader (watchdog, monitor) left progress-*.json EMPTY on
+  # 27.11.2026 and the watchdog stopped resuming the scanner.
+  $json = $s | ConvertTo-Json -Compress
+  $tmp = $progressPath + '.tmp'
+  for ($try = 0; $try -lt 6; $try++) {
+    try {
+      [IO.File]::WriteAllText($tmp, $json, [Text.UTF8Encoding]::new($false))
+      if (Test-Path $progressPath) { [IO.File]::Replace($tmp, $progressPath, [NullString]::Value) } else { [IO.File]::Move($tmp, $progressPath) }
+      break
+    } catch { Start-Sleep -Milliseconds 400 }
+  }
 }
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------

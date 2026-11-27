@@ -158,8 +158,17 @@ try {
   foreach($language in @('de','en')){
     $progressPath=Join-Path $base ("progress-$language.json")
     if(-not (Test-Path $progressPath)){continue}
-    $state=Get-Content -Raw -Encoding UTF8 $progressPath | ConvertFrom-Json
-    $last=[DateTime]::Parse([string]$state.updated_at).ToUniversalTime()
+    try{
+      $state=Get-Content -Raw -Encoding UTF8 $progressPath | ConvertFrom-Json
+      $last=[DateTime]::Parse([string]$state.updated_at).ToUniversalTime()
+    }catch{
+      # Empty/broken progress file (interrupted write): mark the language as
+      # interrupted so the normal resume path runs instead of failing forever.
+      $state=[pscustomobject]@{status='INTERRUPTED';language=$language;updated_at=[DateTime]::UtcNow.AddHours(-1).ToString('o');done=0;total=0;last_card='';provider_attempted=$false}
+      $state | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+      $last=[DateTime]::Parse([string]$state.updated_at).ToUniversalTime()
+      Note ('PROGRESS_FILE_REPAIRED '+$language)
+    }
     $stalled=($state.status -eq 'RUNNING' -and $last -lt [DateTime]::UtcNow.AddMinutes(-6))
     if($stalled){
       $state.status='INTERRUPTED'
