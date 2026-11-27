@@ -315,29 +315,24 @@ JSON.stringify((function(){
   $info = $null
   try { $info = $probe | ConvertFrom-Json } catch { Write-Host 'CF_PROBE_UNPARSABLE'; return $false }
 
-  # Diagnose: alle sichtbaren Iframes anzeigen
   foreach ($f in @($info.iframes)) {
     Write-Host ('CF_IFRAME src=' + $f.src + ' title=' + $f.title +
                 ' rect=' + $f.x + ',' + $f.y + ' ' + $f.w + 'x' + $f.h)
   }
   Write-Host ('CF_SHADOW_IFRAMES=' + $info.shadowIframes)
 
-  # Kandidaten: Cloudflare-Challenge-Iframes, sonst das kleinste eckige Widget.
   $cands = @($info.iframes | Where-Object {
     $_.src -match 'challenges\.cloudflare\.com' -or $_.title -match 'Cloudflare|Widget'
   })
   if ($cands.Count -eq 0) {
-    # Fallback: Turnstile-Widgets sind typischerweise ca. 300x65 px.
     $cands = @($info.iframes | Where-Object { $_.w -ge 200 -and $_.w -le 400 -and $_.h -ge 40 -and $_.h -le 90 })
   }
   if ($cands.Count -eq 0) { Write-Host 'CF_NO_CANDIDATE'; return $false }
 
   foreach ($c in $cands) {
-    # Die Checkbox sitzt etwa 30 px vom linken Rand des Widgets, vertikal zentriert.
     foreach ($dx in @(30, 22, 40)) {
       $x = [int]($c.x + $dx); $y = [int]($c.y + $c.h / 2)
       Write-Host ('CF_CHALLENGE_CLICK_AT x=' + $x + ' y=' + $y)
-      # Maus in kleinen Schritten bewegen (menschlicher), dann klicken.
       $sx = $x - 60; if ($sx -lt 1) { $sx = 1 }
       $sy = $y - 40; if ($sy -lt 1) { $sy = 1 }
       Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$sx;y=$sy;buttons=0} 10 | Out-Null
@@ -408,8 +403,7 @@ function Move-To([string]$url) {
         $deadline=[DateTime]::UtcNow.AddSeconds($ChallengeWaitSeconds)
         Write-Host 'CARDMARKET_CHALLENGE_WAITING: keeping persistent Edge session open'
       } else {
-        # Auto-Klick: alle Schleifendurchläufe (~5 s) auf die Box klicken.
-        try { [void](Try-CloudflareChallengeClick) } catch {}
+        try { [void](Try-CloudflareChallengeClick) } catch { Write-Host ('CF_CLICK_ERROR: ' + $_.Exception.Message) }
       }
       $stage=if($desired.AbsolutePath.EndsWith('/Products/Search')){'SEARCH_PAGE'}else{'PRODUCT_PAGE'}
       $signal=if($pageMarker){'PAGE_MARKER'}else{'HTTP_STATUS'}
@@ -457,7 +451,18 @@ function Append-Observation([string]$path, [string]$line) {
 
 function Save-Progress([int]$done, [int]$total, [string]$status, [string]$card) {
   $s = @{done=$done;total=$total;status=$status;last_card=$card;language=$Language;updated_at=[DateTime]::UtcNow.ToString('o');file=$resultsPath;provider_attempted=$providerAttempted}
-  $s | ConvertTo-Json -Compress | Set-Content -Encoding UTF8 -Path $progressPath
+  # Write via temp file + replace with retries: a plain Set-Content that hits a
+  # concurrent reader (watchdog, monitor) left progress-*.json EMPTY on
+  # 27.11.2026 and the watchdog stopped resuming the scanner.
+  $json = $s | ConvertTo-Json -Compress
+  $tmp = $progressPath + '.tmp'
+  for ($try = 0; $try -lt 6; $try++) {
+    try {
+      [IO.File]::WriteAllText($tmp, $json, [Text.UTF8Encoding]::new($false))
+      if (Test-Path $progressPath) { [IO.File]::Replace($tmp, $progressPath, [NullString]::Value) } else { [IO.File]::Move($tmp, $progressPath) }
+      break
+    } catch { Start-Sleep -Milliseconds 400 }
+  }
 }
 
 # --- Warteschlange + bisheriger Stand ------------------------------------------
