@@ -72,7 +72,9 @@ if (Test-Path $stateFile) {
 }
 if ($state.pages -ge $DailyCap) { Finish 'DAILY_CAP_REACHED' 0 }
 if (!(Test-Path $queueFile)) { Finish 'NO_QUEUE' 0 }
-$queue = @(Get-Content -Raw -Encoding UTF8 $queueFile | ConvertFrom-Json)
+# Windows PowerShell 5.1 emits a JSON array as ONE pipeline object; unroll it.
+$queueParsed = Get-Content -Raw -Encoding UTF8 $queueFile | ConvertFrom-Json
+$queue = @($queueParsed | ForEach-Object { $_ })
 $queueVersion = (Get-Item $queueFile).LastWriteTimeUtc.ToString('o')
 if ($state.queueVersion -ne $queueVersion) { $state.done = @() }
 $doneSet = New-Object 'System.Collections.Generic.HashSet[string]'
