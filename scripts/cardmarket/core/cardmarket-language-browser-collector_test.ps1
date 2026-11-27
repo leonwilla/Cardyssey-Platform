@@ -280,35 +280,75 @@ function Is-CardmarketChallenge([string]$title, [bool]$challenge) {
 }
 
 function Try-CloudflareChallengeClick {
-  # Koordinaten-Klick auf die Turnstile-Checkbox (wie der manuelle Klick).
-  # Cross-origin-IFrames sind aus JS nicht erreichbar, deshalb liefert JS nur
-  # das Rechteck des Challenge-IFrames und CDP macht den echten Maus-Klick.
-  $rectJson = $null
+  # Findet die Turnstile-Box auch in Shadow Roots / verschachtelten Iframes
+  # und klickt sie per echtem CDP-Maus-Ereignis (Viewport-Koordinaten gehen
+  # durch Iframe-Grenzen hindurch). Gibt Diagnosezeilen aus.
+  $probe = $null
   try {
-    $rectJson = Js @'
+    $probe = Js @'
 JSON.stringify((function(){
-  var f=document.querySelector('iframe[src*="challenges.cloudflare.com"],iframe[title*="Cloudflare"],iframe[src*="turnstile"]');
-  if(!f){return null}
-  var r=f.getBoundingClientRect();
-  if(r.width<5||r.height<5){return null}
-  var x=r.left+30; if(r.left+30>=r.right){x=r.left+r.width/2}
-  return {x:x,y:r.top+r.height/2};
+  var out={iframes:[],shadowIframes:0};
+  function walk(root){
+    var list=root.querySelectorAll('iframe');
+    for(var i=0;i<list.length;i++){
+      var f=list[i];
+      var r=f.getBoundingClientRect();
+      if(r.width>1&&r.height>1){
+        out.iframes.push({src:(f.src||'').slice(0,120),title:(f.title||'').slice(0,60),
+          x:Math.round(r.left),y:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)});
+      }
+    }
+    var all=root.querySelectorAll('*');
+    for(var j=0;j<all.length;j++){
+      if(all[j].shadowRoot){out.shadowIframes++;walk(all[j].shadowRoot);}
+    }
+  }
+  walk(document);
+  return out;
 })())
 '@ 10
-  } catch { return $false }
-  if (!$rectJson) { return $false }
-  $rect = $null
-  try { $rect = $rectJson | ConvertFrom-Json } catch { return $false }
-  if (!$rect -or !$rect.x) { return $false }
-  $x = [int]$rect.x; $y = [int]$rect.y
-  Write-Host ('CF_CHALLENGE_CLICK_AT x='+$x+' y='+$y)
-  foreach ($step in @(
-    @{type='mouseMoved';x=$x;y=$y;buttons=0},
-    @{type='mousePressed';x=$x;y=$y;button='left';buttons=1;clickCount=1},
-    @{type='mouseReleased';x=$x;y=$y;button='left';buttons=0;clickCount=1}
-  )) {
-    Send-Cdp 'Input.dispatchMouseEvent' $step 10 | Out-Null
-    Start-Sleep -Milliseconds 150
+  } catch {
+    Write-Host ('CF_PROBE_ERROR: ' + $_.Exception.Message)
+    return $false
+  }
+  if (!$probe) { Write-Host 'CF_PROBE_EMPTY'; return $false }
+  $info = $null
+  try { $info = $probe | ConvertFrom-Json } catch { Write-Host 'CF_PROBE_UNPARSABLE'; return $false }
+
+  # Diagnose: alle sichtbaren Iframes anzeigen
+  foreach ($f in @($info.iframes)) {
+    Write-Host ('CF_IFRAME src=' + $f.src + ' title=' + $f.title +
+                ' rect=' + $f.x + ',' + $f.y + ' ' + $f.w + 'x' + $f.h)
+  }
+  Write-Host ('CF_SHADOW_IFRAMES=' + $info.shadowIframes)
+
+  # Kandidaten: Cloudflare-Challenge-Iframes, sonst das kleinste eckige Widget.
+  $cands = @($info.iframes | Where-Object {
+    $_.src -match 'challenges\.cloudflare\.com' -or $_.title -match 'Cloudflare|Widget'
+  })
+  if ($cands.Count -eq 0) {
+    # Fallback: Turnstile-Widgets sind typischerweise ca. 300x65 px.
+    $cands = @($info.iframes | Where-Object { $_.w -ge 200 -and $_.w -le 400 -and $_.h -ge 40 -and $_.h -le 90 })
+  }
+  if ($cands.Count -eq 0) { Write-Host 'CF_NO_CANDIDATE'; return $false }
+
+  foreach ($c in $cands) {
+    # Die Checkbox sitzt etwa 30 px vom linken Rand des Widgets, vertikal zentriert.
+    foreach ($dx in @(30, 22, 40)) {
+      $x = [int]($c.x + $dx); $y = [int]($c.y + $c.h / 2)
+      Write-Host ('CF_CHALLENGE_CLICK_AT x=' + $x + ' y=' + $y)
+      # Maus in kleinen Schritten bewegen (menschlicher), dann klicken.
+      $sx = $x - 60; if ($sx -lt 1) { $sx = 1 }
+      $sy = $y - 40; if ($sy -lt 1) { $sy = 1 }
+      Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$sx;y=$sy;buttons=0} 10 | Out-Null
+      Start-Sleep -Milliseconds 120
+      Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseMoved';x=$x;y=$y;buttons=0} 10 | Out-Null
+      Start-Sleep -Milliseconds 250
+      Send-Cdp 'Input.dispatchMouseEvent' @{type='mousePressed';x=$x;y=$y;button='left';buttons=1;clickCount=1} 10 | Out-Null
+      Start-Sleep -Milliseconds 90
+      Send-Cdp 'Input.dispatchMouseEvent' @{type='mouseReleased';x=$x;y=$y;button='left';buttons=0;clickCount=1} 10 | Out-Null
+      Start-Sleep -Seconds 2
+    }
   }
   return $true
 }
@@ -353,7 +393,7 @@ function Move-To([string]$url) {
   do {
     # Cardmarket's clearance lasts ~60 min; the renewal check often passes by
     # itself if the page is left alone, so look only every 5 s while waiting.
-    Start-Sleep -Milliseconds $(if($sawChallenge){5000}else{400})
+    Start-Sleep -Milliseconds $(if($sawChallenge){6000}else{400})
     $state = Js 'JSON.stringify({path:location.pathname,href:location.href,ready:document.readyState,body:document.body?.innerText.length||0,title:document.title,httpStatus:performance.getEntriesByType("navigation")[0]?.responseStatus||0,challenge:!!document.querySelector("#challenge-running,#cf-challenge-running")||/(?:you have been blocked|you are unable to access|access denied|error 1020|too many requests|temporarily rate.limited)/i.test((document.body?.innerText||"").slice(0,1700))})' 10
     if (!$state) { Start-Sleep -Milliseconds 200; continue }
     $s = $state | ConvertFrom-Json
