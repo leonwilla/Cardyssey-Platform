@@ -6,6 +6,7 @@ import {CardReview,type Entry} from '@/components/CardmarketReviewCard';
 import {EbayCompactReview} from '@/components/EbayCompactReview';
 import {EbayAllSearchEvidence} from '@/components/EbayAllSearchEvidence';
 import {CardmarketIndexPanel,type IndexSnapshot} from '@/components/CardmarketIndexPanel';
+import {EbaySoldPanel,type EbaySoldSnapshot} from '@/components/EbaySoldPanel';
 import './admin-prices.css';
 import type {User} from '@/lib/types';
 
@@ -58,6 +59,8 @@ export default function PriceMonitorPage(){
  const [failureExportError,setFailureExportError]=useState('');
  const [tab,setTab]=useState<Tab>('scanner');const [reviewArea,setReviewArea]=useState<'fehler'|'zuordnung'>('fehler');
  const [index,setIndex]=useState<IndexSnapshot|null>(null);const [indexError,setIndexError]=useState('');
+ const [ebaySold,setEbaySold]=useState<EbaySoldSnapshot|null>(null);const [ebaySoldError,setEbaySoldError]=useState('');
+ const loadEbaySold=useCallback(async()=>{try{const r=await fetch('/api/admin/ebay-sold',{cache:'no-store'});if(!r.ok)throw Error();setEbaySold(await r.json() as EbaySoldSnapshot);setEbaySoldError('')}catch{setEbaySoldError('Status des eBay-Verkaufsscanners gerade nicht erreichbar')}},[]);
  const loadIndex=useCallback(async()=>{try{const r=await fetch('/api/admin/cardmarket-index',{cache:'no-store'});if(!r.ok)throw Error();setIndex(await r.json() as IndexSnapshot);setIndexError('')}catch{setIndexError('Status des Set-Listen-Scans gerade nicht erreichbar')}},[]);
  useEffect(()=>{let mounted=true;fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{if(!r.ok){router.replace('/login');return null}return r.json() as Promise<User>}).then(u=>{if(!u||!mounted)return;if(!u.canAdmin&&u.role!=='ADMIN'&&u.role!=='FOUNDER'){router.replace('/account');return}setUser(u)}).catch(()=>router.replace('/login'));return()=>{mounted=false}},[router]);
  const loadStatuses=useCallback(async()=>{
@@ -86,6 +89,7 @@ export default function PriceMonitorPage(){
  useEffect(()=>{if(!user)return;void loadReviews();const t=setInterval(()=>void loadReviews(),30000);return()=>clearInterval(t)},[user,loadReviews]);
  useEffect(()=>{if(!user)return;void loadEbay()},[user,loadEbay]);
  useEffect(()=>{if(!user)return;void loadIndex();const t=setInterval(()=>void loadIndex(),60000);return()=>clearInterval(t)},[user,loadIndex]);
+ useEffect(()=>{if(!user||tab!=='ebay')return;void loadEbaySold();const t=setInterval(()=>void loadEbaySold(),60000);return()=>clearInterval(t)},[user,tab,loadEbaySold]);
  useEffect(()=>{if(!user||!showScanErrors)return;void loadFailures();const t=setInterval(()=>void loadFailures(),15000);return()=>clearInterval(t)},[user,showScanErrors,loadFailures]);
  async function exportFailures(language:'de'|'en'){
   setExportingFailureLang(language);
@@ -253,8 +257,9 @@ export default function PriceMonitorPage(){
   </section>}
 
   {tab==='ebay'&&<section aria-label="eBay" style={{display:'grid',gap:14}}>
+   <EbaySoldPanel s={ebaySold} error={ebaySoldError} onReload={()=>void loadEbaySold()}/>
    <div className="ap-panel">
-    <div className="ap-panelHead"><div><h2>eBay · Verkaufspreise</h2><p className="ap-hint">Nur seltene und besondere Karten, nur bestätigte Verkäufe. Zurzeit pausiert (eBay blockiert den Sammler, Antrag für die offizielle Schnittstelle läuft).</p></div><span className="ap-energy ap-idle">Pausiert</span></div>
+    <div className="ap-panelHead"><div><h3>Alte eBay-Preisabfrage je Set</h3><p className="ap-hint">Früherer Sammler über die API, seit 12.11. von eBay blockiert. Verkaufswerte kommen jetzt vom Verkaufsscanner oben.</p></div><span className="ap-energy ap-idle">Pausiert</span></div>
     <div className="ap-sets">{sets.map(set=>{const job=jobs?.jobs.find(x=>x.id===set.id);const n=ebay.filter(x=>x.setId===set.id);const priced=n.filter(x=>x.price!=null).length;const target=ebayCount[set.id]||0;
      return <div className="ap-set" key={set.id}><b>{set.name}</b><div className="ap-bar" style={{height:6}}><i style={{width:`${percent(priced,target)}%`}}/></div><span className="ap-hint">{fmt(priced)} / {fmt(target)} mit Preis · {job?readable(job.status):'kein aktiver Scan'}</span>{job&&job.total>0&&<span className="ap-hint">{fmt(job.done)} / {fmt(job.total)} geprüft</span>}<button className="ap-btn" disabled={starting!==null||job?.running===true||jobs?.collectorActive===true} onClick={()=>void startSet(set.id)}>{starting===set.id?'Startet …':job?.running?'Läuft …':'Set-Scan starten'}</button></div>})}</div>
    </div>
